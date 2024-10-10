@@ -1,3 +1,5 @@
+#![feature(adt_const_params)]
+
 mod interval;
 mod reshape;
 

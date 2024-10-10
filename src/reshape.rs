@@ -1,3 +1,4 @@
+/*
 use std::ops::Add;
 
 use crate::interval::Interval;
@@ -17,4 +18,4 @@ impl<T: Ord + Copy + Add<Output=T>> Interval<T> {
             self.right() + right
         )
     }
-}
+}*/
