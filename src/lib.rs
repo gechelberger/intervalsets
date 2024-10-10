@@ -1,10 +1,9 @@
-#![feature(adt_const_params)]
-
-mod interval;
+pub mod finite;
+pub mod infinite;
+mod ival;
 mod reshape;
 
-
-pub use interval::Interval;
+pub use finite::Interval;
 pub use reshape::*;
 
 pub fn add(left: u64, right: u64) -> u64 {
