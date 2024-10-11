@@ -20,7 +20,7 @@ pub enum FiniteInterval<T> {
 
 impl<T> FiniteInterval<T>
 where
-    T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T> + Zero,
+    T: Copy + PartialOrd,
 {
     pub fn new(left: IVal<T>, right: IVal<T>) -> Self {
         if left.value > right.value {
@@ -80,70 +80,13 @@ where
         }
     }
 
-    pub fn size(&self) -> T {
-        match self {
-            Self::Empty => T::zero(),
-            Self::NonZero(left, right) => right.value - left.value,
-        }
-    }
-
-    pub fn overlaps(&self, other: &FiniteInterval<T>) -> bool {
-        // probably cheaper ways to do it:
-        // AL sees BR.V && BL sees AR.V
-        self.overlapped(other) != FiniteInterval::Empty
-    }
-
-    pub fn overlapped(&self, other: &FiniteInterval<T>) -> FiniteInterval<T> {
-        match (self, other) {
-            (FiniteInterval::Empty, _) => FiniteInterval::Empty,
-            (_, FiniteInterval::Empty) => FiniteInterval::Empty,
-            (
-                FiniteInterval::NonZero(a_left, a_right),
-                FiniteInterval::NonZero(b_left, b_right),
-            ) => {
-                let new_left = if a_left.contains(Side::Left, &b_left.value) {
-                    *b_left
-                } else {
-                    *a_left
-                };
-                let new_right = if a_right.contains(Side::Right, &b_right.value) {
-                    *b_right
-                } else {
-                    *a_right
-                };
-
-                // new() will clean up empty sets where left & right have violated bounds
-                FiniteInterval::new(new_left, new_right)
-            }
-        }
-    }
-
-    fn map_bounds(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> Self) -> Self {
+    pub(crate) fn map_bounds(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> Self) -> Self {
         match self {
             Self::Empty => Self::Empty,
             Self::NonZero(left, right) => func(left, right),
         }
     }
 
-    pub fn shifted(&self, offset: T) -> Self {
-        self.map_bounds(|left, right| Self::new_unchecked(*left + offset, *right + offset))
-    }
-
-    pub fn padded(&self, amount: T) -> Self {
-        self.padded_lr(amount, amount)
-    }
-
-    pub fn padded_lr(&self, left: T, right: T) -> Self {
-        self.map_bounds(|iv_left, iv_right| Self::new_unchecked(*iv_left - left, *iv_right + right))
-    }
-
-    pub fn partition(&self, other: &FiniteInterval<T>) -> Vec<FiniteInterval<T>> {
-        if !self.overlaps(other) {
-            return vec![self.clone(), other.clone()];
-        }
-
-        todo!()
-    }
 }
 
 
@@ -171,6 +114,7 @@ mod test {
         assert!(!iv.contains(&-1000));
     }
 
+    /*
     #[test]
     fn test_finite_interval_overlapped_empty() {
         // (---A---) (---B---)
@@ -270,4 +214,6 @@ mod test {
             FiniteInterval::open(0, 30)
         );
     }
+
+    */
 }

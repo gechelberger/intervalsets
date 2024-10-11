@@ -1,3 +1,5 @@
+#![feature(trait_alias)]
+
 #[cfg(test)]
 extern crate quickcheck;
 #[cfg(test)]
@@ -10,6 +12,7 @@ pub mod infinite;
 pub mod ival;
 
 // traits
+pub mod into;
 mod normalize;
 pub mod union;
 pub mod intersection; 
@@ -17,6 +20,9 @@ pub mod intersection;
 pub mod contains;
 pub mod sizeable;
 pub mod bounds;
+
+pub mod shifted;
+pub mod padded;
 
 pub use finite::FiniteInterval;
 pub use infinite::Interval;

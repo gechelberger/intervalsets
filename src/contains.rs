@@ -155,3 +155,5 @@ impl<T: PartialOrd> Contains<T> for IntervalSet<T> {
             .any(|subset| subset.contains(rhs))
     }
 }
+
+// todo: other interval set conains
