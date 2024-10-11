@@ -170,9 +170,9 @@ where
             }
         } else {
             if a_ival.contains(*a_side, &b_ival.value) {
-                return vec!{Self::Infinite};
+                return vec![Self::Infinite];
             } else {
-                return vec![Self::Half(*a), Self::Half(*b)]
+                return vec![Self::Half(*a), Self::Half(*b)];
             }
         }
     }
@@ -181,19 +181,43 @@ where
         let (a_left, a_right) = a;
         let (b_left, b_right) = b;
 
-        todo!()
+        // must check from both left and right to ensure open/closed bounds are properly handled
+        let overlapping = a_left.contains(Side::Left, &b_right.value)
+            && b_left.contains(Side::Left, &a_right.value)
+            && a_right.contains(Side::Right, &b_left.value)
+            && b_right.contains(Side::Right, &a_left.value);
+
+        if !overlapping {
+            vec![Interval::Finite(a.clone()), Interval::Finite(b.clone())]
+        } else {
+            let left = if a_left.contains(Side::Left, &b_left.value) {
+                a_left
+            } else {
+                b_left
+            };
+
+            let right = if a_right.contains(Side::Right, &b_right.value) {
+                a_right
+            } else {
+                b_right
+            };
+
+            vec![Interval::new_finite(left.clone(), right.clone())]
+        }
     }
 
     fn union_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Vec<Self> {
         let (a_left, a_right) = finite;
         let (h_side, h_ival) = half;
 
-        if a_left.contains(Side::Left, &h_ival.value) && a_right.contains(Side::Right, &h_ival.value) {
+        if a_left.contains(Side::Left, &h_ival.value)
+            && a_right.contains(Side::Right, &h_ival.value)
+        {
             // half interval starts in the finite interval
             // keep the `side`` of the half interval but using the bound from the finite one
             let new_bound = match h_side {
                 Side::Left => a_left.clone(),
-                Side::Right => a_right.clone()
+                Side::Right => a_right.clone(),
             };
 
             vec![Interval::Half((*h_side, new_bound))]
@@ -203,10 +227,10 @@ where
             if half.contains(&a_left.value) {
                 // implies contains a_right too
                 // half interval fully contains finite interval
-                vec![ half ]
+                vec![half]
             } else {
                 // disjoint intervals
-                vec![ half, Interval::Finite(*finite) ]
+                vec![half, Interval::Finite(*finite)]
             }
         }
     }
@@ -343,17 +367,20 @@ mod tests {
 
     #[quickcheck]
     fn test_half_interval_intersection(x: i8) {
-
-        let interval: Interval<i8> = Interval::open_unbound(10).intersection(&Interval::closed_unbound(20));
+        let interval: Interval<i8> =
+            Interval::open_unbound(10).intersection(&Interval::closed_unbound(20));
         assert_eq!(interval.contains(&x), x >= 20);
 
-        let interval: Interval<i8> = Interval::unbound_closed(10).intersection(&Interval::unbound_open(0));
+        let interval: Interval<i8> =
+            Interval::unbound_closed(10).intersection(&Interval::unbound_open(0));
         assert_eq!(interval.contains(&x), x < 0);
 
-        let interval: Interval<i8> = Interval::unbound_closed(100).intersection(&Interval::closed_unbound(0));
+        let interval: Interval<i8> =
+            Interval::unbound_closed(100).intersection(&Interval::closed_unbound(0));
         assert_eq!(interval.contains(&x), 0 <= x && x <= 100);
 
-        let interval: Interval<i8> = Interval::unbound_closed(0).intersection(&Interval::open_unbound(0));
+        let interval: Interval<i8> =
+            Interval::unbound_closed(0).intersection(&Interval::open_unbound(0));
         assert_eq!(interval.contains(&x), false);
     }
 }

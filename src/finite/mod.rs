@@ -113,7 +113,8 @@ where
     }
 
     pub fn overlaps(&self, other: &FiniteInterval<T>) -> bool {
-        // probably cheaper ways to do it...
+        // probably cheaper ways to do it:
+        // AL sees BR.V && BL sees AR.V
         self.overlapped(other) != FiniteInterval::Empty
     }
 
