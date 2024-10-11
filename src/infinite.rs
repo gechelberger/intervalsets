@@ -159,7 +159,22 @@ where
     }
 
     fn union_half_half(a: &(Side, IVal<T>), b: &(Side, IVal<T>)) -> Vec<Self> {
-        todo!()
+        let (a_side, a_ival) = a;
+        let (b_side, b_ival) = b;
+
+        if a_side == b_side {
+            if a_ival.contains(*a_side, &b_ival.value) {
+                return vec![Self::Half(*a)];
+            } else {
+                return vec![Self::Half(*b)];
+            }
+        } else {
+            if a_ival.contains(*a_side, &b_ival.value) {
+                return vec!{Self::Infinite};
+            } else {
+                return vec![Self::Half(*a), Self::Half(*b)]
+            }
+        }
     }
 
     fn union_finite_finite(a: &(IVal<T>, IVal<T>), b: &(IVal<T>, IVal<T>)) -> Vec<Self> {
