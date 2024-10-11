@@ -7,6 +7,7 @@ extern crate quickcheck_macros;
 pub mod finite;
 pub mod infinite;
 pub mod ival;
+pub mod normalize;
 
 pub use finite::FiniteInterval;
 pub use infinite::Interval;

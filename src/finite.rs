@@ -2,9 +2,9 @@
 
 use std::ops::{Add, Div, Mul, Sub};
 
-use num::Zero;
+use num::{PrimInt, Zero};
 
-use crate::ival::*;
+use crate::{ival::*, normalize::Normalize};
 
 /// (a, a) = (a, a] = [a, a) = Empty { x not in T }
 /// [a, a] = NonZero { x in T |    x = a    }
@@ -170,6 +170,7 @@ where
         todo!()
     }
 }
+
 
 #[cfg(test)]
 mod test {
