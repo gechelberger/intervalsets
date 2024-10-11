@@ -178,11 +178,37 @@ where
     }
 
     fn union_finite_finite(a: &(IVal<T>, IVal<T>), b: &(IVal<T>, IVal<T>)) -> Vec<Self> {
+        let (a_left, a_right) = a;
+        let (b_left, b_right) = b;
+
         todo!()
     }
 
-    fn union_finite_half(a: &(IVal<T>, IVal<T>), b: &(Side, IVal<T>)) -> Vec<Self> {
-        todo!()
+    fn union_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Vec<Self> {
+        let (a_left, a_right) = finite;
+        let (h_side, h_ival) = half;
+
+        if a_left.contains(Side::Left, &h_ival.value) && a_right.contains(Side::Right, &h_ival.value) {
+            // half interval starts in the finite interval
+            // keep the `side`` of the half interval but using the bound from the finite one
+            let new_bound = match h_side {
+                Side::Left => a_left.clone(),
+                Side::Right => a_right.clone()
+            };
+
+            vec![Interval::Half((*h_side, new_bound))]
+        } else {
+            let half = Interval::Half(half.clone());
+
+            if half.contains(&a_left.value) {
+                // implies contains a_right too
+                // half interval fully contains finite interval
+                vec![ half ]
+            } else {
+                // disjoint intervals
+                vec![ half, Interval::Finite(*finite) ]
+            }
+        }
     }
 
     pub fn intersection(&self, other: &Interval<T>) -> Self {
@@ -261,6 +287,9 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
     }
 
     fn complement(&mut self) -> &Self {
+        // complement of all sub intervals
+        // then folded intersection of those?
+
         todo!()
     }
 
