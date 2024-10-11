@@ -1,8 +1,8 @@
 use std::ops::Sub;
 
-use num::{PrimInt, Zero};
+use num::{Zero};
 
-use crate::{ival::{Bound, IVal, Side}, normalized::Normalize};
+use crate::ival::{Bound, IVal, Side};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
 pub enum ISize<T> {
@@ -404,29 +404,13 @@ where
         }
         
     }
+
 }
 
-impl<T: PrimInt> Normalize for Interval<T> {
-    
-    fn normalized(&self) -> Self {
-        match self {
-            Self::Empty => Self::Empty,
-            Self::Infinite => Self::Infinite,
-            Self::Half((side, ival)) => {
-                Self::Half((*side, ival.normalized(*side)))
-            },
-            Self::Finite((left, right)) => {
-                Self::new_finite(
-                    left.normalized(Side::Left), 
-                    right.normalized(Side::Right)
-                )
-            }
-        }
-    }
-}
 
-struct IntervalSet<T> {
-    intervals: Vec<Interval<T>>,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IntervalSet<T> {
+    pub intervals: Vec<Interval<T>>,
 }
 
 impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
@@ -438,24 +422,44 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
         self.intervals.iter().any(|iv| iv.contains(x))
     }
 
-    fn complement(&mut self) -> &Self {
+    fn complement(&self) -> Self {
         // complement of all sub intervals
         // then folded intersection of those?
+        let mut cloned = self.clone();
+        cloned.complement_mut();
+        cloned
+    }
+
+    fn complement_mut(&mut self) -> &Self {
 
         todo!()
     }
 
-    fn set_union(&mut self, other: &Self) -> &Self {
+    fn union(&mut self, other: &Self) -> &Self {
         todo!()
     }
 
-    fn interval_union(&mut self, other: &Interval<T>) -> &Self {
+    fn union_interval(&mut self, other: &Interval<T>) -> &Self {
+        todo!()
+    }
+
+    fn difference(&self, rhs: &Self) -> Self {
+        let mut cloned = self.clone();
+        cloned.difference_mut(rhs);
+        cloned
+    }
+
+    fn difference_mut(&mut self, rhs: &Self) -> &Self {
+        //self.intersection_mut(rhs.complement());
+        //self
         todo!()
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::normalize::Normalize;
+
     use super::*;
 
     #[quickcheck]
