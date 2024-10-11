@@ -2,31 +2,24 @@ use std::ops::Sub;
 
 use num::{Zero};
 
-use crate::ival::{Bound, IVal, Side};
+use crate::{half::HalfInterval, ival::{Bound, IVal, Side}, FiniteInterval};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
-pub enum ISize<T> {
-    Finite(T),
-    Infinite,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Interval<T> {
     /// (a, a) = (a, a] = [a, a) = Empty { x not in T }
-    Empty,
-
     /// [a, a] = NonZero { x in T |    x = a    }
     /// (a, b) = NonZero { x in T | a <  x <  b }
     /// (a, b] = NonZero { x in T | a <  x <= b }
     /// [a, b) = NonZero { x in T | a <= x <  b }
     /// [a, b] = NonZero { x in T | a <= x <= b }
-    Finite((IVal<T>, IVal<T>)),
+    Finite(FiniteInterval<T>),
 
     /// (a, ->) = Left  { x in T | a <  x      }
     /// [a, ->) = Left  { x in T | a <= x      }
     /// (<-, b) = Right { x in T |      x < b  }
     /// (<-, b] = Right { x in T |      x <= b }
-    Half((Side, IVal<T>)),
+    Half(HalfInterval<T>),
 
     /// {<-, ->) = { x in T }
     Infinite,
@@ -38,10 +31,10 @@ where
 {
     pub fn new_finite(left: IVal<T>, right: IVal<T>) -> Self {
         if left.value > right.value {
-            Self::Empty
+            Self::Finite(FiniteInterval::Empty)
         } else if left.value == right.value {
             if left.bound == Bound::Open || right.bound == Bound::Open {
-                Self::Empty
+                Self::Finite(FiniteInterval::Empty)
             } else {
                 Self::new_finite_unchecked(left, right)
             }
@@ -51,7 +44,7 @@ where
     }
 
     pub fn new_finite_unchecked(left: IVal<T>, right: IVal<T>) -> Self {
-        Self::Finite((left, right))
+        Self::Finite(FiniteInterval::new_unchecked(left, right))
     }
 
     /// (a, b) = { x in T | a < x < b }
@@ -83,144 +76,55 @@ where
         )
     }
 
+    pub fn new_half(side: Side, ival: IVal<T>) -> Self {
+        Self::Half(HalfInterval::new(side, ival))
+    }
+
     // (<-, b) = { x in T | x < b }
     pub fn unbound_open(right: T) -> Self {
-        Interval::Half((Side::Right, IVal::new(Bound::Open, right)))
+        Self::new_half(Side::Right, IVal::new(Bound::Open, right))
     }
 
     /// (<-, b] = { x in T | x <= b }
     pub fn unbound_closed(right: T) -> Self {
-        Interval::Half((Side::Right, IVal::new(Bound::Closed, right)))
+        Self::new_half(Side::Right, IVal::new(Bound::Closed, right))
     }
 
     /// (a, ->) = { x in T | a < x }
     pub fn open_unbound(left: T) -> Self {
-        Interval::Half((Side::Left, IVal::new(Bound::Open, left)))
+        Self::new_half(Side::Left, IVal::new(Bound::Open, left))
     }
 
     /// [a, ->) = {x in T | a <= x }
     pub fn closed_unbound(left: T) -> Self {
-        Interval::Half((Side::Left, IVal::new(Bound::Closed, left)))
-    }
-
-    pub fn lval(&self) -> Option<ISize<T>> {
-        match self {
-            Self::Empty => None,
-            Self::Infinite => Some(ISize::Infinite),
-            Self::Half((side, ival)) => {
-                Some(match side {
-                    Side::Left => ISize::Finite(ival.value),
-                    Side::Right => ISize::Infinite
-                })
-            },
-            Self::Finite((left, _)) => {
-                Some(ISize::Finite(left.value))
-            }
-        }
-    }
-
-    pub fn lbound(&self) -> Option<Bound> {
-        match self {
-            Self::Empty => None,
-            Self::Infinite => None,
-            Self::Half((side, ival)) => {
-                match side {
-                    Side::Left => Some(ival.bound),
-                    Side::Right => None,
-                }
-            },
-            Self::Finite((left, _)) => {
-                Some(left.bound)
-            }
-        }
+        Self::new_half(Side::Left, IVal::new(Bound::Closed, left))
     }
 
     pub fn lval_unchecked(&self) -> T {
         match self {
-            Self::Finite((left, _)) => {
-                left.value
+            Self::Finite(interval) => {
+                interval.lval_unchecked()
             },
-            Self::Half((side, ival)) => {
-                match side {
-                    Side::Left => ival.value,
-                    Side::Right => panic!("left bound of half interval is infinite")
-                }
+            Self::Half(interval) => {
+                interval.lval_unchecked()
             },
             _ => panic!("left bound of interval is not in T")
-        }
-    }
-
-    pub fn rval(&self) -> Option<ISize<T>> {
-        match self {
-            Self::Empty => None,
-            Self::Infinite => Some(ISize::Infinite),
-            Self::Half((side, ival)) => {
-                Some(match side {
-                    Side::Left => ISize::Infinite,
-                    Side::Right => ISize::Finite(ival.value),
-                })
-            },
-            Self::Finite((_, right)) => {
-                Some(ISize::Finite(right.value))
-            }
-        }
-    }
-
-    pub fn rbound(&self) -> Option<Bound> {
-        match self {
-            Self::Empty => None,
-            Self::Infinite => None,
-            Self::Half((side, ival)) => {
-                match side {
-                    Side::Left => None,
-                    Side::Right => Some(ival.bound),
-                }
-            },
-            Self::Finite((_, right)) => {
-                Some(right.bound)
-            }
         }
     }
 
     pub fn rval_unchecked(&self) -> T {
         match self {
-            Self::Finite((left, _)) => {
-                left.value
+            Self::Finite(interval) => {
+                interval.rval_unchecked()
             },
-            Self::Half((side, ival)) => {
-                match side {
-                    Side::Left => ival.value,
-                    Side::Right => panic!("left bound of half interval is infinite")
-                }
+            Self::Half(interval) => {
+                interval.rval_unchecked()
             },
             _ => panic!("left bound of interval is not in T")
         }
     }
 
-    pub fn size(&self) -> ISize<T> {
-        match self {
-            Self::Empty => ISize::Finite(T::zero()),
-            Self::Infinite => ISize::Infinite,
-            Self::Half(_) => ISize::Infinite,
-            Self::Finite((a, b)) => ISize::Finite(b.value - a.value),
-        }
-    }
-
-    pub fn contains(&self, value: &T) -> bool {
-        match self {
-            Self::Empty => false,
-            Self::Infinite => true,
-            Self::Half(data) => {
-                let (side, ival) = data;
-                ival.contains(*side, value)
-            }
-            Self::Finite(data) => {
-                let (left, right) = data;
-                left.contains(Side::Left, value) && right.contains(Side::Right, value)
-            }
-        }
-    }
-
+    /*
     pub fn complement(&self) -> Vec<Self> {
         match self {
             Self::Empty => vec![Self::Infinite],
@@ -404,6 +308,7 @@ where
         }
         
     }
+    */
 
 }
 
@@ -418,10 +323,6 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
         Self { intervals: vec![] }
     }
 
-    fn contains(&self, x: &T) -> bool {
-        self.intervals.iter().any(|iv| iv.contains(x))
-    }
-
     fn complement(&self) -> Self {
         // complement of all sub intervals
         // then folded intersection of those?
@@ -430,9 +331,9 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
         cloned
     }
 
-    fn complement_mut(&mut self) -> &Self {
+    fn complement_mut<'a>(&'a mut self) -> &'a mut Self {
 
-        todo!()
+        self
     }
 
     fn union(&mut self, other: &Self) -> &Self {
@@ -459,6 +360,7 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use crate::normalize::Normalize;
+    use crate::contains::Contains;
 
     use super::*;
 
@@ -488,6 +390,8 @@ mod tests {
         let interval: Interval<u64> = Interval::open_unbound(100);
         assert_eq!(interval.contains(&x), x > 100);
     }
+
+    /*
 
     #[quickcheck]
     fn test_half_interval_complement_i64(x: i64) {
@@ -530,6 +434,8 @@ mod tests {
         let interval: Interval<i8> = Interval::closed(0, 10).intersection(&Interval::open_unbound(0));
         assert_eq!(interval.contains(&x), 0 < x && x <= 10);
     }
+
+    */
 
     #[test]
     fn test_normalized_integers() {

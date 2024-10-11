@@ -1,6 +1,7 @@
 use num::PrimInt;
 
 use crate::finite::FiniteInterval;
+use crate::half::HalfInterval;
 use crate::infinite::{Interval, IntervalSet};
 use crate::ival::{Side};
 
@@ -23,21 +24,19 @@ impl<T: PrimInt> Normalize for FiniteInterval<T> {
     }
 }
 
+impl<T: PrimInt> Normalize for HalfInterval<T> {
+    fn normalized(&self) -> Self {
+        Self::new(self.side, self.ival.normalized(self.side))
+    }
+}
+
 impl<T: PrimInt> Normalize for Interval<T> {
     
     fn normalized(&self) -> Self {
         match self {
-            Self::Empty => Self::Empty,
             Self::Infinite => Self::Infinite,
-            Self::Half((side, ival)) => {
-                Self::Half((*side, ival.normalized(*side)))
-            },
-            Self::Finite((left, right)) => {
-                Self::new_finite(
-                    left.normalized(Side::Left), 
-                    right.normalized(Side::Right)
-                )
-            }
+            Self::Half(interval) => Self::Half(interval.normalized()),
+            Self::Finite(interval) => Self::Finite(interval.normalized()),
         }
     }
 }

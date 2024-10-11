@@ -20,7 +20,7 @@ pub enum FiniteInterval<T> {
 
 impl<T> FiniteInterval<T>
 where
-    T: Copy + Ord + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Zero,
+    T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T> + Zero,
 {
     pub fn new(left: IVal<T>, right: IVal<T>) -> Self {
         if left.value > right.value {
@@ -66,49 +66,24 @@ where
         )
     }
 
-    pub fn left(&self) -> Option<IVal<T>> {
+    pub fn lval_unchecked(&self) -> T {
         match self {
-            Self::Empty => None,
-            Self::NonZero(left, _) => Some(*left),
+            Self::Empty => panic!("Empty interval has no left bound"),
+            Self::NonZero(left, _) => left.value
         }
     }
 
-    pub fn right(&self) -> Option<IVal<T>> {
+    pub fn rval_unchecked(&self) -> T {
         match self {
-            Self::Empty => None,
-            Self::NonZero(_, right) => Some(*right),
+            Self::Empty => panic!("Empty interval has no right bound"),
+            Self::NonZero(_, right) => right.value
         }
-    }
-
-    pub fn lbound(&self) -> Option<Bound> {
-        self.left().map(|ival| ival.bound)
-    }
-
-    pub fn lval(&self) -> Option<T> {
-        self.left().map(|ival| ival.value)
-    }
-
-    pub fn rbound(&self) -> Option<Bound> {
-        self.right().map(|ival| ival.bound)
-    }
-
-    pub fn rval(&self) -> Option<T> {
-        self.right().map(|ival| ival.value)
     }
 
     pub fn size(&self) -> T {
         match self {
             Self::Empty => T::zero(),
             Self::NonZero(left, right) => right.value - left.value,
-        }
-    }
-
-    pub fn contains(&self, value: &T) -> bool {
-        match self {
-            Self::Empty => false,
-            Self::NonZero(left, right) => {
-                left.contains(Side::Left, value) && right.contains(Side::Right, value)
-            }
         }
     }
 
@@ -175,6 +150,8 @@ where
 #[cfg(test)]
 mod test {
     use super::*;
+
+    use crate::contains::Contains;
 
     #[test]
     fn test_finite_interval_new() {
