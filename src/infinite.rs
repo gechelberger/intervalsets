@@ -286,14 +286,29 @@ where
         Self::new_finite(new_left, new_right)
     }
 
+    /// Three cases:
+    /// 1) half interval sees left & right => full finite result
+    /// 2) half interval sees 1 => (half -> right) or (left, half)
+    /// 3) half interval sees 0 => Empty
     fn intersection_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Self {
-        let (f_left, f_right) = finite;
+        let finite = [finite.0, finite.1];
         let (h_side, h_ival) = half;
 
-        match h_side {
-            Side::Left => Self::new_finite(*h_ival, *f_right),
-            Side::Right => Self::new_finite(*f_left, *h_ival),
+        let n_seen = finite.iter()
+            .filter(|ival| h_ival.contains(*h_side, &ival.value))
+            .count();
+
+        if n_seen == 2 {
+            Self::new_finite(finite[0].clone(), finite[1].clone())
+        } else if n_seen == 1 {
+            match h_side {
+                Side::Left => Self::new_finite(*h_ival, finite[1].clone()),
+                Side::Right => Self::new_finite(finite[0].clone(), *h_ival),
+            }
+        } else {
+            Self::Empty
         }
+        
     }
 }
 
@@ -366,7 +381,7 @@ mod tests {
     }
 
     #[quickcheck]
-    fn test_half_interval_intersection(x: i8) {
+    fn test_half_interval_intersection_i8(x: i8) {
         let interval: Interval<i8> =
             Interval::open_unbound(10).intersection(&Interval::closed_unbound(20));
         assert_eq!(interval.contains(&x), x >= 20);
@@ -382,5 +397,20 @@ mod tests {
         let interval: Interval<i8> =
             Interval::unbound_closed(0).intersection(&Interval::open_unbound(0));
         assert_eq!(interval.contains(&x), false);
+    }
+
+    #[quickcheck]
+    fn test_finite_intersection_i8(x: i8) {
+        let interval: Interval<i8> = Interval::open(0, 10).intersection(&Interval::open(5, 15));
+        assert_eq!(interval.contains(&x), 5 < x && x < 10);
+    }
+
+    #[quickcheck]
+    fn test_finite_half_intersection_i8(x: i8) {
+        let interval: Interval<i8> = Interval::open(0, 10).intersection(&Interval::closed_unbound(5));
+        assert_eq!(interval.contains(&x), 5 <= x && x < 10);
+        
+        let interval: Interval<i8> = Interval::closed(0, 10).intersection(&Interval::open_unbound(0));
+        assert_eq!(interval.contains(&x), 0 < x && x <= 10);
     }
 }
