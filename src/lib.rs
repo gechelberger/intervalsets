@@ -9,3 +9,4 @@ pub mod infinite;
 pub mod ival;
 
 pub use finite::FiniteInterval;
+pub use infinite::Interval;

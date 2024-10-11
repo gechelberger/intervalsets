@@ -7,3 +7,7 @@
 * continuous integration with github
 * github badges
 * public interface docstrings
+* normalization of intervals for integer types
+
+# possible features
+* random generator over defined interval?
