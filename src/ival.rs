@@ -62,16 +62,16 @@ impl<T: Copy> IVal<T> {
     }
 }
 
-impl<T: Ord> IVal<T> {
-    pub fn contains(&self, side: Side, value: T) -> bool {
+impl<T: PartialOrd> IVal<T> {
+    pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.bound {
-                Bound::Open => self.value < value,
-                Bound::Closed => self.value <= value,
+                Bound::Open => self.value < *value,
+                Bound::Closed => self.value <= *value,
             },
             Side::Right => match self.bound {
-                Bound::Open => value < self.value,
-                Bound::Closed => value <= self.value,
+                Bound::Open => *value < self.value,
+                Bound::Closed => *value <= self.value,
             },
         }
     }

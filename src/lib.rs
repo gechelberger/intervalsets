@@ -1,22 +1,11 @@
+#[cfg(test)]
+extern crate quickcheck;
+#[cfg(test)]
+#[macro_use(quickcheck)]
+extern crate quickcheck_macros;
+
 pub mod finite;
 pub mod infinite;
-mod ival;
-mod reshape;
+pub mod ival;
 
-pub use finite::Interval;
-pub use reshape::*;
-
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use finite::FiniteInterval;

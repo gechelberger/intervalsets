@@ -1,6 +1,8 @@
+//mod iset;
+
 use std::ops::{Add, Div, Mul, Sub};
 
-use num::{FromPrimitive, Zero};
+use num::Zero;
 
 use crate::ival::*;
 
@@ -11,14 +13,14 @@ use crate::ival::*;
 /// [a, b) = NonZero { x in T | a <= x <  b }
 /// [a, b] = NonZero { x in T | a <= x <= b }
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Interval<T> {
+pub enum FiniteInterval<T> {
     Empty,
     NonZero(IVal<T>, IVal<T>),
 }
 
-impl<T> Interval<T>
+impl<T> FiniteInterval<T>
 where
-    T: Copy + Ord + Add<Output = T> + Sub<Output = T> + Div<Output = T> + FromPrimitive,
+    T: Copy + Ord + Add<Output = T> + Sub<Output = T> + Div<Output = T> + Zero,
 {
     pub fn new(left: IVal<T>, right: IVal<T>) -> Self {
         if left.value > right.value {
@@ -96,22 +98,12 @@ where
 
     pub fn size(&self) -> T {
         match self {
-            Self::Empty => T::from_u64(0).expect("T from 0 as u64 failed"),
+            Self::Empty => T::zero(),
             Self::NonZero(left, right) => right.value - left.value,
         }
     }
 
-    pub fn center(&self) -> Option<T> {
-        match self {
-            Self::Empty => None,
-            Self::NonZero(left, right) => Some(
-                left.value
-                    + self.size() / T::from_u64(2).expect("T from 2 as u64 failed in center()"),
-            ),
-        }
-    }
-
-    pub fn contains(&self, value: T) -> bool {
+    pub fn contains(&self, value: &T) -> bool {
         match self {
             Self::Empty => false,
             Self::NonZero(left, right) => {
@@ -120,31 +112,61 @@ where
         }
     }
 
-    pub fn overlaps(&self, other: Interval<T>) -> bool {
+    pub fn overlaps(&self, other: &FiniteInterval<T>) -> bool {
         // probably cheaper ways to do it...
-        self.overlapped(other) != Interval::Empty
+        self.overlapped(other) != FiniteInterval::Empty
     }
 
-    pub fn overlapped(&self, other: Interval<T>) -> Interval<T> {
+    pub fn overlapped(&self, other: &FiniteInterval<T>) -> FiniteInterval<T> {
         match (self, other) {
-            (Interval::Empty, _) => Interval::Empty,
-            (_, Interval::Empty) => Interval::Empty,
-            (Interval::NonZero(a_left, a_right), Interval::NonZero(b_left, b_right)) => {
-                let new_left = if a_left.contains(Side::Left, b_left.value) {
-                    b_left
+            (FiniteInterval::Empty, _) => FiniteInterval::Empty,
+            (_, FiniteInterval::Empty) => FiniteInterval::Empty,
+            (
+                FiniteInterval::NonZero(a_left, a_right),
+                FiniteInterval::NonZero(b_left, b_right),
+            ) => {
+                let new_left = if a_left.contains(Side::Left, &b_left.value) {
+                    *b_left
                 } else {
                     *a_left
                 };
-                let new_right = if a_right.contains(Side::Right, b_right.value) {
-                    b_right
+                let new_right = if a_right.contains(Side::Right, &b_right.value) {
+                    *b_right
                 } else {
                     *a_right
                 };
 
                 // new() will clean up empty sets where left & right have violated bounds
-                Interval::new(new_left, new_right)
+                FiniteInterval::new(new_left, new_right)
             }
         }
+    }
+
+    fn map_bounds(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> Self) -> Self {
+        match self {
+            Self::Empty => Self::Empty,
+            Self::NonZero(left, right) => func(left, right),
+        }
+    }
+
+    pub fn shifted(&self, offset: T) -> Self {
+        self.map_bounds(|left, right| Self::new_unchecked(*left + offset, *right + offset))
+    }
+
+    pub fn padded(&self, amount: T) -> Self {
+        self.padded_lr(amount, amount)
+    }
+
+    pub fn padded_lr(&self, left: T, right: T) -> Self {
+        self.map_bounds(|iv_left, iv_right| Self::new_unchecked(*iv_left - left, *iv_right + right))
+    }
+
+    pub fn partition(&self, other: &FiniteInterval<T>) -> Vec<FiniteInterval<T>> {
+        if !self.overlaps(other) {
+            return vec![self.clone(), other.clone()];
+        }
+
+        todo!()
     }
 }
 
@@ -154,41 +176,41 @@ mod test {
 
     #[test]
     fn test_finite_interval_new() {
-        let interval: Interval<usize> = Interval::open(0, 20);
+        let interval: FiniteInterval<usize> = FiniteInterval::open(0, 20);
     }
 
     #[test]
     fn test_finite_interval_contains() {
-        let iv = Interval::open(-100, 100);
-        assert!(iv.contains(0));
-        assert!(iv.contains(50));
-        assert!(!iv.contains(100));
-        assert!(!iv.contains(1000));
+        let iv = FiniteInterval::open(-100, 100);
+        assert!(iv.contains(&0));
+        assert!(iv.contains(&50));
+        assert!(!iv.contains(&100));
+        assert!(!iv.contains(&1000));
 
-        assert!(iv.contains(-50));
-        assert!(!iv.contains(-100));
-        assert!(!iv.contains(-1000));
+        assert!(iv.contains(&-50));
+        assert!(!iv.contains(&-100));
+        assert!(!iv.contains(&-1000));
     }
 
     #[test]
     fn test_finite_interval_overlapped_empty() {
         // (---A---) (---B---)
         assert_eq!(
-            Interval::open(0, 10).overlapped(Interval::open(20, 30)),
-            Interval::Empty
+            FiniteInterval::open(0, 10).overlapped(&FiniteInterval::open(20, 30)),
+            FiniteInterval::Empty
         );
 
         // (---B---) (---A---)
         assert_eq!(
-            Interval::open(20, 30).overlapped(Interval::open(0, 10)),
-            Interval::Empty
+            FiniteInterval::open(20, 30).overlapped(&FiniteInterval::open(0, 10)),
+            FiniteInterval::Empty
         );
 
         // (---A---)
         //         [---B---]
         assert_eq!(
-            Interval::open(0, 10).overlapped(Interval::closed(10, 20)),
-            Interval::Empty
+            FiniteInterval::open(0, 10).overlapped(&FiniteInterval::closed(10, 20)),
+            FiniteInterval::Empty
         )
     }
 
@@ -197,29 +219,29 @@ mod test {
         // (---A---)
         //   (-B-)
         assert_eq!(
-            Interval::open(0, 30).overlapped(Interval::open(10, 20)),
-            Interval::open(10, 20)
+            FiniteInterval::open(0, 30).overlapped(&FiniteInterval::open(10, 20)),
+            FiniteInterval::open(10, 20)
         );
 
         //   (-A-)
         // (---B---)
         assert_eq!(
-            Interval::open(10, 20).overlapped(Interval::open(0, 30)),
-            Interval::open(10, 20)
+            FiniteInterval::open(10, 20).overlapped(&FiniteInterval::open(0, 30)),
+            FiniteInterval::open(10, 20)
         );
 
         //   [-A-]
         // (---B---)
         assert_eq!(
-            Interval::closed(10, 20).overlapped(Interval::open(0, 30)),
-            Interval::closed(10, 20)
+            FiniteInterval::closed(10, 20).overlapped(&FiniteInterval::open(0, 30)),
+            FiniteInterval::closed(10, 20)
         );
 
         // (---A---)
         // [---B---]
         assert_eq!(
-            Interval::open(0, 10).overlapped(Interval::closed(0, 10)),
-            Interval::open(0, 10)
+            FiniteInterval::open(0, 10).overlapped(&FiniteInterval::closed(0, 10)),
+            FiniteInterval::open(0, 10)
         )
     }
 
@@ -228,29 +250,45 @@ mod test {
         // |---A---|
         //     |---B---|
         assert_eq!(
-            Interval::open(0, 100).overlapped(Interval::open(50, 150)),
-            Interval::open(50, 100)
+            FiniteInterval::open(0, 100).overlapped(&FiniteInterval::open(50, 150)),
+            FiniteInterval::open(50, 100)
         );
 
         //     |---A---|
         // |---B---|
         assert_eq!(
-            Interval::open(50, 150).overlapped(Interval::open(0, 100)),
-            Interval::open(50, 100)
+            FiniteInterval::open(50, 150).overlapped(&FiniteInterval::open(0, 100)),
+            FiniteInterval::open(50, 100)
         );
 
         // [---A---]
         //     (---B---)
         assert_eq!(
-            Interval::closed(0, 10).overlapped(Interval::open(5, 15)),
-            Interval::openclosed(5, 10)
+            FiniteInterval::closed(0, 10).overlapped(&FiniteInterval::open(5, 15)),
+            FiniteInterval::openclosed(5, 10)
         );
 
         // (---A---)
         //     [---B---]
         assert_eq!(
-            Interval::open(0, 10).overlapped(Interval::closed(5, 15)),
-            Interval::closedopen(5, 10)
+            FiniteInterval::open(0, 10).overlapped(&FiniteInterval::closed(5, 15)),
+            FiniteInterval::closedopen(5, 10)
+        );
+    }
+
+    #[test]
+    fn test_shifted() {
+        assert_eq!(
+            FiniteInterval::open(0, 10).shifted(10),
+            FiniteInterval::open(10, 20)
+        );
+    }
+
+    #[test]
+    fn test_padded() {
+        assert_eq!(
+            FiniteInterval::open(10, 20).padded(10),
+            FiniteInterval::open(0, 30)
         );
     }
 }
