@@ -27,77 +27,61 @@ pub enum Interval<T> {
 
 impl<T> Interval<T>
 where
-    T: Copy + PartialOrd + Sub<Output = T> + Zero,
+    T: Copy + PartialOrd,
 {
-    pub fn new_finite(left: IVal<T>, right: IVal<T>) -> Self {
-        if left.value > right.value {
-            Self::Finite(FiniteInterval::Empty)
-        } else if left.value == right.value {
-            if left.bound == Bound::Open || right.bound == Bound::Open {
-                Self::Finite(FiniteInterval::Empty)
-            } else {
-                Self::new_finite_unchecked(left, right)
-            }
-        } else {
-            Self::new_finite_unchecked(left, right)
-        }
-    }
-
-    pub fn new_finite_unchecked(left: IVal<T>, right: IVal<T>) -> Self {
-        Self::Finite(FiniteInterval::new_unchecked(left, right))
-    }
-
     /// (a, b) = { x in T | a < x < b }
     pub fn open(left: T, right: T) -> Self {
-        Self::new_finite(IVal::new(Bound::Open, left), IVal::new(Bound::Open, right))
+        FiniteInterval::new(
+            IVal::new(Bound::Open, left), 
+            IVal::new(Bound::Open, right)
+        ).into()
     }
 
     /// [a, b] = { x in T | a <= x <= b }
     pub fn closed(left: T, right: T) -> Self {
-        Self::new_finite(
+        FiniteInterval::new(
             IVal::new(Bound::Closed, left),
             IVal::new(Bound::Closed, right),
-        )
+        ).into()
     }
 
     /// (a, b] = { x in T | a < x <= b }
     pub fn open_closed(left: T, right: T) -> Self {
-        Self::new_finite(
+        FiniteInterval::new(
             IVal::new(Bound::Open, left),
             IVal::new(Bound::Closed, right),
-        )
+        ).into()
     }
 
     /// [a, b) = { x in T | a <= x < b }
     pub fn closed_open(left: T, right: T) -> Self {
-        Self::new_finite(
+        FiniteInterval::new(
             IVal::new(Bound::Closed, left),
             IVal::new(Bound::Open, right),
-        )
-    }
-
-    pub fn new_half(side: Side, ival: IVal<T>) -> Self {
-        Self::Half(HalfInterval::new(side, ival))
+        ).into()
     }
 
     // (<-, b) = { x in T | x < b }
     pub fn unbound_open(right: T) -> Self {
-        Self::new_half(Side::Right, IVal::new(Bound::Open, right))
+        HalfInterval::new(
+            Side::Right, 
+            IVal::new(Bound::Open, right)
+        ).into()
     }
 
     /// (<-, b] = { x in T | x <= b }
     pub fn unbound_closed(right: T) -> Self {
-        Self::new_half(Side::Right, IVal::new(Bound::Closed, right))
+        HalfInterval::new(Side::Right, IVal::new(Bound::Closed, right)).into()
     }
 
     /// (a, ->) = { x in T | a < x }
     pub fn open_unbound(left: T) -> Self {
-        Self::new_half(Side::Left, IVal::new(Bound::Open, left))
+        HalfInterval::new(Side::Left, IVal::new(Bound::Open, left)).into()
     }
 
     /// [a, ->) = {x in T | a <= x }
     pub fn closed_unbound(left: T) -> Self {
-        Self::new_half(Side::Left, IVal::new(Bound::Closed, left))
+        HalfInterval::new(Side::Left, IVal::new(Bound::Closed, left)).into()
     }
 
     pub fn lval_unchecked(&self) -> T {

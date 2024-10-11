@@ -80,13 +80,26 @@ where
         }
     }
 
-    pub(crate) fn map_bounds(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> Self) -> Self {
+    pub fn map_bounds(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> Self) -> Self {
         match self {
             Self::Empty => Self::Empty,
             Self::NonZero(left, right) => func(left, right),
         }
     }
 
+    pub fn map<U>(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> Option<U> {
+        match self {
+            Self::Empty => None,
+            Self::NonZero(left, right) => Some(func(left, right))
+        }
+    }
+
+    pub fn map_or<U>(&self, default: U, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> U {
+        match self {
+            Self::Empty => default,
+            Self::NonZero(left, right) => func(left, right)
+        }
+    }
 }
 
 

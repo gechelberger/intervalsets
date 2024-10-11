@@ -14,8 +14,9 @@ pub mod ival;
 // traits
 pub mod into;
 mod normalize;
-pub mod union;
+pub mod intersects;
 pub mod intersection; 
+pub mod union;
 //pub mod complement;
 pub mod contains;
 pub mod sizeable;
@@ -25,6 +26,7 @@ pub mod shifted;
 pub mod padded;
 
 pub use finite::FiniteInterval;
+pub use half::HalfInterval;
 pub use infinite::Interval;
 
 pub use normalize::Normalize;
