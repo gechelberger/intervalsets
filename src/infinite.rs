@@ -170,12 +170,12 @@ where
         todo!()
     }
 
-    pub fn intersection(&self, other: &Interval<T>) -> Vec<Self> {
+    pub fn intersection(&self, other: &Interval<T>) -> Self {
         match (self, other) {
-            (Self::Empty, _) => vec![Self::Empty],
-            (_, Self::Empty) => vec![Self::Empty],
-            (Self::Infinite, _) => vec![other.clone()],
-            (_, Self::Infinite) => vec![other.clone()],
+            (Self::Empty, _) => Self::Empty,
+            (_, Self::Empty) => Self::Empty,
+            (Self::Infinite, _) => other.clone(),
+            (_, Self::Infinite) => self.clone(),
             (Self::Half(lhs), Self::Half(rhs)) => Self::intersection_half_half(lhs, rhs),
             (Self::Finite(lhs), Self::Finite(rhs)) => Self::intersection_finite_finite(lhs, rhs),
             (Self::Half(lhs), Self::Finite(rhs)) => Self::intersection_finite_half(rhs, lhs),
@@ -183,25 +183,25 @@ where
         }
     }
 
-    fn intersection_half_half(a: &(Side, IVal<T>), b: &(Side, IVal<T>)) -> Vec<Self> {
+    fn intersection_half_half(a: &(Side, IVal<T>), b: &(Side, IVal<T>)) -> Self {
         let (a_side, a_ival) = a;
         let (b_side, b_ival) = b;
 
         if a_side == b_side {
             if a_ival.contains(*a_side, &b_ival.value) {
-                return vec![Interval::Half(*b)];
+                return Interval::Half(*b);
             } else {
-                return vec![Interval::Half(*a)];
+                return Interval::Half(*a);
             }
         } else {
-            vec![match a_side {
+            match a_side {
                 Side::Left => Self::new_finite(*a_ival, *b_ival),
                 Side::Right => Self::new_finite(*b_ival, *a_ival),
-            }]
+            }
         }
     }
 
-    fn intersection_finite_finite(a: &(IVal<T>, IVal<T>), b: &(IVal<T>, IVal<T>)) -> Vec<Self> {
+    fn intersection_finite_finite(a: &(IVal<T>, IVal<T>), b: &(IVal<T>, IVal<T>)) -> Self {
         let (a_left, a_right) = a;
         let (b_left, b_right) = b;
 
@@ -210,6 +210,7 @@ where
         } else {
             *a_left
         };
+
         let new_right = if a_right.contains(Side::Right, &b_right.value) {
             *b_right
         } else {
@@ -217,17 +218,17 @@ where
         };
 
         // new() will clean up empty sets where left & right have violated bounds
-        vec![Self::new_finite(new_left, new_right)]
+        Self::new_finite(new_left, new_right)
     }
 
-    fn intersection_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Vec<Self> {
+    fn intersection_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Self {
         let (f_left, f_right) = finite;
         let (h_side, h_ival) = half;
 
-        vec![match h_side {
+        match h_side {
             Side::Left => Self::new_finite(*h_ival, *f_right),
             Side::Right => Self::new_finite(*f_left, *h_ival),
-        }]
+        }
     }
 }
 
@@ -294,5 +295,21 @@ mod tests {
         let complement = &interval.complement()[0];
 
         assert_eq!(interval.contains(&x), !complement.contains(&x));
+    }
+
+    #[quickcheck]
+    fn test_half_interval_intersection(x: i8) {
+
+        let interval: Interval<i8> = Interval::open_unbound(10).intersection(&Interval::closed_unbound(20));
+        assert_eq!(interval.contains(&x), x >= 20);
+
+        let interval: Interval<i8> = Interval::unbound_closed(10).intersection(&Interval::unbound_open(0));
+        assert_eq!(interval.contains(&x), x < 0);
+
+        let interval: Interval<i8> = Interval::unbound_closed(100).intersection(&Interval::closed_unbound(0));
+        assert_eq!(interval.contains(&x), 0 <= x && x <= 100);
+
+        let interval: Interval<i8> = Interval::unbound_closed(0).intersection(&Interval::open_unbound(0));
+        assert_eq!(interval.contains(&x), false);
     }
 }
