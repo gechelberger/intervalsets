@@ -2,9 +2,9 @@
 
 use std::ops::{Add, Div, Mul, Sub};
 
-use num::Zero;
+use num::{PrimInt, Zero};
 
-use crate::ival::*;
+use crate::{ival::*, normalized::Normalize};
 
 /// (a, a) = (a, a] = [a, a) = Empty { x not in T }
 /// [a, a] = NonZero { x in T |    x = a    }
@@ -168,6 +168,20 @@ where
         }
 
         todo!()
+    }
+}
+
+impl<T: PrimInt> Normalize for FiniteInterval<T> {
+    fn normalized(&self) -> Self {
+        match self {
+            Self::Empty => Self::Empty,
+            Self::NonZero(left, right) => {
+                Self::new(
+                    left.normalized(Side::Left),
+                    right.normalized(Side::Right)
+                )
+            }
+        }
     }
 }
 

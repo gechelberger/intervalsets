@@ -1,5 +1,7 @@
 use std::ops::{Add, Div, Mul, Sub};
 
+use num::{One, PrimInt};
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bound {
     Open,
@@ -77,6 +79,19 @@ impl<T: PartialOrd> IVal<T> {
     }
 }
 
+impl<T: PrimInt + One> IVal<T> {
+
+    pub fn normalized(&self, side: Side) -> Self {
+        match self.bound {
+            Bound::Open => match side {
+                Side::Left => Self::new(Bound::Closed, self.value + T::one()),
+                Side::Right => Self::new(Bound::Closed, self.value - T::one())
+            },
+            Bound::Closed => self.clone()
+        }
+    }
+}
+
 impl<T> Add<T> for IVal<T>
 where
     T: Copy + Add<T, Output = T>,
@@ -119,4 +134,12 @@ where
     fn div(self, rhs: T) -> Self::Output {
         self.binary_map(T::div, rhs)
     }
+}
+
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    
 }
