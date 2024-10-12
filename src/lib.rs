@@ -18,7 +18,7 @@ pub mod intersects;
 pub mod intersection; 
 pub mod union;
 pub mod contiguous;
-//pub mod complement;
+pub mod complement;
 pub mod contains;
 pub mod sizeable;
 pub mod bounds;
