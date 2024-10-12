@@ -17,3 +17,7 @@
 * Contains?
 * SetOperations?
 * Difference?
+
+### naming?
+* Bound => BoundCond?
+* IVal => Bound?

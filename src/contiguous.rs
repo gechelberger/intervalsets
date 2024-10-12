@@ -123,9 +123,6 @@ impl<T: Copy + PartialOrd> Contiguous<Self> for Interval<T> {
     }
 }
 
-///
-
-
 impl<T: Copy + PartialOrd> Contiguous<Interval<T>> for FiniteInterval<T> {
     type Output = Interval<T>;
 
@@ -139,5 +136,28 @@ impl<T: Copy + PartialOrd> Contiguous<Interval<T>> for HalfInterval<T> {
 
     fn contiguous(&self, rhs: &Interval<T>) -> Option<Self::Output> {
         rhs.contiguous(self)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_finite_contiguous() {
+        assert_eq!(
+            Interval::open(0, 100).contiguous(&Interval::open(50, 150)),
+            Some(Interval::open(0, 150))
+        );
+
+        assert_eq!(
+            Interval::open(0, 100).contiguous(&Interval::open(100, 200)),
+            None,
+        );
+
+        assert_eq!(
+            Interval::closed(0, 100).contiguous(&Interval::closed(100, 200)),
+            Some(Interval::closed(0, 200))
+        );
     }
 }

@@ -14,9 +14,10 @@ impl<T: Copy + PartialOrd> Intersects<Self> for FiniteInterval<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         self.map_or::<bool>(false, |l1, r1| {
             rhs.map_or::<bool>(false, |l2, r2| {
-                return todo!(); // i think this is wrong
-                // TODO: convince myself that the boundary conditions are being handled properly
-                // l1.contains(Side::Left, &r2.value) || l2.contains(Side::Left, &r1.value)
+                l1.contains(Side::Left, &r2.value) 
+                && l2.contains(Side::Left, &r1.value) 
+                && r1.contains(Side::Right,&l1.value) 
+                && r2.contains(Side::Right, &l1.value)
             })
         })
     }
@@ -83,4 +84,17 @@ impl<T: Copy + PartialOrd> Intersects<Self> for Interval<T> {
             Self::Finite(lhs) => rhs.intersects(lhs),
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_finite_intersects() {
+        assert!(Interval::open(0, 10).intersects(&Interval::open(5, 15)));
+
+        assert!(!Interval::open(0, 10).intersects(&Interval::closed(10, 20)));
+    }
+
 }
