@@ -1,5 +1,7 @@
-use crate::{half::HalfInterval, ival::{Bound, IVal, Side}, FiniteInterval, Interval};
+use crate::{half::HalfInterval, infinite::IntervalSet, ival::{Bound, IVal, Side}, FiniteInterval, Interval};
 
+/// The `Bounds` trait provides safe accessors for the boundary conditions
+/// of any interval that implements it.
 trait Bounds<T> {
     fn left(&self) -> Option<IVal<T>>;
 
@@ -56,13 +58,79 @@ impl<T: Clone> Bounds<T> for HalfInterval<T> {
     }
 }
 
-impl<T> Bounds<T> for Interval<T> {
+impl<T: Clone> Bounds<T> for Interval<T> {
 
     fn left(&self) -> Option<IVal<T>> {
-        todo!()
+        match self {
+            Self::Infinite => None,
+            Self::Half(interval) => interval.left(),
+            Self::Finite(interval) => interval.left(),
+        }
     }
 
     fn right(&self) -> Option<IVal<T>> {
-        todo!()
+        match self {
+            Self::Infinite => None,
+            Self::Half(interval) => interval.right(),
+            Self::Finite(interval) => interval.right(),
+        }
     }
+}
+
+impl<T: Clone + Eq + Ord> Bounds<T> for IntervalSet<T> {
+
+    fn left(&self) -> Option<IVal<T>> {
+        let mut result = None;
+
+        for itv in self.intervals.iter() {
+            let left_candidate = itv.left();
+            if left_candidate == None {
+                // any left of None implies an infinite left bound
+                return None;
+            }
+            
+            result = match result {
+                None => left_candidate,
+                Some(result) => Some(
+                    IVal::min(&result, &left_candidate.unwrap())
+                )
+            }
+        }
+        result
+    }
+
+    fn right(&self) -> Option<IVal<T>> {
+        let mut result = None;
+
+        for itv in self.intervals.iter() {
+            let right_candidate = itv.right();
+            if right_candidate == None {
+                // any None implies an infinite bound
+                return None;
+            }
+            
+            result = match result {
+                None => right_candidate,
+                Some(result) => Some(
+                    IVal::min(&result, &right_candidate.unwrap())
+                )
+            }
+        }
+        result
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_finite_interval_bounds() {
+        let itv = FiniteInterval::openclosed(0, 5);
+        assert_eq!(itv.lval(), Some(0));
+        assert_eq!(itv.rval(), Some(5));
+        assert_eq!(itv.lbound(), Some(Bound::Open));
+        assert_eq!(itv.rbound(), Some(Bound::Closed));
+    }
+
 }

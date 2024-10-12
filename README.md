@@ -11,3 +11,9 @@
 
 # possible features
 * random generator over defined interval?
+
+# traits
+* Normalize
+* Contains?
+* SetOperations?
+* Difference?
