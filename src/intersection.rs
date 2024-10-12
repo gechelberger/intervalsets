@@ -1,6 +1,6 @@
 use crate::infinite::{Interval, IntervalSet};
 use crate::finite::FiniteInterval;
-use crate::ival::Side;
+use crate::ival::{IVal, Side};
 use crate::HalfInterval;
 
 use crate::contains::Contains;
@@ -18,18 +18,11 @@ impl<T: Copy + PartialOrd> Intersection<Self> for FiniteInterval<T> {
     fn intersection(&self, rhs: &Self) -> Self::Output {
         self.map_or(FiniteInterval::Empty, |a_left, a_right| {
             rhs.map_bounds(|b_left, b_right| {
-                let new_left = if a_left.contains(Side::Left, &b_left.value) {
-                    *b_left
-                } else {
-                    *a_left
-                };
-                let new_right = if a_right.contains(Side::Right, &b_right.value) {
-                    *b_right
-                } else {
-                    *a_right
-                };
                 // new() will clean up empty sets where left & right have violated bounds
-                FiniteInterval::new(new_left, new_right)
+                FiniteInterval::new(
+                    IVal::max(a_left, b_left),
+                    IVal::min(a_right, b_right)
+                )
             })
         })
     }

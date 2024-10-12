@@ -64,7 +64,27 @@ impl<T: Copy> IVal<T> {
     }
 }
 
+impl<T: Clone + PartialOrd> IVal<T> {
+
+    pub fn min(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Left, &b.value) {
+            a.clone()
+        } else {
+            b.clone()
+        }
+    }
+
+    pub fn max(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Right, &b.value) {
+            a.clone()
+        } else {
+            b.clone()
+        }
+    }
+}
+
 impl<T: PartialOrd> IVal<T> {
+
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.bound {

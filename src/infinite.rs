@@ -303,7 +303,7 @@ pub struct IntervalSet<T> {
 }
 
 impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
-    fn new() -> Self {
+    fn new(intervals: Vec<Interval<T>>) -> Self {
         Self { intervals: vec![] }
     }
 

@@ -3,6 +3,10 @@ use crate::{contains::Contains, ival::Side, FiniteInterval, HalfInterval, Interv
 /// Intersects is commutative 
 pub trait Intersects<Rhs = Self> {
     fn intersects(&self, rhs: &Rhs) -> bool;
+
+    fn is_disjoint_from(&self, rhs: &Rhs) -> bool {
+        !self.intersects(rhs)
+    }
 }
 
 

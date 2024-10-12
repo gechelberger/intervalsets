@@ -1,4 +1,8 @@
 use crate::infinite::{Interval, IntervalSet};
+use crate::FiniteInterval;
+use crate::contiguous::Contiguous;
+
+/// Union iff. lhs and rhs are not disjoint
 
 pub trait Union<Rhs = Self> {
     type Output;
@@ -22,25 +26,27 @@ impl<T> Union<Self> for IntervalSet<T> {
     }
 }
 
-impl<T> Union<Interval<T>> for IntervalSet<T> {
+impl<T: Copy + PartialOrd + Eq> Union<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(&self, rhs: &Interval<T>) -> Self::Output {
-        let stack: Vec<Interval<T>> = vec![];
+        if *rhs == Interval::Finite(FiniteInterval::Empty) {
+            return self.clone()
+        }
+
+        let mut merging = rhs.clone();
+        let mut intervals = vec![];
+
+        for s_i in self.intervals.iter() {
+            if let Some(merged) = merging.contiguous(s_i) {
+                merging = merged;
+            } else {
+                intervals.push(s_i.clone());
+            }
+        }
+
+        intervals.push(merging);
         
-        todo!()
+        Self{ intervals }
     }
 }
-
-/*
-pub trait UnionMut {
-
-    fn union_mut(&mut self, rhs: &Self);
-}
-
-impl<T> UnionMut for IntervalSet<T> {
-
-    fn union_mut(&mut self, rhs: &Self) {
-        todo!()
-    }
-}*/
