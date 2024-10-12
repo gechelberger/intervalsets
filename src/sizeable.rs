@@ -2,7 +2,7 @@ use std::ops::{Add, Sub};
 
 use num::Zero;
 
-use crate::{half::HalfInterval, FiniteInterval, Interval};
+use crate::{half::HalfInterval, infinite::IntervalSet, FiniteInterval, Interval};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
 pub enum ISize<T> {
@@ -25,6 +25,7 @@ impl<T: Add<Output=T>> Add for ISize<T> {
     }
 }
 
+/// Implement Zero for ISize
 impl<T: Zero + Eq + Add<Output=T>> Zero for ISize<T> {
     fn zero() -> Self {
         Self::Finite(T::zero())
@@ -89,5 +90,29 @@ impl<T: Eq + Zero> Sizable for HalfInterval<T> {
 
     fn size(&self) -> Self::Output {
         ISize::Infinite
+    }
+}
+
+impl<T: Copy + Eq + Zero + Sub<Output=T>> Sizable for IntervalSet<T> {
+    type Output = ISize<T>;
+
+    fn size(&self) -> Self::Output {
+        self.intervals.iter()
+            .map(|itv| itv.size())
+            .fold(ISize::zero(), ISize::add)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_finite_size() {
+        let interval = FiniteInterval::open(0, 20);
+        assert_eq!(interval.size(), 20);
+
+        let interval = Interval::open(0, 20);
+        assert_eq!(interval.size(), ISize::Finite(20));
     }
 }

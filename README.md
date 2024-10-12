@@ -21,3 +21,6 @@
 ### naming?
 * Bound => BoundCond?
 * IVal => Bound?
+
+### notes
+f32:NAN and f64::NAN break things... not sure how best to deal with that.

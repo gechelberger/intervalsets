@@ -129,4 +129,11 @@ mod test {
         assert_eq!(itv.rbound(), None);
     }
 
+    #[test]
+    #[ignore]
+    fn test_interval_bounds() {}
+
+    #[test]
+    #[ignore]
+    fn test_interval_set_bounds() {}
 }

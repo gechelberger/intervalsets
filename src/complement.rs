@@ -67,3 +67,40 @@ where
         })
 
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::contains::Contains;
+
+    #[quickcheck]
+    fn test_finite_complement_i8(a: i8) {
+        let baseline = Interval::open_closed(0, 50);
+        let complement = baseline.complement();
+
+        assert!(
+            baseline.contains(&a) != complement.contains(&a)
+        )
+    }
+
+    #[quickcheck]
+    fn test_finite_complement_f32(a: f32) {
+        if f32::is_nan(a) {
+            return;
+        }
+
+        let baseline = Interval::open_closed(0 as f32, 50.0);
+        let complement = baseline.complement();
+        assert!(baseline.contains(&a) != complement.contains(&a))
+    }
+
+    #[quickcheck]
+    fn test_half_complement_i8(a: i8) {
+        let baseline = Interval::unbound_closed(50 as i8);
+        let complement = baseline.complement();
+
+        assert!(baseline.contains(&a) != complement.contains(&a));
+    }
+
+}

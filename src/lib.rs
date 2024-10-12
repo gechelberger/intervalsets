@@ -22,6 +22,7 @@ pub mod complement;
 pub mod contains;
 pub mod sizeable;
 pub mod bounds;
+pub mod numeric;
 
 pub mod shifted;
 pub mod padded;

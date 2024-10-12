@@ -2,6 +2,8 @@ use std::ops::{Add, Div, Mul, Sub};
 
 use num::{One, PrimInt};
 
+use crate::numeric::Numeric;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bound {
     Open,
@@ -99,9 +101,13 @@ impl<T: PartialOrd> IVal<T> {
     }
 }
 
-impl<T: PrimInt + One> IVal<T> {
+impl<T: Numeric + Copy> IVal<T> {
 
-    pub fn normalized(&self, side: Side) -> Self {
+    pub fn normalized(self, side: Side) -> Self {
+        if !T::numeric_set().in_integer() {
+            return self.clone();
+        }
+
         match self.bound {
             Bound::Open => match side {
                 Side::Left => Self::new(Bound::Closed, self.value + T::one()),
