@@ -32,3 +32,6 @@ pub use half::HalfInterval;
 pub use infinite::Interval;
 
 pub use normalize::Normalize;
+
+#[cfg(feature = "decimal")]
+pub mod decimal;

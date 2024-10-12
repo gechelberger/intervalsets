@@ -8,11 +8,11 @@ use crate::numeric::Numeric;
 
 
 pub trait Normalize {
-    fn normalized(&self) -> Self;
+    fn normalized(self) -> Self;
 }
 
 impl<T: Numeric + Copy> Normalize for FiniteInterval<T> {
-    fn normalized(&self) -> Self {
+    fn normalized(self) -> Self {
 
         self.map_bounds(|left, right| {
             Self::new(
@@ -24,14 +24,14 @@ impl<T: Numeric + Copy> Normalize for FiniteInterval<T> {
 }
 
 impl<T: Numeric + Copy> Normalize for HalfInterval<T> {
-    fn normalized(&self) -> Self {
+    fn normalized(self) -> Self {
         Self::new(self.side, self.ival.normalized(self.side))
     }
 }
 
 impl<T: Numeric + Copy> Normalize for Interval<T> {
     
-    fn normalized(&self) -> Self {
+    fn normalized(self) -> Self {
         match self {
             Self::Infinite => Self::Infinite,
             Self::Half(interval) => Self::Half(interval.normalized()),
@@ -42,9 +42,9 @@ impl<T: Numeric + Copy> Normalize for Interval<T> {
 
 impl<T: Numeric + Copy> Normalize for IntervalSet<T> {
 
-    fn normalized(&self) -> Self {
+    fn normalized(self) -> Self {
         Self {
-            intervals: self.intervals.iter()
+            intervals: self.intervals.into_iter()
                 .map(|iv| iv.normalized())
                 .collect()
         }

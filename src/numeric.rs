@@ -9,14 +9,17 @@ pub enum NumericSet {
 
 impl NumericSet {
 
+    #[inline]
     pub fn in_real(self) -> bool {
         true
     }
 
+    #[inline]
     pub fn in_integer(self) -> bool {
         self != Self::Real
     }
 
+    #[inline]
     pub fn in_natural(self) -> bool {
         self == Self::Natural
     }

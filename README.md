@@ -11,6 +11,8 @@
 
 # possible features
 * random generator over defined interval?
+* optional library features 
+    * define Normalize for other BigDecimal libraries?
 
 # traits
 * Normalize
@@ -24,3 +26,7 @@
 
 ### notes
 f32:NAN and f64::NAN break things... not sure how best to deal with that.
+
+### Supported Types
+
+All primitive numeric types are supported.

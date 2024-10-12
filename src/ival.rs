@@ -105,7 +105,7 @@ impl<T: Numeric + Copy> IVal<T> {
 
     pub fn normalized(self, side: Side) -> Self {
         if !T::numeric_set().in_integer() {
-            return self.clone();
+            return self;
         }
 
         match self.bound {
@@ -113,7 +113,7 @@ impl<T: Numeric + Copy> IVal<T> {
                 Side::Left => Self::new(Bound::Closed, self.value + T::one()),
                 Side::Right => Self::new(Bound::Closed, self.value - T::one())
             },
-            Bound::Closed => self.clone()
+            Bound::Closed => self
         }
     }
 }
