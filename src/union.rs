@@ -26,6 +26,8 @@ impl<T> Union<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(&self, rhs: &Interval<T>) -> Self::Output {
+        let stack: Vec<Interval<T>> = vec![];
+        
         todo!()
     }
 }
