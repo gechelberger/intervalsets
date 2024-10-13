@@ -1,5 +1,3 @@
-use num::PrimInt;
-
 use crate::finite::FiniteInterval;
 use crate::half::HalfInterval;
 use crate::infinite::{Interval, IntervalSet};

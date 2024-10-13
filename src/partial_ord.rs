@@ -1,7 +1,4 @@
 use std::cmp::Ordering;
-use std::ops::Sub;
-
-use num::Zero;
 
 use crate::bounds::Bounds;
 use crate::empty::MaybeEmpty;

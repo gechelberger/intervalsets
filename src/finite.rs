@@ -1,10 +1,6 @@
 //mod iset;
 
-use std::ops::{Add, Div, Mul, Sub};
-
-use num::{PrimInt, Zero};
-
-use crate::{ival::*, normalize::Normalize};
+use crate::ival::*;
 
 /// A fully bounded interval in N, Z, or R.
 ///
@@ -88,7 +84,7 @@ where
             Self::NonZero(left, right) => func(left, right),
         }
     }
-    
+
     #[allow(dead_code)]
     pub fn map<U>(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> Option<U> {
         match self {

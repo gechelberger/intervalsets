@@ -1,7 +1,5 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-use num::{One, PrimInt};
-
 use crate::numeric::Numeric;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -56,7 +54,7 @@ impl<T: Copy> IVal<T> {
     pub fn flip(&self) -> Self {
         Self::new(self.bound.flip(), self.value)
     }
-    
+
     #[allow(dead_code)]
     fn map(self, func: impl Fn(T) -> T) -> Self {
         Self::new(self.bound, func(self.value))

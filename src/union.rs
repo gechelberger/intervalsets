@@ -100,7 +100,7 @@ commutative_impl!(Union, union, FiniteInterval<T>, Interval<T>, IntervalSet<T>);
 impl<T> Union<Self> for IntervalSet<T> {
     type Output = Self;
 
-    fn union(&self, rhs: &Self) -> Self::Output {
+    fn union(&self, _rhs: &Self) -> Self::Output {
         todo!()
     }
 }

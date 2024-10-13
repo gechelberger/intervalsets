@@ -1,7 +1,5 @@
 use std::ops::{Add, Sub};
 
-use num::Zero;
-
 use crate::{half::HalfInterval, ival::Side, FiniteInterval, Interval};
 
 pub trait Padded<T>
