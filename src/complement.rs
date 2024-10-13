@@ -56,7 +56,7 @@ impl<T: Copy + PartialOrd> Complement for IntervalSet<T> {
     }
 }
 
-fn naive_set_complement<T>(intervals: &Vec<Interval<T>>) -> IntervalSet<T>
+fn naive_set_complement<T>(intervals: &[Interval<T>]) -> IntervalSet<T>
 where
     T: Copy + PartialOrd,
 {

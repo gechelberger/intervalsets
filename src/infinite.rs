@@ -198,6 +198,7 @@ pub struct IntervalSet<T> {
     pub intervals: Vec<Interval<T>>,
 }
 
+#[allow(dead_code)]
 impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
     fn new() -> Self {
         Self { intervals: vec![] }
@@ -211,7 +212,7 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
         cloned
     }
 
-    fn complement_mut<'a>(&'a mut self) -> &'a mut Self {
+    fn complement_mut(&mut self) -> &mut Self {
         self
     }
 

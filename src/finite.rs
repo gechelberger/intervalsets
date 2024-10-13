@@ -6,6 +6,8 @@ use num::{PrimInt, Zero};
 
 use crate::{ival::*, normalize::Normalize};
 
+/// A fully bounded interval in N, Z, or R.
+///
 /// (a, a) = (a, a] = [a, a) = Empty { x not in T }
 /// [a, a] = NonZero { x in T |    x = a    }
 /// (a, b) = NonZero { x in T | a <  x <  b }
@@ -86,7 +88,8 @@ where
             Self::NonZero(left, right) => func(left, right),
         }
     }
-
+    
+    #[allow(dead_code)]
     pub fn map<U>(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> Option<U> {
         match self {
             Self::Empty => None,
