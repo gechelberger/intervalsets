@@ -14,7 +14,7 @@ pub(crate) mod util;
 
 // traits
 pub mod empty;
-pub mod into;
+pub mod from;
 mod normalize;
 
 pub mod bounds;

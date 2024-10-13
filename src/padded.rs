@@ -42,3 +42,15 @@ impl<T: Paddable<T>> Padded<T> for Interval<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_finite_padded() {
+        let interval = Interval::closed(10, 20);
+
+        assert_eq!(interval.padded(10), Interval::closed(0, 30));
+    }
+}
