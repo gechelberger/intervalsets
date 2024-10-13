@@ -5,7 +5,7 @@ use num::Zero;
 
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
-use crate::Interval;
+use crate::{FiniteInterval, HalfInterval, Interval};
 use crate::bounds::Bounds;
 
 /// Partial compare of two boundary conditions
@@ -24,35 +24,35 @@ fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
     side: Side, 
     left: Option<IVal<T>>,
     right: Option<IVal<T>>,
-) -> Option<std::cmp::Ordering> {
+) -> std::cmp::Ordering {
     match (left, right) {
-        (None, None) => Some(Ordering::Equal),
+        (None, None) => Ordering::Equal,
         (None, Some(right)) => match side {
-            Side::Left => Some(Ordering::Less),
-            Side::Right => Some(Ordering::Greater)
+            Side::Left => Ordering::Less,
+            Side::Right => Ordering::Greater
         }
         (Some(left), None) => match side {
-            Side::Left => Some(Ordering::Greater),
-            Side::Right => Some(Ordering::Less)
+            Side::Left => Ordering::Greater,
+            Side::Right => Ordering::Less
         }
         (Some(left), Some(right)) => {
             if left == right {
-                return Some(Ordering::Equal);
+                return Ordering::Equal;
             } 
             
             match side {
                 Side::Left => {
                     if left.contains(side, &right.value) {
-                        Some(Ordering::Less)
+                        Ordering::Less
                     } else {
-                        Some(Ordering::Greater)
+                        Ordering::Greater
                     }
                 },
                 Side::Right => {
                     if left.contains(side, &right.value) {
-                        Some(Ordering::Greater)
+                        Ordering::Greater
                     } else {
-                        Some(Ordering::Less)
+                        Ordering::Less
                     }
                 },
             }
@@ -60,6 +60,16 @@ fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
     }
 }
 
+fn impl_cmp<U, T>(lhs: &U, rhs: &U) -> std::cmp::Ordering
+where 
+    T: Copy + PartialOrd,
+    U: Bounds<T>
+{
+    match non_empty_cmp_side(Side::Left, lhs.left(), rhs.left()) {
+        Ordering::Equal => non_empty_cmp_side(Side::Right, lhs.right(), rhs.right()),
+        ordering => ordering
+    }
+}
 
 /// A generic impl of partial_cmp in terms of the `Bounds` trait.
 /// This is done as a free generic function to make it easy to implement
@@ -73,16 +83,22 @@ where
         return None;
     }
 
-    match non_empty_cmp_side(Side::Left, lhs.left(), rhs.left()) {
-        None => non_empty_cmp_side(Side::Right, lhs.right(), rhs.right()),
-        Some(ordering) => match ordering {
-            Ordering::Equal => non_empty_cmp_side(Side::Right, lhs.right(), rhs.right()),
-            _ => Some(ordering)
-        }
-    }
+    impl_cmp(lhs, rhs).into()
 } 
 
 impl<T: Copy + PartialOrd + PartialEq> PartialOrd for Interval<T> {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        impl_partial_cmp(self, rhs)
+    }
+}
+
+impl<T: Copy + PartialOrd + PartialEq> PartialOrd for HalfInterval<T> {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        impl_cmp(self, rhs).into()
+    }
+}
+
+impl<T: Copy + PartialOrd + PartialEq> PartialOrd for FiniteInterval<T> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         impl_partial_cmp(self, rhs)
     }
@@ -105,11 +121,31 @@ mod tests {
         // (0, _) < (200, _)
         assert_lt(Interval::open(0.0, 100.0), Interval::open(200.0, 300.0));
 
-        // [0, _] < (0.0, _)
+        // [0, A] < (0.0, A)
         assert_lt(Interval::closed(0.0, 100.0), Interval::open(0.0, 100.0));
+
+        // [0, 50] < [0, 100]
+        assert_lt(Interval::closed(0.0, 50.0), Interval::closed(0.0, 100.0));
+
+        // (0, 50) < (0, ->)
+        assert_lt(Interval::open(0.0, 50.0), Interval::open_unbound(0.0));
 
         // (<-, _) < (0.0, _)
         assert_lt(Interval::unbound_open(5.0), Interval::open(0.0, 3.0));
+
+        // (0, 50) < (<-, ->)
+        assert_lt(Interval::unbound_open(50.0), Interval::unbound());
+
+        // (<-, ->) < (0, 50)
+        assert_lt(Interval::unbound(), Interval::open(0.0, 50.0));
+
+        // (<-, ->) < (0, ->)
+        assert_lt(Interval::unbound(), Interval::open_unbound(0.0));
+
+        // Empty Set should not compare
+        assert_eq!(Interval::<u8>::empty() <= Interval::<u8>::unbound(), false);
+        assert_eq!(Interval::<u8>::empty() >= Interval::<u8>::unbound(), false);
+
         
     }
 }
