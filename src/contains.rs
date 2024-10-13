@@ -187,5 +187,23 @@ mod tests {
         assert!(iv.contains(&x));
     }
 
+    #[quickcheck]
+    fn test_finite_finite_integer_contains(a: i8, b: i8) {
+        let interval = Interval::closed(-50, 50);
+        let candidate = Interval::closed(a, b);
+
+        assert_eq!(interval.contains(&candidate), a < b && -50 <= a && b <= 50)
+    }
+
+    #[quickcheck]
+    fn test_finite_finite_float_contains(a: f32, b: f32) {
+        let interval = Interval::open(-100.0, 100.0);
+        let candidate = Interval::open(a, b);
+
+        assert_eq!(
+            interval.contains(&candidate),
+            a < b && -100.0 < a && b < 100.0
+        )
+    }
     // TODO: plenty of other cases
 }
