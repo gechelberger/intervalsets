@@ -1,9 +1,7 @@
-use crate::{
-    contains::Contains,
-    intersects::Intersects,
-    ival::{IVal, Side},
-    FiniteInterval, HalfInterval, Interval,
-};
+use crate::contains::Contains;
+use crate::intersects::Intersects;
+use crate::ival::{IVal, Side};
+use crate::{FiniteInterval, HalfInterval, Interval};
 
 /// Union for two intervals that are contiguous.
 pub trait Merged<Rhs = Self> {

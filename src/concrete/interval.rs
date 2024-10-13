@@ -1,7 +1,5 @@
-use crate::{
-    ival::{Bound, IVal, Side},
-    FiniteInterval, HalfInterval,
-};
+use crate::ival::{Bound, IVal, Side};
+use crate::{FiniteInterval, HalfInterval};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Interval<T> {

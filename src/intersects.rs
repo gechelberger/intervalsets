@@ -1,7 +1,7 @@
-use crate::{
-    contains::Contains, ival::Side, util::commutative_predicate_impl, FiniteInterval, HalfInterval,
-    Interval,
-};
+use crate::contains::Contains;
+use crate::ival::Side;
+use crate::util::commutative_predicate_impl;
+use crate::{FiniteInterval, HalfInterval, Interval};
 
 /// Intersects is commutative
 pub trait Intersects<Rhs = Self> {

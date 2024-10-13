@@ -1,8 +1,6 @@
 use crate::ival::Side;
 use crate::numeric::Numeric;
-use crate::FiniteInterval;
-use crate::HalfInterval;
-use crate::{Interval, IntervalSet};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 pub trait Normalize {
     fn normalized(self) -> Self;

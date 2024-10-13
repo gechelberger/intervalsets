@@ -1,7 +1,6 @@
 use crate::intersection::Intersection;
 use crate::ival::Side;
-use crate::IntervalSet;
-use crate::{FiniteInterval, HalfInterval, Interval};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 pub trait Complement {
     type Output;

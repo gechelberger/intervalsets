@@ -1,7 +1,5 @@
-use crate::{
-    ival::{Bound, IVal, Side},
-    FiniteInterval, HalfInterval, Interval, IntervalSet,
-};
+use crate::ival::{Bound, IVal, Side};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// The `Bounds` trait provides safe accessors for the boundary conditions
 /// of any interval that implements it.

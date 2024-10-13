@@ -1,8 +1,6 @@
 use crate::ival::{IVal, Side};
 use crate::util::commutative_op_impl;
-use crate::FiniteInterval;
-use crate::HalfInterval;
-use crate::{Interval, IntervalSet};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 use crate::contains::Contains;
 
