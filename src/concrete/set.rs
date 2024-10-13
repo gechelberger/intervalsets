@@ -1,4 +1,4 @@
-use crate::{empty::MaybeEmpty, intersects::Intersects, merged::Merged, numeric::Numeric};
+use crate::{empty::MaybeEmpty, intersects::Intersects, merged::Merged};
 
 use super::interval::Interval;
 
@@ -20,8 +20,8 @@ pub struct IntervalSet<T> {
 /// * All intervals are stored in ascending order.
 /// * All stored intervals are disjoint subsets of T.
 #[allow(dead_code)]
-impl<T: Copy + PartialOrd + Numeric> IntervalSet<T> {
-    fn new(intervals: Vec<Interval<T>>) -> Self {
+impl<T: Copy + PartialOrd> IntervalSet<T> {
+    pub fn new(intervals: Vec<Interval<T>>) -> Self {
         // O(n)
         if Self::satisfies_invariants(&intervals) {
             return Self::new_unchecked(intervals);
@@ -34,12 +34,23 @@ impl<T: Copy + PartialOrd + Numeric> IntervalSet<T> {
             return Self::new_unchecked(intervals);
         }
 
-        // O(n*log(n))
-        intervals.sort_by(|a, b| {
-            a.partial_cmp(b)
-                .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
-        });
+        // most of the time intervals should already by sorted
+        // O(n)
+        if !intervals.is_sorted() {
+            // O(n*log(n))
+            intervals.sort_by(|a, b| {
+                a.partial_cmp(b)
+                    .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
+            });
+        }
 
+        Self {
+            intervals: Self::merge_sorted(intervals),
+        }
+    }
+
+    /// Merge overlapping intervals assuming that they are already sorted
+    pub(crate) fn merge_sorted(intervals: Vec<Interval<T>>) -> Vec<Interval<T>> {
         let mut merged_sets: Vec<Interval<T>> = Vec::with_capacity(intervals.len());
         let mut it = intervals.into_iter();
 
@@ -57,17 +68,14 @@ impl<T: Copy + PartialOrd + Numeric> IntervalSet<T> {
             }
         }
         merged_sets.push(current);
-
-        Self {
-            intervals: merged_sets,
-        }
+        merged_sets
     }
 
-    fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
+    pub fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
         Self { intervals }
     }
 
-    fn satisfies_invariants(intervals: &Vec<Interval<T>>) -> bool {
+    pub fn satisfies_invariants(intervals: &Vec<Interval<T>>) -> bool {
         let mut current = &Interval::empty();
         for interval in intervals {
             if interval.is_empty() || current > interval || current.intersects(interval) {
@@ -82,6 +90,11 @@ impl<T: Copy + PartialOrd + Numeric> IntervalSet<T> {
         }
 
         true
+    }
+
+    /// The number of distinct intervals/subsets in this set.
+    pub fn count_subsets(&self) -> usize {
+        self.intervals.len()
     }
 }
 

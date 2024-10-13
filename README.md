@@ -1,6 +1,6 @@
 # intervalsets
 
-blah blah blah
+This crate provides intervals as sets.
 
 ## development
 
@@ -14,6 +14,7 @@ cargo hook
 
 # TODO:
 * interval sets
+* Decide Send + Sync
 * thiserror error handling?
 * get rid of Copy trait bound for T on Interval?
 * unit test coverage
