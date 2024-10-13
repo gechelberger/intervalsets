@@ -1,3 +1,4 @@
+use crate::empty::MaybeEmpty;
 use crate::infinite::{Interval, IntervalSet};
 use crate::ival::Side;
 use crate::{half::HalfInterval, FiniteInterval};
@@ -22,15 +23,26 @@ impl<T: PartialOrd> Contains<T> for FiniteInterval<T> {
 impl<T: PartialOrd> Contains<Self> for FiniteInterval<T> {
     /// Check if this interval fully contains the other
     fn contains(&self, rhs: &Self) -> bool {
+        self.map_or(false, |left_out, right_out| {
+            rhs.map_or(false, |left_in, right_in| {
+                left_out.contains(Side::Left, &left_in.value)
+                    && right_out.contains(Side::Right, &right_in.value)
+            })
+        })
+
+        /*
+        I'm curious to bench mark the two of these and see if there is any difference
+
         match self {
             Self::Empty => false,
             Self::NonZero(left, right) => match rhs {
                 Self::Empty => false,
                 Self::NonZero(a, b) => {
-                    left.contains(Side::Left, &a.value) && right.contains(Side::Right, &b.value)
+                    left.contains(Side::Left, &a.value)
+                        && right.contains(Side::Right, &b.value)
                 }
             },
-        }
+        }*/
     }
 }
 
@@ -59,19 +71,15 @@ impl<T: PartialOrd> Contains<T> for HalfInterval<T> {
 
 impl<T: PartialOrd> Contains<Self> for HalfInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
-        self.side == rhs.side && self.ival.contains(self.side, &rhs.ival.value)
+        self.side == rhs.side && self.contains(&rhs.ival.value)
     }
 }
 
 impl<T: PartialOrd> Contains<FiniteInterval<T>> for HalfInterval<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
-        match rhs {
-            FiniteInterval::Empty => false,
-            FiniteInterval::NonZero(left, right) => {
-                self.ival.contains(self.side, &left.value)
-                    && self.ival.contains(self.side, &right.value)
-            }
-        }
+        rhs.map_or(false, |left, right| {
+            self.contains(&left.value) && self.contains(&right.value)
+        })
     }
 }
 
@@ -98,7 +106,7 @@ impl<T: PartialOrd> Contains<T> for Interval<T> {
 impl<T: PartialOrd> Contains<FiniteInterval<T>> for Interval<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
-            Self::Infinite => *rhs != FiniteInterval::Empty,
+            Self::Infinite => !rhs.is_empty(),
             Self::Half(lhs) => lhs.contains(rhs),
             Self::Finite(lhs) => lhs.contains(rhs),
         }
@@ -119,7 +127,7 @@ impl<T: PartialOrd> Contains<Self> for Interval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         match self {
             Self::Infinite => match rhs {
-                Self::Infinite => false, // I think?
+                Self::Infinite => true, // still not sure?
                 Self::Half(interval) => self.contains(interval),
                 Self::Finite(interval) => self.contains(interval),
             },
@@ -138,3 +146,46 @@ impl<T: PartialOrd> Contains<T> for IntervalSet<T> {
 }
 
 // todo: other interval set conains
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[quickcheck]
+    fn test_finite_contains_integer(x: i8) {
+        let iv = Interval::open(-100, 100);
+        assert_eq!(iv.contains(&x), -100 < x && x < 100);
+    }
+
+    #[quickcheck]
+    fn test_finite_contains_float(x: f32) {
+        let iv = Interval::closed(-100.0, 100.0);
+        assert_eq!(iv.contains(&x), -100.0 < x && x < 100.0);
+    }
+
+    #[quickcheck]
+    fn test_half_contains_integer(x: i8) {
+        let left = Interval::unbound_closed(0);
+        assert_eq!(left.contains(&x), x <= 0);
+
+        let right = Interval::closed_unbound(0);
+        assert_eq!(right.contains(&x), x >= 0);
+    }
+
+    #[quickcheck]
+    fn test_half_contains_float(x: f32) {
+        let left = Interval::unbound_closed(0.0);
+        assert_eq!(left.contains(&x), x <= 0.0);
+
+        let right = Interval::closed_unbound(0.0);
+        assert_eq!(right.contains(&x), x >= 0.0);
+    }
+
+    #[quickcheck]
+    fn test_infinite_contains_float(x: f32) {
+        let iv = Interval::unbound();
+        assert!(iv.contains(&x));
+    }
+
+    // TODO: plenty of other cases
+}
