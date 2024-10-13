@@ -245,4 +245,48 @@ mod tests {
         assert_eq!(a.union(&b), c);
         assert_eq!(b.union(&a), c);
     }
+
+    #[test]
+    fn test_set_union_finite() {
+        let a = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 10),
+            Interval::closed(100, 110),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        let b = FiniteInterval::closed(5, 200);
+
+        let c = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        assert_eq!(a.union(&b), c);
+        assert_eq!(b.union(&a), c);
+    }
+
+    #[test]
+    fn test_set_union_half() {
+        let a = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 10),
+            Interval::closed(100, 110),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        let b = HalfInterval::unbound_closed(150);
+
+        let c = IntervalSet::new(vec![
+            Interval::unbound_closed(150),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        assert_eq!(a.union(&b), c);
+        assert_eq!(b.union(&a), c);
+    }
 }
