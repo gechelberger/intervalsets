@@ -18,8 +18,8 @@ impl<T: Copy + PartialOrd> Contiguous<Self> for FiniteInterval<T> {
         self.map(|a_left, a_right| {
             rhs.map_bounds(|b_left, b_right| {
                 FiniteInterval::NonZero(
-                    IVal::min(a_left, b_left),
-                    IVal::max(a_right, b_right),
+                    IVal::min_left(a_left, b_left),
+                    IVal::max_right(a_right, b_right),
                 )
             })
         })

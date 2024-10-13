@@ -2,7 +2,8 @@
 /// differentiate between a lack of a bound because the interval
 /// is empty or has a bound at infinity.
 /// 
-/// HalfInterval can not be empty. Do we need to implement this for symmetry?
+/// HalfInterval can not be empty so we shouldn't need it and can
+/// just skip strait to determinite functions for it.
 
 use crate::{infinite::IntervalSet, FiniteInterval, Interval};
 

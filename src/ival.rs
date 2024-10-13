@@ -68,7 +68,7 @@ impl<T: Copy> IVal<T> {
 
 impl<T: Clone + PartialOrd> IVal<T> {
 
-    pub fn min(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+    pub fn min_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Left, &b.value) {
             a.clone()
         } else {
@@ -76,7 +76,23 @@ impl<T: Clone + PartialOrd> IVal<T> {
         }
     }
 
-    pub fn max(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+    pub fn min_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Right, &b.value) {
+            b.clone()
+        } else {
+            a.clone()
+        }
+    }
+
+    pub fn max_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Left, &b.value) {
+            b.clone()
+        } else {
+            a.clone()
+        }
+    }
+
+    pub fn max_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Right, &b.value) {
             a.clone()
         } else {

@@ -84,8 +84,8 @@ impl<T: Clone + Eq + Ord> Bounds<T> for IntervalSet<T> {
             result = match result {
                 None => candidate,
                 Some(result) => Some(match side {
-                    Side::Left => IVal::min(&result, &candidate.unwrap()),
-                    Side::Right => IVal::max(&result, &candidate.unwrap())
+                    Side::Left => IVal::min_left(&result, &candidate.unwrap()),
+                    Side::Right => IVal::max_right(&result, &candidate.unwrap())
                 }
                 )
             }
