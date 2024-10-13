@@ -50,3 +50,27 @@ impl<T: Numeric + Copy> Normalize for IntervalSet<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_normalized_integers() {
+        //let interval = Interval::open(50.0, 60.0);
+        //let foo = interval.normalized();
+
+        assert_eq!(Interval::open(0, 10).normalized(), Interval::closed(1, 9));
+        assert_eq!(Interval::open_closed(0, 10).normalized(), Interval::closed(1, 10));
+        assert_eq!(Interval::unbound_open(5 as i8).normalized(), Interval::unbound_closed(4 as i8));
+        assert_eq!(Interval::unbound_closed(5 as i8).normalized(), Interval::unbound_closed(5 as i8));
+        assert_eq!(Interval::open_unbound(5 as i8).normalized(), Interval::closed_unbound(6 as i8));
+        assert_eq!(Interval::closed(0, 10).normalized(), Interval::closed(0, 10));
+    }
+
+    #[test]
+    fn test_normalized_reals() {
+        let interval = Interval::open(0.0, 50.0);
+        assert_eq!(interval.clone().normalized(), interval);
+    }
+}
