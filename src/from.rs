@@ -14,8 +14,9 @@ impl<T> From<HalfInterval<T>> for Interval<T> {
 
 impl<T> From<Interval<T>> for IntervalSet<T> {
     fn from(value: Interval<T>) -> Self {
-        Self {
-            intervals: vec![value],
+        match value {
+            Interval::Finite(inner) => Self::from(inner),
+            _ => Self::new_unchecked(vec![value]),
         }
     }
 }
