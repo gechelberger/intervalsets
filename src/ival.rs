@@ -1,6 +1,6 @@
 use std::ops::{Add, Div, Mul, Sub};
 
-use num::{One, PrimInt};
+use crate::numeric::Numeric;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bound {
@@ -55,12 +55,47 @@ impl<T: Copy> IVal<T> {
         Self::new(self.bound.flip(), self.value)
     }
 
+    #[allow(dead_code)]
     fn map(self, func: impl Fn(T) -> T) -> Self {
         Self::new(self.bound, func(self.value))
     }
 
     fn binary_map(self, func: impl Fn(T, T) -> T, rhs: T) -> Self {
         Self::new(self.bound, func(self.value, rhs))
+    }
+}
+
+impl<T: Clone + PartialOrd> IVal<T> {
+    pub fn min_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Left, &b.value) {
+            a.clone()
+        } else {
+            b.clone()
+        }
+    }
+
+    pub fn min_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Right, &b.value) {
+            b.clone()
+        } else {
+            a.clone()
+        }
+    }
+
+    pub fn max_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Left, &b.value) {
+            b.clone()
+        } else {
+            a.clone()
+        }
+    }
+
+    pub fn max_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
+        if a.contains(Side::Right, &b.value) {
+            a.clone()
+        } else {
+            b.clone()
+        }
     }
 }
 
@@ -79,15 +114,18 @@ impl<T: PartialOrd> IVal<T> {
     }
 }
 
-impl<T: PrimInt + One> IVal<T> {
+impl<T: Numeric + Copy> IVal<T> {
+    pub fn normalized(self, side: Side) -> Self {
+        if !T::numeric_set().in_integer() {
+            return self;
+        }
 
-    pub fn normalized(&self, side: Side) -> Self {
         match self.bound {
             Bound::Open => match side {
                 Side::Left => Self::new(Bound::Closed, self.value + T::one()),
-                Side::Right => Self::new(Bound::Closed, self.value - T::one())
+                Side::Right => Self::new(Bound::Closed, self.value - T::one()),
             },
-            Bound::Closed => self.clone()
+            Bound::Closed => self,
         }
     }
 }
@@ -136,10 +174,7 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
-
-    
 }
