@@ -2,13 +2,31 @@ use crate::infinite::{Interval, IntervalSet};
 use crate::FiniteInterval;
 use crate::contiguous::Contiguous;
 
-/// Union iff. lhs and rhs are not disjoint
-
 pub trait Union<Rhs = Self> {
     type Output;
 
     fn union(&self, rhs: &Rhs) -> Self::Output;
 }
+
+impl<T: Copy + PartialOrd> Union<Self> for FiniteInterval<T> {
+    type Output = IntervalSet<T>;
+
+    fn union(&self, rhs: &Self) -> Self::Output {
+        match self.contiguous(rhs) {
+            Some(interval) => interval.into(),
+            None => IntervalSet {
+                intervals: vec![
+                    self.clone().into(), 
+                    rhs.clone().into()
+                ]
+            }
+        }
+    }
+}
+
+
+
+
 
 impl<T> Union for Interval<T> {
     type Output = IntervalSet<T>;
