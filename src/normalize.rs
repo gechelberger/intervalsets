@@ -3,9 +3,8 @@ use num::PrimInt;
 use crate::finite::FiniteInterval;
 use crate::half::HalfInterval;
 use crate::infinite::{Interval, IntervalSet};
-use crate::ival::{Side};
+use crate::ival::Side;
 use crate::numeric::Numeric;
-
 
 pub trait Normalize {
     fn normalized(self) -> Self;
@@ -13,12 +12,8 @@ pub trait Normalize {
 
 impl<T: Numeric + Copy> Normalize for FiniteInterval<T> {
     fn normalized(self) -> Self {
-
         self.map_bounds(|left, right| {
-            Self::new(
-                left.normalized(Side::Left),
-                right.normalized(Side::Right)
-            )
+            Self::new(left.normalized(Side::Left), right.normalized(Side::Right))
         })
     }
 }
@@ -30,7 +25,6 @@ impl<T: Numeric + Copy> Normalize for HalfInterval<T> {
 }
 
 impl<T: Numeric + Copy> Normalize for Interval<T> {
-    
     fn normalized(self) -> Self {
         match self {
             Self::Infinite => Self::Infinite,
@@ -41,12 +35,13 @@ impl<T: Numeric + Copy> Normalize for Interval<T> {
 }
 
 impl<T: Numeric + Copy> Normalize for IntervalSet<T> {
-
     fn normalized(self) -> Self {
         Self {
-            intervals: self.intervals.into_iter()
+            intervals: self
+                .intervals
+                .into_iter()
                 .map(|iv| iv.normalized())
-                .collect()
+                .collect(),
         }
     }
 }
@@ -61,11 +56,26 @@ mod tests {
         //let foo = interval.normalized();
 
         assert_eq!(Interval::open(0, 10).normalized(), Interval::closed(1, 9));
-        assert_eq!(Interval::open_closed(0, 10).normalized(), Interval::closed(1, 10));
-        assert_eq!(Interval::unbound_open(5 as i8).normalized(), Interval::unbound_closed(4 as i8));
-        assert_eq!(Interval::unbound_closed(5 as i8).normalized(), Interval::unbound_closed(5 as i8));
-        assert_eq!(Interval::open_unbound(5 as i8).normalized(), Interval::closed_unbound(6 as i8));
-        assert_eq!(Interval::closed(0, 10).normalized(), Interval::closed(0, 10));
+        assert_eq!(
+            Interval::open_closed(0, 10).normalized(),
+            Interval::closed(1, 10)
+        );
+        assert_eq!(
+            Interval::unbound_open(5 as i8).normalized(),
+            Interval::unbound_closed(4 as i8)
+        );
+        assert_eq!(
+            Interval::unbound_closed(5 as i8).normalized(),
+            Interval::unbound_closed(5 as i8)
+        );
+        assert_eq!(
+            Interval::open_unbound(5 as i8).normalized(),
+            Interval::closed_unbound(6 as i8)
+        );
+        assert_eq!(
+            Interval::closed(0, 10).normalized(),
+            Interval::closed(0, 10)
+        );
     }
 
     #[test]

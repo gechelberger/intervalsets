@@ -1,6 +1,6 @@
 use crate::{contains::Contains, ival::Side, FiniteInterval, HalfInterval, Interval};
 
-/// Intersects is commutative 
+/// Intersects is commutative
 pub trait Intersects<Rhs = Self> {
     fn intersects(&self, rhs: &Rhs) -> bool;
 
@@ -9,15 +9,14 @@ pub trait Intersects<Rhs = Self> {
     }
 }
 
-
 impl<T: Copy + PartialOrd> Intersects<Self> for FiniteInterval<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         self.map_or::<bool>(false, |l1, r1| {
             rhs.map_or::<bool>(false, |l2, r2| {
-                l1.contains(Side::Left, &r2.value) 
-                && l2.contains(Side::Left, &r1.value) 
-                && r1.contains(Side::Right,&l1.value) 
-                && r2.contains(Side::Right, &l1.value)
+                l1.contains(Side::Left, &r2.value)
+                    && l2.contains(Side::Left, &r1.value)
+                    && r1.contains(Side::Right, &l1.value)
+                    && r2.contains(Side::Right, &l1.value)
             })
         })
     }
@@ -96,5 +95,4 @@ mod test {
 
         assert!(!Interval::open(0, 10).intersects(&Interval::closed(10, 20)));
     }
-
 }

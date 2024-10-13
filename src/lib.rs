@@ -13,23 +13,23 @@ pub mod ival;
 pub(crate) mod util;
 
 // traits
+pub mod empty;
 pub mod into;
 mod normalize;
-pub mod empty;
 
-pub mod intersects;
-pub mod intersection; 
-pub mod union;
-pub mod contiguous;
+pub mod bounds;
 pub mod complement;
 pub mod contains;
-pub mod sizeable;
-pub mod bounds;
+pub mod contiguous;
+pub mod intersection;
+pub mod intersects;
 pub mod numeric;
 pub mod partial_ord;
+pub mod sizeable;
+pub mod union;
 
-pub mod shifted;
 pub mod padded;
+pub mod shifted;
 
 pub use finite::FiniteInterval;
 pub use half::HalfInterval;

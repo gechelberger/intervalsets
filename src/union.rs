@@ -1,7 +1,7 @@
+use crate::contiguous::Contiguous;
 use crate::infinite::{Interval, IntervalSet};
 use crate::util::commutative_impl;
 use crate::{FiniteInterval, HalfInterval};
-use crate::contiguous::Contiguous;
 
 pub trait Union<Rhs = Self> {
     type Output;
@@ -16,11 +16,8 @@ impl<T: Copy + PartialOrd> Union<Self> for FiniteInterval<T> {
         match self.contiguous(rhs) {
             Some(interval) => interval.into(),
             None => IntervalSet {
-                intervals: vec![
-                    self.clone().into(), 
-                    rhs.clone().into()
-                ]
-            }
+                intervals: vec![self.clone().into(), rhs.clone().into()],
+            },
         }
     }
 }
@@ -32,14 +29,10 @@ impl<T: Copy + PartialOrd> Union<Self> for HalfInterval<T> {
         match self.contiguous(rhs) {
             Some(interval) => interval.into(),
             None => IntervalSet {
-                intervals: vec![
-                    self.clone().into(),
-                    rhs.clone().into(),
-                ]
-            }
+                intervals: vec![self.clone().into(), rhs.clone().into()],
+            },
         }
     }
-    
 }
 
 impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for FiniteInterval<T> {
@@ -49,11 +42,8 @@ impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for FiniteInterval<T> {
         match self.contiguous(rhs) {
             Some(interval) => interval.into(),
             None => IntervalSet {
-                intervals: vec![
-                    self.clone().into(),
-                    rhs.clone().into()
-                ]
-            }
+                intervals: vec![self.clone().into(), rhs.clone().into()],
+            },
         }
     }
 }
@@ -95,15 +85,17 @@ impl<T: Copy + PartialOrd> Union<Self> for Interval<T> {
     }
 }
 
-commutative_impl!(Union, union, HalfInterval<T>, FiniteInterval<T>, IntervalSet<T>);
+commutative_impl!(
+    Union,
+    union,
+    HalfInterval<T>,
+    FiniteInterval<T>,
+    IntervalSet<T>
+);
 commutative_impl!(Union, union, HalfInterval<T>, Interval<T>, IntervalSet<T>);
 commutative_impl!(Union, union, FiniteInterval<T>, Interval<T>, IntervalSet<T>);
 
-
-
-
 ////////////
-
 
 impl<T> Union<Self> for IntervalSet<T> {
     type Output = Self;
@@ -118,7 +110,7 @@ impl<T: Copy + PartialOrd + Eq> Union<Interval<T>> for IntervalSet<T> {
 
     fn union(&self, rhs: &Interval<T>) -> Self::Output {
         if *rhs == Interval::Finite(FiniteInterval::Empty) {
-            return self.clone()
+            return self.clone();
         }
 
         let mut merging = rhs.clone();
@@ -133,13 +125,10 @@ impl<T: Copy + PartialOrd + Eq> Union<Interval<T>> for IntervalSet<T> {
         }
 
         intervals.push(merging);
-        
-        Self{ intervals }
+
+        Self { intervals }
     }
 }
 
 #[cfg(test)]
-mod tests {
-
-    
-}
+mod tests {}

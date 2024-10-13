@@ -1,5 +1,4 @@
-use crate::ival::{IVal, Side, Bound};
-
+use crate::ival::{Bound, IVal, Side};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HalfInterval<T> {
@@ -8,11 +7,10 @@ pub struct HalfInterval<T> {
 }
 
 impl<T: Copy> HalfInterval<T> {
-
     pub fn new(side: Side, ival: IVal<T>) -> Self {
         Self { side, ival }
     }
-    
+
     /// (<-, b) = { x in T | x < b }
     pub fn unbound_open(right: T) -> Self {
         Self::new(Side::Right, IVal::new(Bound::Open, right))
@@ -36,7 +34,7 @@ impl<T: Copy> HalfInterval<T> {
     pub fn lval_unchecked(&self) -> T {
         match self.side {
             Side::Left => self.ival.value,
-            Side::Right => panic!("right half interval has no left bound")
+            Side::Right => panic!("right half interval has no left bound"),
         }
     }
 
@@ -46,5 +44,4 @@ impl<T: Copy> HalfInterval<T> {
             Side::Right => self.ival.value,
         }
     }
-
 }

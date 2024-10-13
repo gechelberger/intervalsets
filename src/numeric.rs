@@ -1,4 +1,3 @@
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NumericSet {
     Natural,
@@ -8,7 +7,6 @@ pub enum NumericSet {
 }
 
 impl NumericSet {
-
     #[inline]
     pub fn in_real(self) -> bool {
         true
@@ -25,8 +23,9 @@ impl NumericSet {
     }
 }
 
-
-pub trait Numeric: Sized + PartialOrd + PartialEq + num::traits::NumOps + num::Zero + num::One  {
+pub trait Numeric:
+    Sized + PartialOrd + PartialEq + num::traits::NumOps + num::Zero + num::One
+{
     fn numeric_set() -> NumericSet;
 }
 
@@ -57,5 +56,3 @@ numeric_impl!(i128, NumericSet::Integer);
 
 numeric_impl!(f32, NumericSet::Real);
 numeric_impl!(f64, NumericSet::Real);
-
-

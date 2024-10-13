@@ -1,4 +1,9 @@
-use crate::{contains::Contains, intersects::Intersects, ival::{IVal, Side}, FiniteInterval, HalfInterval, Interval};
+use crate::{
+    contains::Contains,
+    intersects::Intersects,
+    ival::{IVal, Side},
+    FiniteInterval, HalfInterval, Interval,
+};
 
 /// Union for two intervals that are not disjoint
 pub trait Contiguous<Rhs = Self> {
@@ -37,7 +42,6 @@ impl<T: Copy + PartialOrd> Contiguous<Self> for HalfInterval<T> {
                 Some(rhs.clone().into())
             }
         } else {
-
             // unfortunately we have to check from both sides to catch the
             // case where left and right values are the same but open & closed
             if self.contains(&rhs.ival.value) && rhs.contains(&self.ival.value) {
@@ -56,7 +60,8 @@ impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for HalfInterval<T> {
         match rhs {
             FiniteInterval::Empty => Some(self.clone().into()),
             FiniteInterval::NonZero(left, right) => {
-                let n_seen = [left, right].into_iter()
+                let n_seen = [left, right]
+                    .into_iter()
                     .map(|ival| self.contains(&ival.value))
                     .count();
 
@@ -64,11 +69,10 @@ impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for HalfInterval<T> {
                     2 => Some(self.clone().into()),
                     1 => match self.side {
                         Side::Left => Some(HalfInterval::new(self.side, left.clone()).into()),
-                        Side::Right => Some(HalfInterval::new(self.side, right.clone()).into())
+                        Side::Right => Some(HalfInterval::new(self.side, right.clone()).into()),
                     },
                     _ => None, // disjoint
                 }
-                
             }
         }
     }
@@ -82,7 +86,7 @@ impl<T: Copy + PartialOrd> Contiguous<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-////////////////// 
+//////////////////
 
 impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for Interval<T> {
     type Output = Interval<T>;
@@ -91,10 +95,7 @@ impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for Interval<T> {
         match self {
             Self::Infinite => Some(Self::Infinite),
             Self::Half(lhs) => lhs.contiguous(rhs),
-            Self::Finite(lhs) => {
-                lhs.contiguous(rhs)
-                    .map(|itv| itv.into())
-            },
+            Self::Finite(lhs) => lhs.contiguous(rhs).map(|itv| itv.into()),
         }
     }
 }

@@ -1,6 +1,5 @@
 use crate::{half::HalfInterval, infinite::IntervalSet, FiniteInterval, Interval};
 
-
 impl<T> Into<Interval<T>> for FiniteInterval<T> {
     fn into(self) -> Interval<T> {
         Interval::Finite(self)
@@ -15,7 +14,9 @@ impl<T> Into<Interval<T>> for HalfInterval<T> {
 
 impl<T> Into<IntervalSet<T>> for Interval<T> {
     fn into(self) -> IntervalSet<T> {
-        IntervalSet { intervals: vec![self] }
+        IntervalSet {
+            intervals: vec![self],
+        }
     }
 }
 

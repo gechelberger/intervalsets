@@ -6,13 +6,11 @@ pub trait Shifted<T> {
     fn shifted(&self, amount: T) -> Self;
 }
 
-pub trait Shiftable<T> = Copy + PartialOrd + Add<Output=T>;
+pub trait Shiftable<T> = Copy + PartialOrd + Add<Output = T>;
 
 impl<T: Shiftable<T>> Shifted<T> for FiniteInterval<T> {
     fn shifted(&self, amount: T) -> Self {
-        self.map_bounds(|left, right| {
-            Self::new_unchecked(*left + amount, *right + amount)
-        })
+        self.map_bounds(|left, right| Self::new_unchecked(*left + amount, *right + amount))
     }
 }
 

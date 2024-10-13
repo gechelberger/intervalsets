@@ -69,14 +69,14 @@ where
     pub fn lval_unchecked(&self) -> T {
         match self {
             Self::Empty => panic!("Empty interval has no left bound"),
-            Self::NonZero(left, _) => left.value
+            Self::NonZero(left, _) => left.value,
         }
     }
 
     pub fn rval_unchecked(&self) -> T {
         match self {
             Self::Empty => panic!("Empty interval has no right bound"),
-            Self::NonZero(_, right) => right.value
+            Self::NonZero(_, right) => right.value,
         }
     }
 
@@ -90,18 +90,17 @@ where
     pub fn map<U>(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> Option<U> {
         match self {
             Self::Empty => None,
-            Self::NonZero(left, right) => Some(func(left, right))
+            Self::NonZero(left, right) => Some(func(left, right)),
         }
     }
 
     pub fn map_or<U>(&self, default: U, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> U {
         match self {
             Self::Empty => default,
-            Self::NonZero(left, right) => func(left, right)
+            Self::NonZero(left, right) => func(left, right),
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {

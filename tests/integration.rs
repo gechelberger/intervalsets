@@ -1,5 +1,5 @@
-use intervalsets::Interval;
 use intervalsets::contains::Contains;
+use intervalsets::Interval;
 
 #[test]
 fn itest_contains() {

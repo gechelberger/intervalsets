@@ -1,3 +1,16 @@
+# intervalsets
+
+blah blah blah
+
+## development
+
+### git hooks
+
+```
+cargo install cargo-hook
+cargo hook
+```
+
 
 # TODO:
 * interval sets

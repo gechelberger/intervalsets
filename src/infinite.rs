@@ -1,9 +1,12 @@
 use std::ops::Sub;
 
-use num::{Zero};
+use num::Zero;
 
-use crate::{half::HalfInterval, ival::{Bound, IVal, Side}, FiniteInterval};
-
+use crate::{
+    half::HalfInterval,
+    ival::{Bound, IVal, Side},
+    FiniteInterval,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Interval<T> {
@@ -35,10 +38,7 @@ where
 
     /// (a, b) = { x in T | a < x < b }
     pub fn open(left: T, right: T) -> Self {
-        FiniteInterval::new(
-            IVal::new(Bound::Open, left), 
-            IVal::new(Bound::Open, right)
-        ).into()
+        FiniteInterval::new(IVal::new(Bound::Open, left), IVal::new(Bound::Open, right)).into()
     }
 
     /// [a, b] = { x in T | a <= x <= b }
@@ -46,7 +46,8 @@ where
         FiniteInterval::new(
             IVal::new(Bound::Closed, left),
             IVal::new(Bound::Closed, right),
-        ).into()
+        )
+        .into()
     }
 
     /// (a, b] = { x in T | a < x <= b }
@@ -54,7 +55,8 @@ where
         FiniteInterval::new(
             IVal::new(Bound::Open, left),
             IVal::new(Bound::Closed, right),
-        ).into()
+        )
+        .into()
     }
 
     /// [a, b) = { x in T | a <= x < b }
@@ -62,15 +64,13 @@ where
         FiniteInterval::new(
             IVal::new(Bound::Closed, left),
             IVal::new(Bound::Open, right),
-        ).into()
+        )
+        .into()
     }
 
     // (<-, b) = { x in T | x < b }
     pub fn unbound_open(right: T) -> Self {
-        HalfInterval::new(
-            Side::Right, 
-            IVal::new(Bound::Open, right)
-        ).into()
+        HalfInterval::new(Side::Right, IVal::new(Bound::Open, right)).into()
     }
 
     /// (<-, b] = { x in T | x <= b }
@@ -94,25 +94,17 @@ where
 
     pub fn lval_unchecked(&self) -> T {
         match self {
-            Self::Finite(interval) => {
-                interval.lval_unchecked()
-            },
-            Self::Half(interval) => {
-                interval.lval_unchecked()
-            },
-            _ => panic!("left bound of interval is not in T")
+            Self::Finite(interval) => interval.lval_unchecked(),
+            Self::Half(interval) => interval.lval_unchecked(),
+            _ => panic!("left bound of interval is not in T"),
         }
     }
 
     pub fn rval_unchecked(&self) -> T {
         match self {
-            Self::Finite(interval) => {
-                interval.rval_unchecked()
-            },
-            Self::Half(interval) => {
-                interval.rval_unchecked()
-            },
-            _ => panic!("left bound of interval is not in T")
+            Self::Finite(interval) => interval.rval_unchecked(),
+            Self::Half(interval) => interval.rval_unchecked(),
+            _ => panic!("left bound of interval is not in T"),
         }
     }
 
@@ -167,7 +159,7 @@ where
         }
     }
 
-    
+
 
     fn union_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Vec<Self> {
         let (a_left, a_right) = finite;
@@ -199,9 +191,7 @@ where
     }
 
     */
-
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntervalSet<T> {
@@ -222,7 +212,6 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
     }
 
     fn complement_mut<'a>(&'a mut self) -> &'a mut Self {
-
         self
     }
 
@@ -249,8 +238,8 @@ impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::normalize::Normalize;
     use crate::contains::Contains;
+    use crate::normalize::Normalize;
 
     use super::*;
 
@@ -289,9 +278,7 @@ mod tests {
         let complement = &interval.complement()[0];
 
         assert_eq!(interval.contains(&x), !complement.contains(&x));
-    } 
+    }
 
     */
-
-    
 }

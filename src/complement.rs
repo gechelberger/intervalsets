@@ -1,7 +1,7 @@
+use crate::infinite::IntervalSet;
 use crate::intersection::Intersection;
 use crate::ival::Side;
 use crate::{FiniteInterval, HalfInterval, Interval};
-use crate::infinite::IntervalSet;
 
 pub trait Complement {
     type Output;
@@ -18,7 +18,7 @@ impl<T: Copy> Complement for FiniteInterval<T> {
             Self::NonZero(left, right) => {
                 let intervals: Vec<Interval<T>> = vec![
                     HalfInterval::new(Side::Right, left.flip()).into(),
-                    HalfInterval::new(Side::Left, right.flip()).into()
+                    HalfInterval::new(Side::Left, right.flip()).into(),
                 ];
                 IntervalSet { intervals }
             }
@@ -57,15 +57,13 @@ impl<T: Copy + PartialOrd> Complement for IntervalSet<T> {
 }
 
 fn naive_set_complement<T>(intervals: &Vec<Interval<T>>) -> IntervalSet<T>
-where 
-    T: Copy + PartialOrd
+where
+    T: Copy + PartialOrd,
 {
-    intervals.iter()
+    intervals
+        .iter()
         .map(|x| x.complement())
-        .fold(Interval::Infinite.into(), |l, r| {
-            l.intersection(&r)
-        })
-
+        .fold(Interval::Infinite.into(), |l, r| l.intersection(&r))
 }
 
 #[cfg(test)]
@@ -79,9 +77,7 @@ mod test {
         let baseline = Interval::open_closed(0, 50);
         let complement = baseline.complement();
 
-        assert!(
-            baseline.contains(&a) != complement.contains(&a)
-        )
+        assert!(baseline.contains(&a) != complement.contains(&a))
     }
 
     #[quickcheck]
@@ -102,5 +98,4 @@ mod test {
 
         assert!(baseline.contains(&a) != complement.contains(&a));
     }
-
 }

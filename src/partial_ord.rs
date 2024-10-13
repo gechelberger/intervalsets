@@ -3,25 +3,25 @@ use std::ops::Sub;
 
 use num::Zero;
 
+use crate::bounds::Bounds;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::{FiniteInterval, HalfInterval, Interval};
-use crate::bounds::Bounds;
 
 /// Partial compare of two boundary conditions
 /// when both are the same side of each interval.
-/// 
+///
 /// The IVals are assumed to be the left or right
 /// bounds of two *non-empty* intervals and values
-/// of `None` are assumed to indicate an infinite 
+/// of `None` are assumed to indicate an infinite
 /// bound.
-/// 
-/// # Examples: 
-/// 
+///
+/// # Examples:
+///
 /// 1) left case:  (a, _) partial_cmp to (b, _)
 /// 2) right case: (_, a) partial_cmp to (_, b)
 fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
-    side: Side, 
+    side: Side,
     left: Option<IVal<T>>,
     right: Option<IVal<T>>,
 ) -> std::cmp::Ordering {
@@ -29,17 +29,17 @@ fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
         (None, None) => Ordering::Equal,
         (None, Some(right)) => match side {
             Side::Left => Ordering::Less,
-            Side::Right => Ordering::Greater
-        }
+            Side::Right => Ordering::Greater,
+        },
         (Some(left), None) => match side {
             Side::Left => Ordering::Greater,
-            Side::Right => Ordering::Less
-        }
+            Side::Right => Ordering::Less,
+        },
         (Some(left), Some(right)) => {
             if left == right {
                 return Ordering::Equal;
-            } 
-            
+            }
+
             match side {
                 Side::Left => {
                     if left.contains(side, &right.value) {
@@ -47,44 +47,44 @@ fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
                     } else {
                         Ordering::Greater
                     }
-                },
+                }
                 Side::Right => {
                     if left.contains(side, &right.value) {
                         Ordering::Greater
                     } else {
                         Ordering::Less
                     }
-                },
+                }
             }
         }
     }
 }
 
 fn impl_cmp<U, T>(lhs: &U, rhs: &U) -> std::cmp::Ordering
-where 
+where
     T: Copy + PartialOrd,
-    U: Bounds<T>
+    U: Bounds<T>,
 {
     match non_empty_cmp_side(Side::Left, lhs.left(), rhs.left()) {
         Ordering::Equal => non_empty_cmp_side(Side::Right, lhs.right(), rhs.right()),
-        ordering => ordering
+        ordering => ordering,
     }
 }
 
 /// A generic impl of partial_cmp in terms of the `Bounds` trait.
 /// This is done as a free generic function to make it easy to implement
 /// `PartialOrd` for types without resorting to a blanket implementation.
-fn impl_partial_cmp<U, T>(lhs: &U, rhs: &U) -> Option<std::cmp::Ordering> 
-where 
+fn impl_partial_cmp<U, T>(lhs: &U, rhs: &U) -> Option<std::cmp::Ordering>
+where
     T: Copy + PartialOrd,
-    U: Bounds<T> + MaybeEmpty
+    U: Bounds<T> + MaybeEmpty,
 {
     if lhs.is_empty() || rhs.is_empty() {
         return None;
     }
 
     impl_cmp(lhs, rhs).into()
-} 
+}
 
 impl<T: Copy + PartialOrd + PartialEq> PartialOrd for Interval<T> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
@@ -145,7 +145,5 @@ mod tests {
         // Empty Set should not compare
         assert_eq!(Interval::<u8>::empty() <= Interval::<u8>::unbound(), false);
         assert_eq!(Interval::<u8>::empty() >= Interval::<u8>::unbound(), false);
-
-        
     }
 }

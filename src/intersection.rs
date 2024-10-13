@@ -1,11 +1,10 @@
-use crate::infinite::{Interval, IntervalSet};
 use crate::finite::FiniteInterval;
+use crate::infinite::{Interval, IntervalSet};
 use crate::ival::{IVal, Side};
 use crate::util::commutative_impl;
 use crate::HalfInterval;
 
 use crate::contains::Contains;
-
 
 pub trait Intersection<Rhs = Self> {
     type Output;
@@ -22,7 +21,7 @@ impl<T: Copy + PartialOrd> Intersection<Self> for FiniteInterval<T> {
                 // new() will clean up empty sets where left & right have violated bounds
                 FiniteInterval::new(
                     IVal::max_left(a_left, b_left),
-                    IVal::min_right(a_right, b_right)
+                    IVal::min_right(a_right, b_right),
                 )
             })
         })
@@ -34,7 +33,8 @@ impl<T: Copy + PartialOrd> Intersection<HalfInterval<T>> for FiniteInterval<T> {
 
     fn intersection(&self, rhs: &HalfInterval<T>) -> Self::Output {
         self.map_bounds(|left, right| {
-            let n_seen = [left, right].into_iter()
+            let n_seen = [left, right]
+                .into_iter()
                 .filter(|end| rhs.contains(&end.value))
                 .count();
 
@@ -52,7 +52,6 @@ impl<T: Copy + PartialOrd> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-
 impl<T: Copy + PartialOrd> Intersection<Self> for HalfInterval<T> {
     type Output = Interval<T>;
 
@@ -68,7 +67,8 @@ impl<T: Copy + PartialOrd> Intersection<Self> for HalfInterval<T> {
             match self.side {
                 Side::Left => FiniteInterval::new(self.ival, rhs.ival),
                 Side::Right => FiniteInterval::new(rhs.ival, self.ival),
-            }.into()
+            }
+            .into()
         }
     }
 }
@@ -109,12 +109,29 @@ impl<T: Copy + PartialOrd> Intersection<Self> for Interval<T> {
     }
 }
 
-commutative_impl!(Intersection, intersection, HalfInterval<T>, FiniteInterval<T>, FiniteInterval<T>);
-commutative_impl!(Intersection, intersection, FiniteInterval<T>, Interval<T>, Interval<T>);
-commutative_impl!(Intersection, intersection, HalfInterval<T>, Interval<T>, Interval<T>);
+commutative_impl!(
+    Intersection,
+    intersection,
+    HalfInterval<T>,
+    FiniteInterval<T>,
+    FiniteInterval<T>
+);
+commutative_impl!(
+    Intersection,
+    intersection,
+    FiniteInterval<T>,
+    Interval<T>,
+    Interval<T>
+);
+commutative_impl!(
+    Intersection,
+    intersection,
+    HalfInterval<T>,
+    Interval<T>,
+    Interval<T>
+);
 
 ////////////////
-
 
 impl<T: Copy + PartialOrd> Intersection<Self> for IntervalSet<T> {
     type Output = IntervalSet<T>;
@@ -151,7 +168,7 @@ impl<T: Copy + PartialOrd> Intersection<FiniteInterval<T>> for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_finite_interval_overlapped_empty() {
         // (---A---) (---B---)

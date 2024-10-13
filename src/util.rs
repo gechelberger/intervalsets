@@ -1,5 +1,5 @@
 /// Generic impl of a commutative trait, reversing lhs and rhs.
-/// 
+///
 /// # Examples
 /// commutative_impl!(TraitName, func_name, LeftType, RightType, OutType);
 macro_rules! commutative_impl {
@@ -11,7 +11,7 @@ macro_rules! commutative_impl {
                 rhs.$fn(self)
             }
         }
-    }
+    };
 }
 
 pub(crate) use commutative_impl;

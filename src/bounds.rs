@@ -1,9 +1,13 @@
-use crate::{half::HalfInterval, infinite::IntervalSet, ival::{Bound, IVal, Side}, FiniteInterval, Interval};
+use crate::{
+    half::HalfInterval,
+    infinite::IntervalSet,
+    ival::{Bound, IVal, Side},
+    FiniteInterval, Interval,
+};
 
 /// The `Bounds` trait provides safe accessors for the boundary conditions
 /// of any interval that implements it.
 pub trait Bounds<T> {
-
     fn bound(&self, side: Side) -> Option<IVal<T>>;
 
     fn left(&self) -> Option<IVal<T>> {
@@ -29,25 +33,21 @@ pub trait Bounds<T> {
     fn rbound(&self) -> Option<Bound> {
         self.right().map(|v| v.bound)
     }
-
 }
 
 impl<T: Clone> Bounds<T> for FiniteInterval<T> {
-
     fn bound(&self, side: Side) -> Option<IVal<T>> {
         match self {
             Self::Empty => None,
             Self::NonZero(left, right) => match side {
                 Side::Left => Some(left.clone()),
-                Side::Right => Some(right.clone())
-            }
+                Side::Right => Some(right.clone()),
+            },
         }
     }
-
 }
 
 impl<T: Clone> Bounds<T> for HalfInterval<T> {
-
     fn bound(&self, side: Side) -> Option<IVal<T>> {
         if self.side == side {
             Some(self.ival.clone())
@@ -55,11 +55,9 @@ impl<T: Clone> Bounds<T> for HalfInterval<T> {
             None
         }
     }
-
 }
 
 impl<T: Clone> Bounds<T> for Interval<T> {
-
     fn bound(&self, side: Side) -> Option<IVal<T>> {
         match self {
             Self::Infinite => None,
@@ -70,7 +68,6 @@ impl<T: Clone> Bounds<T> for Interval<T> {
 }
 
 impl<T: Clone + Eq + Ord> Bounds<T> for IntervalSet<T> {
-
     fn bound(&self, side: Side) -> Option<IVal<T>> {
         let mut result = None;
 
@@ -80,14 +77,13 @@ impl<T: Clone + Eq + Ord> Bounds<T> for IntervalSet<T> {
                 // any None implies an infinite bound
                 return None;
             }
-            
+
             result = match result {
                 None => candidate,
                 Some(result) => Some(match side {
                     Side::Left => IVal::min_left(&result, &candidate.unwrap()),
-                    Side::Right => IVal::max_right(&result, &candidate.unwrap())
-                }
-                )
+                    Side::Right => IVal::max_right(&result, &candidate.unwrap()),
+                }),
             }
         }
         result

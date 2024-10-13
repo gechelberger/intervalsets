@@ -67,7 +67,6 @@ impl<T: Copy> IVal<T> {
 }
 
 impl<T: Clone + PartialOrd> IVal<T> {
-
     pub fn min_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Left, &b.value) {
             a.clone()
@@ -102,7 +101,6 @@ impl<T: Clone + PartialOrd> IVal<T> {
 }
 
 impl<T: PartialOrd> IVal<T> {
-
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.bound {
@@ -118,7 +116,6 @@ impl<T: PartialOrd> IVal<T> {
 }
 
 impl<T: Numeric + Copy> IVal<T> {
-
     pub fn normalized(self, side: Side) -> Self {
         if !T::numeric_set().in_integer() {
             return self;
@@ -127,9 +124,9 @@ impl<T: Numeric + Copy> IVal<T> {
         match self.bound {
             Bound::Open => match side {
                 Side::Left => Self::new(Bound::Closed, self.value + T::one()),
-                Side::Right => Self::new(Bound::Closed, self.value - T::one())
+                Side::Right => Self::new(Bound::Closed, self.value - T::one()),
             },
-            Bound::Closed => self
+            Bound::Closed => self,
         }
     }
 }
@@ -178,10 +175,7 @@ where
     }
 }
 
-
 #[cfg(test)]
 mod test {
     use super::*;
-
-    
 }
