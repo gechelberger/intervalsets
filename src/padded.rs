@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-use crate::{half::HalfInterval, ival::Side, FiniteInterval, Interval};
+use crate::{ival::Side, FiniteInterval, HalfInterval, Interval};
 
 pub trait Padded<T>
 where

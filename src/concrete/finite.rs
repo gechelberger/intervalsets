@@ -1,5 +1,3 @@
-//mod iset;
-
 use crate::ival::*;
 
 /// A fully bounded interval in N, Z, or R.

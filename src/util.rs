@@ -34,3 +34,22 @@ macro_rules! commutative_predicate_impl {
 }
 
 pub(crate) use commutative_predicate_impl;
+
+/*
+#[derive(Debug, PartialEq, Eq, PartialOrd)]
+pub(crate) struct UncheckedOrd<T: Eq + PartialOrd> {
+    inner: T,
+}
+
+impl<T: Eq + PartialOrd + std::fmt::Debug> Ord for UncheckedOrd<T> {
+    fn cmp(&self, rhs: &Self) -> std::cmp::Ordering {
+        match self.inner.partial_cmp(&rhs.inner) {
+            None => panic!(
+                "Can't sort elements without ordering {:?} <> {:?}",
+                self.inner, rhs.inner
+            ),
+            Some(ordering) => ordering,
+        }
+    }
+}
+*/

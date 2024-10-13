@@ -7,34 +7,39 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-pub mod finite;
-pub mod half;
-pub mod infinite;
+// concrete types
+pub mod concrete;
 pub mod ival;
-pub(crate) mod util;
 
-// traits
+// invariant traits
+pub mod bounds;
 pub mod empty;
 pub mod from;
 mod normalize;
-
-pub mod bounds;
-pub mod complement;
-pub mod contains;
-pub mod intersection;
-pub mod intersects;
-pub mod merged;
 pub mod numeric;
 pub mod partial_ord;
 pub mod sizeable;
+
+// operation traits
+pub mod complement;
+pub mod intersection;
+pub mod merged;
 pub mod union;
 
 pub mod padded;
 pub mod shifted;
 
-pub use finite::FiniteInterval;
-pub use half::HalfInterval;
-pub use infinite::Interval;
+// predicate traits
+pub mod contains;
+pub mod intersects;
+
+pub(crate) mod util;
+
+// reexports / public APIs
+pub use concrete::finite::FiniteInterval;
+pub use concrete::half::HalfInterval;
+pub use concrete::interval::Interval;
+pub use concrete::set::IntervalSet;
 
 pub use normalize::Normalize;
 

@@ -2,7 +2,7 @@ use std::ops::{Add, Sub};
 
 use num::Zero;
 
-use crate::{half::HalfInterval, infinite::IntervalSet, FiniteInterval, Interval};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
 pub enum ISize<T> {

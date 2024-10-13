@@ -1,7 +1,7 @@
-use crate::infinite::{Interval, IntervalSet};
 use crate::merged::Merged;
 use crate::util::commutative_op_impl;
 use crate::{FiniteInterval, HalfInterval};
+use crate::{Interval, IntervalSet};
 
 pub trait Union<Rhs = Self> {
     type Output;

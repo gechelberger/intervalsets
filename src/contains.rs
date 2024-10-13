@@ -1,7 +1,6 @@
 use crate::empty::MaybeEmpty;
-use crate::infinite::{Interval, IntervalSet};
 use crate::ival::Side;
-use crate::{half::HalfInterval, FiniteInterval};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// A trait to determine whether one item fully contains another.
 /// Contains is not associative.
@@ -192,7 +191,7 @@ mod tests {
         let interval = Interval::closed(-50, 50);
         let candidate = Interval::closed(a, b);
 
-        assert_eq!(interval.contains(&candidate), a < b && -50 <= a && b <= 50)
+        assert_eq!(interval.contains(&candidate), a <= b && -50 <= a && b <= 50)
     }
 
     #[quickcheck]

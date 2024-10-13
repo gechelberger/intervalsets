@@ -1,6 +1,6 @@
 use std::ops::Add;
 
-use crate::{half::HalfInterval, FiniteInterval, Interval};
+use crate::{FiniteInterval, HalfInterval, Interval};
 
 pub trait Shifted<T> {
     fn shifted(&self, amount: T) -> Self;

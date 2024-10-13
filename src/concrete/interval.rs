@@ -1,11 +1,6 @@
-use std::ops::Sub;
-
-use num::Zero;
-
 use crate::{
-    half::HalfInterval,
     ival::{Bound, IVal, Side},
-    FiniteInterval,
+    FiniteInterval, HalfInterval,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -191,50 +186,6 @@ where
     }
 
     */
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IntervalSet<T> {
-    pub intervals: Vec<Interval<T>>,
-}
-
-#[allow(dead_code)]
-impl<T: Copy + PartialOrd + Zero + Sub<Output = T>> IntervalSet<T> {
-    fn new() -> Self {
-        Self { intervals: vec![] }
-    }
-
-    fn complement(&self) -> Self {
-        // complement of all sub intervals
-        // then folded intersection of those?
-        let mut cloned = self.clone();
-        cloned.complement_mut();
-        cloned
-    }
-
-    fn complement_mut(&mut self) -> &mut Self {
-        self
-    }
-
-    fn union(&mut self, other: &Self) -> &Self {
-        todo!()
-    }
-
-    fn union_interval(&mut self, other: &Interval<T>) -> &Self {
-        todo!()
-    }
-
-    fn difference(&self, rhs: &Self) -> Self {
-        let mut cloned = self.clone();
-        cloned.difference_mut(rhs);
-        cloned
-    }
-
-    fn difference_mut(&mut self, rhs: &Self) -> &Self {
-        //self.intersection_mut(rhs.complement());
-        //self
-        todo!()
-    }
 }
 
 #[cfg(test)]

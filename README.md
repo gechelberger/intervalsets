@@ -30,6 +30,7 @@ cargo hook
 * more formal concepts of measure
     * lebesgue
     * counting
+* contiguity between disjoint sets?
 
 # traits
 * Difference

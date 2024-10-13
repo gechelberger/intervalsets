@@ -1,13 +1,16 @@
 use crate::{
-    half::HalfInterval,
-    infinite::IntervalSet,
     ival::{Bound, IVal, Side},
-    FiniteInterval, Interval,
+    FiniteInterval, HalfInterval, Interval, IntervalSet,
 };
 
 /// The `Bounds` trait provides safe accessors for the boundary conditions
 /// of any interval that implements it.
 pub trait Bounds<T> {
+    /// Get the left or right bound if it exists.
+    ///
+    /// Both Empty and Infinite bounds are None.
+    /// In order to distinguish between them, use
+    /// the MaybeEmpty trait to check for emptiness.
     fn bound(&self, side: Side) -> Option<IVal<T>>;
 
     fn left(&self) -> Option<IVal<T>> {
@@ -73,9 +76,10 @@ impl<T: Clone + Eq + Ord> Bounds<T> for IntervalSet<T> {
 
         for itv in self.intervals.iter() {
             let candidate = itv.bound(side);
+
+            // any None implies an infinite bound
             candidate.as_ref()?;
             //if candidate.is_none() {
-            // any None implies an infinite bound
             //    return None;
             //}
 

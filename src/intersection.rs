@@ -1,8 +1,8 @@
-use crate::finite::FiniteInterval;
-use crate::infinite::{Interval, IntervalSet};
 use crate::ival::{IVal, Side};
 use crate::util::commutative_op_impl;
+use crate::FiniteInterval;
 use crate::HalfInterval;
+use crate::{Interval, IntervalSet};
 
 use crate::contains::Contains;
 

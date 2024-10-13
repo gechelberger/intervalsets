@@ -1,4 +1,4 @@
-use crate::{half::HalfInterval, infinite::IntervalSet, FiniteInterval, Interval};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 impl<T> From<FiniteInterval<T>> for Interval<T> {
     fn from(value: FiniteInterval<T>) -> Self {

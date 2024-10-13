@@ -4,7 +4,7 @@
 ///
 /// HalfInterval can not be empty so we shouldn't need it and can
 /// just skip strait to determinite functions for it.
-use crate::{infinite::IntervalSet, FiniteInterval, Interval};
+use crate::{FiniteInterval, Interval, IntervalSet};
 
 pub(crate) trait MaybeEmpty {
     fn is_empty(&self) -> bool;
