@@ -15,9 +15,7 @@ impl<T: Copy + PartialOrd> Union<Self> for FiniteInterval<T> {
     fn union(&self, rhs: &Self) -> Self::Output {
         match self.merged(rhs) {
             Some(interval) => interval.into(),
-            None => IntervalSet {
-                intervals: vec![self.clone().into(), rhs.clone().into()],
-            },
+            None => IntervalSet::new(vec![self.clone().into(), rhs.clone().into()]),
         }
     }
 }
@@ -28,9 +26,7 @@ impl<T: Copy + PartialOrd> Union<Self> for HalfInterval<T> {
     fn union(&self, rhs: &Self) -> Self::Output {
         match self.merged(rhs) {
             Some(interval) => interval.into(),
-            None => IntervalSet {
-                intervals: vec![self.clone().into(), rhs.clone().into()],
-            },
+            None => IntervalSet::new(vec![self.clone().into(), rhs.clone().into()]),
         }
     }
 }
@@ -41,9 +37,7 @@ impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for FiniteInterval<T> {
     fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
         match self.merged(rhs) {
             Some(interval) => interval.into(),
-            None => IntervalSet {
-                intervals: vec![self.clone().into(), rhs.clone().into()],
-            },
+            None => IntervalSet::new(vec![self.clone().into(), rhs.clone().into()]),
         }
     }
 }
@@ -161,4 +155,14 @@ commutative_op_impl!(
 );
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_finite_union_empty() {
+        assert_eq!(
+            FiniteInterval::<i32>::Empty.union(&FiniteInterval::Empty),
+            FiniteInterval::Empty.into()
+        )
+    }
+}
