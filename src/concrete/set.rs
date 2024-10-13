@@ -1,4 +1,4 @@
-use crate::{empty::MaybeEmpty, intersects::Intersects, numeric::Numeric, Normalize};
+use crate::{empty::MaybeEmpty, intersects::Intersects, merged::Merged, numeric::Numeric};
 
 use super::interval::Interval;
 
@@ -12,6 +12,8 @@ pub struct IntervalSet<T> {
 /// # Invariants
 ///
 /// * All stored intervals are normalized.
+///     * We do not enforce this here because it should be
+///       an invariant of Interval<T> already.
 /// * No stored interval may be the empty set.
 ///     * Emptiness is represented by storing no intervals.
 ///     * Normalized Interval<T> should have a total ordering w/o empty sets.
@@ -25,22 +27,40 @@ impl<T: Copy + PartialOrd + Numeric> IntervalSet<T> {
             return Self::new_unchecked(intervals);
         }
 
+        let mut intervals: Vec<Interval<T>> =
+            intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
+
+        if intervals.is_empty() {
+            return Self::new_unchecked(intervals);
+        }
+
         // O(n*log(n))
-        let intervals = intervals
-            .into_iter()
-            .filter_map(|iv| {
-                if iv.is_empty() {
-                    None
-                } else {
-                    Some(iv.normalized())
+        intervals.sort_by(|a, b| {
+            a.partial_cmp(b)
+                .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
+        });
+
+        let mut merged_sets: Vec<Interval<T>> = Vec::with_capacity(intervals.len());
+        let mut it = intervals.into_iter();
+
+        // empty already checked so there is at least one subset.
+        let mut current = it.next().unwrap();
+        for rhs in it {
+            match current.merged(&rhs) {
+                Some(merged) => {
+                    current = merged;
                 }
-            })
-            .collect();
+                None => {
+                    merged_sets.push(current);
+                    current = rhs;
+                }
+            }
+        }
+        merged_sets.push(current);
 
-        // todo: sort
-        // todo: union
-
-        Self { intervals }
+        Self {
+            intervals: merged_sets,
+        }
     }
 
     fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
@@ -62,5 +82,24 @@ impl<T: Copy + PartialOrd + Numeric> IntervalSet<T> {
         }
 
         true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_invariants() {
+        // has empty member
+        assert!(!IntervalSet::satisfies_invariants(&vec![
+            Interval::<usize>::empty()
+        ]));
+
+        // not disjoint
+        assert!(!IntervalSet::satisfies_invariants(&vec![
+            Interval::closed(5, 10),
+            Interval::closed(8, 12)
+        ]));
     }
 }
