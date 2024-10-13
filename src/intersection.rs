@@ -1,6 +1,7 @@
 use crate::infinite::{Interval, IntervalSet};
 use crate::finite::FiniteInterval;
 use crate::ival::{IVal, Side};
+use crate::util::commutative_impl;
 use crate::HalfInterval;
 
 use crate::contains::Contains;
@@ -51,13 +52,6 @@ impl<T: Copy + PartialOrd> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Intersection<FiniteInterval<T>> for HalfInterval<T> {
-    type Output = FiniteInterval<T>;
-
-    fn intersection(&self, rhs: &FiniteInterval<T>) -> Self::Output {
-        rhs.intersection(self)
-    }
-}
 
 impl<T: Copy + PartialOrd> Intersection<Self> for HalfInterval<T> {
     type Output = Interval<T>;
@@ -115,21 +109,9 @@ impl<T: Copy + PartialOrd> Intersection<Self> for Interval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Intersection<Interval<T>> for FiniteInterval<T> {
-    type Output = Interval<T>;
-
-    fn intersection(&self, rhs: &Interval<T>) -> Self::Output {
-        rhs.intersection(self)
-    }
-}
-
-impl<T: Copy + PartialOrd> Intersection<Interval<T>> for HalfInterval<T> {
-    type Output = Interval<T>;
-
-    fn intersection(&self, rhs: &Interval<T>) -> Self::Output {
-        rhs.intersection(self)
-    }
-}
+commutative_impl!(Intersection, intersection, HalfInterval<T>, FiniteInterval<T>, FiniteInterval<T>);
+commutative_impl!(Intersection, intersection, FiniteInterval<T>, Interval<T>, Interval<T>);
+commutative_impl!(Intersection, intersection, HalfInterval<T>, Interval<T>, Interval<T>);
 
 ////////////////
 
