@@ -10,6 +10,7 @@ pub mod finite;
 pub mod half;
 pub mod infinite;
 pub mod ival;
+pub(crate) mod util;
 
 // traits
 pub mod into;

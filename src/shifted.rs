@@ -31,3 +31,27 @@ impl<T: Shiftable<T>> Shifted<T> for Interval<T> {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_shifted_finite() {
+        let interval = Interval::closed(0, 10);
+
+        assert_eq!(interval.shifted(10), Interval::closed(10, 20));
+        assert_eq!(interval.shifted(10).shifted(10), Interval::closed(20, 30));
+    }
+
+    #[test]
+    fn test_shifted_back_finite() {
+        let offset: i8 = 55;
+        let interval: Interval<i64> = Interval::closed(0, 10);
+
+        let fwd = interval.shifted(offset as i64);
+        let rev = fwd.shifted(-offset as i64);
+        assert_eq!(interval, rev);
+        //assert_eq!(interval.shifted(offset as i64).shifted(-offset as i64), interval);
+    }
+}
