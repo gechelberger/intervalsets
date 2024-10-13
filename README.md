@@ -22,6 +22,7 @@ cargo hook
 * github badges
 * public interface docstrings
 * normalization of intervals for integer types
+* Make the Interval<T> enum accept a Cow<>?
 
 
 # possible features
