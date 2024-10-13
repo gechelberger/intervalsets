@@ -15,15 +15,13 @@ where
     }
 }
 
-trait Paddable<T> = Copy + PartialOrd + Add<Output = T> + Sub<Output = T>;
-
-impl<T: Paddable<T>> Padded<T> for FiniteInterval<T> {
+impl<T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T>> Padded<T> for FiniteInterval<T> {
     fn padded_lr(&self, loffset: T, roffset: T) -> Self {
         self.map_bounds(|left, right| Self::new_unchecked(*left - loffset, *right + roffset))
     }
 }
 
-impl<T: Paddable<T>> Padded<T> for HalfInterval<T> {
+impl<T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T>> Padded<T> for HalfInterval<T> {
     fn padded_lr(&self, left: T, right: T) -> Self {
         match self.side {
             Side::Left => Self::new(self.side, self.ival - left),
@@ -32,7 +30,7 @@ impl<T: Paddable<T>> Padded<T> for HalfInterval<T> {
     }
 }
 
-impl<T: Paddable<T>> Padded<T> for Interval<T> {
+impl<T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T>> Padded<T> for Interval<T> {
     fn padded_lr(&self, left: T, right: T) -> Self {
         match self {
             Self::Infinite => Self::Infinite,

@@ -1,4 +1,5 @@
 use crate::contains::Contains;
+use crate::empty::MaybeEmpty;
 use crate::intersects::Intersects;
 use crate::ival::{IVal, Side};
 use crate::{FiniteInterval, HalfInterval, Interval};
@@ -15,9 +16,15 @@ impl<T: Copy + PartialOrd> Merged<Self> for FiniteInterval<T> {
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
         if self.is_disjoint_from(rhs) {
-            // TODO Adjacency
-
-            return None;
+            // TODO Adjacency?
+            // For T in Real, (0, 1) U [1, 2] => (0, 2]
+            if self.is_empty() {
+                return Some(rhs.clone());
+            } else if rhs.is_empty() {
+                return Some(self.clone());
+            } else {
+                return None;
+            }
         }
 
         self.map(|a_left, a_right| {
@@ -86,8 +93,6 @@ impl<T: Copy + PartialOrd> Merged<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-//////////////////
-
 impl<T: Copy + PartialOrd> Merged<FiniteInterval<T>> for Interval<T> {
     type Output = Interval<T>;
 
@@ -145,7 +150,25 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_finite_contiguous() {
+    fn test_merged_empty() {
+        assert_eq!(
+            FiniteInterval::<i8>::Empty.merged(&FiniteInterval::Empty),
+            Some(FiniteInterval::Empty)
+        );
+
+        assert_eq!(
+            FiniteInterval::<i8>::Empty.merged(&FiniteInterval::closed(0, 10)),
+            Some(FiniteInterval::closed(0, 10))
+        );
+
+        assert_eq!(
+            FiniteInterval::closed(0, 10).merged(&FiniteInterval::Empty),
+            Some(FiniteInterval::closed(0, 10))
+        );
+    }
+
+    #[test]
+    fn test_finite_merged() {
         assert_eq!(
             Interval::open(0, 100).merged(&Interval::open(50, 150)),
             Some(Interval::open(0, 150))

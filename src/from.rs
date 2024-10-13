@@ -14,24 +14,24 @@ impl<T> From<HalfInterval<T>> for Interval<T> {
 
 impl<T> From<Interval<T>> for IntervalSet<T> {
     fn from(value: Interval<T>) -> Self {
-        Self {
-            intervals: vec![value],
+        match value {
+            Interval::Finite(inner) => Self::from(inner),
+            _ => Self::new_unchecked(vec![value]),
         }
     }
 }
 
 impl<T> From<FiniteInterval<T>> for IntervalSet<T> {
     fn from(value: FiniteInterval<T>) -> Self {
-        Self {
-            intervals: vec![value.into()],
+        match value {
+            FiniteInterval::Empty => Self::empty(),
+            _ => Self::new_unchecked(vec![value.into()]),
         }
     }
 }
 
 impl<T> From<HalfInterval<T>> for IntervalSet<T> {
     fn from(value: HalfInterval<T>) -> Self {
-        Self {
-            intervals: vec![value.into()],
-        }
+        Self::new_unchecked(vec![value.into()])
     }
 }

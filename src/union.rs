@@ -15,9 +15,7 @@ impl<T: Copy + PartialOrd> Union<Self> for FiniteInterval<T> {
     fn union(&self, rhs: &Self) -> Self::Output {
         match self.merged(rhs) {
             Some(interval) => interval.into(),
-            None => IntervalSet {
-                intervals: vec![self.clone().into(), rhs.clone().into()],
-            },
+            None => IntervalSet::new(vec![self.clone().into(), rhs.clone().into()]),
         }
     }
 }
@@ -28,9 +26,7 @@ impl<T: Copy + PartialOrd> Union<Self> for HalfInterval<T> {
     fn union(&self, rhs: &Self) -> Self::Output {
         match self.merged(rhs) {
             Some(interval) => interval.into(),
-            None => IntervalSet {
-                intervals: vec![self.clone().into(), rhs.clone().into()],
-            },
+            None => IntervalSet::new(vec![self.clone().into(), rhs.clone().into()]),
         }
     }
 }
@@ -41,9 +37,7 @@ impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for FiniteInterval<T> {
     fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
         match self.merged(rhs) {
             Some(interval) => interval.into(),
-            None => IntervalSet {
-                intervals: vec![self.clone().into(), rhs.clone().into()],
-            },
+            None => IntervalSet::new(vec![self.clone().into(), rhs.clone().into()]),
         }
     }
 }
@@ -161,4 +155,138 @@ commutative_op_impl!(
 );
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_finite_union_empty() {
+        assert_eq!(
+            FiniteInterval::<i32>::Empty.union(&FiniteInterval::Empty),
+            FiniteInterval::Empty.into()
+        )
+    }
+
+    #[test]
+    fn test_finite_union_full() {
+        assert_eq!(
+            FiniteInterval::<i32>::closed(0, 100).union(&FiniteInterval::closed(10, 20)),
+            FiniteInterval::closed(0, 100).into()
+        );
+
+        assert_eq!(
+            FiniteInterval::closed(10, 20).union(&FiniteInterval::closed(0, 100)),
+            FiniteInterval::closed(0, 100).into()
+        );
+    }
+
+    #[test]
+    fn test_finite_union_disjoint() {
+        assert_eq!(
+            FiniteInterval::<i32>::closed(0, 10).union(&FiniteInterval::closed(100, 110)),
+            IntervalSet::<i32>::new_unchecked(vec![
+                Interval::closed(0, 10),
+                Interval::closed(100, 110),
+            ])
+        );
+
+        assert_eq!(
+            FiniteInterval::<i32>::closed(100, 110).union(&FiniteInterval::closed(0, 10)),
+            IntervalSet::<i32>::new_unchecked(vec![
+                Interval::closed(0, 10),
+                Interval::closed(100, 110),
+            ])
+        );
+    }
+
+    #[test]
+    fn test_set_union_infinite() {
+        let a = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 10),
+            Interval::closed_unbound(100),
+        ]);
+
+        let b = IntervalSet::new(vec![
+            Interval::closed(-500, -400),
+            Interval::closed(-350, -300),
+            Interval::closed(-150, 150),
+            Interval::closed(300, 500),
+        ]);
+
+        assert_eq!(a.union(&b), Interval::unbound().into());
+        assert_eq!(b.union(&a), Interval::unbound().into());
+    }
+
+    #[test]
+    fn test_set_union() {
+        let a = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 10),
+            Interval::closed(100, 110),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        let b = IntervalSet::new(vec![
+            Interval::closed(400, 410),
+            Interval::closed_unbound(1000),
+        ]);
+
+        let c = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 10),
+            Interval::closed(100, 110),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+            Interval::closed(400, 410),
+            Interval::closed_unbound(1000),
+        ]);
+
+        assert_eq!(a.union(&b), c);
+        assert_eq!(b.union(&a), c);
+    }
+
+    #[test]
+    fn test_set_union_finite() {
+        let a = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 10),
+            Interval::closed(100, 110),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        let b = FiniteInterval::closed(5, 200);
+
+        let c = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        assert_eq!(a.union(&b), c);
+        assert_eq!(b.union(&a), c);
+    }
+
+    #[test]
+    fn test_set_union_half() {
+        let a = IntervalSet::new(vec![
+            Interval::unbound_closed(-100),
+            Interval::closed(0, 10),
+            Interval::closed(100, 110),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        let b = HalfInterval::unbound_closed(150);
+
+        let c = IntervalSet::new(vec![
+            Interval::unbound_closed(150),
+            Interval::closed(200, 210),
+            Interval::closed(300, 310),
+        ]);
+
+        assert_eq!(a.union(&b), c);
+        assert_eq!(b.union(&a), c);
+    }
+}

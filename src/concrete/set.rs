@@ -38,13 +38,13 @@ impl<T: Copy + PartialOrd> IntervalSet<T> {
 
         // most of the time intervals should already by sorted
         // O(n)
-        if !intervals.is_sorted() {
-            // O(n*log(n))
-            intervals.sort_by(|a, b| {
+        //if !intervals.is_sorted() {
+        // O(n*log(n))
+        intervals.sort_by(|a, b| {
                 a.partial_cmp(b)
                     .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
             });
-        }
+        //}
 
         Self {
             intervals: Self::merge_sorted(intervals),
@@ -73,10 +73,6 @@ impl<T: Copy + PartialOrd> IntervalSet<T> {
         merged_sets
     }
 
-    pub fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
-        Self { intervals }
-    }
-
     pub fn satisfies_invariants(intervals: &Vec<Interval<T>>) -> bool {
         let mut current = &Interval::empty();
         for interval in intervals {
@@ -92,6 +88,20 @@ impl<T: Copy + PartialOrd> IntervalSet<T> {
         }
 
         true
+    }
+}
+
+impl<T> IntervalSet<T> {
+    /// Create a new empty IntervalSet
+    pub fn empty() -> Self {
+        Self { intervals: vec![] }
+    }
+
+    /// Create a new IntervalSet directly from a Vec<Interval<_>>.
+    ///
+    /// If invariants are not maintained, behavior is undefined.
+    pub fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
+        Self { intervals }
     }
 
     /// The number of distinct intervals/subsets in this set.
