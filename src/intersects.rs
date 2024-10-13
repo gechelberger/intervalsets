@@ -1,4 +1,7 @@
-use crate::{contains::Contains, ival::Side, FiniteInterval, HalfInterval, Interval};
+use crate::{
+    contains::Contains, ival::Side, util::commutative_predicate_impl, FiniteInterval, HalfInterval,
+    Interval,
+};
 
 /// Intersects is commutative
 pub trait Intersects<Rhs = Self> {
@@ -22,18 +25,6 @@ impl<T: Copy + PartialOrd> Intersects<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Intersects<HalfInterval<T>> for FiniteInterval<T> {
-    fn intersects(&self, rhs: &HalfInterval<T>) -> bool {
-        rhs.intersects(self)
-    }
-}
-
-impl<T: Copy + PartialOrd> Intersects<Interval<T>> for FiniteInterval<T> {
-    fn intersects(&self, rhs: &Interval<T>) -> bool {
-        rhs.intersects(self)
-    }
-}
-
 impl<T: Copy + PartialOrd> Intersects<FiniteInterval<T>> for HalfInterval<T> {
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
         rhs.map_or(false, |left, right| {
@@ -46,12 +37,6 @@ impl<T: Copy + PartialOrd> Intersects<Self> for HalfInterval<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         let lhs = self;
         lhs.contains(&rhs.ival.value) || rhs.contains(&lhs.ival.value)
-    }
-}
-
-impl<T: Copy + PartialOrd> Intersects<Interval<T>> for HalfInterval<T> {
-    fn intersects(&self, rhs: &Interval<T>) -> bool {
-        rhs.intersects(self)
     }
 }
 
@@ -70,7 +55,7 @@ impl<T: Copy + PartialOrd> Intersects<HalfInterval<T>> for Interval<T> {
         match self {
             Self::Infinite => true,
             Self::Half(lhs) => lhs.intersects(rhs),
-            Self::Finite(lhs) => lhs.intersects(rhs),
+            Self::Finite(lhs) => rhs.intersects(lhs),
         }
     }
 }
@@ -84,6 +69,10 @@ impl<T: Copy + PartialOrd> Intersects<Self> for Interval<T> {
         }
     }
 }
+
+commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, HalfInterval<T>);
+commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, Interval<T>);
+commutative_predicate_impl!(Intersects, intersects, HalfInterval<T>, Interval<T>);
 
 #[cfg(test)]
 mod test {

@@ -75,7 +75,7 @@ impl<T: Clone + Eq + Ord> Bounds<T> for IntervalSet<T> {
             let candidate = itv.bound(side);
             candidate.as_ref()?;
             //if candidate.is_none() {
-                // any None implies an infinite bound
+            // any None implies an infinite bound
             //    return None;
             //}
 

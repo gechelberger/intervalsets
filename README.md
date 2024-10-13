@@ -15,7 +15,7 @@ cargo hook
 # TODO:
 * interval sets
 * thiserror error handling?
-* get rid of Copy trait bound for T on Interval
+* get rid of Copy trait bound for T on Interval?
 * unit test coverage
 * continuous integration with github
 * github badges
@@ -28,22 +28,15 @@ cargo hook
 * optional library features 
     * define Normalize BigInt? Decimal?
 * more formal concepts of measure
-    * lebesgue?
+    * lebesgue
     * counting
 
 # traits
-* Normalize
-* Contains?
-* SetOperations?
-* Difference?
-* AdjacentTo? Connects?
+* Difference
+* SymmetricDifference
+* AdjacentTo? Connects? 
+    * [0, 1] (1, 2)
 
-### naming?
-* Bound => BoundCond?
-* IVal => Bound?
-
-### notes
-f32:NAN and f64::NAN break things... not sure how best to deal with that.
 
 ### Supported Types
 
@@ -56,6 +49,9 @@ support for types of interval boundaries but
 intervals need to be able to distinguish between
 integer types and broader ones, so an implementation
 of `Numeric` must be provided.
+
+This is also important for concepts of Measure
+if we ever get around to supporting those.
 
 ```
 pub struct MyRationalNum {}

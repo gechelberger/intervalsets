@@ -1,6 +1,6 @@
 use crate::contiguous::Contiguous;
 use crate::infinite::{Interval, IntervalSet};
-use crate::util::commutative_impl;
+use crate::util::commutative_op_impl;
 use crate::{FiniteInterval, HalfInterval};
 
 pub trait Union<Rhs = Self> {
@@ -85,15 +85,15 @@ impl<T: Copy + PartialOrd> Union<Self> for Interval<T> {
     }
 }
 
-commutative_impl!(
+commutative_op_impl!(
     Union,
     union,
     HalfInterval<T>,
     FiniteInterval<T>,
     IntervalSet<T>
 );
-commutative_impl!(Union, union, HalfInterval<T>, Interval<T>, IntervalSet<T>);
-commutative_impl!(Union, union, FiniteInterval<T>, Interval<T>, IntervalSet<T>);
+commutative_op_impl!(Union, union, HalfInterval<T>, Interval<T>, IntervalSet<T>);
+commutative_op_impl!(Union, union, FiniteInterval<T>, Interval<T>, IntervalSet<T>);
 
 ////////////
 

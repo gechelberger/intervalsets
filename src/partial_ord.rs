@@ -57,6 +57,7 @@ fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
     }
 }
 
+/// binary cmp for two types that impl the Bounds trait
 fn impl_cmp<U, T>(lhs: &U, rhs: &U) -> std::cmp::Ordering
 where
     T: Copy + PartialOrd,

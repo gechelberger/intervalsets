@@ -1,7 +1,7 @@
 use crate::finite::FiniteInterval;
 use crate::infinite::{Interval, IntervalSet};
 use crate::ival::{IVal, Side};
-use crate::util::commutative_impl;
+use crate::util::commutative_op_impl;
 use crate::HalfInterval;
 
 use crate::contains::Contains;
@@ -109,21 +109,21 @@ impl<T: Copy + PartialOrd> Intersection<Self> for Interval<T> {
     }
 }
 
-commutative_impl!(
+commutative_op_impl!(
     Intersection,
     intersection,
     HalfInterval<T>,
     FiniteInterval<T>,
     FiniteInterval<T>
 );
-commutative_impl!(
+commutative_op_impl!(
     Intersection,
     intersection,
     FiniteInterval<T>,
     Interval<T>,
     Interval<T>
 );
-commutative_impl!(
+commutative_op_impl!(
     Intersection,
     intersection,
     HalfInterval<T>,
