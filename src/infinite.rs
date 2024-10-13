@@ -29,6 +29,10 @@ impl<T> Interval<T>
 where
     T: Copy + PartialOrd,
 {
+    pub fn empty() -> Self {
+        FiniteInterval::Empty.into()
+    }
+
     /// (a, b) = { x in T | a < x < b }
     pub fn open(left: T, right: T) -> Self {
         FiniteInterval::new(
@@ -82,6 +86,10 @@ where
     /// [a, ->) = {x in T | a <= x }
     pub fn closed_unbound(left: T) -> Self {
         HalfInterval::new(Side::Left, IVal::new(Bound::Closed, left)).into()
+    }
+
+    pub fn unbound() -> Self {
+        Self::Infinite
     }
 
     pub fn lval_unchecked(&self) -> T {
@@ -159,34 +167,7 @@ where
         }
     }
 
-    fn union_finite_finite(a: &(IVal<T>, IVal<T>), b: &(IVal<T>, IVal<T>)) -> Vec<Self> {
-        let (a_left, a_right) = a;
-        let (b_left, b_right) = b;
-
-        // must check from both left and right to ensure open/closed bounds are properly handled
-        let overlapping = a_left.contains(Side::Left, &b_right.value)
-            && b_left.contains(Side::Left, &a_right.value)
-            && a_right.contains(Side::Right, &b_left.value)
-            && b_right.contains(Side::Right, &a_left.value);
-
-        if !overlapping {
-            vec![Interval::Finite(a.clone()), Interval::Finite(b.clone())]
-        } else {
-            let left = if a_left.contains(Side::Left, &b_left.value) {
-                a_left
-            } else {
-                b_left
-            };
-
-            let right = if a_right.contains(Side::Right, &b_right.value) {
-                a_right
-            } else {
-                b_right
-            };
-
-            vec![Interval::new_finite(left.clone(), right.clone())]
-        }
-    }
+    
 
     fn union_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Vec<Self> {
         let (a_left, a_right) = finite;
@@ -217,81 +198,6 @@ where
         }
     }
 
-    pub fn intersection(&self, other: &Interval<T>) -> Self {
-        match (self, other) {
-            (Self::Empty, _) => Self::Empty,
-            (_, Self::Empty) => Self::Empty,
-            (Self::Infinite, _) => other.clone(),
-            (_, Self::Infinite) => self.clone(),
-            (Self::Half(lhs), Self::Half(rhs)) => Self::intersection_half_half(lhs, rhs),
-            (Self::Finite(lhs), Self::Finite(rhs)) => Self::intersection_finite_finite(lhs, rhs),
-            (Self::Half(lhs), Self::Finite(rhs)) => Self::intersection_finite_half(rhs, lhs),
-            (Self::Finite(lhs), Self::Half(rhs)) => Self::intersection_finite_half(lhs, rhs),
-        }
-    }
-
-    fn intersection_half_half(a: &(Side, IVal<T>), b: &(Side, IVal<T>)) -> Self {
-        let (a_side, a_ival) = a;
-        let (b_side, b_ival) = b;
-
-        if a_side == b_side {
-            if a_ival.contains(*a_side, &b_ival.value) {
-                return Interval::Half(*b);
-            } else {
-                return Interval::Half(*a);
-            }
-        } else {
-            match a_side {
-                Side::Left => Self::new_finite(*a_ival, *b_ival),
-                Side::Right => Self::new_finite(*b_ival, *a_ival),
-            }
-        }
-    }
-
-    fn intersection_finite_finite(a: &(IVal<T>, IVal<T>), b: &(IVal<T>, IVal<T>)) -> Self {
-        let (a_left, a_right) = a;
-        let (b_left, b_right) = b;
-
-        let new_left = if a_left.contains(Side::Left, &b_left.value) {
-            *b_left
-        } else {
-            *a_left
-        };
-
-        let new_right = if a_right.contains(Side::Right, &b_right.value) {
-            *b_right
-        } else {
-            *a_right
-        };
-
-        // new() will clean up empty sets where left & right have violated bounds
-        Self::new_finite(new_left, new_right)
-    }
-
-    /// Three cases:
-    /// 1) half interval sees left & right => full finite result
-    /// 2) half interval sees 1 => (half -> right) or (left, half)
-    /// 3) half interval sees 0 => Empty
-    fn intersection_finite_half(finite: &(IVal<T>, IVal<T>), half: &(Side, IVal<T>)) -> Self {
-        let finite = [finite.0, finite.1];
-        let (h_side, h_ival) = half;
-
-        let n_seen = finite.iter()
-            .filter(|ival| h_ival.contains(*h_side, &ival.value))
-            .count();
-
-        if n_seen == 2 {
-            Self::new_finite(finite[0].clone(), finite[1].clone())
-        } else if n_seen == 1 {
-            match h_side {
-                Side::Left => Self::new_finite(*h_ival, finite[1].clone()),
-                Side::Right => Self::new_finite(finite[0].clone(), *h_ival),
-            }
-        } else {
-            Self::Empty
-        }
-        
-    }
     */
 
 }
@@ -383,53 +289,9 @@ mod tests {
         let complement = &interval.complement()[0];
 
         assert_eq!(interval.contains(&x), !complement.contains(&x));
-    }
-
-    #[quickcheck]
-    fn test_half_interval_intersection_i8(x: i8) {
-        let interval: Interval<i8> =
-            Interval::open_unbound(10).intersection(&Interval::closed_unbound(20));
-        assert_eq!(interval.contains(&x), x >= 20);
-
-        let interval: Interval<i8> =
-            Interval::unbound_closed(10).intersection(&Interval::unbound_open(0));
-        assert_eq!(interval.contains(&x), x < 0);
-
-        let interval: Interval<i8> =
-            Interval::unbound_closed(100).intersection(&Interval::closed_unbound(0));
-        assert_eq!(interval.contains(&x), 0 <= x && x <= 100);
-
-        let interval: Interval<i8> =
-            Interval::unbound_closed(0).intersection(&Interval::open_unbound(0));
-        assert_eq!(interval.contains(&x), false);
-    }
-
-    #[quickcheck]
-    fn test_finite_intersection_i8(x: i8) {
-        let interval: Interval<i8> = Interval::open(0, 10).intersection(&Interval::open(5, 15));
-        assert_eq!(interval.contains(&x), 5 < x && x < 10);
-    }
-
-    #[quickcheck]
-    fn test_finite_half_intersection_i8(x: i8) {
-        let interval: Interval<i8> = Interval::open(0, 10).intersection(&Interval::closed_unbound(5));
-        assert_eq!(interval.contains(&x), 5 <= x && x < 10);
-        
-        let interval: Interval<i8> = Interval::closed(0, 10).intersection(&Interval::open_unbound(0));
-        assert_eq!(interval.contains(&x), 0 < x && x <= 10);
-    }
+    } 
 
     */
 
-    #[test]
-    fn test_normalized_integers() {
-        //let interval = Interval::open(50.0, 60.0);
-        //let foo = interval.normalized();
-
-        assert_eq!(Interval::open(0, 10).normalized(), Interval::closed(1, 9));
-        assert_eq!(Interval::open_closed(0, 10).normalized(), Interval::closed(1, 10));
-        assert_eq!(Interval::unbound_open(5 as i8).normalized(), Interval::unbound_closed(4 as i8));
-        assert_eq!(Interval::unbound_closed(5 as i8).normalized(), Interval::unbound_closed(5 as i8));
-        assert_eq!(Interval::open_unbound(5 as i8).normalized(), Interval::closed_unbound(6 as i8));
-    }
+    
 }
