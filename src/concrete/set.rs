@@ -38,13 +38,13 @@ impl<T: Copy + PartialOrd> IntervalSet<T> {
 
         // most of the time intervals should already by sorted
         // O(n)
-        if !intervals.is_sorted() {
-            // O(n*log(n))
-            intervals.sort_by(|a, b| {
+        //if !intervals.is_sorted() {
+        // O(n*log(n))
+        intervals.sort_by(|a, b| {
                 a.partial_cmp(b)
                     .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
             });
-        }
+        //}
 
         Self {
             intervals: Self::merge_sorted(intervals),

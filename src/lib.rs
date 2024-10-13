@@ -1,4 +1,3 @@
-#![feature(trait_alias)]
 #![allow(unused_variables)] // for now
 
 #[cfg(test)]
