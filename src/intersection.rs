@@ -299,7 +299,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_finite_interval_overlapped_empty() {
+    fn test_finite_intersection_empty() {
         // (---A---) (---B---)
         assert_eq!(
             FiniteInterval::open(0, 10).intersection(&FiniteInterval::open(20, 30)),
@@ -321,7 +321,7 @@ mod tests {
     }
 
     #[test]
-    fn test_finite_interval_overlapped_fully() {
+    fn test_finite_intersection_fully() {
         // (---A---)
         //   (-B-)
         assert_eq!(
@@ -352,7 +352,7 @@ mod tests {
     }
 
     #[test]
-    fn test_finite_interval_overlapped() {
+    fn test_finite_intersection_partial() {
         // |---A---|
         //     |---B---|
         assert_eq!(
@@ -380,6 +380,44 @@ mod tests {
             FiniteInterval::open(0, 10).intersection(&FiniteInterval::closed(5, 15)),
             FiniteInterval::closedopen(5, 10)
         );
+    }
+
+    #[test]
+    fn test_half_intersection_same_side() {
+        // [--->
+        //    [--->
+        assert_eq!(
+            HalfInterval::closed_unbound(0).intersection(&HalfInterval::closed_unbound(50)),
+            HalfInterval::closed_unbound(50).into()
+        );
+
+        //    [--->
+        // [--->
+        assert_eq!(
+            HalfInterval::closed_unbound(50).intersection(&HalfInterval::closed_unbound(0)),
+            HalfInterval::closed_unbound(50).into()
+        );
+
+        // <----]
+        // <-------]
+        assert_eq!(
+            HalfInterval::unbound_closed(0).intersection(&HalfInterval::unbound_closed(50)),
+            HalfInterval::unbound_closed(0).into()
+        );
+
+        // <-------]
+        // <----]
+        assert_eq!(
+            HalfInterval::unbound_closed(50).intersection(&HalfInterval::unbound_closed(0)),
+            HalfInterval::unbound_closed(0).into()
+        );
+
+        // [----->
+        // (----->
+        assert_eq!(
+            HalfInterval::closed_unbound(0).intersection(&HalfInterval::open_unbound(0)),
+            HalfInterval::open_unbound(0).into()
+        )
     }
 
     #[test]
