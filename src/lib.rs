@@ -14,6 +14,8 @@ pub mod ival;
 // traits
 pub mod into;
 mod normalize;
+pub mod empty;
+
 pub mod intersects;
 pub mod intersection; 
 pub mod union;
@@ -23,6 +25,7 @@ pub mod contains;
 pub mod sizeable;
 pub mod bounds;
 pub mod numeric;
+//pub mod partial_ord;
 
 pub mod shifted;
 pub mod padded;

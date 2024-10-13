@@ -1,7 +1,7 @@
 
 # TODO:
 * interval sets
-* thiserror error handling
+* thiserror error handling?
 * get rid of Copy trait bound for T on Interval
 * unit test coverage
 * continuous integration with github
@@ -9,16 +9,21 @@
 * public interface docstrings
 * normalization of intervals for integer types
 
+
 # possible features
 * random generator over defined interval?
 * optional library features 
     * define Normalize BigInt? Decimal?
+* more formal concepts of measure
+    * lebesgue?
+    * counting
 
 # traits
 * Normalize
 * Contains?
 * SetOperations?
 * Difference?
+* AdjacentTo? Connects?
 
 ### naming?
 * Bound => BoundCond?
