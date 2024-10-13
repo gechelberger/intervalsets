@@ -39,11 +39,11 @@ impl<T: Copy + PartialOrd> Intersection<HalfInterval<T>> for FiniteInterval<T> {
                 .count();
 
             if n_seen == 2 {
-                Self::new(left.clone(), right.clone())
+                Self::new(*left, *right)
             } else if n_seen == 1 {
                 match rhs.side {
-                    Side::Left => Self::new(rhs.ival, right.clone()),
-                    Side::Right => Self::new(left.clone(), rhs.ival),
+                    Side::Left => Self::new(rhs.ival, *right),
+                    Side::Right => Self::new(*left, rhs.ival),
                 }
             } else {
                 Self::Empty
@@ -58,9 +58,9 @@ impl<T: Copy + PartialOrd> Intersection<Self> for HalfInterval<T> {
     fn intersection(&self, rhs: &Self) -> Self::Output {
         if self.side == rhs.side {
             if self.contains(&rhs.ival.value) {
-                return rhs.clone().into();
+                rhs.clone().into()
             } else {
-                return self.clone().into();
+                self.clone().into()
             }
         } else {
             // new() handles degenerate cases => Empty

@@ -62,14 +62,14 @@ impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for HalfInterval<T> {
             FiniteInterval::NonZero(left, right) => {
                 let n_seen = [left, right]
                     .into_iter()
-                    .map(|ival| self.contains(&ival.value))
+                    .filter(|ival| self.contains(&ival.value))
                     .count();
 
                 match n_seen {
                     2 => Some(self.clone().into()),
                     1 => match self.side {
-                        Side::Left => Some(HalfInterval::new(self.side, left.clone()).into()),
-                        Side::Right => Some(HalfInterval::new(self.side, right.clone()).into()),
+                        Side::Left => Some(HalfInterval::new(self.side, *left).into()),
+                        Side::Right => Some(HalfInterval::new(self.side, *right).into()),
                     },
                     _ => None, // disjoint
                 }
