@@ -2,7 +2,7 @@ use crate::{half::HalfInterval, infinite::IntervalSet, ival::{Bound, IVal, Side}
 
 /// The `Bounds` trait provides safe accessors for the boundary conditions
 /// of any interval that implements it.
-trait Bounds<T> {
+pub trait Bounds<T> {
 
     fn bound(&self, side: Side) -> Option<IVal<T>>;
 
@@ -44,19 +44,6 @@ impl<T: Clone> Bounds<T> for FiniteInterval<T> {
         }
     }
 
-    fn left(&self) -> Option<IVal<T>> {
-        match self {
-            Self::Empty => None,
-            Self::NonZero(left, _) => Some(left.clone())
-        }
-    }
-
-    fn right(&self) -> Option<IVal<T>> {
-        match self {
-            Self::Empty => None,
-            Self::NonZero(_, right) => Some(right.clone())
-        }
-    }
 }
 
 impl<T: Clone> Bounds<T> for HalfInterval<T> {
