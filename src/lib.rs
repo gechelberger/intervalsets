@@ -25,7 +25,7 @@ pub mod contains;
 pub mod sizeable;
 pub mod bounds;
 pub mod numeric;
-//pub mod partial_ord;
+pub mod partial_ord;
 
 pub mod shifted;
 pub mod padded;

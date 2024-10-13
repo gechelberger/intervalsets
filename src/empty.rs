@@ -10,13 +10,13 @@ pub(crate) trait MaybeEmpty {
     fn is_empty(&self) -> bool;
 }
 
-impl<T> MaybeEmpty for FiniteInterval<T> {
+impl<T: PartialEq> MaybeEmpty for FiniteInterval<T> {
     fn is_empty(&self) -> bool {
         *self == FiniteInterval::Empty
     }
 }
 
-impl<T> MaybeEmpty for Interval<T> {
+impl<T: PartialEq> MaybeEmpty for Interval<T> {
     fn is_empty(&self) -> bool {
         match self {
             Self::Finite(finite) => finite.is_empty(),
