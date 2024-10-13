@@ -5,18 +5,20 @@ use crate::{
     FiniteInterval, HalfInterval, Interval,
 };
 
-/// Union for two intervals that are not disjoint
-pub trait Contiguous<Rhs = Self> {
+/// Union for two intervals that are contiguous.
+pub trait Merged<Rhs = Self> {
     type Output;
 
-    fn contiguous(&self, rhs: &Rhs) -> Option<Self::Output>;
+    fn merged(&self, rhs: &Rhs) -> Option<Self::Output>;
 }
 
-impl<T: Copy + PartialOrd> Contiguous<Self> for FiniteInterval<T> {
+impl<T: Copy + PartialOrd> Merged<Self> for FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
-    fn contiguous(&self, rhs: &Self) -> Option<Self::Output> {
+    fn merged(&self, rhs: &Self) -> Option<Self::Output> {
         if self.is_disjoint_from(rhs) {
+            // TODO Adjacency
+
             return None;
         }
 
@@ -31,10 +33,10 @@ impl<T: Copy + PartialOrd> Contiguous<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Contiguous<Self> for HalfInterval<T> {
+impl<T: Copy + PartialOrd> Merged<Self> for HalfInterval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &Self) -> Option<Self::Output> {
+    fn merged(&self, rhs: &Self) -> Option<Self::Output> {
         if self.side == rhs.side {
             if self.contains(&rhs.ival.value) {
                 Some(self.clone().into())
@@ -53,10 +55,10 @@ impl<T: Copy + PartialOrd> Contiguous<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Copy + PartialOrd> Merged<FiniteInterval<T>> for HalfInterval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
+    fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         match rhs {
             FiniteInterval::Empty => Some(self.clone().into()),
             FiniteInterval::NonZero(left, right) => {
@@ -78,65 +80,65 @@ impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Contiguous<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Copy + PartialOrd> Merged<HalfInterval<T>> for FiniteInterval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
-        rhs.contiguous(self)
+    fn merged(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
+        rhs.merged(self)
     }
 }
 
 //////////////////
 
-impl<T: Copy + PartialOrd> Contiguous<FiniteInterval<T>> for Interval<T> {
+impl<T: Copy + PartialOrd> Merged<FiniteInterval<T>> for Interval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
+    fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         match self {
             Self::Infinite => Some(Self::Infinite),
-            Self::Half(lhs) => lhs.contiguous(rhs),
-            Self::Finite(lhs) => lhs.contiguous(rhs).map(|itv| itv.into()),
+            Self::Half(lhs) => lhs.merged(rhs),
+            Self::Finite(lhs) => lhs.merged(rhs).map(|itv| itv.into()),
         }
     }
 }
 
-impl<T: Copy + PartialOrd> Contiguous<HalfInterval<T>> for Interval<T> {
+impl<T: Copy + PartialOrd> Merged<HalfInterval<T>> for Interval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
+    fn merged(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
         match self {
             Self::Infinite => Some(Self::Infinite),
-            Self::Half(lhs) => lhs.contiguous(rhs),
-            Self::Finite(lhs) => rhs.contiguous(lhs),
+            Self::Half(lhs) => lhs.merged(rhs),
+            Self::Finite(lhs) => rhs.merged(lhs),
         }
     }
 }
 
-impl<T: Copy + PartialOrd> Contiguous<Self> for Interval<T> {
+impl<T: Copy + PartialOrd> Merged<Self> for Interval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &Self) -> Option<Self::Output> {
+    fn merged(&self, rhs: &Self) -> Option<Self::Output> {
         match self {
             Self::Infinite => Some(Self::Infinite),
-            Self::Half(lhs) => rhs.contiguous(lhs),
-            Self::Finite(lhs) => rhs.contiguous(lhs),
+            Self::Half(lhs) => rhs.merged(lhs),
+            Self::Finite(lhs) => rhs.merged(lhs),
         }
     }
 }
 
-impl<T: Copy + PartialOrd> Contiguous<Interval<T>> for FiniteInterval<T> {
+impl<T: Copy + PartialOrd> Merged<Interval<T>> for FiniteInterval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &Interval<T>) -> Option<Self::Output> {
-        rhs.contiguous(self)
+    fn merged(&self, rhs: &Interval<T>) -> Option<Self::Output> {
+        rhs.merged(self)
     }
 }
 
-impl<T: Copy + PartialOrd> Contiguous<Interval<T>> for HalfInterval<T> {
+impl<T: Copy + PartialOrd> Merged<Interval<T>> for HalfInterval<T> {
     type Output = Interval<T>;
 
-    fn contiguous(&self, rhs: &Interval<T>) -> Option<Self::Output> {
-        rhs.contiguous(self)
+    fn merged(&self, rhs: &Interval<T>) -> Option<Self::Output> {
+        rhs.merged(self)
     }
 }
 
@@ -147,17 +149,17 @@ mod test {
     #[test]
     fn test_finite_contiguous() {
         assert_eq!(
-            Interval::open(0, 100).contiguous(&Interval::open(50, 150)),
+            Interval::open(0, 100).merged(&Interval::open(50, 150)),
             Some(Interval::open(0, 150))
         );
 
         assert_eq!(
-            Interval::open(0, 100).contiguous(&Interval::open(100, 200)),
+            Interval::open(0, 100).merged(&Interval::open(100, 200)),
             None,
         );
 
         assert_eq!(
-            Interval::closed(0, 100).contiguous(&Interval::closed(100, 200)),
+            Interval::closed(0, 100).merged(&Interval::closed(100, 200)),
             Some(Interval::closed(0, 200))
         );
     }

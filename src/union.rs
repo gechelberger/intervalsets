@@ -1,5 +1,5 @@
-use crate::contiguous::Contiguous;
 use crate::infinite::{Interval, IntervalSet};
+use crate::merged::Merged;
 use crate::util::commutative_op_impl;
 use crate::{FiniteInterval, HalfInterval};
 
@@ -13,7 +13,7 @@ impl<T: Copy + PartialOrd> Union<Self> for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &Self) -> Self::Output {
-        match self.contiguous(rhs) {
+        match self.merged(rhs) {
             Some(interval) => interval.into(),
             None => IntervalSet {
                 intervals: vec![self.clone().into(), rhs.clone().into()],
@@ -26,7 +26,7 @@ impl<T: Copy + PartialOrd> Union<Self> for HalfInterval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &Self) -> Self::Output {
-        match self.contiguous(rhs) {
+        match self.merged(rhs) {
             Some(interval) => interval.into(),
             None => IntervalSet {
                 intervals: vec![self.clone().into(), rhs.clone().into()],
@@ -39,7 +39,7 @@ impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
-        match self.contiguous(rhs) {
+        match self.merged(rhs) {
             Some(interval) => interval.into(),
             None => IntervalSet {
                 intervals: vec![self.clone().into(), rhs.clone().into()],
@@ -117,7 +117,7 @@ impl<T: Copy + PartialOrd + Eq> Union<Interval<T>> for IntervalSet<T> {
         let mut intervals = vec![];
 
         for s_i in self.intervals.iter() {
-            if let Some(merged) = merging.contiguous(s_i) {
+            if let Some(merged) = merging.merged(s_i) {
                 merging = merged;
             } else {
                 intervals.push(s_i.clone());
