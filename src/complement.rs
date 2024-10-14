@@ -97,4 +97,30 @@ mod test {
 
         assert!(baseline.contains(&a) != complement.contains(&a));
     }
+
+    #[quickcheck]
+    fn test_set_complement_i32(a: i32, b: i32, c: i32) {
+        let a = Interval::closed(a, a.saturating_add(100));
+        let b = Interval::closed(b, b.saturating_add(100));
+        let c = Interval::closed(c, c.saturating_add(100));
+
+        let set = IntervalSet::new(vec![a, b, c]);
+
+        assert_eq!(set.complement().complement(), set);
+    }
+
+    #[quickcheck]
+    fn test_set_complement_f32(a: f32, b: f32, c: f32) {
+        if f32::is_nan(a) || f32::is_nan(b) || f32::is_nan(c) {
+            return;
+        }
+
+        let a = Interval::closed(a, a + 100.0);
+        let b = Interval::closed(b, b + 100.0);
+        let c = Interval::closed(c, c + 100.0);
+
+        let set = IntervalSet::new(vec![a, b, c]);
+
+        assert_eq!(set.complement().complement(), set);
+    }
 }
