@@ -40,11 +40,11 @@ impl<T: Numeric> Intersection<HalfInterval<T>> for FiniteInterval<T> {
                 .count();
 
             if n_seen == 2 {
-                Self::new(*left, *right)
+                Self::new(left.clone(), right.clone())
             } else if n_seen == 1 {
                 match rhs.side {
-                    Side::Left => Self::new(rhs.ival, *right),
-                    Side::Right => Self::new(*left, rhs.ival),
+                    Side::Left => Self::new(rhs.ival.clone(), right.clone()),
+                    Side::Right => Self::new(left.clone(), rhs.ival.clone()),
                 }
             } else {
                 Self::Empty
@@ -66,8 +66,8 @@ impl<T: Numeric> Intersection<Self> for HalfInterval<T> {
         } else {
             // new() handles degenerate cases => Empty
             match self.side {
-                Side::Left => FiniteInterval::new(self.ival, rhs.ival),
-                Side::Right => FiniteInterval::new(rhs.ival, self.ival),
+                Side::Left => FiniteInterval::new(self.ival.clone(), rhs.ival.clone()),
+                Side::Right => FiniteInterval::new(rhs.ival.clone(), self.ival.clone()),
             }
             .into()
         }

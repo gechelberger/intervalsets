@@ -27,7 +27,7 @@ impl NumericSet {
 
 pub trait Numeric<Rhs = Self, Output = Self>:
     Sized
-    + Copy
+    + Clone
     + PartialOrd
     + PartialEq
     + core::ops::Add<Rhs, Output = Output>
@@ -40,9 +40,9 @@ pub trait Numeric<Rhs = Self, Output = Self>:
 {
     fn numeric_set() -> NumericSet;
 
-    fn try_finite_add(self, rhs: Rhs) -> Option<Self>;
+    fn try_finite_add(&self, rhs: &Rhs) -> Option<Self>;
 
-    fn try_finite_sub(self, rhs: Rhs) -> Option<Self>;
+    fn try_finite_sub(&self, rhs: &Rhs) -> Option<Self>;
 }
 
 macro_rules! numeric_integer_impl {
@@ -54,13 +54,13 @@ macro_rules! numeric_integer_impl {
             }
 
             #[inline]
-            fn try_finite_add(self, rhs: Self) -> Option<Self> {
-                <$t>::checked_add(self, rhs)
+            fn try_finite_add(&self, rhs: &Self) -> Option<Self> {
+                <$t>::checked_add(*self, *rhs)
             }
 
             #[inline]
-            fn try_finite_sub(self, rhs: Self) -> Option<Self> {
-                <$t>::checked_sub(self, rhs)
+            fn try_finite_sub(&self, rhs: &Self) -> Option<Self> {
+                <$t>::checked_sub(*self, *rhs)
             }
         }
     };
@@ -73,14 +73,14 @@ macro_rules! numeric_float_impl {
                 NumericSet::Real
             }
 
-            fn try_finite_add(self, rhs: Self) -> Option<Self> {
+            fn try_finite_add(&self, rhs: &Self) -> Option<Self> {
                 match self + rhs {
                     <$t>::INFINITY => None,
                     result => Some(result),
                 }
             }
 
-            fn try_finite_sub(self, rhs: Self) -> Option<Self> {
+            fn try_finite_sub(&self, rhs: &Self) -> Option<Self> {
                 match self - rhs {
                     <$t>::NEG_INFINITY => None,
                     result => Some(result),

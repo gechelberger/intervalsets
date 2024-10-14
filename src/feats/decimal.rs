@@ -6,12 +6,12 @@ impl Numeric for Decimal {
         NumericSet::Real
     }
 
-    fn try_finite_add(self, rhs: Self) -> Option<Self> {
-        self.checked_add(rhs)
+    fn try_finite_add(&self, rhs: &Self) -> Option<Self> {
+        self.checked_add(*rhs)
     }
 
-    fn try_finite_sub(self, rhs: Self) -> Option<Self> {
-        self.checked_sub(rhs)
+    fn try_finite_sub(&self, rhs: &Self) -> Option<Self> {
+        self.checked_sub(*rhs)
     }
 }
 

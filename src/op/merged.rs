@@ -76,8 +76,8 @@ impl<T: Numeric> Merged<FiniteInterval<T>> for HalfInterval<T> {
                 match n_seen {
                     2 => Some(self.clone().into()),
                     1 => match self.side {
-                        Side::Left => Some(HalfInterval::new(self.side, *left).into()),
-                        Side::Right => Some(HalfInterval::new(self.side, *right).into()),
+                        Side::Left => Some(HalfInterval::new(self.side, left.clone()).into()),
+                        Side::Right => Some(HalfInterval::new(self.side, right.clone()).into()),
                     },
                     _ => None, // disjoint
                 }

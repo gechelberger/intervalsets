@@ -84,7 +84,7 @@ impl<T: Numeric> Interval<T> {
         Self::Infinite
     }
 
-    pub fn lval_unchecked(&self) -> T {
+    pub fn lval_unchecked(&self) -> &T {
         match self {
             Self::Finite(interval) => interval.lval_unchecked(),
             Self::Half(interval) => interval.lval_unchecked(),
@@ -92,7 +92,7 @@ impl<T: Numeric> Interval<T> {
         }
     }
 
-    pub fn rval_unchecked(&self) -> T {
+    pub fn rval_unchecked(&self) -> &T {
         match self {
             Self::Finite(interval) => interval.rval_unchecked(),
             Self::Half(interval) => interval.rval_unchecked(),
@@ -103,7 +103,6 @@ impl<T: Numeric> Interval<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::normalize::Normalize;
     use crate::pred::contains::Contains;
 
     use super::*;
