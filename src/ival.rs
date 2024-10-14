@@ -38,9 +38,17 @@ pub struct IVal<T> {
     pub(crate) value: T,
 }
 
-impl<T: Numeric> IVal<T> {
+impl<T> IVal<T> {
     pub fn new(bound: Bound, value: T) -> Self {
         IVal { bound, value }
+    }
+
+    pub fn closed(value: T) -> Self {
+        Self::new(Bound::Closed, value)
+    }
+
+    pub fn open(value: T) -> Self {
+        Self::new(Bound::Open, value)
     }
 
     pub fn into_raw(self) -> (Bound, T) {
@@ -54,7 +62,9 @@ impl<T: Numeric> IVal<T> {
     pub fn get_value(&self) -> &T {
         &self.value
     }
+}
 
+impl<T: Numeric> IVal<T> {
     pub fn flip(&self) -> Self {
         Self::new(self.bound.flip(), self.value.clone())
     }

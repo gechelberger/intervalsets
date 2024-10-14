@@ -2,7 +2,13 @@
 
 ![CI](https://github.com/gechelberger/intervalsets/actions/workflows/rust.yml/badge.svg)
 
-This crate provides intervals as sets.
+This crate provides bounded and unbounded intervals 
+implemented as sets with all the associated set operations.
+
+## Features
+
+## Examples
+
 
 ## development
 
@@ -15,37 +21,21 @@ cargo hook
 
 
 # TODO:
-* interval sets
-* Decide Send + Sync
-* thiserror error handling?
-* get rid of Copy trait bound for T on Interval?
 * unit test coverage
-* continuous integration with github
-* github badges
 * public interface docstrings
-* normalization of intervals for integer types
-* Make the Interval<T> enum accept a Cow<>?
+* should interval bounds be CoW<'_, T>?
 
 
 # possible features
-* random generator over defined interval?
-* optional library features 
-    * define Normalize BigInt? Decimal?
 * more formal concepts of measure
     * lebesgue
     * counting
 * contiguity between disjoint sets?
 
-# traits
-* Difference
-* SymmetricDifference
-* AdjacentTo? Connects? 
-    * [0, 1] (1, 2)
-
 
 ### Supported Types
 
-All primitive numeric types are supported.
+All primitive numeric types are supported by default.
 
 #### Custom Types
 
