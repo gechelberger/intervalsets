@@ -1,9 +1,26 @@
 use crate::ival::Side;
 use crate::pred::contains::Contains;
 use crate::util::commutative_predicate_impl;
-use crate::{FiniteInterval, HalfInterval, Interval};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
-/// Intersects is commutative
+/// Defines whether two sets intersect.
+///
+/// For these two sets is there at least one
+/// element which is contained in each?
+///
+/// Intersects is commutative.
+///
+/// # Example
+///
+/// ```
+/// use intervalsets::Interval;
+/// use intervalsets::Intersects;
+///
+/// let interval = Interval::closed(10, 20);
+/// if interval.intersects(&Interval::closed_unbound(15)) {
+///     // true: do something
+/// }
+/// ```
 pub trait Intersects<Rhs = Self> {
     fn intersects(&self, rhs: &Rhs) -> bool;
 
@@ -74,6 +91,29 @@ commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, HalfInter
 commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, Interval<T>);
 commutative_predicate_impl!(Intersects, intersects, HalfInterval<T>, Interval<T>);
 
+macro_rules! interval_set_intersects_impl {
+    ($t_rhs:ty) => {
+        impl<T: PartialOrd + Copy> Intersects<$t_rhs> for IntervalSet<T> {
+            fn intersects(&self, rhs: &$t_rhs) -> bool {
+                self.intervals.iter().any(|subset| subset.intersects(rhs))
+            }
+        }
+    };
+}
+
+interval_set_intersects_impl!(FiniteInterval<T>);
+commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, IntervalSet<T>);
+interval_set_intersects_impl!(HalfInterval<T>);
+commutative_predicate_impl!(Intersects, intersects, HalfInterval<T>, IntervalSet<T>);
+interval_set_intersects_impl!(Interval<T>);
+commutative_predicate_impl!(Intersects, intersects, Interval<T>, IntervalSet<T>);
+
+impl<T: Copy + PartialOrd> Intersects<Self> for IntervalSet<T> {
+    fn intersects(&self, rhs: &Self) -> bool {
+        self.intervals.iter().any(|lhs| rhs.intersects(lhs))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -83,5 +123,20 @@ mod test {
         assert!(Interval::open(0, 10).intersects(&Interval::open(5, 15)));
 
         assert!(!Interval::open(0, 10).intersects(&Interval::closed(10, 20)));
+    }
+
+    #[test]
+    fn test_set_set_intersects() {
+        let a = IntervalSet::new_unchecked(vec![
+            Interval::unbound_open(0.0),
+            Interval::closed(100.0, 110.0),
+            Interval::open(1000.0, 1100.0),
+        ]);
+        let b = IntervalSet::new_unchecked(vec![
+            Interval::open(10.0, 20.0),     // no
+            Interval::closed(110.0, 120.0), // [110.0, 110.0]
+        ]);
+
+        assert!(a.intersects(&b));
     }
 }
