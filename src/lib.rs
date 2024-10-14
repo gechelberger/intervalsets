@@ -34,6 +34,9 @@ pub use concrete::half::HalfInterval;
 pub use concrete::interval::Interval;
 pub use concrete::set::IntervalSet;
 
+pub use pred::contains::Contains;
+pub use pred::intersects::Intersects;
+
 pub use normalize::Normalize;
 
 #[cfg(feature = "decimal")]
