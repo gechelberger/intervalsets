@@ -1,6 +1,5 @@
-use std::ops::{Add, Sub};
-
 use crate::ival::Side;
+use crate::numeric::Numeric;
 use crate::{FiniteInterval, HalfInterval, Interval};
 
 pub trait Padded<T>
@@ -15,13 +14,13 @@ where
     }
 }
 
-impl<T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T>> Padded<T> for FiniteInterval<T> {
+impl<T: Numeric> Padded<T> for FiniteInterval<T> {
     fn padded_lr(&self, loffset: T, roffset: T) -> Self {
         self.map_bounds(|left, right| Self::new_unchecked(*left - loffset, *right + roffset))
     }
 }
 
-impl<T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T>> Padded<T> for HalfInterval<T> {
+impl<T: Numeric> Padded<T> for HalfInterval<T> {
     fn padded_lr(&self, left: T, right: T) -> Self {
         match self.side {
             Side::Left => Self::new(self.side, self.ival - left),
@@ -30,7 +29,7 @@ impl<T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T>> Padded<T> for Hal
     }
 }
 
-impl<T: Copy + PartialOrd + Add<Output = T> + Sub<Output = T>> Padded<T> for Interval<T> {
+impl<T: Numeric> Padded<T> for Interval<T> {
     fn padded_lr(&self, left: T, right: T) -> Self {
         match self {
             Self::Infinite => Self::Infinite,

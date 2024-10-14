@@ -1,6 +1,7 @@
 use super::complement::Complement;
 use super::intersection::Intersection;
 use super::union::Union;
+use crate::numeric::Numeric;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// Defines the difference of sets A - B.
@@ -35,7 +36,7 @@ pub trait Difference<Rhs = Self> {
 
 macro_rules! difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: Copy + PartialOrd> Difference<$t_rhs> for $t_lhs {
+        impl<T: Numeric> Difference<$t_rhs> for $t_lhs {
             type Output = IntervalSet<T>;
 
             fn difference(&self, rhs: &$t_rhs) -> Self::Output {
@@ -90,7 +91,7 @@ pub trait SymmetricDifference<Rhs = Self> {
 
 macro_rules! sym_difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: Copy + PartialOrd> SymmetricDifference<$t_rhs> for $t_lhs {
+        impl<T: Numeric> SymmetricDifference<$t_rhs> for $t_lhs {
             type Output = IntervalSet<T>;
 
             fn sym_difference(&self, rhs: &$t_rhs) -> Self::Output {

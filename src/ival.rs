@@ -38,7 +38,7 @@ pub struct IVal<T> {
     pub(crate) value: T,
 }
 
-impl<T: Copy> IVal<T> {
+impl<T: Numeric> IVal<T> {
     pub fn new(bound: Bound, value: T) -> Self {
         IVal { bound, value }
     }
@@ -56,50 +56,46 @@ impl<T: Copy> IVal<T> {
     }
 
     #[allow(dead_code)]
-    fn map(self, func: impl Fn(T) -> T) -> Self {
+    pub fn map(self, func: impl Fn(T) -> T) -> Self {
         Self::new(self.bound, func(self.value))
     }
 
-    fn binary_map(self, func: impl Fn(T, T) -> T, rhs: T) -> Self {
+    pub fn binary_map(self, func: impl Fn(T, T) -> T, rhs: T) -> Self {
         Self::new(self.bound, func(self.value, rhs))
     }
-}
 
-impl<T: Clone + PartialOrd> IVal<T> {
     pub fn min_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Left, &b.value) {
-            a.clone()
+            *a
         } else {
-            b.clone()
+            *b
         }
     }
 
     pub fn min_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Right, &b.value) {
-            b.clone()
+            *b
         } else {
-            a.clone()
+            *a
         }
     }
 
     pub fn max_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Left, &b.value) {
-            b.clone()
+            *b
         } else {
-            a.clone()
+            *a
         }
     }
 
     pub fn max_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Right, &b.value) {
-            a.clone()
+            *a
         } else {
-            b.clone()
+            *b
         }
     }
-}
 
-impl<T: PartialOrd> IVal<T> {
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.bound {
@@ -112,9 +108,7 @@ impl<T: PartialOrd> IVal<T> {
             },
         }
     }
-}
 
-impl<T: Numeric + Copy> IVal<T> {
     pub fn normalized(self, side: Side) -> Self {
         if !T::numeric_set().in_integer() {
             return self;
@@ -122,18 +116,21 @@ impl<T: Numeric + Copy> IVal<T> {
 
         match self.bound {
             Bound::Open => match side {
-                Side::Left => Self::new(Bound::Closed, self.value + T::one()),
-                Side::Right => Self::new(Bound::Closed, self.value - T::one()),
+                Side::Left => match self.value.try_finite_add(T::one()) {
+                    Some(limit) => Self::new(Bound::Closed, limit),
+                    None => self,
+                },
+                Side::Right => match self.value.try_finite_sub(T::one()) {
+                    Some(limit) => Self::new(Bound::Closed, limit),
+                    None => self,
+                },
             },
             Bound::Closed => self,
         }
     }
 }
 
-impl<T> Add<T> for IVal<T>
-where
-    T: Copy + Add<T, Output = T>,
-{
+impl<T: Numeric> Add<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn add(self, rhs: T) -> Self::Output {
@@ -141,10 +138,7 @@ where
     }
 }
 
-impl<T> Sub<T> for IVal<T>
-where
-    T: Copy + Sub<T, Output = T>,
-{
+impl<T: Numeric> Sub<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn sub(self, rhs: T) -> Self::Output {
@@ -152,10 +146,7 @@ where
     }
 }
 
-impl<T> Mul<T> for IVal<T>
-where
-    T: Copy + Mul<T, Output = T>,
-{
+impl<T: Numeric> Mul<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn mul(self, rhs: T) -> Self::Output {
@@ -163,10 +154,7 @@ where
     }
 }
 
-impl<T> Div<T> for IVal<T>
-where
-    T: Copy + Div<T, Output = T>,
-{
+impl<T: Numeric + Div<Output = T>> Div<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn div(self, rhs: T) -> Self::Output {

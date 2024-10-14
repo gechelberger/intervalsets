@@ -1,4 +1,5 @@
 use crate::empty::MaybeEmpty;
+use crate::numeric::Numeric;
 use crate::op::merged::Merged;
 use crate::pred::intersects::Intersects;
 
@@ -22,7 +23,12 @@ pub struct IntervalSet<T> {
 /// * All intervals are stored in ascending order.
 /// * All stored intervals are disjoint subsets of T.
 #[allow(dead_code)]
-impl<T: Copy + PartialOrd> IntervalSet<T> {
+impl<T: Numeric> IntervalSet<T> {
+    /// Create a new empty IntervalSet
+    pub fn empty() -> Self {
+        Self { intervals: vec![] }
+    }
+
     /// Create a new Set of intervals and enforce invariants.
     pub fn new(intervals: Vec<Interval<T>>) -> Self {
         // O(n)
@@ -50,6 +56,13 @@ impl<T: Copy + PartialOrd> IntervalSet<T> {
         Self {
             intervals: Self::merge_sorted(intervals),
         }
+    }
+
+    /// Create a new IntervalSet directly from a Vec<Interval<_>>.
+    ///
+    /// If invariants are not maintained, behavior is undefined.
+    pub fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
+        Self { intervals }
     }
 
     /// Merge overlapping intervals assuming that they are already sorted
@@ -101,22 +114,9 @@ impl<T: Copy + PartialOrd> IntervalSet<T> {
     }
 }
 
-impl<T> IntervalSet<T> {
-    /// Create a new empty IntervalSet
-    pub fn empty() -> Self {
-        Self { intervals: vec![] }
-    }
-
-    /// Create a new IntervalSet directly from a Vec<Interval<_>>.
-    ///
-    /// If invariants are not maintained, behavior is undefined.
-    pub fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
-        Self { intervals }
-    }
-
-    /// The number of distinct intervals/subsets in this set.
-    pub fn count_subsets(&self) -> usize {
-        self.intervals.len()
+impl<T: Numeric> FromIterator<Interval<T>> for IntervalSet<T> {
+    fn from_iter<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
+        Self::new(iter.into_iter().collect())
     }
 }
 

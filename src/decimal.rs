@@ -5,6 +5,14 @@ impl Numeric for Decimal {
     fn numeric_set() -> NumericSet {
         NumericSet::Real
     }
+
+    fn try_finite_add(self, rhs: Self) -> Option<Self> {
+        self.checked_add(rhs)
+    }
+
+    fn try_finite_sub(self, rhs: Self) -> Option<Self> {
+        self.checked_sub(rhs)
+    }
 }
 
 #[cfg(test)]

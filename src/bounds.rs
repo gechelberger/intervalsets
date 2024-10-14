@@ -1,4 +1,5 @@
 use crate::ival::{Bound, IVal, Side};
+use crate::numeric::Numeric;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// The `Bounds` trait provides safe accessors for the boundary conditions
@@ -68,7 +69,7 @@ impl<T: Clone> Bounds<T> for Interval<T> {
     }
 }
 
-impl<T: Clone + Eq + Ord> Bounds<T> for IntervalSet<T> {
+impl<T: Numeric> Bounds<T> for IntervalSet<T> {
     fn bound(&self, side: Side) -> Option<IVal<T>> {
         let mut result = None;
 
@@ -100,18 +101,18 @@ mod test {
     #[test]
     fn test_finite_interval_bounds() {
         let itv = FiniteInterval::openclosed(0, 5);
-        assert_eq!(itv.lval(), Some(0));
+        assert_eq!(itv.lval(), Some(1));
         assert_eq!(itv.rval(), Some(5));
-        assert_eq!(itv.lbound(), Some(Bound::Open));
+        assert_eq!(itv.lbound(), Some(Bound::Closed));
         assert_eq!(itv.rbound(), Some(Bound::Closed));
     }
 
     #[test]
     fn test_half_interval_bounds() {
         let itv = HalfInterval::open_unbound(5);
-        assert_eq!(itv.lval(), Some(5));
+        assert_eq!(itv.lval(), Some(6));
         assert_eq!(itv.rval(), None);
-        assert_eq!(itv.lbound(), Some(Bound::Open));
+        assert_eq!(itv.lbound(), Some(Bound::Closed));
         assert_eq!(itv.rbound(), None);
     }
 

@@ -1,18 +1,19 @@
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::numeric::Numeric;
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet, Normalize};
 
-impl<T> From<FiniteInterval<T>> for Interval<T> {
+impl<T: Numeric> From<FiniteInterval<T>> for Interval<T> {
     fn from(value: FiniteInterval<T>) -> Self {
-        Self::Finite(value)
+        Self::Finite(value).normalized()
     }
 }
 
-impl<T> From<HalfInterval<T>> for Interval<T> {
+impl<T: Numeric> From<HalfInterval<T>> for Interval<T> {
     fn from(value: HalfInterval<T>) -> Self {
-        Self::Half(value)
+        Self::Half(value).normalized()
     }
 }
 
-impl<T> From<Interval<T>> for IntervalSet<T> {
+impl<T: Numeric> From<Interval<T>> for IntervalSet<T> {
     fn from(value: Interval<T>) -> Self {
         match value {
             Interval::Finite(inner) => Self::from(inner),
@@ -21,7 +22,7 @@ impl<T> From<Interval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T> From<FiniteInterval<T>> for IntervalSet<T> {
+impl<T: Numeric> From<FiniteInterval<T>> for IntervalSet<T> {
     fn from(value: FiniteInterval<T>) -> Self {
         match value {
             FiniteInterval::Empty => Self::empty(),
@@ -30,7 +31,7 @@ impl<T> From<FiniteInterval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T> From<HalfInterval<T>> for IntervalSet<T> {
+impl<T: Numeric> From<HalfInterval<T>> for IntervalSet<T> {
     fn from(value: HalfInterval<T>) -> Self {
         Self::new_unchecked(vec![value.into()])
     }
