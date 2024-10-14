@@ -1,4 +1,4 @@
-use num_traits::{NumOps, One, Zero};
+use num_traits::{Bounded, NumOps, One, Zero};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum NumericSet {
@@ -25,7 +25,7 @@ impl NumericSet {
     }
 }
 
-pub trait Numeric: Sized + PartialOrd + PartialEq + NumOps + Zero + One {
+pub trait Numeric: Sized + Copy + PartialOrd + PartialEq + NumOps + Zero + One + Bounded {
     fn numeric_set() -> NumericSet;
 }
 

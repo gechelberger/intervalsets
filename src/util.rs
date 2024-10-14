@@ -7,7 +7,7 @@
 /// commutative_impl!(TraitName, func_name, LeftType, RightType, OutType);
 macro_rules! commutative_op_impl {
     ($tt:ident, $fn:ident, $t_lhs:ty, $t_rhs:ty, $t_out:ty) => {
-        impl<T: Copy + PartialOrd> $tt<$t_rhs> for $t_lhs {
+        impl<T: Numeric> $tt<$t_rhs> for $t_lhs {
             type Output = $t_out;
 
             fn $fn(&self, rhs: &$t_rhs) -> Self::Output {
@@ -25,7 +25,7 @@ pub(crate) use commutative_op_impl;
 /// commutative_predicate_impl!(TraitName, func_name, LeftType, RightType);
 macro_rules! commutative_predicate_impl {
     ($tt:ident, $fn:ident, $t_lhs:ty, $t_rhs:ty) => {
-        impl<T: Copy + PartialOrd> $tt<$t_rhs> for $t_lhs {
+        impl<T: Numeric> $tt<$t_rhs> for $t_lhs {
             fn $fn(&self, rhs: &$t_rhs) -> bool {
                 rhs.$fn(self)
             }

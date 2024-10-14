@@ -1,4 +1,5 @@
 use crate::ival::{Bound, IVal, Side};
+use crate::numeric::Numeric;
 use crate::{FiniteInterval, HalfInterval};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,10 +22,8 @@ pub enum Interval<T> {
     Infinite,
 }
 
-impl<T> Interval<T>
-where
-    T: Copy + PartialOrd,
-{
+impl<T: Numeric> Interval<T> {
+    /// {} = {x | x not in T }
     pub fn empty() -> Self {
         FiniteInterval::Empty.into()
     }

@@ -3,6 +3,7 @@ use std::cmp::Ordering;
 use crate::bounds::Bounds;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
+use crate::numeric::Numeric;
 use crate::{FiniteInterval, HalfInterval, Interval};
 
 /// Partial compare of two boundary conditions
@@ -17,7 +18,7 @@ use crate::{FiniteInterval, HalfInterval, Interval};
 ///
 /// 1) left case:  (a, _) partial_cmp to (b, _)
 /// 2) right case: (_, a) partial_cmp to (_, b)
-fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
+fn non_empty_cmp_side<T: Numeric>(
     side: Side,
     left: Option<IVal<T>>,
     right: Option<IVal<T>>,
@@ -60,7 +61,7 @@ fn non_empty_cmp_side<T: PartialEq + PartialOrd>(
 /// binary cmp for two types that impl the Bounds trait
 fn impl_cmp<U, T>(lhs: &U, rhs: &U) -> std::cmp::Ordering
 where
-    T: Copy + PartialOrd,
+    T: Numeric,
     U: Bounds<T>,
 {
     match non_empty_cmp_side(Side::Left, lhs.left(), rhs.left()) {
@@ -74,7 +75,7 @@ where
 /// `PartialOrd` for types without resorting to a blanket implementation.
 fn impl_partial_cmp<U, T>(lhs: &U, rhs: &U) -> Option<std::cmp::Ordering>
 where
-    T: Copy + PartialOrd,
+    T: Numeric,
     U: Bounds<T> + MaybeEmpty,
 {
     if lhs.is_empty() || rhs.is_empty() {
@@ -84,19 +85,19 @@ where
     impl_cmp(lhs, rhs).into()
 }
 
-impl<T: Copy + PartialOrd + PartialEq> PartialOrd for Interval<T> {
+impl<T: Numeric> PartialOrd for Interval<T> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         impl_partial_cmp(self, rhs)
     }
 }
 
-impl<T: Copy + PartialOrd + PartialEq> PartialOrd for HalfInterval<T> {
+impl<T: Numeric> PartialOrd for HalfInterval<T> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         impl_cmp(self, rhs).into()
     }
 }
 
-impl<T: Copy + PartialOrd + PartialEq> PartialOrd for FiniteInterval<T> {
+impl<T: Numeric> PartialOrd for FiniteInterval<T> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         impl_partial_cmp(self, rhs)
     }
@@ -106,7 +107,7 @@ impl<T: Copy + PartialOrd + PartialEq> PartialOrd for FiniteInterval<T> {
 mod tests {
     use super::*;
 
-    fn assert_lt<T: Copy + PartialOrd + PartialEq>(itv1: Interval<T>, itv2: Interval<T>) {
+    fn assert_lt<T: Numeric>(itv1: Interval<T>, itv2: Interval<T>) {
         assert!(itv1 < itv2);
         assert!(!(itv1 >= itv2)); // antisymmetry
 

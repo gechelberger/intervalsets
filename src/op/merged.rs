@@ -1,5 +1,6 @@
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
+use crate::numeric::Numeric;
 use crate::pred::contains::Contains;
 use crate::pred::intersects::Intersects;
 use crate::{FiniteInterval, HalfInterval, Interval};
@@ -11,7 +12,7 @@ pub trait Merged<Rhs = Self> {
     fn merged(&self, rhs: &Rhs) -> Option<Self::Output>;
 }
 
-impl<T: Copy + PartialOrd> Merged<Self> for FiniteInterval<T> {
+impl<T: Numeric> Merged<Self> for FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
@@ -38,7 +39,7 @@ impl<T: Copy + PartialOrd> Merged<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<Self> for HalfInterval<T> {
+impl<T: Numeric> Merged<Self> for HalfInterval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
@@ -60,7 +61,7 @@ impl<T: Copy + PartialOrd> Merged<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Numeric> Merged<FiniteInterval<T>> for HalfInterval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
@@ -85,7 +86,7 @@ impl<T: Copy + PartialOrd> Merged<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Numeric> Merged<HalfInterval<T>> for FiniteInterval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
@@ -93,7 +94,7 @@ impl<T: Copy + PartialOrd> Merged<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<FiniteInterval<T>> for Interval<T> {
+impl<T: Numeric> Merged<FiniteInterval<T>> for Interval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
@@ -105,7 +106,7 @@ impl<T: Copy + PartialOrd> Merged<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<HalfInterval<T>> for Interval<T> {
+impl<T: Numeric> Merged<HalfInterval<T>> for Interval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
@@ -117,7 +118,7 @@ impl<T: Copy + PartialOrd> Merged<HalfInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<Self> for Interval<T> {
+impl<T: Numeric> Merged<Self> for Interval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
@@ -129,7 +130,7 @@ impl<T: Copy + PartialOrd> Merged<Self> for Interval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<Interval<T>> for FiniteInterval<T> {
+impl<T: Numeric> Merged<Interval<T>> for FiniteInterval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &Interval<T>) -> Option<Self::Output> {
@@ -137,7 +138,7 @@ impl<T: Copy + PartialOrd> Merged<Interval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Merged<Interval<T>> for HalfInterval<T> {
+impl<T: Numeric> Merged<Interval<T>> for HalfInterval<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &Interval<T>) -> Option<Self::Output> {

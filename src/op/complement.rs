@@ -1,5 +1,6 @@
 use super::intersection::Intersection;
 use crate::ival::Side;
+use crate::numeric::Numeric;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 pub trait Complement {
@@ -8,7 +9,7 @@ pub trait Complement {
     fn complement(&self) -> Self::Output;
 }
 
-impl<T: Copy> Complement for FiniteInterval<T> {
+impl<T: Numeric> Complement for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(&self) -> Self::Output {
@@ -25,7 +26,7 @@ impl<T: Copy> Complement for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy> Complement for HalfInterval<T> {
+impl<T: Numeric> Complement for HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     fn complement(&self) -> Self::Output {
@@ -33,7 +34,7 @@ impl<T: Copy> Complement for HalfInterval<T> {
     }
 }
 
-impl<T: Copy> Complement for Interval<T> {
+impl<T: Numeric> Complement for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(&self) -> Self::Output {
@@ -45,7 +46,7 @@ impl<T: Copy> Complement for Interval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Complement for IntervalSet<T> {
+impl<T: Numeric> Complement for IntervalSet<T> {
     type Output = IntervalSet<T>;
 
     /// DeMorgan's Law:
@@ -55,10 +56,7 @@ impl<T: Copy + PartialOrd> Complement for IntervalSet<T> {
     }
 }
 
-fn naive_set_complement<T>(intervals: &[Interval<T>]) -> IntervalSet<T>
-where
-    T: Copy + PartialOrd,
-{
+fn naive_set_complement<T: Numeric>(intervals: &[Interval<T>]) -> IntervalSet<T> {
     intervals
         .iter()
         .map(|x| x.complement())

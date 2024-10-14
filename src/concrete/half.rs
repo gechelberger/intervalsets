@@ -1,4 +1,5 @@
 use crate::ival::{Bound, IVal, Side};
+use crate::numeric::Numeric;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HalfInterval<T> {
@@ -6,7 +7,7 @@ pub struct HalfInterval<T> {
     pub(crate) ival: IVal<T>,
 }
 
-impl<T: Copy> HalfInterval<T> {
+impl<T: Numeric> HalfInterval<T> {
     pub fn new(side: Side, ival: IVal<T>) -> Self {
         Self { side, ival }
     }

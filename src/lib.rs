@@ -24,13 +24,13 @@ pub mod sizeable;
 pub mod op;
 
 // predicate traits
-pub mod pred;
+pub(crate) mod pred;
 
 pub(crate) mod util;
 
 // reexports / public APIs
-pub use concrete::finite::FiniteInterval;
-pub use concrete::half::HalfInterval;
+pub(crate) use concrete::finite::FiniteInterval;
+pub(crate) use concrete::half::HalfInterval;
 pub use concrete::interval::Interval;
 pub use concrete::set::IntervalSet;
 

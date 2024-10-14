@@ -1,5 +1,6 @@
 use super::merged::Merged;
 use crate::empty::MaybeEmpty;
+use crate::numeric::Numeric;
 use crate::util::commutative_op_impl;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
@@ -9,7 +10,7 @@ pub trait Union<Rhs = Self> {
     fn union(&self, rhs: &Rhs) -> Self::Output;
 }
 
-impl<T: Copy + PartialOrd> Union<Self> for FiniteInterval<T> {
+impl<T: Numeric> Union<Self> for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &Self) -> Self::Output {
@@ -20,7 +21,7 @@ impl<T: Copy + PartialOrd> Union<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<Self> for HalfInterval<T> {
+impl<T: Numeric> Union<Self> for HalfInterval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &Self) -> Self::Output {
@@ -31,7 +32,7 @@ impl<T: Copy + PartialOrd> Union<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Numeric> Union<HalfInterval<T>> for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
@@ -42,7 +43,7 @@ impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<FiniteInterval<T>> for Interval<T> {
+impl<T: Numeric> Union<FiniteInterval<T>> for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &FiniteInterval<T>) -> Self::Output {
@@ -55,7 +56,7 @@ impl<T: Copy + PartialOrd> Union<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for Interval<T> {
+impl<T: Numeric> Union<HalfInterval<T>> for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
@@ -67,7 +68,7 @@ impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<Self> for Interval<T> {
+impl<T: Numeric> Union<Self> for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &Self) -> Self::Output {
@@ -89,7 +90,7 @@ commutative_op_impl!(
 commutative_op_impl!(Union, union, HalfInterval<T>, Interval<T>, IntervalSet<T>);
 commutative_op_impl!(Union, union, FiniteInterval<T>, Interval<T>, IntervalSet<T>);
 
-impl<T: Copy + PartialOrd> Union<Self> for IntervalSet<T> {
+impl<T: Numeric> Union<Self> for IntervalSet<T> {
     type Output = Self;
 
     fn union(&self, rhs: &Self) -> Self::Output {
@@ -107,7 +108,7 @@ impl<T: Copy + PartialOrd> Union<Self> for IntervalSet<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<Interval<T>> for IntervalSet<T> {
+impl<T: Numeric> Union<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(&self, rhs: &Interval<T>) -> Self::Output {
@@ -122,7 +123,7 @@ impl<T: Copy + PartialOrd> Union<Interval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<FiniteInterval<T>> for IntervalSet<T> {
+impl<T: Numeric> Union<FiniteInterval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(&self, rhs: &FiniteInterval<T>) -> Self::Output {
@@ -130,7 +131,7 @@ impl<T: Copy + PartialOrd> Union<FiniteInterval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Copy + PartialOrd> Union<HalfInterval<T>> for IntervalSet<T> {
+impl<T: Numeric> Union<HalfInterval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
