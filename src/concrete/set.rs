@@ -6,7 +6,7 @@ use super::interval::Interval;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IntervalSet<T> {
-    pub intervals: Vec<Interval<T>>,
+    pub(crate) intervals: Vec<Interval<T>>,
 }
 
 /// A Set in Z or R consisting of disjoint contiguous intervals.
@@ -23,6 +23,7 @@ pub struct IntervalSet<T> {
 /// * All stored intervals are disjoint subsets of T.
 #[allow(dead_code)]
 impl<T: Copy + PartialOrd> IntervalSet<T> {
+    /// Create a new Set of intervals and enforce invariants.
     pub fn new(intervals: Vec<Interval<T>>) -> Self {
         // O(n)
         if Self::satisfies_invariants(&intervals) {
@@ -88,6 +89,15 @@ impl<T: Copy + PartialOrd> IntervalSet<T> {
         }
 
         true
+    }
+
+    pub fn map(&self, func: impl Fn(&Interval<T>) -> IntervalSet<T>) -> Self {
+        let mut intervals = Vec::with_capacity(self.intervals.len());
+        for subset in self.intervals.iter() {
+            let mut mapped = func(subset);
+            intervals.append(&mut mapped.intervals);
+        }
+        Self::new(intervals)
     }
 }
 
