@@ -1,6 +1,6 @@
 use std::ops::{Add, Sub};
 
-use num::Zero;
+use num_traits::Zero;
 
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
