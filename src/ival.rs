@@ -32,7 +32,7 @@ impl Side {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct IVal<T> {
     pub(crate) bound: Bound,
     pub(crate) value: T,
@@ -43,21 +43,20 @@ impl<T: Numeric> IVal<T> {
         IVal { bound, value }
     }
 
+    pub fn into_raw(self) -> (Bound, T) {
+        (self.bound, self.value)
+    }
+
     pub fn get_bound(&self) -> Bound {
         self.bound
     }
 
-    pub fn get_value(&self) -> T {
-        self.value
+    pub fn get_value(&self) -> &T {
+        &self.value
     }
 
     pub fn flip(&self) -> Self {
-        Self::new(self.bound.flip(), self.value)
-    }
-
-    #[allow(dead_code)]
-    pub fn map(self, func: impl Fn(T) -> T) -> Self {
-        Self::new(self.bound, func(self.value))
+        Self::new(self.bound.flip(), self.value.clone())
     }
 
     pub fn binary_map(self, func: impl Fn(T, T) -> T, rhs: T) -> Self {
@@ -66,33 +65,33 @@ impl<T: Numeric> IVal<T> {
 
     pub fn min_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Left, &b.value) {
-            *a
+            a.clone()
         } else {
-            *b
+            b.clone()
         }
     }
 
     pub fn min_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Right, &b.value) {
-            *b
+            b.clone()
         } else {
-            *a
+            a.clone()
         }
     }
 
     pub fn max_left(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Left, &b.value) {
-            *b
+            b.clone()
         } else {
-            *a
+            a.clone()
         }
     }
 
     pub fn max_right(a: &IVal<T>, b: &IVal<T>) -> IVal<T> {
         if a.contains(Side::Right, &b.value) {
-            *a
+            a.clone()
         } else {
-            *b
+            b.clone()
         }
     }
 
@@ -116,11 +115,11 @@ impl<T: Numeric> IVal<T> {
 
         match self.bound {
             Bound::Open => match side {
-                Side::Left => match self.value.try_finite_add(T::one()) {
+                Side::Left => match self.value.try_finite_add(&T::one()) {
                     Some(limit) => Self::new(Bound::Closed, limit),
                     None => self,
                 },
-                Side::Right => match self.value.try_finite_sub(T::one()) {
+                Side::Right => match self.value.try_finite_sub(&T::one()) {
                     Some(limit) => Self::new(Bound::Closed, limit),
                     None => self,
                 },

@@ -99,16 +99,15 @@ impl<T: Copy + Eq + Zero + Sub<Output = T>> Sizable for IntervalSet<T> {
 
 #[cfg(test)]
 mod test {
-    use crate::Normalize;
 
     use super::*;
 
     #[test]
     fn test_finite_size() {
-        let interval = FiniteInterval::open(0, 20).normalized();
+        let interval = FiniteInterval::open(0, 20);
         assert_eq!(interval.size(), 18);
 
-        let interval = Interval::open(0, 20).normalized();
+        let interval = Interval::open(0, 20);
         assert_eq!(interval.size(), ISize::Finite(18));
     }
 

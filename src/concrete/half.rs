@@ -35,17 +35,17 @@ impl<T: Numeric> HalfInterval<T> {
         Self::new(Side::Left, IVal::new(Bound::Closed, left))
     }
 
-    pub fn lval_unchecked(&self) -> T {
+    pub fn lval_unchecked(&self) -> &T {
         match self.side {
-            Side::Left => self.ival.value,
+            Side::Left => &self.ival.value,
             Side::Right => panic!("right half interval has no left bound"),
         }
     }
 
-    pub fn rval_unchecked(&self) -> T {
+    pub fn rval_unchecked(&self) -> &T {
         match self.side {
             Side::Left => panic!("left half interval has no right bound"),
-            Side::Right => self.ival.value,
+            Side::Right => &self.ival.value,
         }
     }
 }

@@ -1,16 +1,29 @@
 use crate::ival::Side;
 use crate::numeric::Numeric;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfInterval, Interval};
 
-pub trait Normalize {
+/// Normalize an interval so that there is only one
+/// standard representation for a give set.
+///
+/// (0, 10) represents the same integers as [1, 9]
+/// and the standard is to normalize to closed sets.
+///
+/// The receiver on this trait is NOT a reference type
+/// because we want to consume any non-normalized
+/// values rather than leaving them lying around.
+#[allow(dead_code)]
+pub(crate) trait Normalize {
     fn normalized(self) -> Self;
 }
 
 impl<T: Numeric> Normalize for FiniteInterval<T> {
     fn normalized(self) -> Self {
-        self.map_bounds(|left, right| {
-            Self::new(left.normalized(Side::Left), right.normalized(Side::Right))
-        })
+        match self {
+            Self::Empty => Self::Empty,
+            Self::NonZero(left, right) => {
+                Self::new(left.normalized(Side::Left), right.normalized(Side::Right))
+            }
+        }
     }
 }
 
@@ -34,18 +47,6 @@ impl<T: Numeric> Normalize for Interval<T> {
                 }*/
             }
             Self::Finite(interval) => Self::Finite(interval.normalized()),
-        }
-    }
-}
-
-impl<T: Numeric> Normalize for IntervalSet<T> {
-    fn normalized(self) -> Self {
-        Self {
-            intervals: self
-                .intervals
-                .into_iter()
-                .map(|iv| iv.normalized())
-                .collect(),
         }
     }
 }

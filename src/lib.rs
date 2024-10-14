@@ -37,7 +37,4 @@ pub use concrete::set::IntervalSet;
 pub use pred::contains::Contains;
 pub use pred::intersects::Intersects;
 
-pub use normalize::Normalize;
-
-#[cfg(feature = "decimal")]
-pub mod decimal;
+pub mod feats;

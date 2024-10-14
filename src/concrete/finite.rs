@@ -61,23 +61,21 @@ impl<T: Numeric> FiniteInterval<T> {
     }
 }
 
-impl<T: Copy> FiniteInterval<T> {
-    pub fn lval_unchecked(&self) -> T {
+impl<T> FiniteInterval<T> {
+    pub fn lval_unchecked(&self) -> &T {
         match self {
             Self::Empty => panic!("Empty interval has no left bound"),
-            Self::NonZero(left, _) => left.value,
+            Self::NonZero(left, _) => &left.value,
         }
     }
 
-    pub fn rval_unchecked(&self) -> T {
+    pub fn rval_unchecked(&self) -> &T {
         match self {
             Self::Empty => panic!("Empty interval has no right bound"),
-            Self::NonZero(_, right) => right.value,
+            Self::NonZero(_, right) => &right.value,
         }
     }
-}
 
-impl<T> FiniteInterval<T> {
     pub fn map_bounds(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> Self) -> Self {
         match self {
             Self::Empty => Self::Empty,
