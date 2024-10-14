@@ -4,13 +4,13 @@ use num_traits::Zero;
 
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
 pub enum ISize<T> {
     Finite(T),
     Infinite,
 }
 
-/// Required by Zero trait for some reason
+// Required by Zero trait for some reason
 impl<T: Add<Output = T>> Add for ISize<T> {
     type Output = Self;
 
@@ -24,7 +24,7 @@ impl<T: Add<Output = T>> Add for ISize<T> {
 }
 
 /// Implement Zero for ISize
-impl<T: Zero + Eq + Add<Output = T>> Zero for ISize<T> {
+impl<T: Zero + PartialEq + Add<Output = T>> Zero for ISize<T> {
     fn zero() -> Self {
         Self::Finite(T::zero())
     }
@@ -38,7 +38,7 @@ impl<T: Zero + Eq + Add<Output = T>> Zero for ISize<T> {
 }
 
 pub trait Sizable {
-    type Output: Zero + Eq;
+    type Output: Zero + PartialEq;
 
     fn size(&self) -> Self::Output;
 
@@ -47,7 +47,7 @@ pub trait Sizable {
     }
 }
 
-impl<T: Zero + Sub<Output = T> + Copy + Eq> Sizable for Interval<T> {
+impl<T: Clone + Zero + Sub<Output = T> + PartialEq> Sizable for Interval<T> {
     type Output = ISize<T>;
 
     fn size(&self) -> Self::Output {
@@ -63,13 +63,13 @@ impl<T: Zero + Sub<Output = T> + Copy + Eq> Sizable for Interval<T> {
     }
 }
 
-impl<T: Zero + Sub<Output = T> + Copy + Eq> Sizable for FiniteInterval<T> {
+impl<T: Clone + Zero + Sub<Output = T> + PartialEq> Sizable for FiniteInterval<T> {
     type Output = T;
 
     fn size(&self) -> Self::Output {
         match self {
             Self::Empty => T::zero(),
-            Self::NonZero(left, right) => right.value - left.value,
+            Self::NonZero(left, right) => right.value.clone() - left.value.clone(),
         }
     }
 
@@ -86,7 +86,7 @@ impl<T: Eq + Zero> Sizable for HalfInterval<T> {
     }
 }
 
-impl<T: Copy + Eq + Zero + Sub<Output = T>> Sizable for IntervalSet<T> {
+impl<T: Clone + PartialEq + Zero + Sub<Output = T>> Sizable for IntervalSet<T> {
     type Output = ISize<T>;
 
     fn size(&self) -> Self::Output {

@@ -15,5 +15,5 @@ quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 
 [features]
-decimal = ["rust_decimal"]
-bigint = ["num-bigint"]
+rust_decimal = ["dep:rust_decimal"]
+num-bigint = ["dep:num-bigint"]

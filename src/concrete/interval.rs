@@ -103,7 +103,6 @@ impl<T: Numeric> Interval<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::normalize::Normalize;
     use crate::pred::contains::Contains;
 
     use super::*;
