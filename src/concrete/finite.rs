@@ -1,4 +1,4 @@
-use crate::ival::*;
+use crate::ival::{Bound, IVal};
 
 /// A fully bounded interval in N, Z, or R.
 ///
@@ -107,29 +107,11 @@ impl<T> FiniteInterval<T> {
 mod test {
     use super::*;
 
-    use crate::pred::contains::Contains;
-
     #[test]
     fn test_finite_interval_new() {
         let interval: FiniteInterval<usize> = FiniteInterval::open(0, 20);
-    }
 
-    /*
-    #[test]
-    fn test_shifted() {
-        assert_eq!(
-            FiniteInterval::open(0, 10).shifted(10),
-            FiniteInterval::open(10, 20)
-        );
+        let interval = FiniteInterval::open(0, 0);
+        assert_eq!(interval, FiniteInterval::Empty);
     }
-
-    #[test]
-    fn test_padded() {
-        assert_eq!(
-            FiniteInterval::open(10, 20).padded(10),
-            FiniteInterval::open(0, 30)
-        );
-    }
-
-    */
 }
