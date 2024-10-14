@@ -1,6 +1,8 @@
+use itertools::Itertools;
+
 use crate::bounds::Bounds;
 use crate::ival::{Bound, IVal, Side};
-use crate::{FiniteInterval, HalfInterval, Interval};
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 fn bound_symbol(side: Side, bound: Bound) -> char {
     match bound {
@@ -65,8 +67,20 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for Interval<T> {
     }
 }
 
+impl<T: std::fmt::Display + Clone> std::fmt::Display for IntervalSet<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.intervals.is_empty() {
+            FiniteInterval::<i32>::Empty.fmt(f)
+        } else {
+            write!(f, "{{{}}}", self.intervals.iter().join(", "))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    use crate::union::Union;
+
     use super::*;
 
     #[test]
@@ -106,9 +120,23 @@ mod tests {
     }
 
     #[test]
-    fn test_format_interval() {
+    fn test_display_interval() {
         assert_eq!(format!("{}", Interval::<i8>::empty()), "{}");
 
         assert_eq!(format!("{}", Interval::<i8>::unbound()), "(<-, ->)");
+    }
+
+    #[test]
+    fn test_display_set() {
+        assert_eq!(
+            format!(
+                "{}",
+                Interval::unbound_closed(-9.9)
+                    .union(&Interval::open(5.5, 9.9))
+                    .union(&Interval::closed_open(11.1, 22.2))
+                    .union(&Interval::open_unbound(33.3))
+            ),
+            "{(<-, -9.9], (5.5, 9.9), [11.1, 22.2), (33.3, ->)}"
+        )
     }
 }
