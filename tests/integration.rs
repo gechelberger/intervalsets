@@ -1,4 +1,4 @@
-use intervalsets::contains::Contains;
+use intervalsets::pred::contains::Contains;
 use intervalsets::Interval;
 
 #[test]

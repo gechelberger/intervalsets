@@ -1,7 +1,7 @@
-use crate::contains::Contains;
 use crate::empty::MaybeEmpty;
-use crate::intersects::Intersects;
 use crate::ival::{IVal, Side};
+use crate::pred::contains::Contains;
+use crate::pred::intersects::Intersects;
 use crate::{FiniteInterval, HalfInterval, Interval};
 
 /// Union for two intervals that are contiguous.

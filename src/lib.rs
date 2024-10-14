@@ -31,8 +31,7 @@ pub mod padded;
 pub mod shifted;
 
 // predicate traits
-pub mod contains;
-pub mod intersects;
+pub mod pred;
 
 pub(crate) mod util;
 

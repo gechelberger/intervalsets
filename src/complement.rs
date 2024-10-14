@@ -69,7 +69,7 @@ where
 mod test {
     use super::*;
 
-    use crate::contains::Contains;
+    use crate::pred::contains::Contains;
 
     #[quickcheck]
     fn test_finite_complement_i8(a: i8) {

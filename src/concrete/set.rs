@@ -1,6 +1,6 @@
 use crate::empty::MaybeEmpty;
-use crate::intersects::Intersects;
 use crate::merged::Merged;
+use crate::pred::intersects::Intersects;
 
 use super::interval::Interval;
 

@@ -10,7 +10,7 @@ impl Numeric for Decimal {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::contains::Contains;
+    use crate::pred::contains::Contains;
     use crate::Interval;
 
     #[test]
