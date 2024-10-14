@@ -1,5 +1,6 @@
+use crate::bounds::Bounds;
 use crate::ival::{Bound, IVal, Side};
-use crate::FiniteInterval;
+use crate::{FiniteInterval, HalfInterval};
 
 fn bound_symbol(side: Side, bound: Bound) -> char {
     match bound {
@@ -14,7 +15,7 @@ fn bound_symbol(side: Side, bound: Bound) -> char {
     }
 }
 
-fn format_ival<T: std::fmt::Display>(side: Side, ival: Option<&IVal<T>>) -> String {
+fn format_ival<T: std::fmt::Display>(side: Side, ival: Option<IVal<T>>) -> String {
     match ival {
         None => match side {
             Side::Left => "(<-".to_string(),
@@ -27,7 +28,7 @@ fn format_ival<T: std::fmt::Display>(side: Side, ival: Option<&IVal<T>>) -> Stri
     }
 }
 
-impl<T: std::fmt::Display> std::fmt::Display for FiniteInterval<T> {
+impl<T: std::fmt::Display + Clone> std::fmt::Display for FiniteInterval<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => write!(f, "{{}}"),
@@ -35,11 +36,22 @@ impl<T: std::fmt::Display> std::fmt::Display for FiniteInterval<T> {
                 write!(
                     f,
                     "{}, {}",
-                    format_ival(Side::Left, Some(left)),
-                    format_ival(Side::Right, Some(right)),
+                    format_ival(Side::Left, Some(left.clone())),
+                    format_ival(Side::Right, Some(right.clone())),
                 )
             }
         }
+    }
+}
+
+impl<T: std::fmt::Display + Clone> std::fmt::Display for HalfInterval<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}, {}",
+            format_ival(Side::Left, self.left()),
+            format_ival(Side::Right, self.right())
+        )
     }
 }
 
@@ -64,5 +76,22 @@ mod tests {
             format!("{}", FiniteInterval::closedopen(0.1, 5.1)),
             "[0.1, 5.1)"
         );
+    }
+
+    #[test]
+    fn test_display_half() {
+        assert_eq!(
+            format!("{}", HalfInterval::unbound_closed(0.5)),
+            "(<-, 0.5]"
+        );
+
+        assert_eq!(format!("{}", HalfInterval::unbound_open(0.5)), "(<-, 0.5)");
+
+        assert_eq!(
+            format!("{}", HalfInterval::closed_unbound(0.5)),
+            "[0.5, ->)"
+        );
+
+        assert_eq!(format!("{}", HalfInterval::open_unbound(0.5)), "(0.5, ->)")
     }
 }
