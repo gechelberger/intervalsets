@@ -21,14 +21,7 @@ pub mod partial_ord;
 pub mod sizeable;
 
 // operation traits
-pub mod complement;
-pub mod difference;
-pub mod intersection;
-pub mod merged;
-pub mod union;
-
-pub mod padded;
-pub mod shifted;
+pub mod op;
 
 // predicate traits
 pub mod pred;

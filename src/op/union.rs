@@ -1,5 +1,5 @@
+use super::merged::Merged;
 use crate::empty::MaybeEmpty;
-use crate::merged::Merged;
 use crate::util::commutative_op_impl;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 

@@ -1,4 +1,4 @@
-use crate::intersection::Intersection;
+use super::intersection::Intersection;
 use crate::ival::Side;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 

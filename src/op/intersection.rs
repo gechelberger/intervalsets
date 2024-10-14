@@ -294,8 +294,6 @@ commutative_op_impl!(
 
 #[cfg(test)]
 mod tests {
-    use crate::union::Union;
-
     use super::*;
 
     #[test]
