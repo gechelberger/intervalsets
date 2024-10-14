@@ -1,6 +1,6 @@
 use crate::bounds::Bounds;
 use crate::ival::{Bound, IVal, Side};
-use crate::{FiniteInterval, HalfInterval};
+use crate::{FiniteInterval, HalfInterval, Interval};
 
 fn bound_symbol(side: Side, bound: Bound) -> char {
     match bound {
@@ -55,6 +55,16 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for HalfInterval<T> {
     }
 }
 
+impl<T: std::fmt::Display + Clone> std::fmt::Display for Interval<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Infinite => write!(f, "(<-, ->)"),
+            Self::Finite(inner) => inner.fmt(f),
+            Self::Half(inner) => inner.fmt(f),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -93,5 +103,12 @@ mod tests {
         );
 
         assert_eq!(format!("{}", HalfInterval::open_unbound(0.5)), "(0.5, ->)")
+    }
+
+    #[test]
+    fn test_format_interval() {
+        assert_eq!(format!("{}", Interval::<i8>::empty()), "{}");
+
+        assert_eq!(format!("{}", Interval::<i8>::unbound()), "(<-, ->)");
     }
 }
