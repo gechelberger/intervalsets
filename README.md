@@ -1,6 +1,6 @@
 # intervalsets
 
-[CI](https://github.com/gechelberger/intervalsets/actions/workflows/rust.yml/badge.svg)
+![CI](https://github.com/gechelberger/intervalsets/actions/workflows/rust.yml/badge.svg)
 
 This crate provides intervals as sets.
 
