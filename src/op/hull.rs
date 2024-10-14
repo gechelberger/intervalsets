@@ -1,7 +1,9 @@
+use crate::bounds::Bounds;
 use crate::concrete::finite::FiniteInterval;
-use crate::ival::IVal;
+use crate::empty::MaybeEmpty;
+use crate::ival::{IVal, Side};
 use crate::numeric::Numeric;
-use crate::Interval;
+use crate::{HalfInterval, Interval};
 
 /// Defines the creation of the minimal contiguous Interval/Set
 /// which covers all of the provided items.
@@ -45,6 +47,62 @@ impl<T: Numeric> ConvexHull<T> for Interval<T> {
     }
 }
 
+impl<T: Numeric> ConvexHull<Interval<T>> for Interval<T> {
+    /// Create a new interval that covers a set of intervals
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::Interval;
+    /// use intervalsets::op::hull::ConvexHull;
+    ///
+    /// let iv = Interval::convex_hull(vec![
+    ///     Interval::closed(100.0, 200.0),
+    ///     Interval::open(0.0, 10.0),
+    ///     Interval::closed_unbound(500.0),
+    /// ]);
+    /// assert_eq!(iv, Interval::open_unbound(0.0));
+    /// ```
+    fn convex_hull<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
+        let mut iter = iter.into_iter();
+
+        // this is kind of wonky syntax:
+        // take from iterator until (skipping over empty intervals):
+        // 1) it is exhausted -> return Empty
+        // 2) we find a non-empty interval and extract it's left and right bounds (or None for +/- inf)
+        let mut bounds = loop {
+            match iter.next() {
+                None => return FiniteInterval::Empty.into(),
+                Some(Self::Finite(FiniteInterval::Empty)) => continue,
+                Some(interval) => break (interval.left(), interval.right()),
+            }
+        };
+
+        for item in iter {
+            if item.is_empty() {
+                continue;
+            }
+
+            // None should take the greatest precedence since it represents infinity.
+            let left = bounds
+                .0
+                .and_then(|prev| item.left().map(|value| IVal::min_left(&prev, &value)));
+
+            let right = bounds
+                .1
+                .and_then(|prev| item.right().map(|value| IVal::max_right(&prev, &value)));
+
+            bounds = (left, right);
+        }
+
+        match bounds {
+            (None, None) => Self::Infinite,
+            (Some(ival), None) => Self::Half(HalfInterval::new(Side::Left, ival)),
+            (None, Some(ival)) => Self::Half(HalfInterval::new(Side::Right, ival)),
+            (Some(left), Some(right)) => Self::Finite(FiniteInterval::new_unchecked(left, right)),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -53,5 +111,37 @@ mod tests {
     fn test_finite_hull_of_points() {
         let iv = FiniteInterval::convex_hull(vec![5, 3, -1, 30, 2, -22, 100, -100]);
         assert_eq!(iv, FiniteInterval::closed(-100, 100))
+    }
+
+    #[test]
+    fn test_hull_of_intervals_empty() {
+        let items: Vec<u32> = vec![];
+        assert_eq!(Interval::convex_hull(items), Interval::empty())
+    }
+
+    #[test]
+    fn test_hull_of_intervals() {
+        let iv = Interval::convex_hull(vec![
+            Interval::empty(),
+            Interval::empty(),
+            Interval::closed(0, 10),
+            Interval::empty(),
+            Interval::empty(),
+        ]);
+        assert_eq!(iv, Interval::closed(0, 10));
+    }
+
+    #[test]
+    fn test_hull_of_intervals_unbound() {
+        let iv = Interval::convex_hull(vec![
+            Interval::empty(),
+            Interval::closed(100.0, 200.0),
+            Interval::empty(),
+            Interval::open(0.0, 10.0),
+            Interval::empty(),
+            Interval::closed_unbound(500.0),
+            Interval::empty(),
+        ]);
+        assert_eq!(iv, Interval::open_unbound(0.0));
     }
 }

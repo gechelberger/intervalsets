@@ -7,6 +7,30 @@ implemented as sets with all the associated set operations.
 
 ## Features
 
+* Generic intervals for all primitive types
+    * [Custom types](custom-types) may be supported by implementing the `Numeric` trait.
+* Supports all boundary conditions (ie. empty, open, closed, unbound_open, etc)
+    * Integer types are always normalized to closed form.
+* General set operations
+    * union
+        * merged is a special case of union; returns None if A and B are disjoint.
+    * intersection
+    * complement
+    * difference
+    * symmetric difference
+* Set construction
+    * factory functions for all interval types
+    * convex hull
+        * from iterable of points
+        * from iterable of other sets
+* Set predicates
+    * contains
+    * intersects
+* Set mappings
+    * padding
+    * shifting
+    * general user supplied function
+
 ## Examples
 
 
@@ -22,9 +46,9 @@ cargo hook
 
 # TODO:
 * unit test coverage
-* public interface docstrings
+* benchmarks
+* docs
 * should interval bounds be CoW<'_, T>?
-
 
 # possible features
 * more formal concepts of measure
@@ -33,11 +57,8 @@ cargo hook
 * contiguity between disjoint sets?
 
 
-### Supported Types
 
-All primitive numeric types are supported by default.
-
-#### Custom Types
+### Custom Types
 
 The `num-traits` crate is used to generalize
 support for types of interval boundaries but 
