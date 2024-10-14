@@ -116,20 +116,14 @@ impl<T: Numeric> IVal<T> {
 
         match self.bound {
             Bound::Open => match side {
-                Side::Left => {
-                    if self.value < T::max_value() {
-                        Self::new(Bound::Closed, self.value + T::one())
-                    } else {
-                        self
-                    }
-                }
-                Side::Right => {
-                    if T::min_value() < self.value {
-                        Self::new(Bound::Closed, self.value - T::one())
-                    } else {
-                        self
-                    }
-                }
+                Side::Left => match self.value.try_finite_add(T::one()) {
+                    Some(limit) => Self::new(Bound::Closed, limit),
+                    None => self,
+                },
+                Side::Right => match self.value.try_finite_sub(T::one()) {
+                    Some(limit) => Self::new(Bound::Closed, limit),
+                    None => self,
+                },
             },
             Bound::Closed => self,
         }
@@ -160,7 +154,7 @@ impl<T: Numeric> Mul<T> for IVal<T> {
     }
 }
 
-impl<T: Numeric> Div<T> for IVal<T> {
+impl<T: Numeric + Div<Output = T>> Div<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn div(self, rhs: T) -> Self::Output {
