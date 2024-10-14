@@ -21,6 +21,7 @@ pub mod sizeable;
 
 // operation traits
 pub mod complement;
+pub mod difference;
 pub mod intersection;
 pub mod merged;
 pub mod union;
