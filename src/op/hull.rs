@@ -1,7 +1,19 @@
 use crate::concrete::finite::FiniteInterval;
 use crate::ival::IVal;
 use crate::numeric::Numeric;
+use crate::Interval;
 
+/// Defines the creation of the minimal contiguous Interval/Set
+/// which covers all of the provided items.
+///
+/// # Example
+/// ```
+/// use intervalsets::Interval;
+/// use intervalsets::op::hull::ConvexHull;
+///
+/// let interval = Interval::convex_hull([5, 3, -120, 44, 100, -100]);
+/// assert_eq!(interval, Interval::closed(-120, 100));
+/// ```
 pub trait ConvexHull<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self;
 }
@@ -24,6 +36,12 @@ impl<T: Numeric> ConvexHull<T> for FiniteInterval<T> {
         }
 
         FiniteInterval::new_unchecked(bounds.0, bounds.1)
+    }
+}
+
+impl<T: Numeric> ConvexHull<T> for Interval<T> {
+    fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self {
+        FiniteInterval::convex_hull(iter).into()
     }
 }
 
