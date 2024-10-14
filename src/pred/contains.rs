@@ -2,8 +2,29 @@ use crate::empty::MaybeEmpty;
 use crate::ival::Side;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
-/// A trait to determine whether one item fully contains another.
+/// Defines whether a set fully contains another.
+///
+/// For our purposes a point is the singleton set [T].
+///
+/// A contains B if and only if
+/// for every element x of B,
+/// x is also an element of A.
+///
 /// Contains is not commutative.
+///
+/// # Example
+/// ```
+/// use intervalsets::Interval;
+/// use intervalsets::Contains;
+///
+/// let A = Interval::open(0, 10);
+/// if A.contains(&10) {
+///     // false: oops
+/// }
+/// if A.contains(&Interval::open(0, 10)) {
+///     // true: do the thing, zhu li!
+/// }
+/// ```
 pub trait Contains<Rhs> {
     fn contains(&self, rhs: &Rhs) -> bool;
 }
