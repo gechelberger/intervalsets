@@ -107,7 +107,7 @@ impl<T> FiniteInterval<T> {
 mod test {
     use super::*;
 
-    use crate::contains::Contains;
+    use crate::pred::contains::Contains;
 
     #[test]
     fn test_finite_interval_new() {

@@ -4,7 +4,7 @@ use crate::ival::{IVal, Side};
 use crate::util::commutative_op_impl;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
-use crate::contains::Contains;
+use crate::pred::contains::Contains;
 
 pub trait Intersection<Rhs = Self> {
     type Output;
@@ -294,8 +294,6 @@ commutative_op_impl!(
 
 #[cfg(test)]
 mod tests {
-    use crate::union::Union;
-
     use super::*;
 
     #[test]

@@ -1,5 +1,5 @@
-use crate::complement::Complement;
-use crate::intersection::Intersection;
+use super::complement::Complement;
+use super::intersection::Intersection;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 pub trait Difference<Rhs = Self> {

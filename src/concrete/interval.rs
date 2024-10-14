@@ -104,8 +104,8 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::contains::Contains;
     use crate::normalize::Normalize;
+    use crate::pred::contains::Contains;
 
     use super::*;
 

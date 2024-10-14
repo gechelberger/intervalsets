@@ -79,7 +79,7 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::union::Union;
+    use crate::op::union::Union;
 
     use super::*;
 
