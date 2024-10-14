@@ -1,4 +1,4 @@
-use crate::ival::{Bound, IVal};
+use crate::ival::{Bound, IVal, Side};
 use crate::numeric::Numeric;
 
 /// A fully bounded interval in N, Z, or R.
@@ -27,7 +27,7 @@ impl<T: Numeric> FiniteInterval<T> {
                 Self::new_unchecked(left, right)
             }
         } else {
-            Self::new_unchecked(left, right)
+            Self::new_unchecked(left.normalized(Side::Left), right.normalized(Side::Right))
         }
     }
 

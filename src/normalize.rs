@@ -24,7 +24,15 @@ impl<T: Numeric> Normalize for Interval<T> {
     fn normalized(self) -> Self {
         match self {
             Self::Infinite => Self::Infinite,
-            Self::Half(interval) => Self::Half(interval.normalized()),
+            Self::Half(interval) => {
+                Self::Half(interval.normalized())
+                /*let norm = interval.normalized();
+                if T::numeric_set() == NumericSet::Natural && norm.side == Side::Right {
+                    Self::Finite(FiniteInterval::new_unchecked(IVal::new(Bound::Closed, T::zero()), norm.ival))
+                } else {
+                    Self::Half(norm)
+                }*/
+            }
             Self::Finite(interval) => Self::Finite(interval.normalized()),
         }
     }

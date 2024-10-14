@@ -9,7 +9,10 @@ pub struct HalfInterval<T> {
 
 impl<T: Numeric> HalfInterval<T> {
     pub fn new(side: Side, ival: IVal<T>) -> Self {
-        Self { side, ival }
+        Self {
+            side,
+            ival: ival.normalized(side),
+        }
     }
 
     /// (<-, b) = { x in T | x < b }

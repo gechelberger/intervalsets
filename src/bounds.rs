@@ -101,18 +101,18 @@ mod test {
     #[test]
     fn test_finite_interval_bounds() {
         let itv = FiniteInterval::openclosed(0, 5);
-        assert_eq!(itv.lval(), Some(0));
+        assert_eq!(itv.lval(), Some(1));
         assert_eq!(itv.rval(), Some(5));
-        assert_eq!(itv.lbound(), Some(Bound::Open));
+        assert_eq!(itv.lbound(), Some(Bound::Closed));
         assert_eq!(itv.rbound(), Some(Bound::Closed));
     }
 
     #[test]
     fn test_half_interval_bounds() {
         let itv = HalfInterval::open_unbound(5);
-        assert_eq!(itv.lval(), Some(5));
+        assert_eq!(itv.lval(), Some(6));
         assert_eq!(itv.rval(), None);
-        assert_eq!(itv.lbound(), Some(Bound::Open));
+        assert_eq!(itv.lbound(), Some(Bound::Closed));
         assert_eq!(itv.rbound(), None);
     }
 
