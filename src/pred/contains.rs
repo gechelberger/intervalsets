@@ -3,7 +3,7 @@ use crate::ival::Side;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// A trait to determine whether one item fully contains another.
-/// Contains is not associative.
+/// Contains is not commutative.
 pub trait Contains<Rhs> {
     fn contains(&self, rhs: &Rhs) -> bool;
 }
@@ -136,15 +136,26 @@ impl<T: PartialOrd> Contains<Self> for Interval<T> {
     }
 }
 
-////////////////////////////////////////
-
-impl<T: PartialOrd> Contains<T> for IntervalSet<T> {
-    fn contains(&self, rhs: &T) -> bool {
-        self.intervals.iter().any(|subset| subset.contains(rhs))
-    }
+macro_rules! interval_set_contains_impl {
+    ($t_rhs:ty) => {
+        impl<T: PartialOrd> Contains<$t_rhs> for IntervalSet<T> {
+            fn contains(&self, rhs: &$t_rhs) -> bool {
+                self.intervals.iter().any(|subset| subset.contains(rhs))
+            }
+        }
+    };
 }
 
-// todo: other interval set conains
+interval_set_contains_impl!(T);
+interval_set_contains_impl!(FiniteInterval<T>);
+interval_set_contains_impl!(HalfInterval<T>);
+interval_set_contains_impl!(Interval<T>);
+
+impl<T: PartialOrd> Contains<Self> for IntervalSet<T> {
+    fn contains(&self, rhs: &Self) -> bool {
+        rhs.intervals.iter().all(|subset| self.contains(subset))
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -204,5 +215,31 @@ mod tests {
             a < b && -100.0 < a && b < 100.0
         )
     }
-    // TODO: plenty of other cases
+
+    #[quickcheck]
+    fn test_set_contains_f32(a: f32) {
+        let interval = IntervalSet::<f32>::new_unchecked(vec![
+            Interval::unbound_open(-100000.0),
+            Interval::open(-100.0, 100.0),
+            Interval::open_unbound(100000.0),
+        ]);
+
+        assert_eq!(
+            interval.contains(&a),
+            a < -100000.0 || (-100.0 < a && a < 100.0) || 100000.0 < a
+        );
+    }
+
+    #[test]
+    fn test_set_contains_set() {
+        let a = IntervalSet::new_unchecked(vec![
+            Interval::open(-1000.0, 1000.0),
+            Interval::open(3000.0, 4000.0),
+        ]);
+
+        assert!(a.contains(&IntervalSet::new_unchecked(vec![
+            Interval::open(0.0, 100.0),
+            Interval::open(3100.0, 3200.0),
+        ])));
+    }
 }
