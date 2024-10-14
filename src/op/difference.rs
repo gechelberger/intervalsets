@@ -1,14 +1,39 @@
 use super::complement::Complement;
 use super::intersection::Intersection;
+use super::union::Union;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
+/// Defines the difference of sets A - B.
+///
+/// { x in T | x in A<T> && x not in B<T>}
+///
+/// Difference is not commutative.
+///
+/// # Example
+///
+/// ```
+/// use intervalsets::Interval;
+/// use intervalsets::op::difference::Difference;
+/// use intervalsets::op::union::Union;
+///
+/// let a = Interval::closed(0.0, 100.0);
+/// let b = Interval::closed(50.0, 150.0);
+/// assert_eq!(
+///     a.difference(&b),
+///     Interval::closed_open(0.0, 50.0).into()
+/// );
+/// assert_eq!(
+///     b.difference(&a),
+///     Interval::open_closed(100.0, 150.0).into()
+/// );
+/// ```
 pub trait Difference<Rhs = Self> {
     type Output;
 
     fn difference(&self, rhs: &Rhs) -> Self::Output;
 }
 
-macro_rules! impl_difference {
+macro_rules! difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
         impl<T: Copy + PartialOrd> Difference<$t_rhs> for $t_lhs {
             type Output = IntervalSet<T>;
@@ -20,21 +45,77 @@ macro_rules! impl_difference {
     };
 }
 
-impl_difference!(FiniteInterval<T>, FiniteInterval<T>);
-impl_difference!(FiniteInterval<T>, HalfInterval<T>);
-impl_difference!(HalfInterval<T>, FiniteInterval<T>);
-impl_difference!(HalfInterval<T>, HalfInterval<T>);
-impl_difference!(Interval<T>, FiniteInterval<T>);
-impl_difference!(Interval<T>, HalfInterval<T>);
-impl_difference!(Interval<T>, Interval<T>);
-impl_difference!(FiniteInterval<T>, Interval<T>);
-impl_difference!(HalfInterval<T>, Interval<T>);
-impl_difference!(IntervalSet<T>, FiniteInterval<T>);
-impl_difference!(IntervalSet<T>, HalfInterval<T>);
-impl_difference!(IntervalSet<T>, Interval<T>);
-impl_difference!(FiniteInterval<T>, IntervalSet<T>);
-impl_difference!(HalfInterval<T>, IntervalSet<T>);
-impl_difference!(Interval<T>, IntervalSet<T>);
+difference_impl!(FiniteInterval<T>, FiniteInterval<T>);
+difference_impl!(FiniteInterval<T>, HalfInterval<T>);
+difference_impl!(HalfInterval<T>, FiniteInterval<T>);
+difference_impl!(HalfInterval<T>, HalfInterval<T>);
+difference_impl!(Interval<T>, FiniteInterval<T>);
+difference_impl!(Interval<T>, HalfInterval<T>);
+difference_impl!(Interval<T>, Interval<T>);
+difference_impl!(FiniteInterval<T>, Interval<T>);
+difference_impl!(HalfInterval<T>, Interval<T>);
+difference_impl!(IntervalSet<T>, FiniteInterval<T>);
+difference_impl!(IntervalSet<T>, HalfInterval<T>);
+difference_impl!(IntervalSet<T>, Interval<T>);
+difference_impl!(FiniteInterval<T>, IntervalSet<T>);
+difference_impl!(HalfInterval<T>, IntervalSet<T>);
+difference_impl!(Interval<T>, IntervalSet<T>);
+difference_impl!(IntervalSet<T>, IntervalSet<T>);
+
+/// Defines the symmetric difference for sets A and B.
+///
+/// {x in T | (x in A || x in B) && (x not in A intersect B)}
+///
+/// Symmetric difference is commutative.
+///
+/// Example:
+/// ```
+/// use intervalsets::Interval;
+/// use intervalsets::op::difference::SymmetricDifference;
+/// use intervalsets::op::union::Union;
+///
+/// let a = Interval::closed(0.0, 10.0);
+/// let b = Interval::closed(5.0, 15.0);
+/// let expected = Interval::closed_open(0.0, 5.0)
+///         .union(&Interval::open_closed(10.0, 15.0));
+/// assert_eq!(a.sym_difference(&b), expected);
+/// assert_eq!(b.sym_difference(&a), expected);
+/// assert_eq!(a.sym_difference(&a), Interval::empty().into())
+/// ```
+pub trait SymmetricDifference<Rhs = Self> {
+    type Output;
+
+    fn sym_difference(&self, rhs: &Rhs) -> Self::Output;
+}
+
+macro_rules! sym_difference_impl {
+    ($t_lhs:ty, $t_rhs:ty) => {
+        impl<T: Copy + PartialOrd> SymmetricDifference<$t_rhs> for $t_lhs {
+            type Output = IntervalSet<T>;
+
+            fn sym_difference(&self, rhs: &$t_rhs) -> Self::Output {
+                self.union(rhs).difference(&self.intersection(rhs))
+            }
+        }
+    };
+}
+
+sym_difference_impl!(FiniteInterval<T>, FiniteInterval<T>);
+sym_difference_impl!(FiniteInterval<T>, HalfInterval<T>);
+sym_difference_impl!(HalfInterval<T>, FiniteInterval<T>);
+sym_difference_impl!(HalfInterval<T>, HalfInterval<T>);
+sym_difference_impl!(Interval<T>, FiniteInterval<T>);
+sym_difference_impl!(Interval<T>, HalfInterval<T>);
+sym_difference_impl!(Interval<T>, Interval<T>);
+sym_difference_impl!(FiniteInterval<T>, Interval<T>);
+sym_difference_impl!(HalfInterval<T>, Interval<T>);
+sym_difference_impl!(IntervalSet<T>, FiniteInterval<T>);
+sym_difference_impl!(IntervalSet<T>, HalfInterval<T>);
+sym_difference_impl!(IntervalSet<T>, Interval<T>);
+sym_difference_impl!(FiniteInterval<T>, IntervalSet<T>);
+sym_difference_impl!(HalfInterval<T>, IntervalSet<T>);
+sym_difference_impl!(Interval<T>, IntervalSet<T>);
+sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 
 #[cfg(test)]
 mod tests {
@@ -66,5 +147,18 @@ mod tests {
             FiniteInterval::closed(2.5, 7.5).difference(&FiniteInterval::closed(0.0, 10.0)),
             FiniteInterval::Empty.into()
         )
+    }
+
+    #[test]
+    fn test_finite_sym_difference() {
+        assert_eq!(
+            Interval::closed(0.0, 10.0).sym_difference(&Interval::closed(5.0, 15.0)),
+            Interval::closed_open(0.0, 5.0).union(&Interval::open_closed(10.0, 15.0))
+        );
+
+        assert_eq!(
+            Interval::closed(5.0, 15.0).sym_difference(&Interval::closed(0.0, 10.0)),
+            Interval::closed_open(0.0, 5.0).union(&Interval::open_closed(10.0, 15.0))
+        );
     }
 }
