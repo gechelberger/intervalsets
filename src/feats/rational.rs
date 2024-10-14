@@ -26,6 +26,7 @@ mod tests {
     use crate::Interval;
     use num_rational::BigRational;
 
+    #[test]
     fn test_rationals() {
         let a: BigRational = BigRational::new(100.into(), 1.into());
         let b: BigRational = BigRational::new(200.into(), 1.into());
