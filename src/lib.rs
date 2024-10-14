@@ -12,6 +12,7 @@ pub mod ival;
 
 // invariant traits
 pub mod bounds;
+pub mod display;
 pub mod empty;
 pub mod from;
 mod normalize;
