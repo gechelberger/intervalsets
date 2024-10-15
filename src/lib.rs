@@ -35,8 +35,11 @@ pub(crate) use concrete::half::HalfInterval;
 pub use concrete::interval::Interval;
 pub use concrete::set::IntervalSet;
 
+pub use ival::{Bound, Side};
+
 pub use bounds::Bounds;
 pub use empty::MaybeEmpty;
+pub use numeric::Domain;
 pub use sizable::{ISize, Sizable};
 
 pub use pred::contains::Contains;

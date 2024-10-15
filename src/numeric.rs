@@ -1,108 +1,60 @@
-use num_traits::{One, Zero};
+use crate::ival::Side;
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
-pub enum NumericSet {
-    Natural,
-    Integer,
-    // Rational,
-    Real,
-}
-
-impl NumericSet {
-    #[inline]
-    pub fn in_real(self) -> bool {
-        true
-    }
-
-    #[inline]
-    pub fn in_integer(self) -> bool {
-        self != Self::Real
-    }
-
-    #[inline]
-    pub fn in_natural(self) -> bool {
-        self == Self::Natural
-    }
-}
-
-pub trait Numeric<Rhs = Self, Output = Self>:
-    Sized
-    + Clone
-    + PartialOrd
-    + PartialEq
-    + core::ops::Add<Rhs, Output = Output>
-    + core::ops::Sub<Rhs, Output = Output>
-    + core::ops::Mul<Rhs, Output = Output>
-    + core::ops::Div<Rhs, Output = Output>
-    + core::ops::Rem<Rhs, Output = Output>
-    + Zero
-    + One
+/*
+pub trait TryFiniteOffset<Rhs=Self>
+where
+    Self: Sized
 {
-    fn numeric_set() -> NumericSet;
-
     fn try_finite_add(&self, rhs: &Rhs) -> Option<Self>;
-
     fn try_finite_sub(&self, rhs: &Rhs) -> Option<Self>;
 }
+*/
 
-macro_rules! numeric_integer_impl {
-    ($t:ty, $v:expr) => {
-        impl Numeric for $t {
-            #[inline]
-            fn numeric_set() -> NumericSet {
-                $v
-            }
-
-            #[inline]
-            fn try_finite_add(&self, rhs: &Self) -> Option<Self> {
-                <$t>::checked_add(*self, *rhs)
-            }
-
-            #[inline]
-            fn try_finite_sub(&self, rhs: &Self) -> Option<Self> {
-                <$t>::checked_sub(*self, *rhs)
-            }
-        }
-    };
+pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
+    fn try_adjacent(&self, side: Side) -> Option<Self>;
 }
 
-macro_rules! numeric_float_impl {
+#[macro_export]
+macro_rules! continuous_domain_impl {
     ($t:ty) => {
-        impl Numeric for $t {
-            fn numeric_set() -> NumericSet {
-                NumericSet::Real
+        impl Domain for $t {
+            #[inline]
+            fn try_adjacent(&self, side: Side) -> Option<Self> {
+                None
             }
+        }
+    };
+}
 
-            fn try_finite_add(&self, rhs: &Self) -> Option<Self> {
-                match self + rhs {
-                    <$t>::INFINITY => None,
-                    result => Some(result),
-                }
-            }
+pub use continuous_domain_impl;
 
-            fn try_finite_sub(&self, rhs: &Self) -> Option<Self> {
-                match self - rhs {
-                    <$t>::NEG_INFINITY => None,
-                    result => Some(result),
+continuous_domain_impl!(f32);
+continuous_domain_impl!(f64);
+
+macro_rules! integer_domain_impl {
+    ($t:ty) => {
+        impl Domain for $t {
+            #[inline]
+            fn try_adjacent(&self, side: Side) -> Option<Self> {
+                match side {
+                    Side::Right => <$t>::checked_add(*self, 1),
+                    Side::Left => <$t>::checked_sub(*self, 1),
                 }
             }
         }
     };
 }
 
-numeric_integer_impl!(usize, NumericSet::Natural);
-numeric_integer_impl!(u8, NumericSet::Natural);
-numeric_integer_impl!(u16, NumericSet::Natural);
-numeric_integer_impl!(u32, NumericSet::Natural);
-numeric_integer_impl!(u64, NumericSet::Natural);
-numeric_integer_impl!(u128, NumericSet::Natural);
+integer_domain_impl!(usize);
+integer_domain_impl!(u8);
+integer_domain_impl!(u16);
+integer_domain_impl!(u32);
+integer_domain_impl!(u64);
+integer_domain_impl!(u128);
 
-numeric_integer_impl!(isize, NumericSet::Integer);
-numeric_integer_impl!(i8, NumericSet::Integer);
-numeric_integer_impl!(i16, NumericSet::Integer);
-numeric_integer_impl!(i32, NumericSet::Integer);
-numeric_integer_impl!(i64, NumericSet::Integer);
-numeric_integer_impl!(i128, NumericSet::Integer);
-
-numeric_float_impl!(f32);
-numeric_float_impl!(f64);
+integer_domain_impl!(isize);
+integer_domain_impl!(i8);
+integer_domain_impl!(i16);
+integer_domain_impl!(i32);
+integer_domain_impl!(i64);
+integer_domain_impl!(i128);

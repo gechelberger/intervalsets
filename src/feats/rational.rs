@@ -1,24 +1,11 @@
-use num_rational::Ratio;
-use num_traits::{CheckedAdd, CheckedMul, CheckedSub};
+use crate::continuous_domain_impl;
+use crate::ival::Side;
+use crate::numeric::Domain;
+use num_rational::{BigRational, Ratio};
 
-use crate::numeric::{Numeric, NumericSet};
-
-impl<T> Numeric for Ratio<T>
-where
-    T: Clone + CheckedSub + CheckedAdd + CheckedMul + num_integer::Integer,
-{
-    fn numeric_set() -> NumericSet {
-        NumericSet::Real //todo
-    }
-
-    fn try_finite_add(&self, rhs: &Self) -> Option<Self> {
-        self.checked_add(rhs)
-    }
-
-    fn try_finite_sub(&self, rhs: &Self) -> Option<Self> {
-        self.checked_sub(rhs)
-    }
-}
+continuous_domain_impl!(Ratio<i32>);
+continuous_domain_impl!(Ratio<i64>);
+continuous_domain_impl!(BigRational);
 
 #[cfg(test)]
 mod tests {

@@ -1,19 +1,9 @@
-use crate::numeric::{Numeric, NumericSet};
+use crate::continuous_domain_impl;
+use crate::ival::Side;
+use crate::numeric::Domain;
 use rust_decimal::Decimal;
 
-impl Numeric for Decimal {
-    fn numeric_set() -> NumericSet {
-        NumericSet::Real
-    }
-
-    fn try_finite_add(&self, rhs: &Self) -> Option<Self> {
-        self.checked_add(*rhs)
-    }
-
-    fn try_finite_sub(&self, rhs: &Self) -> Option<Self> {
-        self.checked_sub(*rhs)
-    }
-}
+continuous_domain_impl!(Decimal);
 
 #[cfg(test)]
 mod test {

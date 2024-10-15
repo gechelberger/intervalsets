@@ -6,8 +6,8 @@ pub mod merged;
 pub mod union;
 
 // generic mappings
-pub mod padded;
-pub mod shifted;
+//pub mod padded;
+//pub mod shifted;
 
 // constructors
 pub mod hull;

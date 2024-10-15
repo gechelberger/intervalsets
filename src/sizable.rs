@@ -50,10 +50,6 @@ pub trait Sizable {
     type Output: Zero + PartialEq;
 
     fn size(&self) -> Self::Output;
-
-    fn is_empty(&self) -> bool {
-        self.size() == Self::Output::zero()
-    }
 }
 
 impl<T: Clone + Zero + Sub<Output = T> + PartialEq> Sizable for Interval<T> {
@@ -66,10 +62,6 @@ impl<T: Clone + Zero + Sub<Output = T> + PartialEq> Sizable for Interval<T> {
             Self::Finite(finite) => ISize::Finite(finite.size()),
         }
     }
-
-    fn is_empty(&self) -> bool {
-        *self == Self::Finite(FiniteInterval::Empty)
-    }
 }
 
 impl<T: Clone + Zero + Sub<Output = T> + PartialEq> Sizable for FiniteInterval<T> {
@@ -80,10 +72,6 @@ impl<T: Clone + Zero + Sub<Output = T> + PartialEq> Sizable for FiniteInterval<T
             Self::Empty => T::zero(),
             Self::NonZero(left, right) => right.value.clone() - left.value.clone(),
         }
-    }
-
-    fn is_empty(&self) -> bool {
-        *self == Self::Empty
     }
 }
 

@@ -1,5 +1,5 @@
 use crate::empty::MaybeEmpty;
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 use crate::op::merged::Merged;
 use crate::pred::intersects::Intersects;
 
@@ -23,7 +23,7 @@ pub struct IntervalSet<T> {
 /// * All intervals are stored in ascending order.
 /// * All stored intervals are disjoint subsets of T.
 #[allow(dead_code)]
-impl<T: Numeric> IntervalSet<T> {
+impl<T: Domain> IntervalSet<T> {
     /// Create a new empty IntervalSet
     pub fn empty() -> Self {
         Self { intervals: vec![] }
@@ -114,7 +114,7 @@ impl<T: Numeric> IntervalSet<T> {
     }
 }
 
-impl<T: Numeric> FromIterator<Interval<T>> for IntervalSet<T> {
+impl<T: Domain> FromIterator<Interval<T>> for IntervalSet<T> {
     fn from_iter<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
         Self::new(iter.into_iter().collect())
     }

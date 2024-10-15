@@ -1,6 +1,6 @@
 use crate::empty::MaybeEmpty;
 use crate::ival::Side;
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// Defines whether a set fully contains another.
@@ -30,7 +30,7 @@ pub trait Contains<Rhs> {
     fn contains(&self, rhs: &Rhs) -> bool;
 }
 
-impl<T: Numeric> Contains<T> for FiniteInterval<T> {
+impl<T: Domain> Contains<T> for FiniteInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         match self {
             Self::Empty => false,
@@ -41,7 +41,7 @@ impl<T: Numeric> Contains<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Numeric> Contains<Self> for FiniteInterval<T> {
+impl<T: Domain> Contains<Self> for FiniteInterval<T> {
     /// Check if this interval fully contains the other
     fn contains(&self, rhs: &Self) -> bool {
         self.map_or(false, |left_out, right_out| {
@@ -74,7 +74,7 @@ impl<T> Contains<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Numeric> Contains<Interval<T>> for FiniteInterval<T> {
+impl<T: Domain> Contains<Interval<T>> for FiniteInterval<T> {
     fn contains(&self, rhs: &Interval<T>) -> bool {
         match rhs {
             Interval::Infinite => false,
@@ -84,19 +84,19 @@ impl<T: Numeric> Contains<Interval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Numeric> Contains<T> for HalfInterval<T> {
+impl<T: Domain> Contains<T> for HalfInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.ival.contains(self.side, rhs)
     }
 }
 
-impl<T: Numeric> Contains<Self> for HalfInterval<T> {
+impl<T: Domain> Contains<Self> for HalfInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         self.side == rhs.side && self.contains(&rhs.ival.value)
     }
 }
 
-impl<T: Numeric> Contains<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Domain> Contains<FiniteInterval<T>> for HalfInterval<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         rhs.map_or(false, |left, right| {
             self.contains(&left.value) && self.contains(&right.value)
@@ -104,7 +104,7 @@ impl<T: Numeric> Contains<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Numeric> Contains<Interval<T>> for HalfInterval<T> {
+impl<T: Domain> Contains<Interval<T>> for HalfInterval<T> {
     fn contains(&self, rhs: &Interval<T>) -> bool {
         match rhs {
             Interval::Infinite => false,
@@ -114,7 +114,7 @@ impl<T: Numeric> Contains<Interval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Numeric> Contains<T> for Interval<T> {
+impl<T: Domain> Contains<T> for Interval<T> {
     fn contains(&self, rhs: &T) -> bool {
         match self {
             Self::Infinite => true,
@@ -124,7 +124,7 @@ impl<T: Numeric> Contains<T> for Interval<T> {
     }
 }
 
-impl<T: Numeric> Contains<FiniteInterval<T>> for Interval<T> {
+impl<T: Domain> Contains<FiniteInterval<T>> for Interval<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Infinite => !rhs.is_empty(),
@@ -134,7 +134,7 @@ impl<T: Numeric> Contains<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Numeric> Contains<HalfInterval<T>> for Interval<T> {
+impl<T: Domain> Contains<HalfInterval<T>> for Interval<T> {
     fn contains(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Infinite => true,
@@ -144,7 +144,7 @@ impl<T: Numeric> Contains<HalfInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Numeric> Contains<Self> for Interval<T> {
+impl<T: Domain> Contains<Self> for Interval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         match self {
             Self::Infinite => match rhs {
@@ -160,7 +160,7 @@ impl<T: Numeric> Contains<Self> for Interval<T> {
 
 macro_rules! interval_set_contains_impl {
     ($t_rhs:ty) => {
-        impl<T: Numeric> Contains<$t_rhs> for IntervalSet<T> {
+        impl<T: Domain> Contains<$t_rhs> for IntervalSet<T> {
             fn contains(&self, rhs: &$t_rhs) -> bool {
                 self.intervals.iter().any(|subset| subset.contains(rhs))
             }
@@ -173,7 +173,7 @@ interval_set_contains_impl!(FiniteInterval<T>);
 interval_set_contains_impl!(HalfInterval<T>);
 interval_set_contains_impl!(Interval<T>);
 
-impl<T: Numeric> Contains<Self> for IntervalSet<T> {
+impl<T: Domain> Contains<Self> for IntervalSet<T> {
     fn contains(&self, rhs: &Self) -> bool {
         rhs.intervals.iter().all(|subset| self.contains(subset))
     }

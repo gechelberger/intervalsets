@@ -1,7 +1,7 @@
 use crate::bounds::Bounds;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 use crate::util::commutative_op_impl;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
@@ -13,7 +13,7 @@ pub trait Intersection<Rhs = Self> {
     fn intersection(&self, rhs: &Rhs) -> Self::Output;
 }
 
-impl<T: Numeric> Intersection<Self> for FiniteInterval<T> {
+impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
@@ -29,7 +29,7 @@ impl<T: Numeric> Intersection<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Numeric> Intersection<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     fn intersection(&self, rhs: &HalfInterval<T>) -> Self::Output {
@@ -53,7 +53,7 @@ impl<T: Numeric> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Numeric> Intersection<Self> for HalfInterval<T> {
+impl<T: Domain> Intersection<Self> for HalfInterval<T> {
     type Output = Interval<T>;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
@@ -74,7 +74,7 @@ impl<T: Numeric> Intersection<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Numeric> Intersection<FiniteInterval<T>> for Interval<T> {
+impl<T: Domain> Intersection<FiniteInterval<T>> for Interval<T> {
     type Output = Interval<T>;
 
     fn intersection(&self, rhs: &FiniteInterval<T>) -> Self::Output {
@@ -86,7 +86,7 @@ impl<T: Numeric> Intersection<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Numeric> Intersection<HalfInterval<T>> for Interval<T> {
+impl<T: Domain> Intersection<HalfInterval<T>> for Interval<T> {
     type Output = Interval<T>;
 
     fn intersection(&self, rhs: &HalfInterval<T>) -> Self::Output {
@@ -98,7 +98,7 @@ impl<T: Numeric> Intersection<HalfInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Numeric> Intersection<Self> for Interval<T> {
+impl<T: Domain> Intersection<Self> for Interval<T> {
     type Output = Interval<T>;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
@@ -132,7 +132,7 @@ commutative_op_impl!(
     Interval<T>
 );
 
-impl<T: Numeric> Intersection<FiniteInterval<T>> for IntervalSet<T> {
+impl<T: Domain> Intersection<FiniteInterval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn intersection(&self, rhs: &FiniteInterval<T>) -> Self::Output {
@@ -153,7 +153,7 @@ impl<T: Numeric> Intersection<FiniteInterval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Numeric> Intersection<HalfInterval<T>> for IntervalSet<T> {
+impl<T: Domain> Intersection<HalfInterval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn intersection(&self, rhs: &HalfInterval<T>) -> Self::Output {
@@ -175,7 +175,7 @@ impl<T: Numeric> Intersection<HalfInterval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Numeric> Intersection<Interval<T>> for IntervalSet<T> {
+impl<T: Domain> Intersection<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn intersection(&self, rhs: &Interval<T>) -> Self::Output {
@@ -196,7 +196,7 @@ impl<T: Numeric> Intersection<Interval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Numeric> Intersection<Self> for IntervalSet<T> {
+impl<T: Domain> Intersection<Self> for IntervalSet<T> {
     type Output = IntervalSet<T>;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {

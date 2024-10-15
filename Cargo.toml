@@ -1,9 +1,9 @@
 [package]
 name = "intervalsets"
 version = "0.1.0-alpha.1"
-authours = ["Greg Echelberger"]
+authors = ["Greg Echelberger"]
 edition = "2021"
-rust_version = "1.65.0"
+rust-version = "1.65.0"
 readme = "README.md"
 description = """
 The intervalsets crate provides bounded and unbounded intervals 
