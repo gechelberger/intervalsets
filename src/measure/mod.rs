@@ -5,10 +5,10 @@
 //! > Let m(S) be our measure
 //! ```ignore
 //! 1) Monotonicity:
-//!     If A in B then m(A) <= u(B)
+//!     If A is subset of B then m(A) <= u(B)
 //!
 //! 2) Subadditivity:
-//!     If A0, A1, .. An is a countable set of possibly disjoint sets:
+//!     If A0, A1, .. An is a countable set of possibly intersecting sets:
 //!         m(A0 U A1 U .. An) <= Sum{ m(Ai) }
 //! ```
 //!
@@ -17,8 +17,6 @@
 
 pub mod count;
 pub mod width;
-
-use crate::numeric::{TryFiniteAdd, TryFiniteSub};
 
 /// The result of applying a Measure to an Interval/Set.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
@@ -135,6 +133,23 @@ impl<T> Measurement<T> {
         }
     }
 
+    /// Compose with core::ops binary operations
+    fn binop_map(self, rhs: Self, func: impl Fn(T, T) -> T) -> Self {
+        let lhs = match self {
+            Self::Finite(inner) => inner,
+            Self::Infinite => return Self::Infinite,
+        };
+
+        let rhs = match rhs {
+            Self::Finite(inner) => inner,
+            Self::Infinite => return Self::Infinite,
+        };
+
+        Self::Finite(func(lhs, rhs))
+    }
+
+    /// Compose with TryFiniteOp
+    #[allow(dead_code)]
     fn binop_try_map(self, rhs: Self, func: impl Fn(&T, &T) -> Option<T>) -> Self {
         let lhs = match self {
             Self::Finite(inner) => inner,
@@ -154,7 +169,7 @@ impl<T> Measurement<T> {
 
 impl<T> core::ops::Add for Measurement<T>
 where
-    T: Clone + TryFiniteAdd<T, Output = T>,
+    T: Clone + core::ops::Add<T, Output = T>,
 {
     type Output = Self;
 
@@ -171,19 +186,15 @@ where
     ///
     /// let x = Measurement::Infinite;
     /// assert_eq!(x + y, Measurement::Infinite);
-    ///
-    /// let x = Measurement::Finite(f32::MAX);
-    /// let y = Measurement::Finite(f32::MAX);
-    /// assert_eq!(x + y, Measurement::Infinite);
     /// ```
     fn add(self, rhs: Self) -> Self::Output {
-        self.binop_try_map(rhs, T::try_finite_add)
+        self.binop_map(rhs, T::add)
     }
 }
 
 impl<T> core::ops::Sub for Measurement<T>
 where
-    T: Clone + TryFiniteSub<T, Output = T>,
+    T: Clone + core::ops::Sub<T, Output = T>,
 {
     type Output = Self;
 
@@ -202,6 +213,6 @@ where
     /// assert_eq!(x - y, Measurement::Infinite);
     /// ```
     fn sub(self, rhs: Self) -> Self::Output {
-        self.binop_try_map(rhs, T::try_finite_sub)
+        self.binop_map(rhs, T::sub)
     }
 }

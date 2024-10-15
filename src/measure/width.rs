@@ -1,7 +1,8 @@
 use core::ops::Sub;
 use num_traits::Zero;
 
-use crate::{FiniteInterval, HalfInterval, ISize, Interval, IntervalSet};
+use super::Measurement as M;
+use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// A measure of the size of the set S in R1.
 ///
@@ -16,53 +17,59 @@ pub trait Width {
     fn width(&self) -> Self::Output;
 }
 
-impl<T> Width for FiniteInterval<T>
+impl<T, Out> Width for FiniteInterval<T>
 where
-    T: Clone + Sub<T, Output = T> + Zero,
+    Out: Zero,
+    T: Clone + Sub<T, Output = Out>,
 {
-    type Output = T;
+    type Output = M<Out>;
 
     fn width(&self) -> Self::Output {
         match self {
-            Self::Empty => T::zero(),
-            Self::NonZero(left, right) => right.value.clone() - left.value.clone(),
+            Self::Empty => M::Finite(Out::zero()),
+            Self::NonZero(left, right) => M::Finite(right.value.clone() - left.value.clone()),
         }
     }
 }
-
-impl<T> Width for HalfInterval<T> {
-    type Output = ISize<T>;
+impl<T, Out> Width for HalfInterval<T>
+where
+    Out: Zero,
+    T: Clone + Sub<T, Output = Out>,
+{
+    type Output = M<Out>;
 
     fn width(&self) -> Self::Output {
-        ISize::Infinite
+        M::Infinite
     }
 }
 
-impl<T> Width for Interval<T>
+impl<T, Out> Width for Interval<T>
 where
-    T: Clone + Sub<T, Output = T> + Zero,
+    Out: Zero,
+    T: Clone + Sub<T, Output = Out>,
 {
-    type Output = ISize<T>;
+    type Output = M<Out>;
 
     fn width(&self) -> Self::Output {
         match self {
-            Self::Finite(inner) => ISize::Finite(inner.width()),
+            Self::Finite(inner) => inner.width(),
             Self::Half(inner) => inner.width(),
-            Self::Infinite => ISize::Infinite,
+            Self::Infinite => M::Infinite,
         }
     }
 }
 
-impl<T> Width for IntervalSet<T>
+impl<T, Out> Width for IntervalSet<T>
 where
-    T: Clone + Sub<T, Output = T> + Zero,
+    Out: Clone + Zero + core::ops::Add<Out, Output = Out>,
+    T: Clone + core::ops::Sub<T, Output = Out>,
 {
-    type Output = ISize<T>;
+    type Output = M<Out>;
 
     fn width(&self) -> Self::Output {
         self.intervals
             .iter()
-            .fold(ISize::Finite(T::zero()), |accum, subset| {
+            .fold(M::Finite(Out::zero()), |accum, subset| {
                 accum + subset.width()
             })
     }
@@ -74,7 +81,7 @@ mod tests {
 
     #[test]
     fn test_finite_width() {
-        assert_eq!(FiniteInterval::<i32>::Empty.width(), 0);
-        assert_eq!(FiniteInterval::closed(0, 10).width(), 10);
+        assert_eq!(FiniteInterval::<i32>::Empty.width().finite(), 0);
+        assert_eq!(FiniteInterval::closed(0, 10).width().finite(), 10);
     }
 }

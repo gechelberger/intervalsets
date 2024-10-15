@@ -15,7 +15,6 @@ mod bounds;
 mod display;
 mod empty;
 mod from;
-mod normalize;
 mod numeric;
 mod partial_ord;
 mod sizable;

@@ -1,16 +1,15 @@
-use crate::normalize::Normalize;
 use crate::numeric::Domain;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 impl<T: Domain> From<FiniteInterval<T>> for Interval<T> {
     fn from(value: FiniteInterval<T>) -> Self {
-        Self::Finite(value).normalized()
+        Self::Finite(value)
     }
 }
 
 impl<T: Domain> From<HalfInterval<T>> for Interval<T> {
     fn from(value: HalfInterval<T>) -> Self {
-        Self::Half(value).normalized()
+        Self::Half(value)
     }
 }
 
