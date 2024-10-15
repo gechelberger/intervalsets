@@ -8,7 +8,7 @@ implemented as sets with all the associated set operations.
 ## Features
 
 * Generic intervals for all primitive types
-    * [Custom types](custom-types) may be supported by implementing the `Domain` trait
+    * [Custom types](#custom-types) may be supported by implementing the `Domain` trait
 * Supports all boundary conditions (ie. empty, open, closed, unbound_open, etc...)
     * Integer types are always normalized to closed form.
     * Bounds trait provides simple accessors
@@ -34,6 +34,7 @@ implemented as sets with all the associated set operations.
 * IntervalSet (set of intervals)
     * disjoint ordered subsets
     * supports all set operations
+* Simple conversion between types with From/Into traits.
 
 ## Usage
 
@@ -44,15 +45,28 @@ assert!(hull.contains(&interval));
 assert_eq!(hull.size().unwrap(), 264);
 ```
 
-### Custom Types
+## [Custom Types]
 
-#### Quantized types (integers)
+### Quantized types
 
 For quantized types (like integers) we prefer to
-normalize to closed form. (ie. [1, 2] instead of (0, 3))
+normalize to closed form. 
+
+ie. [1, 2] is preferred over (0, 3)
 
 We do this by implementing the `Domain` trait for any type
-we wish to used in our Intervals/Sets.
+we wish to use in our Intervals/Sets.
+
+It's `try_adjacent` impl should return the next greater or 
+smaller value. This must agree with the PartialOrd impl for
+the type and it must be invertable.
+
+```rust
+let x = MyBigint::from(0);
+let y = x.try_adjacent(Side::Right).unwrap();
+let z = y.try_adjacent(Side::Left).unwrap();
+assert_eq!(X, Z);
+```
 
 ```rust
 use intervalsets::{Side, Domain};
@@ -77,7 +91,7 @@ impl Domain for MyBigInt {
 }
 ```
 
-#### Continuous(ish) types
+### Continuous(ish) types
 
 For more continuous types such as floats, the open/closed
 representation serves perfectly well. To use a custom type 
