@@ -26,7 +26,7 @@ macro_rules! continuous_domain_impl {
     };
 }
 
-pub use continuous_domain_impl;
+//pub use continuous_domain_impl;
 
 continuous_domain_impl!(f32);
 continuous_domain_impl!(f64);

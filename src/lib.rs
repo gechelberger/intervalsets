@@ -20,6 +20,9 @@ mod numeric;
 mod partial_ord;
 mod sizable;
 
+// measures
+mod measure;
+
 // operation traits
 pub mod op;
 
@@ -39,6 +42,8 @@ pub use ival::{Bound, Side};
 
 pub use bounds::Bounds;
 pub use empty::MaybeEmpty;
+pub use measure::count::{Count, Countable};
+pub use measure::width::Width;
 pub use numeric::Domain;
 pub use sizable::{ISize, Sizable};
 

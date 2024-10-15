@@ -3,6 +3,7 @@ use num_traits::{CheckedAdd, CheckedSub, One};
 
 use crate::ival::Side;
 use crate::numeric::Domain;
+use crate::Countable;
 
 impl Domain for BigInt {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
@@ -13,6 +14,8 @@ impl Domain for BigInt {
     }
 }
 
+impl Countable for BigInt {}
+
 impl Domain for BigUint {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
         match side {
@@ -21,6 +24,8 @@ impl Domain for BigUint {
         }
     }
 }
+
+impl Countable for BigUint {}
 
 #[cfg(test)]
 mod tests {
