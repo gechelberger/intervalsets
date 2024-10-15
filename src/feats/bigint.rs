@@ -35,8 +35,7 @@ impl Numeric for BigUint {
 mod tests {
     use num_bigint::ToBigInt;
 
-    use crate::sizeable::{ISize, Sizable};
-    use crate::Interval;
+    use crate::{ISize, Interval, Sizable};
 
     #[test]
     fn test_bigint() {

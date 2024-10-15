@@ -6,7 +6,7 @@
 /// just skip strait to determinite functions for it.
 use crate::{FiniteInterval, Interval, IntervalSet};
 
-pub(crate) trait MaybeEmpty {
+pub trait MaybeEmpty {
     fn is_empty(&self) -> bool;
 }
 
