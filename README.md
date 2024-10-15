@@ -92,6 +92,7 @@ impl Domain for MyContinuousType {
 ```
 
 For simplicity a macro exists that does just this.
+
 ```rust
 intervalsets::continuous_domain_impl!(MyContinuousType);
 ```
