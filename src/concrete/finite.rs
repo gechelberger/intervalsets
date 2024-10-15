@@ -1,5 +1,5 @@
 use crate::ival::{Bound, IVal, Side};
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 
 /// A fully bounded interval in N, Z, or R.
 ///
@@ -15,7 +15,7 @@ pub enum FiniteInterval<T> {
     NonZero(IVal<T>, IVal<T>),
 }
 
-impl<T: Numeric> FiniteInterval<T> {
+impl<T: Domain> FiniteInterval<T> {
     pub fn new(left: IVal<T>, right: IVal<T>) -> Self {
         if left.value > right.value {
             Self::Empty

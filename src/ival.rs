@@ -1,6 +1,6 @@
-use std::ops::{Add, Div, Mul, Sub};
+use std::ops::{Add, Sub};
 
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Bound {
@@ -64,7 +64,7 @@ impl<T> IVal<T> {
     }
 }
 
-impl<T: Numeric> IVal<T> {
+impl<T: Domain> IVal<T> {
     pub fn flip(&self) -> Self {
         Self::new(self.bound.flip(), self.value.clone())
     }
@@ -117,29 +117,21 @@ impl<T: Numeric> IVal<T> {
             },
         }
     }
+}
 
+impl<T: Domain> IVal<T> {
     pub fn normalized(self, side: Side) -> Self {
-        if !T::numeric_set().in_integer() {
-            return self;
-        }
-
         match self.bound {
-            Bound::Open => match side {
-                Side::Left => match self.value.try_finite_add(&T::one()) {
-                    Some(limit) => Self::new(Bound::Closed, limit),
-                    None => self,
-                },
-                Side::Right => match self.value.try_finite_sub(&T::one()) {
-                    Some(limit) => Self::new(Bound::Closed, limit),
-                    None => self,
-                },
+            Bound::Open => match self.value.try_adjacent(side.flip()) {
+                None => self,
+                Some(limit) => Self::closed(limit),
             },
             Bound::Closed => self,
         }
     }
 }
 
-impl<T: Numeric> Add<T> for IVal<T> {
+impl<T: Domain + core::ops::Add<T, Output = T>> Add<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn add(self, rhs: T) -> Self::Output {
@@ -147,7 +139,7 @@ impl<T: Numeric> Add<T> for IVal<T> {
     }
 }
 
-impl<T: Numeric> Sub<T> for IVal<T> {
+impl<T: Domain + core::ops::Sub<T, Output = T>> Sub<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn sub(self, rhs: T) -> Self::Output {
@@ -155,7 +147,8 @@ impl<T: Numeric> Sub<T> for IVal<T> {
     }
 }
 
-impl<T: Numeric> Mul<T> for IVal<T> {
+/*
+impl<T: Domain> Mul<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn mul(self, rhs: T) -> Self::Output {
@@ -163,13 +156,13 @@ impl<T: Numeric> Mul<T> for IVal<T> {
     }
 }
 
-impl<T: Numeric + Div<Output = T>> Div<T> for IVal<T> {
+impl<T: Domain + Div<Output = T>> Div<T> for IVal<T> {
     type Output = IVal<T>;
 
     fn div(self, rhs: T) -> Self::Output {
         self.binary_map(T::div, rhs)
     }
-}
+}*/
 
 #[cfg(test)]
 mod test {

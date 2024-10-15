@@ -2,7 +2,7 @@ use crate::bounds::Bounds;
 use crate::concrete::finite::FiniteInterval;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 use crate::{HalfInterval, Interval, IntervalSet};
 
 /// Defines the creation of the minimal contiguous Interval/Set
@@ -20,7 +20,7 @@ pub trait ConvexHull<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self;
 }
 
-impl<T: Numeric> ConvexHull<T> for FiniteInterval<T> {
+impl<T: Domain> ConvexHull<T> for FiniteInterval<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self {
         let mut iter = iter.into_iter();
 
@@ -41,7 +41,7 @@ impl<T: Numeric> ConvexHull<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Numeric> ConvexHull<T> for Interval<T> {
+impl<T: Domain> ConvexHull<T> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self {
         FiniteInterval::convex_hull(iter).into()
     }
@@ -50,7 +50,7 @@ impl<T: Numeric> ConvexHull<T> for Interval<T> {
 // private impl based on Bounds + MaybeEmpty
 fn convex_hull_bounds_impl<T, B, U>(iter: U) -> Interval<T>
 where
-    T: Numeric,
+    T: Domain,
     B: Bounds<T> + MaybeEmpty,
     U: IntoIterator<Item = B>,
 {
@@ -98,7 +98,7 @@ where
     }
 }
 
-impl<T: Numeric> ConvexHull<Interval<T>> for Interval<T> {
+impl<T: Domain> ConvexHull<Interval<T>> for Interval<T> {
     /// Create a new interval that covers a set of intervals
     ///
     /// # Example
@@ -118,7 +118,7 @@ impl<T: Numeric> ConvexHull<Interval<T>> for Interval<T> {
     }
 }
 
-impl<T: Numeric> ConvexHull<IntervalSet<T>> for Interval<T> {
+impl<T: Domain> ConvexHull<IntervalSet<T>> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = IntervalSet<T>>>(iter: U) -> Self {
         convex_hull_bounds_impl(iter)
     }

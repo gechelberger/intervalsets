@@ -1,5 +1,5 @@
 use crate::ival::Side;
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 use crate::{FiniteInterval, HalfInterval, Interval};
 
 /// Normalize an interval so that there is only one
@@ -16,7 +16,7 @@ pub(crate) trait Normalize {
     fn normalized(self) -> Self;
 }
 
-impl<T: Numeric> Normalize for FiniteInterval<T> {
+impl<T: Domain> Normalize for FiniteInterval<T> {
     fn normalized(self) -> Self {
         match self {
             Self::Empty => Self::Empty,
@@ -27,20 +27,20 @@ impl<T: Numeric> Normalize for FiniteInterval<T> {
     }
 }
 
-impl<T: Numeric> Normalize for HalfInterval<T> {
+impl<T: Domain> Normalize for HalfInterval<T> {
     fn normalized(self) -> Self {
         Self::new(self.side, self.ival.normalized(self.side))
     }
 }
 
-impl<T: Numeric> Normalize for Interval<T> {
+impl<T: Domain> Normalize for Interval<T> {
     fn normalized(self) -> Self {
         match self {
             Self::Infinite => Self::Infinite,
             Self::Half(interval) => {
                 Self::Half(interval.normalized())
                 /*let norm = interval.normalized();
-                if T::numeric_set() == NumericSet::Natural && norm.side == Side::Right {
+                if T::numeric_set() == DomainSet::Natural && norm.side == Side::Right {
                     Self::Finite(FiniteInterval::new_unchecked(IVal::new(Bound::Closed, T::zero()), norm.ival))
                 } else {
                     Self::Half(norm)

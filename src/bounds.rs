@@ -1,5 +1,5 @@
 use crate::ival::{Bound, IVal, Side};
-use crate::numeric::Numeric;
+use crate::numeric::Domain;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
 /// The `Bounds` trait provides safe accessors for the
@@ -73,7 +73,7 @@ impl<T: Clone> Bounds<T> for Interval<T> {
     }
 }
 
-impl<T: Numeric> Bounds<T> for IntervalSet<T> {
+impl<T: Domain> Bounds<T> for IntervalSet<T> {
     fn bound(&self, side: Side) -> Option<IVal<T>> {
         let mut result = None;
 

@@ -46,33 +46,54 @@ assert_eq!(hull.size().unwrap(), 264);
 
 ### Custom Types
 
-The `num-traits` crate is used to generalize
-support for types of interval boundaries but 
-intervals need to be able to distinguish between
-integer types and broader ones, so an implementation
-of `Numeric` must be provided.
+#### Quantized types (integers)
 
-This is also important for concepts of Measure
-if we ever get around to supporting those.
+For quantized types (like integers) we prefer to
+normalize to closed form. (ie. [1, 2] instead of (0, 3))
+
+We do this by implementing the `Domain` trait for any type
+we wish to used in our Intervals/Sets.
 
 ```rust
-pub struct MyRationalNum { ... }
+use intervalsets::{Side, Domain};
 
-impl Numeric for MyRationalNum {
+pub struct MyBigInt { ... }
 
-    /// MyRationalNum will not be normalized
-    fn numeric_set() -> NumericSet {
-        NumericSet::Real
-    }
-
-    fn try_finite_add(&self, rhs: &Self) -> Self {
-        self.checked_add(self.clone(), rhs.clone())
-    }
-
-    fn try_finite_sub(&self, rhs: &Self) -> Self {
-        self.checked_sub(self.clone(), rhs.clone())
+impl Domain for MyBigInt {
+    /// This type will be normalized to closed form,
+    /// or left in open form when try_adjacent would
+    /// overflow.
+    fn try_adjacent(&self, side: Side) -> Option<Self> {
+        // quantum does not have to be 1 for all types, 
+        // but for the type implementing `Domain`, there 
+        // should be no other value(s) possible between 
+        // the current `self` and our calculated adjacent.
+        let quantum = MyBigint::ONE;
+        match side {
+            Side::Left => self.checked_sub(&quantum),
+            Side::Right => self.checked_add(&quantum),
+        }
     }
 }
+```
+
+#### Continuous(ish) types
+
+For more continuous types such as floats, the open/closed
+representation serves perfectly well. To use a custom type 
+simply return None and no normalization will take place.
+
+```rust
+impl Domain for MyContinuousType {
+    fn try_adjacent(&self, side: Side) -> Option<Self> {
+        None
+    }
+}
+```
+
+For simplicity a macro exists that does just this.
+```rust
+intervalsets::continuous_domain_impl!(MyContinuousType);
 ```
 
 ## development
