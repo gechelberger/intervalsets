@@ -1,7 +1,11 @@
 use num_traits::Zero;
 
-use crate::{Domain, FiniteInterval, ISize, Interval, Side};
+use super::Measurement as M;
+use crate::{Domain, FiniteInterval, HalfInterval, Interval, Side};
 
+/// Defines the measure of a Countable Interval/Set.
+///
+///
 pub trait Count {
     type Output;
 
@@ -9,36 +13,44 @@ pub trait Count {
 }
 
 impl<T: Countable + Zero> Count for FiniteInterval<T> {
-    type Output = ISize<T>;
+    type Output = M<T>;
 
     fn count(&self) -> Self::Output {
         match self {
-            Self::Empty => ISize::Finite(T::zero()),
-            Self::NonZero(left, right) => T::count_between(&left.value, &right.value)
-                .map_or(ISize::Infinite, |c| ISize::Finite(c)),
+            Self::Empty => M::Finite(T::zero()),
+            Self::NonZero(left, right) => {
+                T::count_inclusive(&left.value, &right.value).map_or(M::Infinite, |c| M::Finite(c))
+            }
         }
+    }
+}
+
+impl<T> Count for HalfInterval<T> {
+    type Output = M<T>;
+
+    fn count(&self) -> Self::Output {
+        M::Infinite
     }
 }
 
 impl<T: Countable + Zero> Count for Interval<T> {
-    type Output = ISize<T>;
+    type Output = M<T>;
 
     fn count(&self) -> Self::Output {
         match self {
             Self::Finite(inner) => inner.count(),
-            _ => ISize::Infinite,
+            _ => M::Infinite,
         }
     }
 }
 
-/// This trait allows delegation to the underlying type
-/// for how their elements should be counted.
+/// The `Countable` trait delegates to the underlying type for how their
+/// elements should be counted.
 ///
-/// The default implementation assumes integer like behavior,
-/// meaning an even distribution of elements 1 apart.
-pub trait Countable: Domain + core::ops::Sub<Self, Output = Self> {
-    fn count_between(left: &Self, right: &Self) -> Option<Self> {
-        // this has a bug at max value...
+/// The default implementation assumes an integer-like underlying type.
+pub trait Countable<Out = Self>: Domain + core::ops::Sub<Self, Output = Out> {
+    fn count_inclusive(left: &Self, right: &Self) -> Option<Out> {
+        // TODO: this has a bug at max value...
         right
             .try_adjacent(Side::Right)
             .map(|adjacent| adjacent.clone() - left.clone())
@@ -65,10 +77,10 @@ mod tests {
 
     #[test]
     fn test_finit_count() {
-        assert_eq!(FiniteInterval::closed_open(0, 10).count(), ISize::Finite(10));
+        assert_eq!(FiniteInterval::closed_open(0, 10).count().finite(), 10);
 
-        assert_eq!(Interval::closed(0, 5).count(), ISize::Finite(6));
+        assert_eq!(Interval::closed(0, 5).count().finite(), 6);
 
-        assert_eq!(Interval::unbound_closed(0).count(), ISize::Infinite);
+        assert_eq!(Interval::unbound_closed(0).count(), M::Infinite);
     }
 }

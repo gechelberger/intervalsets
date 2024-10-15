@@ -21,7 +21,7 @@ mod partial_ord;
 mod sizable;
 
 // measures
-mod measure;
+pub mod measure;
 
 // operation traits
 pub mod op;

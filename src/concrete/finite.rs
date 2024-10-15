@@ -44,24 +44,15 @@ impl<T: Domain> FiniteInterval<T> {
     }
 
     pub fn closed(left: T, right: T) -> Self {
-        Self::new(
-            IVal::closed(left),
-            IVal::closed(right),
-        )
+        Self::new(IVal::closed(left), IVal::closed(right))
     }
 
     pub fn open_closed(left: T, right: T) -> Self {
-        Self::new(
-            IVal::open(left),
-            IVal::closed(right),
-        )
+        Self::new(IVal::open(left), IVal::closed(right))
     }
 
     pub fn closed_open(left: T, right: T) -> Self {
-        Self::new(
-            IVal::closed(left),
-            IVal::open(right),
-        )
+        Self::new(IVal::closed(left), IVal::open(right))
     }
 }
 

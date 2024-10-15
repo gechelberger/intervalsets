@@ -126,5 +126,4 @@ mod tests {
         let interval: Interval<u64> = Interval::open_unbound(100);
         assert_eq!(interval.contains(&x), x > 100);
     }
-
 }
