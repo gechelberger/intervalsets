@@ -8,7 +8,7 @@ implemented as sets with all the associated set operations.
 ## Features
 
 * Generic intervals for all primitive types
-    * [Custom types](custom-types) may be supported by implementing the `Numeric` trait
+    * [Custom types](custom-types) may be supported by implementing the `Domain` trait
 * Supports all boundary conditions (ie. empty, open, closed, unbound_open, etc...)
     * Integer types are always normalized to closed form.
     * Bounds trait provides simple accessors
