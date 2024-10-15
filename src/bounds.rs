@@ -2,8 +2,12 @@ use crate::ival::{Bound, IVal, Side};
 use crate::numeric::Numeric;
 use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
 
-/// The `Bounds` trait provides safe accessors for the boundary conditions
-/// of any interval that implements it.
+/// The `Bounds` trait provides safe accessors for the
+/// boundary conditions of intervals/sets.
+///
+/// Both Empty and Infinite bounds are None.
+/// In order to distinguish between them, use
+/// the MaybeEmpty trait to check for emptiness.
 pub trait Bounds<T> {
     /// Get the left or right bound if it exists.
     ///

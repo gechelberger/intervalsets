@@ -22,8 +22,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::sizeable::{ISize, Sizable};
-    use crate::Interval;
+    use crate::{ISize, Interval, Sizable};
     use num_rational::BigRational;
 
     #[test]
@@ -32,6 +31,6 @@ mod tests {
         let b: BigRational = BigRational::new(200.into(), 1.into());
 
         let iv = Interval::closed(a.clone(), b);
-        assert_eq!(iv.size(), ISize::Finite(a));
+        assert_eq!(iv.size().unwrap(), a);
     }
 }

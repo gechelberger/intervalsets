@@ -11,14 +11,14 @@ pub mod concrete;
 pub mod ival;
 
 // invariant traits
-pub mod bounds;
-pub mod display;
-pub mod empty;
-pub mod from;
+mod bounds;
+mod display;
+mod empty;
+mod from;
 mod normalize;
-pub mod numeric;
-pub mod partial_ord;
-pub mod sizeable;
+mod numeric;
+mod partial_ord;
+mod sizable;
 
 // operation traits
 pub mod op;
@@ -31,10 +31,24 @@ pub(crate) mod util;
 // reexports / public APIs
 pub(crate) use concrete::finite::FiniteInterval;
 pub(crate) use concrete::half::HalfInterval;
+
 pub use concrete::interval::Interval;
 pub use concrete::set::IntervalSet;
 
+pub use bounds::Bounds;
+pub use empty::MaybeEmpty;
+pub use sizable::{ISize, Sizable};
+
 pub use pred::contains::Contains;
 pub use pred::intersects::Intersects;
+
+pub use op::complement::Complement;
+pub use op::difference::{Difference, SymmetricDifference};
+pub use op::hull::ConvexHull;
+pub use op::intersection::Intersection;
+pub use op::merged::Merged;
+//pub use op::padded::Padded;
+//pub use op::shifted::Shifted;
+pub use op::union::Union;
 
 pub mod feats;

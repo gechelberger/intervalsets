@@ -10,6 +10,15 @@ pub enum ISize<T> {
     Infinite,
 }
 
+impl<T> ISize<T> {
+    pub fn unwrap(self) -> T {
+        match self {
+            Self::Infinite => panic!("tried to unwrape ISize::Infinite"),
+            Self::Finite(inner) => inner,
+        }
+    }
+}
+
 // Required by Zero trait for some reason
 impl<T: Add<Output = T>> Add for ISize<T> {
     type Output = Self;
