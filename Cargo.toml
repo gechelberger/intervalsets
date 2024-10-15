@@ -31,7 +31,6 @@ rust_decimal = { version = "1.36.0", optional = true }
 thiserror = "1.0.64"
 
 [dev-dependencies]
-chrono = "0.4.38"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 
@@ -39,3 +38,4 @@ quickcheck_macros = "1.0.0"
 rust_decimal = ["dep:rust_decimal"]
 num-bigint = ["dep:num-bigint"]
 num-rational = ["dep:num-rational", "dep:num-integer"]
+chrono = []

@@ -1,4 +1,3 @@
-use chrono::{DateTime, TimeDelta, Utc};
 use intervalsets::{Contains, Interval, Union};
 
 #[test]
@@ -21,17 +20,3 @@ fn itest_format() {
 
     assert_eq!(format!("{}", set), "{[0, 10], (100, 110)}")
 }
-
-/*
-use intervalsets::Domain;
-use intervalsets::Side;
-intervalsets::continuous_domain_impl!(DateTime<Utc>);
-
-#[test]
-fn test_finite_chrono_width() {
-    let dist = TimeDelta::new(100000, 0).unwrap();
-    let a = Utc::now();
-    let b = a + dist;
-
-    let interval = Interval::open(a, b);
-}*/

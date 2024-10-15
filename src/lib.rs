@@ -1,3 +1,21 @@
+//! # intervalsets: Intervals as Sets in Rust
+//!
+//! Intervalsets intends to provide full functionality of sets for
+//! interval data.
+//!
+//! * The [`Interval`] type is a Set implementation representing a
+//!   contiguous set of values.
+//!     * It is generic over any type that implements the [`Domain`] trait
+//!       which is intended to make sure elements are comparable.
+//!
+//! # Overview
+//!
+//! # Features
+//!    
+//! * rust_decimal
+//! * num-bigint
+//! * num-rational
+
 #![allow(unused_variables)] // for now
 
 #[cfg(test)]

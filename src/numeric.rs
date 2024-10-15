@@ -15,6 +15,7 @@ use crate::ival::Side;
 pub trait TryFiniteAdd<Rhs = Self> {
     type Output;
 
+    #[allow(dead_code)]
     fn try_finite_add(&self, rhs: &Self) -> Option<Self::Output>;
 }
 
@@ -85,6 +86,7 @@ try_finite_add_checked_impl!(isize);
 pub trait TryFiniteSub<Rhs = Self> {
     type Output;
 
+    #[allow(dead_code)]
     fn try_finite_sub(&self, rhs: &Self) -> Option<Self::Output>;
 }
 
