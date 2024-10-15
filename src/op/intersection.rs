@@ -370,14 +370,14 @@ mod tests {
         //     (---B---)
         assert_eq!(
             FiniteInterval::closed(0, 10).intersection(&FiniteInterval::open(5, 15)),
-            FiniteInterval::openclosed(5, 10)
+            FiniteInterval::open_closed(5, 10)
         );
 
         // (---A---)
         //     [---B---]
         assert_eq!(
             FiniteInterval::open(0, 10).intersection(&FiniteInterval::closed(5, 15)),
-            FiniteInterval::closedopen(5, 10)
+            FiniteInterval::closed_open(5, 10)
         );
     }
 

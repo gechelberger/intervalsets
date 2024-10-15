@@ -128,12 +128,12 @@ mod tests {
     fn test_finite_difference() {
         assert_eq!(
             FiniteInterval::closed(0.0, 10.0).difference(&FiniteInterval::closed(7.5, 15.0)),
-            FiniteInterval::closedopen(0.0, 7.5).into()
+            FiniteInterval::closed_open(0.0, 7.5).into()
         );
 
         assert_eq!(
             FiniteInterval::closed(7.5, 15.0).difference(&FiniteInterval::closed(0.0, 10.0)),
-            FiniteInterval::openclosed(10.0, 15.0).into()
+            FiniteInterval::open_closed(10.0, 15.0).into()
         );
 
         assert_eq!(

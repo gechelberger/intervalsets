@@ -1,4 +1,3 @@
-use crate::ival::{Bound, IVal, Side};
 use crate::numeric::Domain;
 use crate::{FiniteInterval, HalfInterval};
 
@@ -28,58 +27,52 @@ impl<T: Domain> Interval<T> {
         FiniteInterval::Empty.into()
     }
 
+    /// [a, a] = {x in T | a <= x <= a }
+    pub fn singleton(item: T) -> Self {
+        FiniteInterval::singleton(item).into()
+    }
+
     /// (a, b) = { x in T | a < x < b }
     pub fn open(left: T, right: T) -> Self {
-        FiniteInterval::new(IVal::new(Bound::Open, left), IVal::new(Bound::Open, right)).into()
+        FiniteInterval::open(left, right).into()
     }
 
     /// [a, b] = { x in T | a <= x <= b }
     pub fn closed(left: T, right: T) -> Self {
-        FiniteInterval::new(
-            IVal::new(Bound::Closed, left),
-            IVal::new(Bound::Closed, right),
-        )
-        .into()
+        FiniteInterval::closed(left, right).into()
     }
 
     /// (a, b] = { x in T | a < x <= b }
     pub fn open_closed(left: T, right: T) -> Self {
-        FiniteInterval::new(
-            IVal::new(Bound::Open, left),
-            IVal::new(Bound::Closed, right),
-        )
-        .into()
+        FiniteInterval::open_closed(left, right).into()
     }
 
     /// [a, b) = { x in T | a <= x < b }
     pub fn closed_open(left: T, right: T) -> Self {
-        FiniteInterval::new(
-            IVal::new(Bound::Closed, left),
-            IVal::new(Bound::Open, right),
-        )
-        .into()
+        FiniteInterval::closed_open(left, right).into()
     }
 
     // (<-, b) = { x in T | x < b }
     pub fn unbound_open(right: T) -> Self {
-        HalfInterval::new(Side::Right, IVal::new(Bound::Open, right)).into()
+        HalfInterval::unbound_open(right).into()
     }
 
     /// (<-, b] = { x in T | x <= b }
     pub fn unbound_closed(right: T) -> Self {
-        HalfInterval::new(Side::Right, IVal::new(Bound::Closed, right)).into()
+        HalfInterval::unbound_closed(right).into()
     }
 
     /// (a, ->) = { x in T | a < x }
     pub fn open_unbound(left: T) -> Self {
-        HalfInterval::new(Side::Left, IVal::new(Bound::Open, left)).into()
+        HalfInterval::open_unbound(left).into()
     }
 
-    /// [a, ->) = {x in T | a <= x }
+    /// [a, ->) = { x in T | a <= x }
     pub fn closed_unbound(left: T) -> Self {
-        HalfInterval::new(Side::Left, IVal::new(Bound::Closed, left)).into()
+        HalfInterval::closed_unbound(left).into()
     }
 
+    /// (<-, ->) = { x in T }
     pub fn unbound() -> Self {
         Self::Infinite
     }
@@ -134,15 +127,4 @@ mod tests {
         assert_eq!(interval.contains(&x), x > 100);
     }
 
-    /*
-
-    #[quickcheck]
-    fn test_half_interval_complement_i64(x: i64) {
-        let interval: Interval<i64> = Interval::closed_unbound(0);
-        let complement = &interval.complement()[0];
-
-        assert_eq!(interval.contains(&x), !complement.contains(&x));
-    }
-
-    */
 }

@@ -7,7 +7,9 @@ use crate::{FiniteInterval, HalfInterval, ISize, Interval, IntervalSet};
 ///
 /// The Lebesgue measure for R^1.
 ///
-/// note: the lebesgue measure for any countable set should be 0...
+/// The lebesgue measure for any countable set should be 0. We assume
+/// that if the width of a set is being used, it is over the reals even
+/// if the underlying datatype are integers.
 pub trait Width {
     type Output;
 

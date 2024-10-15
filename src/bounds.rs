@@ -104,7 +104,7 @@ mod test {
 
     #[test]
     fn test_finite_interval_bounds() {
-        let itv = FiniteInterval::openclosed(0, 5);
+        let itv = FiniteInterval::open_closed(0, 5);
         assert_eq!(itv.lval(), Some(1));
         assert_eq!(itv.rval(), Some(5));
         assert_eq!(itv.lbound(), Some(Bound::Closed));

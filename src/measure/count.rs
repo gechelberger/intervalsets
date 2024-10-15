@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn test_finit_count() {
-        assert_eq!(FiniteInterval::closedopen(0, 10).count(), ISize::Finite(10));
+        assert_eq!(FiniteInterval::closed_open(0, 10).count(), ISize::Finite(10));
 
         assert_eq!(Interval::closed(0, 5).count(), ISize::Finite(6));
 

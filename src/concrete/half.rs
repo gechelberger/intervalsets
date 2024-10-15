@@ -1,4 +1,4 @@
-use crate::ival::{Bound, IVal, Side};
+use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -17,22 +17,22 @@ impl<T: Domain> HalfInterval<T> {
 
     /// (<-, b) = { x in T | x < b }
     pub fn unbound_open(right: T) -> Self {
-        Self::new(Side::Right, IVal::new(Bound::Open, right))
+        Self::new(Side::Right, IVal::open(right))
     }
 
     /// (<-, b] = { x in T | x <= b }
     pub fn unbound_closed(right: T) -> Self {
-        Self::new(Side::Right, IVal::new(Bound::Closed, right))
+        Self::new(Side::Right, IVal::closed(right))
     }
 
     /// (a, ->) = { x in T | a < x }
     pub fn open_unbound(left: T) -> Self {
-        Self::new(Side::Left, IVal::new(Bound::Open, left))
+        Self::new(Side::Left, IVal::open(left))
     }
 
     /// [a, ->) = {x in T | a <= x }
     pub fn closed_unbound(left: T) -> Self {
-        Self::new(Side::Left, IVal::new(Bound::Closed, left))
+        Self::new(Side::Left, IVal::closed(left))
     }
 
     pub fn lval_unchecked(&self) -> &T {

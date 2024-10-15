@@ -92,12 +92,12 @@ mod tests {
         assert_eq!(format!("{}", FiniteInterval::open(0.1, 5.1)), "(0.1, 5.1)");
 
         assert_eq!(
-            format!("{}", FiniteInterval::openclosed(0.1, 5.1)),
+            format!("{}", FiniteInterval::open_closed(0.1, 5.1)),
             "(0.1, 5.1]"
         );
 
         assert_eq!(
-            format!("{}", FiniteInterval::closedopen(0.1, 5.1)),
+            format!("{}", FiniteInterval::closed_open(0.1, 5.1)),
             "[0.1, 5.1)"
         );
     }

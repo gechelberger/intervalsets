@@ -35,6 +35,9 @@ implemented as sets with all the associated set operations.
     * disjoint ordered subsets
     * supports all set operations
 * Simple conversion between types with From/Into traits.
+* Convenient display
+    * Interval<_>: {}, (10, 15], (<-, 2), etc...
+    * IntervalSet<_>: {(10, 15], [20, ->)}
 
 ## Usage
 

@@ -35,28 +35,32 @@ impl<T: Domain> FiniteInterval<T> {
         Self::NonZero(left, right)
     }
 
+    pub fn singleton(item: T) -> Self {
+        Self::new_unchecked(IVal::closed(item.clone()), IVal::closed(item))
+    }
+
     pub fn open(left: T, right: T) -> Self {
-        Self::new(IVal::new(Bound::Open, left), IVal::new(Bound::Open, right))
+        Self::new(IVal::open(left), IVal::open(right))
     }
 
     pub fn closed(left: T, right: T) -> Self {
         Self::new(
-            IVal::new(Bound::Closed, left),
-            IVal::new(Bound::Closed, right),
+            IVal::closed(left),
+            IVal::closed(right),
         )
     }
 
-    pub fn openclosed(left: T, right: T) -> Self {
+    pub fn open_closed(left: T, right: T) -> Self {
         Self::new(
-            IVal::new(Bound::Open, left),
-            IVal::new(Bound::Closed, right),
+            IVal::open(left),
+            IVal::closed(right),
         )
     }
 
-    pub fn closedopen(left: T, right: T) -> Self {
+    pub fn closed_open(left: T, right: T) -> Self {
         Self::new(
-            IVal::new(Bound::Closed, left),
-            IVal::new(Bound::Open, right),
+            IVal::closed(left),
+            IVal::open(right),
         )
     }
 }
