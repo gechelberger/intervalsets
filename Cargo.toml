@@ -19,7 +19,7 @@ keywords = [
     "bound"
 ]
 categories = ["mathematics", "science", "data-structures"]
-exclude = ["notes/"]
+exclude = ["notes/", "fuzz/"]
 
 [dependencies]
 itertools = "0.13.0"

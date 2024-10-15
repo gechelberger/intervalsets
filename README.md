@@ -37,7 +37,7 @@ implemented as sets with all the associated set operations.
 
 ## Usage
 
-```
+```rust
 let interval = Interval::closed(0.0, 100.0);
 let hull = Interval::convex_hull([4.0, 220.0, 10.0, -44.0, 30.0, 99.0]);
 assert!(hull.contains(&interval));
@@ -55,7 +55,7 @@ of `Numeric` must be provided.
 This is also important for concepts of Measure
 if we ever get around to supporting those.
 
-```
+```rust
 pub struct MyRationalNum { ... }
 
 impl Numeric for MyRationalNum {
@@ -79,9 +79,15 @@ impl Numeric for MyRationalNum {
 
 ### git hooks
 
-```
+```bash
 cargo install cargo-hook
 cargo hook
+```
+
+### fuzzing
+
+```bash
+cargo install cargo-fuzz
 ```
 
 ### outstanding
