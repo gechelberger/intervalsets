@@ -3,6 +3,7 @@ use num_traits::{CheckedAdd, CheckedSub, One};
 
 use crate::ival::Side;
 use crate::numeric::Domain;
+use crate::Countable;
 
 impl Domain for BigInt {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
@@ -13,6 +14,8 @@ impl Domain for BigInt {
     }
 }
 
+impl Countable for BigInt {}
+
 impl Domain for BigUint {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
         match side {
@@ -22,17 +25,20 @@ impl Domain for BigUint {
     }
 }
 
+impl Countable for BigUint {}
+
 #[cfg(test)]
 mod tests {
     use num_bigint::ToBigInt;
 
-    use crate::{ISize, Interval, Sizable};
+    use crate::measure::width::Width;
+    use crate::Interval;
 
     #[test]
     fn test_bigint() {
         let a = 100.to_bigint().unwrap();
         let b = 200.to_bigint().unwrap();
         let interval = Interval::closed(a.clone(), b);
-        assert_eq!(interval.size(), ISize::Finite(a));
+        assert_eq!(interval.width().finite(), a);
     }
 }

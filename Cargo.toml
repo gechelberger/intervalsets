@@ -38,3 +38,4 @@ quickcheck_macros = "1.0.0"
 rust_decimal = ["dep:rust_decimal"]
 num-bigint = ["dep:num-bigint"]
 num-rational = ["dep:num-rational", "dep:num-integer"]
+chrono = []

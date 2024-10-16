@@ -1,15 +1,5 @@
 use crate::ival::Side;
 
-/*
-pub trait TryFiniteOffset<Rhs=Self>
-where
-    Self: Sized
-{
-    fn try_finite_add(&self, rhs: &Rhs) -> Option<Self>;
-    fn try_finite_sub(&self, rhs: &Rhs) -> Option<Self>;
-}
-*/
-
 pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
     fn try_adjacent(&self, side: Side) -> Option<Self>;
 }
@@ -25,8 +15,6 @@ macro_rules! continuous_domain_impl {
         }
     };
 }
-
-pub use continuous_domain_impl;
 
 continuous_domain_impl!(f32);
 continuous_domain_impl!(f64);

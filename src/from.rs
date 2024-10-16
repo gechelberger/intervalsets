@@ -1,16 +1,15 @@
-use crate::normalize::Normalize;
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 impl<T: Domain> From<FiniteInterval<T>> for Interval<T> {
     fn from(value: FiniteInterval<T>) -> Self {
-        Self::Finite(value).normalized()
+        Self::Finite(value)
     }
 }
 
-impl<T: Domain> From<HalfInterval<T>> for Interval<T> {
-    fn from(value: HalfInterval<T>) -> Self {
-        Self::Half(value).normalized()
+impl<T: Domain> From<HalfBounded<T>> for Interval<T> {
+    fn from(value: HalfBounded<T>) -> Self {
+        Self::Half(value)
     }
 }
 
@@ -32,8 +31,8 @@ impl<T: Domain> From<FiniteInterval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain> From<HalfInterval<T>> for IntervalSet<T> {
-    fn from(value: HalfInterval<T>) -> Self {
+impl<T: Domain> From<HalfBounded<T>> for IntervalSet<T> {
+    fn from(value: HalfBounded<T>) -> Self {
         Self::new_unchecked(vec![value.into()])
     }
 }
