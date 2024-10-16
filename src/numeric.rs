@@ -1,4 +1,4 @@
-use crate::ival::Side;
+use crate::bound::Side;
 
 pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
     fn try_adjacent(&self, side: Side) -> Option<Self>;
@@ -7,9 +7,9 @@ pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
 #[macro_export]
 macro_rules! continuous_domain_impl {
     ($t:ty) => {
-        impl Domain for $t {
+        impl $crate::Domain for $t {
             #[inline]
-            fn try_adjacent(&self, side: Side) -> Option<Self> {
+            fn try_adjacent(&self, side: $crate::Side) -> Option<Self> {
                 None
             }
         }

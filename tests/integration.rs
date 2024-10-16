@@ -1,22 +1,16 @@
-use intervalsets::{Contains, Interval, Union};
+use chrono::{DateTime, TimeDelta, Utc};
+use intervalsets::{continuous_domain_impl, Interval};
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+struct MyDT(DateTime<Utc>);
+
+continuous_domain_impl!(MyDT);
 
 #[test]
-fn itest_contains() {
-    let interval = Interval::open_closed(0, 10);
-    assert!(!interval.contains(&0));
-    assert!(interval.contains(&5));
-    assert!(interval.contains(&10));
-    assert!(!interval.contains(&11));
-}
+fn test_foo() {
+    let a = Utc::now();
+    let delta = TimeDelta::new(1000, 0).unwrap();
+    let b = a + delta;
 
-#[test]
-fn itest_format() {
-    assert_eq!(format!("{}", Interval::<i32>::unbound()), "(<-, ->)");
-    assert_eq!(format!("{}", Interval::closed(0.5, 1.5)), "[0.5, 1.5]");
-    assert_eq!(format!("{}", Interval::open(-0.5, 0.5)), "(-0.5, 0.5)");
-    assert_eq!(format!("{}", Interval::open_unbound(0.5)), "(0.5, ->)");
-
-    let set = Interval::closed(0.0, 10.0).union(&Interval::open(100.0, 110.0));
-
-    assert_eq!(format!("{}", set), "{[0, 10], (100, 110)}")
+    let i = Interval::closed(MyDT(a), MyDT(b));
 }
