@@ -31,13 +31,14 @@ impl Countable for BigUint {}
 mod tests {
     use num_bigint::ToBigInt;
 
-    use crate::{ISize, Interval, Sizable};
+    use crate::measure::width::Width;
+    use crate::Interval;
 
     #[test]
     fn test_bigint() {
         let a = 100.to_bigint().unwrap();
         let b = 200.to_bigint().unwrap();
         let interval = Interval::closed(a.clone(), b);
-        assert_eq!(interval.size(), ISize::Finite(a));
+        assert_eq!(interval.width().finite(), a);
     }
 }

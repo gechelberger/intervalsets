@@ -35,7 +35,6 @@ mod empty;
 mod from;
 mod numeric;
 mod partial_ord;
-mod sizable;
 
 // measures
 pub mod measure;
@@ -62,7 +61,6 @@ pub use empty::MaybeEmpty;
 pub use measure::count::{Count, Countable};
 pub use measure::width::Width;
 pub use numeric::Domain;
-pub use sizable::{ISize, Sizable};
 
 pub use pred::contains::Contains;
 pub use pred::intersects::Intersects;
