@@ -3,7 +3,7 @@ use crate::FiniteInterval;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
-use crate::{HalfBounded, Interval, IntervalSet};
+use crate::{HalfBounded, EBounds, IntervalSet};
 
 /// Defines the creation of the minimal contiguous Interval/Set
 /// which covers all of the provided items.
@@ -41,14 +41,14 @@ impl<T: Domain> ConvexHull<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> ConvexHull<T> for Interval<T> {
+impl<T: Domain> ConvexHull<T> for EBounds<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self {
         FiniteInterval::convex_hull(iter).into()
     }
 }
 
 // private impl based on Bounds + MaybeEmpty
-fn convex_hull_bounds_impl<T, B, U>(iter: U) -> Interval<T>
+fn convex_hull_bounds_impl<T, B, U>(iter: U) -> EBounds<T>
 where
     T: Domain,
     B: Bounds<T> + MaybeEmpty,
@@ -91,14 +91,14 @@ where
     }
 
     match bounds {
-        (None, None) => Interval::Unbounded,
-        (Some(ival), None) => Interval::Half(HalfBounded::new(Side::Left, ival)),
-        (None, Some(ival)) => Interval::Half(HalfBounded::new(Side::Right, ival)),
-        (Some(left), Some(right)) => Interval::Finite(FiniteInterval::new_unchecked(left, right)),
+        (None, None) => EBounds::Unbounded,
+        (Some(ival), None) => EBounds::Half(HalfBounded::new(Side::Left, ival)),
+        (None, Some(ival)) => EBounds::Half(HalfBounded::new(Side::Right, ival)),
+        (Some(left), Some(right)) => EBounds::Finite(FiniteInterval::new_unchecked(left, right)),
     }
 }
 
-impl<T: Domain> ConvexHull<Interval<T>> for Interval<T> {
+impl<T: Domain> ConvexHull<EBounds<T>> for EBounds<T> {
     /// Create a new interval that covers a set of intervals
     ///
     /// # Example
@@ -113,12 +113,12 @@ impl<T: Domain> ConvexHull<Interval<T>> for Interval<T> {
     /// ]);
     /// assert_eq!(iv, Interval::open_unbound(0.0));
     /// ```
-    fn convex_hull<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
+    fn convex_hull<U: IntoIterator<Item = EBounds<T>>>(iter: U) -> Self {
         convex_hull_bounds_impl(iter)
     }
 }
 
-impl<T: Domain> ConvexHull<IntervalSet<T>> for Interval<T> {
+impl<T: Domain> ConvexHull<IntervalSet<T>> for EBounds<T> {
     fn convex_hull<U: IntoIterator<Item = IntervalSet<T>>>(iter: U) -> Self {
         convex_hull_bounds_impl(iter)
     }
@@ -139,48 +139,48 @@ mod tests {
     #[test]
     fn test_hull_of_intervals_empty() {
         let items: Vec<u32> = vec![];
-        assert_eq!(Interval::convex_hull(items), Interval::empty())
+        assert_eq!(EBounds::convex_hull(items), EBounds::empty())
     }
 
     #[test]
     fn test_hull_of_intervals() {
-        let iv = Interval::convex_hull(vec![
-            Interval::empty(),
-            Interval::empty(),
-            Interval::closed(0, 10),
-            Interval::empty(),
-            Interval::empty(),
+        let iv = EBounds::convex_hull(vec![
+            EBounds::empty(),
+            EBounds::empty(),
+            EBounds::closed(0, 10),
+            EBounds::empty(),
+            EBounds::empty(),
         ]);
-        assert_eq!(iv, Interval::closed(0, 10));
+        assert_eq!(iv, EBounds::closed(0, 10));
     }
 
     #[test]
     fn test_hull_of_intervals_unbound() {
-        let iv = Interval::convex_hull(vec![
-            Interval::empty(),
-            Interval::closed(100.0, 200.0),
-            Interval::empty(),
-            Interval::open(0.0, 10.0),
-            Interval::empty(),
-            Interval::closed_unbound(500.0),
-            Interval::empty(),
+        let iv = EBounds::convex_hull(vec![
+            EBounds::empty(),
+            EBounds::closed(100.0, 200.0),
+            EBounds::empty(),
+            EBounds::open(0.0, 10.0),
+            EBounds::empty(),
+            EBounds::closed_unbound(500.0),
+            EBounds::empty(),
         ]);
-        assert_eq!(iv, Interval::open_unbound(0.0));
+        assert_eq!(iv, EBounds::open_unbound(0.0));
     }
 
     #[test]
     fn test_hull_of_sets() {
         let sets: Vec<IntervalSet<f64>> = vec![
             IntervalSet::empty(),
-            Interval::closed(0.0, 10.0)
-                .union(&Interval::open(100.0, 110.0))
-                .union(&Interval::open(200.0, 210.0)),
+            EBounds::closed(0.0, 10.0)
+                .union(&EBounds::open(100.0, 110.0))
+                .union(&EBounds::open(200.0, 210.0)),
             IntervalSet::empty(),
-            Interval::closed(-110.0, -100.0).union(&Interval::closed(-1000.0, -900.0)),
+            EBounds::closed(-110.0, -100.0).union(&EBounds::closed(-1000.0, -900.0)),
         ];
         assert_eq!(
-            Interval::convex_hull(sets),
-            Interval::closed_open(-1000.0, 210.0)
+            EBounds::convex_hull(sets),
+            EBounds::closed_open(-1000.0, 210.0)
         );
     }
 }

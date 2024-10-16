@@ -3,7 +3,7 @@ use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
 use crate::util::commutative_op_impl;
-use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
+use crate::{EBounds, FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 use crate::pred::contains::Contains;
 
@@ -54,7 +54,7 @@ impl<T: Domain> Intersection<HalfBounded<T>> for FiniteInterval<T> {
 }
 
 impl<T: Domain> Intersection<Self> for HalfBounded<T> {
-    type Output = Interval<T>;
+    type Output = EBounds<T>;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
         if self.side == rhs.side {
@@ -74,8 +74,8 @@ impl<T: Domain> Intersection<Self> for HalfBounded<T> {
     }
 }
 
-impl<T: Domain> Intersection<FiniteInterval<T>> for Interval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Intersection<FiniteInterval<T>> for EBounds<T> {
+    type Output = EBounds<T>;
 
     fn intersection(&self, rhs: &FiniteInterval<T>) -> Self::Output {
         match self {
@@ -86,8 +86,8 @@ impl<T: Domain> Intersection<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Intersection<HalfBounded<T>> for Interval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Intersection<HalfBounded<T>> for EBounds<T> {
+    type Output = EBounds<T>;
 
     fn intersection(&self, rhs: &HalfBounded<T>) -> Self::Output {
         match self {
@@ -98,8 +98,8 @@ impl<T: Domain> Intersection<HalfBounded<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Intersection<Self> for Interval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Intersection<Self> for EBounds<T> {
+    type Output = EBounds<T>;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
         match self {
@@ -121,16 +121,49 @@ commutative_op_impl!(
     Intersection,
     intersection,
     FiniteInterval<T>,
-    Interval<T>,
-    Interval<T>
+    EBounds<T>,
+    EBounds<T>
 );
 commutative_op_impl!(
     Intersection,
     intersection,
     HalfBounded<T>,
-    Interval<T>,
-    Interval<T>
+    EBounds<T>,
+    EBounds<T>
 );
+
+impl<T: Domain> Intersection for Interval<T> {
+    type Output = Self;
+
+    fn intersection(&self, rhs: &Self) -> Self::Output {
+        self.0.intersection(&rhs.0).into()
+    }
+}
+
+impl<T: Domain> Intersection<Interval<T>> for IntervalSet<T> {
+    type Output = Self;
+
+    fn intersection(&self, rhs: &Interval<T>) -> Self::Output {
+        if self.is_empty() || rhs.is_empty() {
+            return Self::new_unchecked(vec![]);
+        }
+
+        // invariants:
+        // intervals remain sorted; remain disjoint; filter out empty results;
+        let intervals = self
+            .intervals
+            .iter()
+            .map(|iv| iv.intersection(rhs))
+            .filter(|iv| !iv.is_empty())
+            .collect();
+
+        Self::new_unchecked(intervals)
+    }
+}
+
+
+
+
 
 impl<T: Domain> Intersection<FiniteInterval<T>> for IntervalSet<T> {
     type Output = Self;
@@ -175,10 +208,10 @@ impl<T: Domain> Intersection<HalfBounded<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain> Intersection<Interval<T>> for IntervalSet<T> {
+impl<T: Domain> Intersection<EBounds<T>> for IntervalSet<T> {
     type Output = Self;
 
-    fn intersection(&self, rhs: &Interval<T>) -> Self::Output {
+    fn intersection(&self, rhs: &EBounds<T>) -> Self::Output {
         if self.is_empty() || rhs.is_empty() {
             return Self::new_unchecked(vec![]);
         }
@@ -197,7 +230,7 @@ impl<T: Domain> Intersection<Interval<T>> for IntervalSet<T> {
 }
 
 impl<T: Domain> Intersection<Self> for IntervalSet<T> {
-    type Output = IntervalSet<T>;
+    type Output = Self;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
         if self.is_empty() || rhs.is_empty() {
@@ -288,7 +321,7 @@ commutative_op_impl!(
 commutative_op_impl!(
     Intersection,
     intersection,
-    Interval<T>,
+    EBounds<T>,
     IntervalSet<T>,
     IntervalSet<T>
 );

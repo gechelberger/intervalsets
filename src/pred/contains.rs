@@ -1,7 +1,7 @@
 use crate::empty::MaybeEmpty;
 use crate::ival::Side;
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
+use crate::{EBounds, FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 /// Defines whether a set fully contains another.
 ///
@@ -74,12 +74,12 @@ impl<T> Contains<HalfBounded<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<Interval<T>> for FiniteInterval<T> {
-    fn contains(&self, rhs: &Interval<T>) -> bool {
+impl<T: Domain> Contains<EBounds<T>> for FiniteInterval<T> {
+    fn contains(&self, rhs: &EBounds<T>) -> bool {
         match rhs {
-            Interval::Unbounded => false,
-            Interval::Half(interval) => self.contains(interval),
-            Interval::Finite(interval) => self.contains(interval),
+            EBounds::Unbounded => false,
+            EBounds::Half(interval) => self.contains(interval),
+            EBounds::Finite(interval) => self.contains(interval),
         }
     }
 }
@@ -104,17 +104,17 @@ impl<T: Domain> Contains<FiniteInterval<T>> for HalfBounded<T> {
     }
 }
 
-impl<T: Domain> Contains<Interval<T>> for HalfBounded<T> {
-    fn contains(&self, rhs: &Interval<T>) -> bool {
+impl<T: Domain> Contains<EBounds<T>> for HalfBounded<T> {
+    fn contains(&self, rhs: &EBounds<T>) -> bool {
         match rhs {
-            Interval::Unbounded => false,
-            Interval::Half(interval) => self.contains(interval),
-            Interval::Finite(interval) => self.contains(interval),
+            EBounds::Unbounded => false,
+            EBounds::Half(interval) => self.contains(interval),
+            EBounds::Finite(interval) => self.contains(interval),
         }
     }
 }
 
-impl<T: Domain> Contains<T> for Interval<T> {
+impl<T: Domain> Contains<T> for EBounds<T> {
     fn contains(&self, rhs: &T) -> bool {
         match self {
             Self::Unbounded => true,
@@ -124,7 +124,7 @@ impl<T: Domain> Contains<T> for Interval<T> {
     }
 }
 
-impl<T: Domain> Contains<FiniteInterval<T>> for Interval<T> {
+impl<T: Domain> Contains<FiniteInterval<T>> for EBounds<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Unbounded => !rhs.is_empty(),
@@ -134,7 +134,7 @@ impl<T: Domain> Contains<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Contains<HalfBounded<T>> for Interval<T> {
+impl<T: Domain> Contains<HalfBounded<T>> for EBounds<T> {
     fn contains(&self, rhs: &HalfBounded<T>) -> bool {
         match self {
             Self::Unbounded => true,
@@ -144,7 +144,7 @@ impl<T: Domain> Contains<HalfBounded<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Contains<Self> for Interval<T> {
+impl<T: Domain> Contains<Self> for EBounds<T> {
     fn contains(&self, rhs: &Self) -> bool {
         match self {
             Self::Unbounded => match rhs {
@@ -155,6 +155,24 @@ impl<T: Domain> Contains<Self> for Interval<T> {
             Self::Half(lhs) => lhs.contains(rhs),
             Self::Finite(lhs) => lhs.contains(rhs),
         }
+    }
+}
+
+impl<T: Domain> Contains<T> for Interval<T> {
+    fn contains(&self, rhs: &T) -> bool {
+        self.0.contains(rhs)
+    }
+}
+
+impl<T: Domain> Contains<Self> for Interval<T> {
+    fn contains(&self, rhs: &Self) -> bool {
+        self.0.contains(&rhs.0)
+    }
+}
+
+impl<T: Domain> Contains<IntervalSet<T>> for Interval<T> {
+    fn contains(&self, rhs: &IntervalSet<T>) -> bool {
+        rhs.intervals.iter().all(|subset| self.contains(&subset))
     }
 }
 
@@ -169,8 +187,6 @@ macro_rules! interval_set_contains_impl {
 }
 
 interval_set_contains_impl!(T);
-interval_set_contains_impl!(FiniteInterval<T>);
-interval_set_contains_impl!(HalfBounded<T>);
 interval_set_contains_impl!(Interval<T>);
 
 impl<T: Domain> Contains<Self> for IntervalSet<T> {
@@ -185,52 +201,52 @@ mod tests {
 
     #[quickcheck]
     fn test_finite_contains_integer(x: i8) {
-        let iv = Interval::open(-100, 100);
+        let iv = EBounds::open(-100, 100);
         assert_eq!(iv.contains(&x), -100 < x && x < 100);
     }
 
     #[quickcheck]
     fn test_finite_contains_float(x: f32) {
-        let iv = Interval::closed(-100.0, 100.0);
+        let iv = EBounds::closed(-100.0, 100.0);
         assert_eq!(iv.contains(&x), -100.0 < x && x < 100.0);
     }
 
     #[quickcheck]
     fn test_half_contains_integer(x: i8) {
-        let left = Interval::unbound_closed(0);
+        let left = EBounds::unbound_closed(0);
         assert_eq!(left.contains(&x), x <= 0);
 
-        let right = Interval::closed_unbound(0);
+        let right = EBounds::closed_unbound(0);
         assert_eq!(right.contains(&x), x >= 0);
     }
 
     #[quickcheck]
     fn test_half_contains_float(x: f32) {
-        let left = Interval::unbound_closed(0.0);
+        let left = EBounds::unbound_closed(0.0);
         assert_eq!(left.contains(&x), x <= 0.0);
 
-        let right = Interval::closed_unbound(0.0);
+        let right = EBounds::closed_unbound(0.0);
         assert_eq!(right.contains(&x), x >= 0.0);
     }
 
     #[quickcheck]
     fn test_infinite_contains_float(x: f32) {
-        let iv = Interval::unbound();
+        let iv = EBounds::unbound();
         assert!(iv.contains(&x));
     }
 
     #[quickcheck]
     fn test_finite_finite_integer_contains(a: i8, b: i8) {
-        let interval = Interval::closed(-50, 50);
-        let candidate = Interval::closed(a, b);
+        let interval = EBounds::closed(-50, 50);
+        let candidate = EBounds::closed(a, b);
 
         assert_eq!(interval.contains(&candidate), a <= b && -50 <= a && b <= 50)
     }
 
     #[quickcheck]
     fn test_finite_finite_float_contains(a: f32, b: f32) {
-        let interval = Interval::open(-100.0, 100.0);
-        let candidate = Interval::open(a, b);
+        let interval = EBounds::open(-100.0, 100.0);
+        let candidate = EBounds::open(a, b);
 
         assert_eq!(
             interval.contains(&candidate),
@@ -241,9 +257,9 @@ mod tests {
     #[quickcheck]
     fn test_set_contains_f32(a: f32) {
         let interval = IntervalSet::<f32>::new_unchecked(vec![
-            Interval::unbound_open(-100000.0),
-            Interval::open(-100.0, 100.0),
-            Interval::open_unbound(100000.0),
+            EBounds::unbound_open(-100000.0),
+            EBounds::open(-100.0, 100.0),
+            EBounds::open_unbound(100000.0),
         ]);
 
         assert_eq!(
@@ -255,13 +271,13 @@ mod tests {
     #[test]
     fn test_set_contains_set() {
         let a = IntervalSet::new_unchecked(vec![
-            Interval::open(-1000.0, 1000.0),
-            Interval::open(3000.0, 4000.0),
+            EBounds::open(-1000.0, 1000.0),
+            EBounds::open(3000.0, 4000.0),
         ]);
 
         assert!(a.contains(&IntervalSet::new_unchecked(vec![
-            Interval::open(0.0, 100.0),
-            Interval::open(3100.0, 3200.0),
+            EBounds::open(0.0, 100.0),
+            EBounds::open(3100.0, 3200.0),
         ])));
     }
 }

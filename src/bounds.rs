@@ -1,6 +1,6 @@
 use crate::ival::{Bound, IVal, Side};
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
+use crate::{EBounds, FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 /// The `Bounds` trait provides safe accessors for the
 /// boundary conditions of intervals/sets.
@@ -63,13 +63,19 @@ impl<T: Clone> Bounds<T> for HalfBounded<T> {
     }
 }
 
-impl<T: Clone> Bounds<T> for Interval<T> {
+impl<T: Clone> Bounds<T> for EBounds<T> {
     fn bound(&self, side: Side) -> Option<IVal<T>> {
         match self {
             Self::Unbounded => None,
             Self::Half(interval) => interval.bound(side),
             Self::Finite(interval) => interval.bound(side),
         }
+    }
+}
+
+impl<T: Domain> Bounds<T> for Interval<T> {
+    fn bound(&self, side: Side) -> Option<IVal<T>> {
+        self.0.bound(side)
     }
 }
 

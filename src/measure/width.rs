@@ -2,7 +2,7 @@ use core::ops::Sub;
 use num_traits::Zero;
 
 use super::Measurement as M;
-use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, EBounds, IntervalSet};
 
 /// A measure of the size of the set S in R1.
 ///
@@ -43,7 +43,7 @@ where
     }
 }
 
-impl<T, Out> Width for Interval<T>
+impl<T, Out> Width for EBounds<T>
 where
     Out: Zero,
     T: Clone + Sub<T, Output = Out>,

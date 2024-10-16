@@ -2,7 +2,7 @@ use super::merged::Merged;
 use crate::empty::MaybeEmpty;
 use crate::numeric::Domain;
 use crate::util::commutative_op_impl;
-use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
+use crate::{EBounds, FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 pub trait Union<Rhs = Self> {
     type Output;
@@ -43,7 +43,7 @@ impl<T: Domain> Union<HalfBounded<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Union<FiniteInterval<T>> for Interval<T> {
+impl<T: Domain> Union<FiniteInterval<T>> for EBounds<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &FiniteInterval<T>) -> Self::Output {
@@ -56,7 +56,7 @@ impl<T: Domain> Union<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Union<HalfBounded<T>> for Interval<T> {
+impl<T: Domain> Union<HalfBounded<T>> for EBounds<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &HalfBounded<T>) -> Self::Output {
@@ -68,7 +68,7 @@ impl<T: Domain> Union<HalfBounded<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Union<Self> for Interval<T> {
+impl<T: Domain> Union<Self> for EBounds<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &Self) -> Self::Output {
@@ -87,8 +87,16 @@ commutative_op_impl!(
     FiniteInterval<T>,
     IntervalSet<T>
 );
-commutative_op_impl!(Union, union, HalfBounded<T>, Interval<T>, IntervalSet<T>);
-commutative_op_impl!(Union, union, FiniteInterval<T>, Interval<T>, IntervalSet<T>);
+commutative_op_impl!(Union, union, HalfBounded<T>, EBounds<T>, IntervalSet<T>);
+commutative_op_impl!(Union, union, FiniteInterval<T>, EBounds<T>, IntervalSet<T>);
+
+impl<T: Domain> Union for Interval<T> {
+    type Output = IntervalSet<T>;
+
+    fn union(&self, rhs: &Self) -> Self::Output {
+        self.0.union(&rhs.0)
+    }
+}
 
 impl<T: Domain> Union<Self> for IntervalSet<T> {
     type Output = Self;
@@ -123,37 +131,7 @@ impl<T: Domain> Union<Interval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain> Union<FiniteInterval<T>> for IntervalSet<T> {
-    type Output = Self;
-
-    fn union(&self, rhs: &FiniteInterval<T>) -> Self::Output {
-        self.union(&Interval::<T>::from(rhs.clone()))
-    }
-}
-
-impl<T: Domain> Union<HalfBounded<T>> for IntervalSet<T> {
-    type Output = Self;
-
-    fn union(&self, rhs: &HalfBounded<T>) -> Self::Output {
-        self.union(&Interval::<T>::from(rhs.clone()))
-    }
-}
-
 commutative_op_impl!(Union, union, Interval<T>, IntervalSet<T>, IntervalSet<T>);
-commutative_op_impl!(
-    Union,
-    union,
-    FiniteInterval<T>,
-    IntervalSet<T>,
-    IntervalSet<T>
-);
-commutative_op_impl!(
-    Union,
-    union,
-    HalfBounded<T>,
-    IntervalSet<T>,
-    IntervalSet<T>
-);
 
 #[cfg(test)]
 mod tests {
@@ -214,8 +192,8 @@ mod tests {
             Interval::closed(300, 500),
         ]);
 
-        assert_eq!(a.union(&b), Interval::unbound().into());
-        assert_eq!(b.union(&a), Interval::unbound().into());
+        assert_eq!(a.union(&b), Interval::unbounded().into());
+        assert_eq!(b.union(&a), Interval::unbounded().into());
     }
 
     #[test]

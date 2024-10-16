@@ -14,7 +14,7 @@ use crate::pred::intersects::Intersects;
 /// [a, b) = NonZero { x in T | a <= x <  b }
 /// [a, b] = NonZero { x in T | a <= x <= b }
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum FiniteInterval<T> {
+pub(crate) enum FiniteInterval<T> {
     Empty,
     FullyBounded(IVal<T>, IVal<T>),
 }
@@ -101,7 +101,7 @@ impl<T> FiniteInterval<T> {
 ///
 /// 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HalfBounded<T> {
+pub(crate) struct HalfBounded<T> {
     pub(crate) side: Side,
     pub(crate) ival: IVal<T>,
 }
@@ -153,7 +153,7 @@ impl<T: Domain> HalfBounded<T> {
 /// 
 /// 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Interval<T> {
+pub(crate) enum EBounds<T> {
     /// (a, a) = (a, a] = [a, a) = Empty { x not in T }
     /// [a, a] = FullyBounded { x in T |    x = a    }
     /// (a, b) = FullyBounded { x in T | a <  x <  b }
@@ -172,7 +172,7 @@ pub enum Interval<T> {
     Unbounded,
 }
 
-impl<T: Domain> Interval<T> {
+impl<T: Domain> EBounds<T> {
     /// {} = {x | x not in T }
     pub fn empty() -> Self {
         FiniteInterval::Empty.into()
@@ -245,9 +245,56 @@ impl<T: Domain> Interval<T> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct Interval<T: Domain> (pub(crate) EBounds<T>);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct IntervalSet<T> {
+impl<T: Domain> Interval<T> {
+
+    pub fn empty() -> Self {
+        FiniteInterval::Empty.into()
+    }
+
+    pub fn closed(left: T, right: T) -> Self {
+        FiniteInterval::closed(left, right).into()
+    }
+
+    pub fn open(left: T, right: T) -> Self {
+        FiniteInterval::open(left, right).into()
+    }
+
+    pub fn open_closed(left: T, right: T) -> Self {
+        FiniteInterval::open_closed(left, right).into()
+    }
+
+    pub fn closed_open(left: T, right: T) -> Self {
+        FiniteInterval::closed_open(left, right).into()
+    }
+
+    pub fn unbound_open(right: T) -> Self {
+        HalfBounded::unbound_open(right).into()
+    }
+
+    pub fn unbound_closed(right: T) -> Self {
+        HalfBounded::unbound_closed(right).into()
+    }
+
+    pub fn open_unbound(left: T) -> Self {
+        HalfBounded::open_unbound(left).into()
+    }
+
+    pub fn closed_unbound(left: T) -> Self {
+        HalfBounded::closed_unbound(left).into()
+    }
+
+    pub fn unbounded() -> Self {
+        EBounds::unbound().into()
+    }
+}
+
+
+
+#[derive(Debug, Clone, PartialEq, PartialOrd)]
+pub struct IntervalSet<T: Domain> {
     pub(crate) intervals: Vec<Interval<T>>,
 }
 
@@ -369,13 +416,13 @@ mod tests {
     fn test_invariants() {
         // has empty member
         assert!(!IntervalSet::satisfies_invariants(&vec![
-            Interval::<usize>::empty()
+            EBounds::<usize>::empty()
         ]));
 
         // not disjoint
         assert!(!IntervalSet::satisfies_invariants(&vec![
-            Interval::closed(5, 10),
-            Interval::closed(8, 12)
+            EBounds::closed(5, 10),
+            EBounds::closed(8, 12)
         ]));
     }
 }

@@ -2,7 +2,7 @@ use super::complement::Complement;
 use super::intersection::Intersection;
 use super::union::Union;
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
+use crate::{EBounds, FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 /// Defines the difference of sets A - B.
 ///
@@ -46,22 +46,31 @@ macro_rules! difference_impl {
     };
 }
 
+impl<T: Domain> Difference for Interval<T> {
+    type Output = IntervalSet<T>;
+    
+    fn difference(&self, rhs: &Self) -> Self::Output {
+        self.0.difference(&rhs.0)
+    }
+}
+
 difference_impl!(FiniteInterval<T>, FiniteInterval<T>);
 difference_impl!(FiniteInterval<T>, HalfBounded<T>);
 difference_impl!(HalfBounded<T>, FiniteInterval<T>);
 difference_impl!(HalfBounded<T>, HalfBounded<T>);
-difference_impl!(Interval<T>, FiniteInterval<T>);
-difference_impl!(Interval<T>, HalfBounded<T>);
-difference_impl!(Interval<T>, Interval<T>);
-difference_impl!(FiniteInterval<T>, Interval<T>);
-difference_impl!(HalfBounded<T>, Interval<T>);
-difference_impl!(IntervalSet<T>, FiniteInterval<T>);
-difference_impl!(IntervalSet<T>, HalfBounded<T>);
-difference_impl!(IntervalSet<T>, Interval<T>);
-difference_impl!(FiniteInterval<T>, IntervalSet<T>);
-difference_impl!(HalfBounded<T>, IntervalSet<T>);
-difference_impl!(Interval<T>, IntervalSet<T>);
-difference_impl!(IntervalSet<T>, IntervalSet<T>);
+difference_impl!(EBounds<T>, FiniteInterval<T>);
+difference_impl!(EBounds<T>, HalfBounded<T>);
+difference_impl!(EBounds<T>, EBounds<T>);
+difference_impl!(FiniteInterval<T>, EBounds<T>);
+difference_impl!(HalfBounded<T>, EBounds<T>);
+
+//difference_impl!(IntervalSet<T>, FiniteInterval<T>);
+//difference_impl!(IntervalSet<T>, HalfBounded<T>);
+//difference_impl!(IntervalSet<T>, EBounds<T>);
+//difference_impl!(FiniteInterval<T>, IntervalSet<T>);
+//difference_impl!(HalfBounded<T>, IntervalSet<T>);
+//difference_impl!(EBounds<T>, IntervalSet<T>);
+//difference_impl!(IntervalSet<T>, IntervalSet<T>);
 
 /// Defines the symmetric difference for sets A and B.
 ///
@@ -105,22 +114,22 @@ sym_difference_impl!(FiniteInterval<T>, FiniteInterval<T>);
 sym_difference_impl!(FiniteInterval<T>, HalfBounded<T>);
 sym_difference_impl!(HalfBounded<T>, FiniteInterval<T>);
 sym_difference_impl!(HalfBounded<T>, HalfBounded<T>);
-sym_difference_impl!(Interval<T>, FiniteInterval<T>);
-sym_difference_impl!(Interval<T>, HalfBounded<T>);
-sym_difference_impl!(Interval<T>, Interval<T>);
-sym_difference_impl!(FiniteInterval<T>, Interval<T>);
-sym_difference_impl!(HalfBounded<T>, Interval<T>);
+sym_difference_impl!(EBounds<T>, FiniteInterval<T>);
+sym_difference_impl!(EBounds<T>, HalfBounded<T>);
+sym_difference_impl!(EBounds<T>, EBounds<T>);
+sym_difference_impl!(FiniteInterval<T>, EBounds<T>);
+sym_difference_impl!(HalfBounded<T>, EBounds<T>);
 sym_difference_impl!(IntervalSet<T>, FiniteInterval<T>);
 sym_difference_impl!(IntervalSet<T>, HalfBounded<T>);
-sym_difference_impl!(IntervalSet<T>, Interval<T>);
+sym_difference_impl!(IntervalSet<T>, EBounds<T>);
 sym_difference_impl!(FiniteInterval<T>, IntervalSet<T>);
 sym_difference_impl!(HalfBounded<T>, IntervalSet<T>);
-sym_difference_impl!(Interval<T>, IntervalSet<T>);
+sym_difference_impl!(EBounds<T>, IntervalSet<T>);
 sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 
 #[cfg(test)]
 mod tests {
-    use crate::Interval;
+    use crate::EBounds;
 
     use super::*;
 
@@ -139,8 +148,8 @@ mod tests {
         assert_eq!(
             FiniteInterval::closed(0.0, 10.0).difference(&FiniteInterval::closed(2.5, 7.5)),
             IntervalSet::new_unchecked(vec![
-                Interval::closed_open(0.0, 2.5),
-                Interval::open_closed(7.5, 10.0)
+                EBounds::closed_open(0.0, 2.5),
+                EBounds::open_closed(7.5, 10.0)
             ])
         );
 
@@ -153,13 +162,13 @@ mod tests {
     #[test]
     fn test_finite_sym_difference() {
         assert_eq!(
-            Interval::closed(0.0, 10.0).sym_difference(&Interval::closed(5.0, 15.0)),
-            Interval::closed_open(0.0, 5.0).union(&Interval::open_closed(10.0, 15.0))
+            EBounds::closed(0.0, 10.0).sym_difference(&EBounds::closed(5.0, 15.0)),
+            EBounds::closed_open(0.0, 5.0).union(&EBounds::open_closed(10.0, 15.0))
         );
 
         assert_eq!(
-            Interval::closed(5.0, 15.0).sym_difference(&Interval::closed(0.0, 10.0)),
-            Interval::closed_open(0.0, 5.0).union(&Interval::open_closed(10.0, 15.0))
+            EBounds::closed(5.0, 15.0).sym_difference(&EBounds::closed(0.0, 10.0)),
+            EBounds::closed_open(0.0, 5.0).union(&EBounds::open_closed(10.0, 15.0))
         );
     }
 }

@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::bounds::Bounds;
 use crate::ival::{Bound, IVal, Side};
-use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
+use crate::{Domain, EBounds, FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 fn bound_symbol(side: Side, bound: Bound) -> char {
     match bound {
@@ -57,7 +57,7 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for HalfBounded<T> {
     }
 }
 
-impl<T: std::fmt::Display + Clone> std::fmt::Display for Interval<T> {
+impl<T: std::fmt::Display + Clone> std::fmt::Display for EBounds<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Unbounded => write!(f, "(<-, ->)"),
@@ -67,7 +67,13 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for Interval<T> {
     }
 }
 
-impl<T: std::fmt::Display + Clone> std::fmt::Display for IntervalSet<T> {
+impl<T: std::fmt::Display + Domain> std::fmt::Display for Interval<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
+
+impl<T: std::fmt::Display + Domain> std::fmt::Display for IntervalSet<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if self.intervals.is_empty() {
             FiniteInterval::<i32>::Empty.fmt(f)
@@ -121,9 +127,9 @@ mod tests {
 
     #[test]
     fn test_display_interval() {
-        assert_eq!(format!("{}", Interval::<i8>::empty()), "{}");
+        assert_eq!(format!("{}", EBounds::<i8>::empty()), "{}");
 
-        assert_eq!(format!("{}", Interval::<i8>::unbound()), "(<-, ->)");
+        assert_eq!(format!("{}", EBounds::<i8>::unbound()), "(<-, ->)");
     }
 
     #[test]
@@ -131,10 +137,10 @@ mod tests {
         assert_eq!(
             format!(
                 "{}",
-                Interval::unbound_closed(-9.9)
-                    .union(&Interval::open(5.5, 9.9))
-                    .union(&Interval::closed_open(11.1, 22.2))
-                    .union(&Interval::open_unbound(33.3))
+                EBounds::unbound_closed(-9.9)
+                    .union(&EBounds::open(5.5, 9.9))
+                    .union(&EBounds::closed_open(11.1, 22.2))
+                    .union(&EBounds::open_unbound(33.3))
             ),
             "{(<-, -9.9], (5.5, 9.9), [11.1, 22.2), (33.3, ->)}"
         )

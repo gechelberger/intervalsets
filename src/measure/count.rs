@@ -1,7 +1,7 @@
 use num_traits::Zero;
 
 use super::Measurement as M;
-use crate::{Domain, FiniteInterval, HalfBounded, Interval, Side};
+use crate::{Domain, FiniteInterval, HalfBounded, EBounds, Side};
 
 /// Defines the measure of a Countable Interval/Set.
 ///
@@ -33,7 +33,7 @@ impl<T> Count for HalfBounded<T> {
     }
 }
 
-impl<T: Countable + Zero> Count for Interval<T> {
+impl<T: Countable + Zero> Count for EBounds<T> {
     type Output = M<T>;
 
     fn count(&self) -> Self::Output {
@@ -79,8 +79,8 @@ mod tests {
     fn test_finit_count() {
         assert_eq!(FiniteInterval::closed_open(0, 10).count().finite(), 10);
 
-        assert_eq!(Interval::closed(0, 5).count().finite(), 6);
+        assert_eq!(EBounds::closed(0, 5).count().finite(), 6);
 
-        assert_eq!(Interval::unbound_closed(0).count(), M::Infinite);
+        assert_eq!(EBounds::unbound_closed(0).count(), M::Infinite);
     }
 }

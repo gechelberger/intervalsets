@@ -4,7 +4,7 @@ use crate::bounds::Bounds;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfBounded, Interval};
+use crate::{FiniteInterval, HalfBounded, EBounds};
 
 /// Partial compare of two boundary conditions
 /// when both are the same side of each interval.
@@ -85,7 +85,7 @@ where
     impl_cmp(lhs, rhs).into()
 }
 
-impl<T: Domain> PartialOrd for Interval<T> {
+impl<T: Domain> PartialOrd for EBounds<T> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         impl_partial_cmp(self, rhs)
     }
@@ -107,7 +107,7 @@ impl<T: Domain> PartialOrd for FiniteInterval<T> {
 mod tests {
     use super::*;
 
-    fn assert_lt<T: Domain>(itv1: Interval<T>, itv2: Interval<T>) {
+    fn assert_lt<T: Domain>(itv1: EBounds<T>, itv2: EBounds<T>) {
         assert!(itv1 < itv2);
         assert!(!(itv1 >= itv2)); // antisymmetry
 
@@ -118,31 +118,31 @@ mod tests {
     #[test]
     fn test_interval_cmp() {
         // (0, _) < (200, _)
-        assert_lt(Interval::open(0.0, 100.0), Interval::open(200.0, 300.0));
+        assert_lt(EBounds::open(0.0, 100.0), EBounds::open(200.0, 300.0));
 
         // [0, A] < (0.0, A)
-        assert_lt(Interval::closed(0.0, 100.0), Interval::open(0.0, 100.0));
+        assert_lt(EBounds::closed(0.0, 100.0), EBounds::open(0.0, 100.0));
 
         // [0, 50] < [0, 100]
-        assert_lt(Interval::closed(0.0, 50.0), Interval::closed(0.0, 100.0));
+        assert_lt(EBounds::closed(0.0, 50.0), EBounds::closed(0.0, 100.0));
 
         // (0, 50) < (0, ->)
-        assert_lt(Interval::open(0.0, 50.0), Interval::open_unbound(0.0));
+        assert_lt(EBounds::open(0.0, 50.0), EBounds::open_unbound(0.0));
 
         // (<-, _) < (0.0, _)
-        assert_lt(Interval::unbound_open(5.0), Interval::open(0.0, 3.0));
+        assert_lt(EBounds::unbound_open(5.0), EBounds::open(0.0, 3.0));
 
         // (0, 50) < (<-, ->)
-        assert_lt(Interval::unbound_open(50.0), Interval::unbound());
+        assert_lt(EBounds::unbound_open(50.0), EBounds::unbound());
 
         // (<-, ->) < (0, 50)
-        assert_lt(Interval::unbound(), Interval::open(0.0, 50.0));
+        assert_lt(EBounds::unbound(), EBounds::open(0.0, 50.0));
 
         // (<-, ->) < (0, ->)
-        assert_lt(Interval::unbound(), Interval::open_unbound(0.0));
+        assert_lt(EBounds::unbound(), EBounds::open_unbound(0.0));
 
         // Empty Set should not compare
-        assert_eq!(Interval::<u8>::empty() <= Interval::<u8>::unbound(), false);
-        assert_eq!(Interval::<u8>::empty() >= Interval::<u8>::unbound(), false);
+        assert_eq!(EBounds::<u8>::empty() <= EBounds::<u8>::unbound(), false);
+        assert_eq!(EBounds::<u8>::empty() >= EBounds::<u8>::unbound(), false);
     }
 }

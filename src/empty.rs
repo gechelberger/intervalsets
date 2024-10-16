@@ -4,7 +4,7 @@
 ///
 /// HalfInterval can not be empty so we shouldn't need it and can
 /// just skip strait to determinite functions for it.
-use crate::{FiniteInterval, Interval, IntervalSet};
+use crate::{Domain, EBounds, FiniteInterval, Interval, IntervalSet};
 
 pub trait MaybeEmpty {
     fn is_empty(&self) -> bool;
@@ -16,7 +16,7 @@ impl<T: PartialEq> MaybeEmpty for FiniteInterval<T> {
     }
 }
 
-impl<T: PartialEq> MaybeEmpty for Interval<T> {
+impl<T: PartialEq> MaybeEmpty for EBounds<T> {
     fn is_empty(&self) -> bool {
         match self {
             Self::Finite(finite) => finite.is_empty(),
@@ -25,7 +25,13 @@ impl<T: PartialEq> MaybeEmpty for Interval<T> {
     }
 }
 
-impl<T> MaybeEmpty for IntervalSet<T> {
+impl<T: Domain> MaybeEmpty for Interval<T> {
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<T: Domain> MaybeEmpty for IntervalSet<T> {
     fn is_empty(&self) -> bool {
         self.intervals.len() == 0
     }

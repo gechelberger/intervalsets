@@ -3,7 +3,7 @@ use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
 use crate::pred::contains::Contains;
 use crate::pred::intersects::Intersects;
-use crate::{FiniteInterval, HalfBounded, Interval};
+use crate::{EBounds, FiniteInterval, HalfBounded, Interval};
 
 /// Union for two intervals that are contiguous.
 pub trait Merged<Rhs = Self> {
@@ -40,7 +40,7 @@ impl<T: Domain> Merged<Self> for FiniteInterval<T> {
 }
 
 impl<T: Domain> Merged<Self> for HalfBounded<T> {
-    type Output = Interval<T>;
+    type Output = EBounds<T>;
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
         if self.side == rhs.side {
@@ -53,7 +53,7 @@ impl<T: Domain> Merged<Self> for HalfBounded<T> {
             // unfortunately we have to check from both sides to catch the
             // case where left and right values are the same but open & closed
             if self.contains(&rhs.ival.value) && rhs.contains(&self.ival.value) {
-                Some(Interval::Unbounded)
+                Some(EBounds::Unbounded)
             } else {
                 None // disjoint
             }
@@ -62,7 +62,7 @@ impl<T: Domain> Merged<Self> for HalfBounded<T> {
 }
 
 impl<T: Domain> Merged<FiniteInterval<T>> for HalfBounded<T> {
-    type Output = Interval<T>;
+    type Output = EBounds<T>;
 
     fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         match rhs {
@@ -87,15 +87,15 @@ impl<T: Domain> Merged<FiniteInterval<T>> for HalfBounded<T> {
 }
 
 impl<T: Domain> Merged<HalfBounded<T>> for FiniteInterval<T> {
-    type Output = Interval<T>;
+    type Output = EBounds<T>;
 
     fn merged(&self, rhs: &HalfBounded<T>) -> Option<Self::Output> {
         rhs.merged(self)
     }
 }
 
-impl<T: Domain> Merged<FiniteInterval<T>> for Interval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Merged<FiniteInterval<T>> for EBounds<T> {
+    type Output = EBounds<T>;
 
     fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         match self {
@@ -106,8 +106,8 @@ impl<T: Domain> Merged<FiniteInterval<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Merged<HalfBounded<T>> for Interval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Merged<HalfBounded<T>> for EBounds<T> {
+    type Output = EBounds<T>;
 
     fn merged(&self, rhs: &HalfBounded<T>) -> Option<Self::Output> {
         match self {
@@ -118,8 +118,8 @@ impl<T: Domain> Merged<HalfBounded<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Merged<Self> for Interval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Merged<Self> for EBounds<T> {
+    type Output = EBounds<T>;
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
         match self {
@@ -130,19 +130,27 @@ impl<T: Domain> Merged<Self> for Interval<T> {
     }
 }
 
-impl<T: Domain> Merged<Interval<T>> for FiniteInterval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Merged<EBounds<T>> for FiniteInterval<T> {
+    type Output = EBounds<T>;
 
-    fn merged(&self, rhs: &Interval<T>) -> Option<Self::Output> {
+    fn merged(&self, rhs: &EBounds<T>) -> Option<Self::Output> {
         rhs.merged(self)
     }
 }
 
-impl<T: Domain> Merged<Interval<T>> for HalfBounded<T> {
-    type Output = Interval<T>;
+impl<T: Domain> Merged<EBounds<T>> for HalfBounded<T> {
+    type Output = EBounds<T>;
 
-    fn merged(&self, rhs: &Interval<T>) -> Option<Self::Output> {
+    fn merged(&self, rhs: &EBounds<T>) -> Option<Self::Output> {
         rhs.merged(self)
+    }
+}
+
+impl<T: Domain> Merged for Interval<T> {
+    type Output = Self;
+
+    fn merged(&self, rhs: &Self) -> Option<Self::Output> {
+        self.0.merged(&rhs.0).map(|v| v.into())
     }
 }
 
@@ -171,18 +179,18 @@ mod test {
     #[test]
     fn test_finite_merged() {
         assert_eq!(
-            Interval::open(0, 100).merged(&Interval::open(50, 150)),
-            Some(Interval::open(0, 150))
+            EBounds::open(0, 100).merged(&EBounds::open(50, 150)),
+            Some(EBounds::open(0, 150))
         );
 
         assert_eq!(
-            Interval::open(0, 100).merged(&Interval::open(100, 200)),
+            EBounds::open(0, 100).merged(&EBounds::open(100, 200)),
             None,
         );
 
         assert_eq!(
-            Interval::closed(0, 100).merged(&Interval::closed(100, 200)),
-            Some(Interval::closed(0, 200))
+            EBounds::closed(0, 100).merged(&EBounds::closed(100, 200)),
+            Some(EBounds::closed(0, 200))
         );
     }
 }

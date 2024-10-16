@@ -38,7 +38,7 @@ mod numeric;
 mod partial_ord;
 
 // measures
-pub mod measure;
+//pub mod measure;
 
 // operation traits
 pub mod op;
@@ -51,6 +51,7 @@ pub(crate) mod util;
 // reexports / public APIs
 pub(crate) use sets::FiniteInterval;
 pub(crate) use sets::HalfBounded;
+pub(crate) use sets::EBounds;
 
 pub use sets::Interval;
 pub use sets::IntervalSet;
@@ -59,8 +60,8 @@ pub use ival::{Bound, Side};
 
 pub use bounds::Bounds;
 pub use empty::MaybeEmpty;
-pub use measure::count::{Count, Countable};
-pub use measure::width::Width;
+//pub use measure::count::{Count, Countable};
+//pub use measure::width::Width;
 pub use numeric::Domain;
 
 pub use pred::contains::Contains;
