@@ -25,8 +25,9 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 
 // concrete types
-pub mod concrete;
+//pub mod concrete;
 pub mod ival;
+mod sets;
 
 // invariant traits
 mod bounds;
@@ -48,11 +49,11 @@ pub(crate) mod pred;
 pub(crate) mod util;
 
 // reexports / public APIs
-pub(crate) use concrete::finite::FiniteInterval;
-pub(crate) use concrete::half::HalfInterval;
+pub(crate) use sets::FiniteInterval;
+pub(crate) use sets::HalfInterval;
 
-pub use concrete::interval::Interval;
-pub use concrete::set::IntervalSet;
+pub use sets::Interval;
+pub use sets::IntervalSet;
 
 pub use ival::{Bound, Side};
 

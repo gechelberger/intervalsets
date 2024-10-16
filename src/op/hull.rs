@@ -1,5 +1,5 @@
 use crate::bounds::Bounds;
-use crate::concrete::finite::FiniteInterval;
+use crate::FiniteInterval;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
