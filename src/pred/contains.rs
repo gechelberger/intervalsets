@@ -1,7 +1,7 @@
 use crate::empty::MaybeEmpty;
 use crate::ival::Side;
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 /// Defines whether a set fully contains another.
 ///
@@ -34,7 +34,7 @@ impl<T: Domain> Contains<T> for FiniteInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         match self {
             Self::Empty => false,
-            Self::NonZero(left, right) => {
+            Self::FullyBounded(left, right) => {
                 left.contains(Side::Left, rhs) && right.contains(Side::Right, rhs)
             }
         }
@@ -67,9 +67,9 @@ impl<T: Domain> Contains<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T> Contains<HalfInterval<T>> for FiniteInterval<T> {
+impl<T> Contains<HalfBounded<T>> for FiniteInterval<T> {
     /// A FiniteInterval can never contain a HalfInterval
-    fn contains(&self, _: &HalfInterval<T>) -> bool {
+    fn contains(&self, _: &HalfBounded<T>) -> bool {
         false
     }
 }
@@ -77,26 +77,26 @@ impl<T> Contains<HalfInterval<T>> for FiniteInterval<T> {
 impl<T: Domain> Contains<Interval<T>> for FiniteInterval<T> {
     fn contains(&self, rhs: &Interval<T>) -> bool {
         match rhs {
-            Interval::Infinite => false,
+            Interval::Unbounded => false,
             Interval::Half(interval) => self.contains(interval),
             Interval::Finite(interval) => self.contains(interval),
         }
     }
 }
 
-impl<T: Domain> Contains<T> for HalfInterval<T> {
+impl<T: Domain> Contains<T> for HalfBounded<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.ival.contains(self.side, rhs)
     }
 }
 
-impl<T: Domain> Contains<Self> for HalfInterval<T> {
+impl<T: Domain> Contains<Self> for HalfBounded<T> {
     fn contains(&self, rhs: &Self) -> bool {
         self.side == rhs.side && self.contains(&rhs.ival.value)
     }
 }
 
-impl<T: Domain> Contains<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Domain> Contains<FiniteInterval<T>> for HalfBounded<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         rhs.map_or(false, |left, right| {
             self.contains(&left.value) && self.contains(&right.value)
@@ -104,10 +104,10 @@ impl<T: Domain> Contains<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<Interval<T>> for HalfInterval<T> {
+impl<T: Domain> Contains<Interval<T>> for HalfBounded<T> {
     fn contains(&self, rhs: &Interval<T>) -> bool {
         match rhs {
-            Interval::Infinite => false,
+            Interval::Unbounded => false,
             Interval::Half(interval) => self.contains(interval),
             Interval::Finite(interval) => self.contains(interval),
         }
@@ -117,7 +117,7 @@ impl<T: Domain> Contains<Interval<T>> for HalfInterval<T> {
 impl<T: Domain> Contains<T> for Interval<T> {
     fn contains(&self, rhs: &T) -> bool {
         match self {
-            Self::Infinite => true,
+            Self::Unbounded => true,
             Self::Half(lhs) => lhs.contains(rhs),
             Self::Finite(lhs) => lhs.contains(rhs),
         }
@@ -127,17 +127,17 @@ impl<T: Domain> Contains<T> for Interval<T> {
 impl<T: Domain> Contains<FiniteInterval<T>> for Interval<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
-            Self::Infinite => !rhs.is_empty(),
+            Self::Unbounded => !rhs.is_empty(),
             Self::Half(lhs) => lhs.contains(rhs),
             Self::Finite(lhs) => lhs.contains(rhs),
         }
     }
 }
 
-impl<T: Domain> Contains<HalfInterval<T>> for Interval<T> {
-    fn contains(&self, rhs: &HalfInterval<T>) -> bool {
+impl<T: Domain> Contains<HalfBounded<T>> for Interval<T> {
+    fn contains(&self, rhs: &HalfBounded<T>) -> bool {
         match self {
-            Self::Infinite => true,
+            Self::Unbounded => true,
             Self::Half(lhs) => lhs.contains(rhs),
             Self::Finite(lhs) => lhs.contains(rhs),
         }
@@ -147,8 +147,8 @@ impl<T: Domain> Contains<HalfInterval<T>> for Interval<T> {
 impl<T: Domain> Contains<Self> for Interval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         match self {
-            Self::Infinite => match rhs {
-                Self::Infinite => true, // still not sure?
+            Self::Unbounded => match rhs {
+                Self::Unbounded => true, // still not sure?
                 Self::Half(interval) => self.contains(interval),
                 Self::Finite(interval) => self.contains(interval),
             },
@@ -170,7 +170,7 @@ macro_rules! interval_set_contains_impl {
 
 interval_set_contains_impl!(T);
 interval_set_contains_impl!(FiniteInterval<T>);
-interval_set_contains_impl!(HalfInterval<T>);
+interval_set_contains_impl!(HalfBounded<T>);
 interval_set_contains_impl!(Interval<T>);
 
 impl<T: Domain> Contains<Self> for IntervalSet<T> {

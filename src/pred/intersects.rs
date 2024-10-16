@@ -2,7 +2,7 @@ use crate::ival::Side;
 use crate::numeric::Domain;
 use crate::pred::contains::Contains;
 use crate::util::commutative_predicate_impl;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 /// Defines whether two sets intersect.
 ///
@@ -43,7 +43,7 @@ impl<T: Domain> Intersects<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Intersects<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Domain> Intersects<FiniteInterval<T>> for HalfBounded<T> {
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
         rhs.map_or(false, |left, right| {
             self.contains(&left.value) || self.contains(&right.value)
@@ -51,7 +51,7 @@ impl<T: Domain> Intersects<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Intersects<Self> for HalfInterval<T> {
+impl<T: Domain> Intersects<Self> for HalfBounded<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         let lhs = self;
         lhs.contains(&rhs.ival.value) || rhs.contains(&lhs.ival.value)
@@ -61,17 +61,17 @@ impl<T: Domain> Intersects<Self> for HalfInterval<T> {
 impl<T: Domain> Intersects<FiniteInterval<T>> for Interval<T> {
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
-            Self::Infinite => *rhs != FiniteInterval::Empty,
+            Self::Unbounded => *rhs != FiniteInterval::Empty,
             Self::Half(lhs) => lhs.intersects(rhs),
             Self::Finite(lhs) => lhs.intersects(rhs),
         }
     }
 }
 
-impl<T: Domain> Intersects<HalfInterval<T>> for Interval<T> {
-    fn intersects(&self, rhs: &HalfInterval<T>) -> bool {
+impl<T: Domain> Intersects<HalfBounded<T>> for Interval<T> {
+    fn intersects(&self, rhs: &HalfBounded<T>) -> bool {
         match self {
-            Self::Infinite => true,
+            Self::Unbounded => true,
             Self::Half(lhs) => lhs.intersects(rhs),
             Self::Finite(lhs) => rhs.intersects(lhs),
         }
@@ -81,16 +81,16 @@ impl<T: Domain> Intersects<HalfInterval<T>> for Interval<T> {
 impl<T: Domain> Intersects<Self> for Interval<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         match self {
-            Self::Infinite => *rhs != FiniteInterval::Empty.into(),
+            Self::Unbounded => *rhs != FiniteInterval::Empty.into(),
             Self::Half(lhs) => rhs.intersects(lhs),
             Self::Finite(lhs) => rhs.intersects(lhs),
         }
     }
 }
 
-commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, HalfInterval<T>);
+commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, HalfBounded<T>);
 commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, Interval<T>);
-commutative_predicate_impl!(Intersects, intersects, HalfInterval<T>, Interval<T>);
+commutative_predicate_impl!(Intersects, intersects, HalfBounded<T>, Interval<T>);
 
 macro_rules! interval_set_intersects_impl {
     ($t_rhs:ty) => {
@@ -104,8 +104,8 @@ macro_rules! interval_set_intersects_impl {
 
 interval_set_intersects_impl!(FiniteInterval<T>);
 commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, IntervalSet<T>);
-interval_set_intersects_impl!(HalfInterval<T>);
-commutative_predicate_impl!(Intersects, intersects, HalfInterval<T>, IntervalSet<T>);
+interval_set_intersects_impl!(HalfBounded<T>);
+commutative_predicate_impl!(Intersects, intersects, HalfBounded<T>, IntervalSet<T>);
 interval_set_intersects_impl!(Interval<T>);
 commutative_predicate_impl!(Intersects, intersects, Interval<T>, IntervalSet<T>);
 

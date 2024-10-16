@@ -16,7 +16,7 @@ use crate::pred::intersects::Intersects;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FiniteInterval<T> {
     Empty,
-    NonZero(IVal<T>, IVal<T>),
+    FullyBounded(IVal<T>, IVal<T>),
 }
 
 impl<T: Domain> FiniteInterval<T> {
@@ -36,7 +36,7 @@ impl<T: Domain> FiniteInterval<T> {
     }
 
     pub fn new_unchecked(left: IVal<T>, right: IVal<T>) -> Self {
-        Self::NonZero(left, right)
+        Self::FullyBounded(left, right)
     }
 
     pub fn singleton(item: T) -> Self {
@@ -64,21 +64,21 @@ impl<T> FiniteInterval<T> {
     pub fn lval_unchecked(&self) -> &T {
         match self {
             Self::Empty => panic!("Empty interval has no left bound"),
-            Self::NonZero(left, _) => &left.value,
+            Self::FullyBounded(left, _) => &left.value,
         }
     }
 
     pub fn rval_unchecked(&self) -> &T {
         match self {
             Self::Empty => panic!("Empty interval has no right bound"),
-            Self::NonZero(_, right) => &right.value,
+            Self::FullyBounded(_, right) => &right.value,
         }
     }
 
     pub fn map_bounds(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> Self) -> Self {
         match self {
             Self::Empty => Self::Empty,
-            Self::NonZero(left, right) => func(left, right),
+            Self::FullyBounded(left, right) => func(left, right),
         }
     }
 
@@ -86,14 +86,14 @@ impl<T> FiniteInterval<T> {
     pub fn map<U>(&self, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> Option<U> {
         match self {
             Self::Empty => None,
-            Self::NonZero(left, right) => Some(func(left, right)),
+            Self::FullyBounded(left, right) => Some(func(left, right)),
         }
     }
 
     pub fn map_or<U>(&self, default: U, func: impl Fn(&IVal<T>, &IVal<T>) -> U) -> U {
         match self {
             Self::Empty => default,
-            Self::NonZero(left, right) => func(left, right),
+            Self::FullyBounded(left, right) => func(left, right),
         }
     }
 }
@@ -101,12 +101,12 @@ impl<T> FiniteInterval<T> {
 ///
 /// 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct HalfInterval<T> {
+pub struct HalfBounded<T> {
     pub(crate) side: Side,
     pub(crate) ival: IVal<T>,
 }
 
-impl<T: Domain> HalfInterval<T> {
+impl<T: Domain> HalfBounded<T> {
     pub fn new(side: Side, ival: IVal<T>) -> Self {
         Self {
             side,
@@ -155,21 +155,21 @@ impl<T: Domain> HalfInterval<T> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Interval<T> {
     /// (a, a) = (a, a] = [a, a) = Empty { x not in T }
-    /// [a, a] = NonZero { x in T |    x = a    }
-    /// (a, b) = NonZero { x in T | a <  x <  b }
-    /// (a, b] = NonZero { x in T | a <  x <= b }
-    /// [a, b) = NonZero { x in T | a <= x <  b }
-    /// [a, b] = NonZero { x in T | a <= x <= b }
+    /// [a, a] = FullyBounded { x in T |    x = a    }
+    /// (a, b) = FullyBounded { x in T | a <  x <  b }
+    /// (a, b] = FullyBounded { x in T | a <  x <= b }
+    /// [a, b) = FullyBounded { x in T | a <= x <  b }
+    /// [a, b] = FullyBounded { x in T | a <= x <= b }
     Finite(FiniteInterval<T>),
 
     /// (a, ->) = Left  { x in T | a <  x      }
     /// [a, ->) = Left  { x in T | a <= x      }
     /// (<-, b) = Right { x in T |      x < b  }
     /// (<-, b] = Right { x in T |      x <= b }
-    Half(HalfInterval<T>),
+    Half(HalfBounded<T>),
 
     /// {<-, ->) = { x in T }
-    Infinite,
+    Unbounded,
 }
 
 impl<T: Domain> Interval<T> {
@@ -205,27 +205,27 @@ impl<T: Domain> Interval<T> {
 
     // (<-, b) = { x in T | x < b }
     pub fn unbound_open(right: T) -> Self {
-        HalfInterval::unbound_open(right).into()
+        HalfBounded::unbound_open(right).into()
     }
 
     /// (<-, b] = { x in T | x <= b }
     pub fn unbound_closed(right: T) -> Self {
-        HalfInterval::unbound_closed(right).into()
+        HalfBounded::unbound_closed(right).into()
     }
 
     /// (a, ->) = { x in T | a < x }
     pub fn open_unbound(left: T) -> Self {
-        HalfInterval::open_unbound(left).into()
+        HalfBounded::open_unbound(left).into()
     }
 
     /// [a, ->) = { x in T | a <= x }
     pub fn closed_unbound(left: T) -> Self {
-        HalfInterval::closed_unbound(left).into()
+        HalfBounded::closed_unbound(left).into()
     }
 
     /// (<-, ->) = { x in T }
     pub fn unbound() -> Self {
-        Self::Infinite
+        Self::Unbounded
     }
 
     pub fn lval_unchecked(&self) -> &T {

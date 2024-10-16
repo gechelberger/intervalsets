@@ -4,7 +4,7 @@ use crate::bounds::Bounds;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfInterval, Interval};
+use crate::{FiniteInterval, HalfBounded, Interval};
 
 /// Partial compare of two boundary conditions
 /// when both are the same side of each interval.
@@ -91,7 +91,7 @@ impl<T: Domain> PartialOrd for Interval<T> {
     }
 }
 
-impl<T: Domain> PartialOrd for HalfInterval<T> {
+impl<T: Domain> PartialOrd for HalfBounded<T> {
     fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
         impl_cmp(self, rhs).into()
     }

@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::bounds::Bounds;
 use crate::ival::{Bound, IVal, Side};
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 fn bound_symbol(side: Side, bound: Bound) -> char {
     match bound {
@@ -34,7 +34,7 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for FiniteInterval<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Empty => write!(f, "{{}}"),
-            Self::NonZero(left, right) => {
+            Self::FullyBounded(left, right) => {
                 write!(
                     f,
                     "{}, {}",
@@ -46,7 +46,7 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for FiniteInterval<T> {
     }
 }
 
-impl<T: std::fmt::Display + Clone> std::fmt::Display for HalfInterval<T> {
+impl<T: std::fmt::Display + Clone> std::fmt::Display for HalfBounded<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
@@ -60,7 +60,7 @@ impl<T: std::fmt::Display + Clone> std::fmt::Display for HalfInterval<T> {
 impl<T: std::fmt::Display + Clone> std::fmt::Display for Interval<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Infinite => write!(f, "(<-, ->)"),
+            Self::Unbounded => write!(f, "(<-, ->)"),
             Self::Finite(inner) => inner.fmt(f),
             Self::Half(inner) => inner.fmt(f),
         }
@@ -105,18 +105,18 @@ mod tests {
     #[test]
     fn test_display_half() {
         assert_eq!(
-            format!("{}", HalfInterval::unbound_closed(0.5)),
+            format!("{}", HalfBounded::unbound_closed(0.5)),
             "(<-, 0.5]"
         );
 
-        assert_eq!(format!("{}", HalfInterval::unbound_open(0.5)), "(<-, 0.5)");
+        assert_eq!(format!("{}", HalfBounded::unbound_open(0.5)), "(<-, 0.5)");
 
         assert_eq!(
-            format!("{}", HalfInterval::closed_unbound(0.5)),
+            format!("{}", HalfBounded::closed_unbound(0.5)),
             "[0.5, ->)"
         );
 
-        assert_eq!(format!("{}", HalfInterval::open_unbound(0.5)), "(0.5, ->)")
+        assert_eq!(format!("{}", HalfBounded::open_unbound(0.5)), "(0.5, ->)")
     }
 
     #[test]

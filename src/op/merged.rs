@@ -3,7 +3,7 @@ use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
 use crate::pred::contains::Contains;
 use crate::pred::intersects::Intersects;
-use crate::{FiniteInterval, HalfInterval, Interval};
+use crate::{FiniteInterval, HalfBounded, Interval};
 
 /// Union for two intervals that are contiguous.
 pub trait Merged<Rhs = Self> {
@@ -30,7 +30,7 @@ impl<T: Domain> Merged<Self> for FiniteInterval<T> {
 
         self.map(|a_left, a_right| {
             rhs.map_bounds(|b_left, b_right| {
-                FiniteInterval::NonZero(
+                FiniteInterval::FullyBounded(
                     IVal::min_left(a_left, b_left),
                     IVal::max_right(a_right, b_right),
                 )
@@ -39,7 +39,7 @@ impl<T: Domain> Merged<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Merged<Self> for HalfInterval<T> {
+impl<T: Domain> Merged<Self> for HalfBounded<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
@@ -53,7 +53,7 @@ impl<T: Domain> Merged<Self> for HalfInterval<T> {
             // unfortunately we have to check from both sides to catch the
             // case where left and right values are the same but open & closed
             if self.contains(&rhs.ival.value) && rhs.contains(&self.ival.value) {
-                Some(Interval::Infinite)
+                Some(Interval::Unbounded)
             } else {
                 None // disjoint
             }
@@ -61,13 +61,13 @@ impl<T: Domain> Merged<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Merged<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Domain> Merged<FiniteInterval<T>> for HalfBounded<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         match rhs {
             FiniteInterval::Empty => Some(self.clone().into()),
-            FiniteInterval::NonZero(left, right) => {
+            FiniteInterval::FullyBounded(left, right) => {
                 let n_seen = [left, right]
                     .into_iter()
                     .filter(|ival| self.contains(&ival.value))
@@ -76,8 +76,8 @@ impl<T: Domain> Merged<FiniteInterval<T>> for HalfInterval<T> {
                 match n_seen {
                     2 => Some(self.clone().into()),
                     1 => match self.side {
-                        Side::Left => Some(HalfInterval::new(self.side, left.clone()).into()),
-                        Side::Right => Some(HalfInterval::new(self.side, right.clone()).into()),
+                        Side::Left => Some(HalfBounded::new(self.side, left.clone()).into()),
+                        Side::Right => Some(HalfBounded::new(self.side, right.clone()).into()),
                     },
                     _ => None, // disjoint
                 }
@@ -86,10 +86,10 @@ impl<T: Domain> Merged<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Merged<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Domain> Merged<HalfBounded<T>> for FiniteInterval<T> {
     type Output = Interval<T>;
 
-    fn merged(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
+    fn merged(&self, rhs: &HalfBounded<T>) -> Option<Self::Output> {
         rhs.merged(self)
     }
 }
@@ -99,19 +99,19 @@ impl<T: Domain> Merged<FiniteInterval<T>> for Interval<T> {
 
     fn merged(&self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         match self {
-            Self::Infinite => Some(Self::Infinite),
+            Self::Unbounded => Some(Self::Unbounded),
             Self::Half(lhs) => lhs.merged(rhs),
             Self::Finite(lhs) => lhs.merged(rhs).map(|itv| itv.into()),
         }
     }
 }
 
-impl<T: Domain> Merged<HalfInterval<T>> for Interval<T> {
+impl<T: Domain> Merged<HalfBounded<T>> for Interval<T> {
     type Output = Interval<T>;
 
-    fn merged(&self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
+    fn merged(&self, rhs: &HalfBounded<T>) -> Option<Self::Output> {
         match self {
-            Self::Infinite => Some(Self::Infinite),
+            Self::Unbounded => Some(Self::Unbounded),
             Self::Half(lhs) => lhs.merged(rhs),
             Self::Finite(lhs) => rhs.merged(lhs),
         }
@@ -123,7 +123,7 @@ impl<T: Domain> Merged<Self> for Interval<T> {
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
         match self {
-            Self::Infinite => Some(Self::Infinite),
+            Self::Unbounded => Some(Self::Unbounded),
             Self::Half(lhs) => rhs.merged(lhs),
             Self::Finite(lhs) => rhs.merged(lhs),
         }
@@ -138,7 +138,7 @@ impl<T: Domain> Merged<Interval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Merged<Interval<T>> for HalfInterval<T> {
+impl<T: Domain> Merged<Interval<T>> for HalfBounded<T> {
     type Output = Interval<T>;
 
     fn merged(&self, rhs: &Interval<T>) -> Option<Self::Output> {

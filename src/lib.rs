@@ -50,7 +50,7 @@ pub(crate) mod util;
 
 // reexports / public APIs
 pub(crate) use sets::FiniteInterval;
-pub(crate) use sets::HalfInterval;
+pub(crate) use sets::HalfBounded;
 
 pub use sets::Interval;
 pub use sets::IntervalSet;

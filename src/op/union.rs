@@ -2,7 +2,7 @@ use super::merged::Merged;
 use crate::empty::MaybeEmpty;
 use crate::numeric::Domain;
 use crate::util::commutative_op_impl;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 pub trait Union<Rhs = Self> {
     type Output;
@@ -21,7 +21,7 @@ impl<T: Domain> Union<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Union<Self> for HalfInterval<T> {
+impl<T: Domain> Union<Self> for HalfBounded<T> {
     type Output = IntervalSet<T>;
 
     fn union(&self, rhs: &Self) -> Self::Output {
@@ -32,10 +32,10 @@ impl<T: Domain> Union<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Union<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Domain> Union<HalfBounded<T>> for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
-    fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
+    fn union(&self, rhs: &HalfBounded<T>) -> Self::Output {
         match self.merged(rhs) {
             Some(interval) => interval.into(),
             None => IntervalSet::new(vec![self.clone().into(), rhs.clone().into()]),
@@ -49,19 +49,19 @@ impl<T: Domain> Union<FiniteInterval<T>> for Interval<T> {
     fn union(&self, rhs: &FiniteInterval<T>) -> Self::Output {
         // we don't use contiguous for Interval<T> because we disjointness information gets erased
         match self {
-            Self::Infinite => Self::Infinite.into(),
+            Self::Unbounded => Self::Unbounded.into(),
             Self::Half(lhs) => lhs.union(rhs),
             Self::Finite(lhs) => lhs.union(rhs),
         }
     }
 }
 
-impl<T: Domain> Union<HalfInterval<T>> for Interval<T> {
+impl<T: Domain> Union<HalfBounded<T>> for Interval<T> {
     type Output = IntervalSet<T>;
 
-    fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
+    fn union(&self, rhs: &HalfBounded<T>) -> Self::Output {
         match self {
-            Self::Infinite => Self::Infinite.into(),
+            Self::Unbounded => Self::Unbounded.into(),
             Self::Half(lhs) => lhs.union(rhs),
             Self::Finite(lhs) => lhs.union(rhs),
         }
@@ -73,7 +73,7 @@ impl<T: Domain> Union<Self> for Interval<T> {
 
     fn union(&self, rhs: &Self) -> Self::Output {
         match self {
-            Self::Infinite => Self::Infinite.into(),
+            Self::Unbounded => Self::Unbounded.into(),
             Self::Half(lhs) => rhs.union(lhs),
             Self::Finite(lhs) => rhs.union(lhs),
         }
@@ -83,11 +83,11 @@ impl<T: Domain> Union<Self> for Interval<T> {
 commutative_op_impl!(
     Union,
     union,
-    HalfInterval<T>,
+    HalfBounded<T>,
     FiniteInterval<T>,
     IntervalSet<T>
 );
-commutative_op_impl!(Union, union, HalfInterval<T>, Interval<T>, IntervalSet<T>);
+commutative_op_impl!(Union, union, HalfBounded<T>, Interval<T>, IntervalSet<T>);
 commutative_op_impl!(Union, union, FiniteInterval<T>, Interval<T>, IntervalSet<T>);
 
 impl<T: Domain> Union<Self> for IntervalSet<T> {
@@ -131,10 +131,10 @@ impl<T: Domain> Union<FiniteInterval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain> Union<HalfInterval<T>> for IntervalSet<T> {
+impl<T: Domain> Union<HalfBounded<T>> for IntervalSet<T> {
     type Output = Self;
 
-    fn union(&self, rhs: &HalfInterval<T>) -> Self::Output {
+    fn union(&self, rhs: &HalfBounded<T>) -> Self::Output {
         self.union(&Interval::<T>::from(rhs.clone()))
     }
 }
@@ -150,7 +150,7 @@ commutative_op_impl!(
 commutative_op_impl!(
     Union,
     union,
-    HalfInterval<T>,
+    HalfBounded<T>,
     IntervalSet<T>,
     IntervalSet<T>
 );
@@ -279,7 +279,7 @@ mod tests {
             Interval::closed(300, 310),
         ]);
 
-        let b = HalfInterval::unbound_closed(150);
+        let b = HalfBounded::unbound_closed(150);
 
         let c = IntervalSet::new(vec![
             Interval::unbound_closed(150),

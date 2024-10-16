@@ -1,7 +1,7 @@
 use super::intersection::Intersection;
 use crate::ival::Side;
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 pub trait Complement {
     type Output;
@@ -14,11 +14,11 @@ impl<T: Domain> Complement for FiniteInterval<T> {
 
     fn complement(&self) -> Self::Output {
         match self {
-            Self::Empty => Interval::Infinite.into(),
-            Self::NonZero(left, right) => {
+            Self::Empty => Interval::Unbounded.into(),
+            Self::FullyBounded(left, right) => {
                 let intervals: Vec<Interval<T>> = vec![
-                    HalfInterval::new(Side::Right, left.flip()).into(),
-                    HalfInterval::new(Side::Left, right.flip()).into(),
+                    HalfBounded::new(Side::Right, left.flip()).into(),
+                    HalfBounded::new(Side::Left, right.flip()).into(),
                 ];
                 IntervalSet { intervals }
             }
@@ -26,8 +26,8 @@ impl<T: Domain> Complement for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Complement for HalfInterval<T> {
-    type Output = HalfInterval<T>;
+impl<T: Domain> Complement for HalfBounded<T> {
+    type Output = HalfBounded<T>;
 
     fn complement(&self) -> Self::Output {
         Self::new(self.side.flip(), self.ival.flip())
@@ -39,7 +39,7 @@ impl<T: Domain> Complement for Interval<T> {
 
     fn complement(&self) -> Self::Output {
         match self {
-            Self::Infinite => FiniteInterval::Empty.into(),
+            Self::Unbounded => FiniteInterval::Empty.into(),
             Self::Half(interval) => interval.complement().into(),
             Self::Finite(interval) => interval.complement(),
         }
@@ -60,7 +60,7 @@ fn naive_set_complement<T: Domain>(intervals: &[Interval<T>]) -> IntervalSet<T> 
     intervals
         .iter()
         .map(|x| x.complement())
-        .fold(Interval::Infinite.into(), |l, r| l.intersection(&r))
+        .fold(Interval::Unbounded.into(), |l, r| l.intersection(&r))
 }
 
 #[cfg(test)]

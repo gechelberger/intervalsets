@@ -2,7 +2,7 @@ use core::ops::Sub;
 use num_traits::Zero;
 
 use super::Measurement as M;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 /// A measure of the size of the set S in R1.
 ///
@@ -27,11 +27,11 @@ where
     fn width(&self) -> Self::Output {
         match self {
             Self::Empty => M::Finite(Out::zero()),
-            Self::NonZero(left, right) => M::Finite(right.value.clone() - left.value.clone()),
+            Self::FullyBounded(left, right) => M::Finite(right.value.clone() - left.value.clone()),
         }
     }
 }
-impl<T, Out> Width for HalfInterval<T>
+impl<T, Out> Width for HalfBounded<T>
 where
     Out: Zero,
     T: Clone + Sub<T, Output = Out>,
@@ -54,7 +54,7 @@ where
         match self {
             Self::Finite(inner) => inner.width(),
             Self::Half(inner) => inner.width(),
-            Self::Infinite => M::Infinite,
+            Self::Unbounded => M::Infinite,
         }
     }
 }

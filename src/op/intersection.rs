@@ -3,7 +3,7 @@ use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
 use crate::util::commutative_op_impl;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 use crate::pred::contains::Contains;
 
@@ -29,10 +29,10 @@ impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Domain> Intersection<HalfBounded<T>> for FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
-    fn intersection(&self, rhs: &HalfInterval<T>) -> Self::Output {
+    fn intersection(&self, rhs: &HalfBounded<T>) -> Self::Output {
         self.map_bounds(|left, right| {
             let n_seen = [left, right]
                 .into_iter()
@@ -53,7 +53,7 @@ impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Intersection<Self> for HalfInterval<T> {
+impl<T: Domain> Intersection<Self> for HalfBounded<T> {
     type Output = Interval<T>;
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
@@ -79,19 +79,19 @@ impl<T: Domain> Intersection<FiniteInterval<T>> for Interval<T> {
 
     fn intersection(&self, rhs: &FiniteInterval<T>) -> Self::Output {
         match self {
-            Self::Infinite => rhs.clone().into(),
+            Self::Unbounded => rhs.clone().into(),
             Self::Half(lhs) => lhs.intersection(rhs).into(),
             Self::Finite(lhs) => lhs.intersection(rhs).into(),
         }
     }
 }
 
-impl<T: Domain> Intersection<HalfInterval<T>> for Interval<T> {
+impl<T: Domain> Intersection<HalfBounded<T>> for Interval<T> {
     type Output = Interval<T>;
 
-    fn intersection(&self, rhs: &HalfInterval<T>) -> Self::Output {
+    fn intersection(&self, rhs: &HalfBounded<T>) -> Self::Output {
         match self {
-            Self::Infinite => rhs.clone().into(),
+            Self::Unbounded => rhs.clone().into(),
             Self::Half(lhs) => lhs.intersection(rhs),
             Self::Finite(lhs) => lhs.intersection(rhs).into(),
         }
@@ -103,7 +103,7 @@ impl<T: Domain> Intersection<Self> for Interval<T> {
 
     fn intersection(&self, rhs: &Self) -> Self::Output {
         match self {
-            Self::Infinite => rhs.clone(),
+            Self::Unbounded => rhs.clone(),
             Self::Half(lhs) => rhs.intersection(lhs),
             Self::Finite(lhs) => rhs.intersection(lhs),
         }
@@ -113,7 +113,7 @@ impl<T: Domain> Intersection<Self> for Interval<T> {
 commutative_op_impl!(
     Intersection,
     intersection,
-    HalfInterval<T>,
+    HalfBounded<T>,
     FiniteInterval<T>,
     FiniteInterval<T>
 );
@@ -127,7 +127,7 @@ commutative_op_impl!(
 commutative_op_impl!(
     Intersection,
     intersection,
-    HalfInterval<T>,
+    HalfBounded<T>,
     Interval<T>,
     Interval<T>
 );
@@ -153,10 +153,10 @@ impl<T: Domain> Intersection<FiniteInterval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain> Intersection<HalfInterval<T>> for IntervalSet<T> {
+impl<T: Domain> Intersection<HalfBounded<T>> for IntervalSet<T> {
     type Output = Self;
 
-    fn intersection(&self, rhs: &HalfInterval<T>) -> Self::Output {
+    fn intersection(&self, rhs: &HalfBounded<T>) -> Self::Output {
         if self.is_empty() {
             // half intervals can not be empty
             return Self::new_unchecked(vec![]);
@@ -281,7 +281,7 @@ commutative_op_impl!(
 commutative_op_impl!(
     Intersection,
     intersection,
-    HalfInterval<T>,
+    HalfBounded<T>,
     IntervalSet<T>,
     IntervalSet<T>
 );
@@ -386,36 +386,36 @@ mod tests {
         // [--->
         //    [--->
         assert_eq!(
-            HalfInterval::closed_unbound(0).intersection(&HalfInterval::closed_unbound(50)),
-            HalfInterval::closed_unbound(50).into()
+            HalfBounded::closed_unbound(0).intersection(&HalfBounded::closed_unbound(50)),
+            HalfBounded::closed_unbound(50).into()
         );
 
         //    [--->
         // [--->
         assert_eq!(
-            HalfInterval::closed_unbound(50).intersection(&HalfInterval::closed_unbound(0)),
-            HalfInterval::closed_unbound(50).into()
+            HalfBounded::closed_unbound(50).intersection(&HalfBounded::closed_unbound(0)),
+            HalfBounded::closed_unbound(50).into()
         );
 
         // <----]
         // <-------]
         assert_eq!(
-            HalfInterval::unbound_closed(0).intersection(&HalfInterval::unbound_closed(50)),
-            HalfInterval::unbound_closed(0).into()
+            HalfBounded::unbound_closed(0).intersection(&HalfBounded::unbound_closed(50)),
+            HalfBounded::unbound_closed(0).into()
         );
 
         // <-------]
         // <----]
         assert_eq!(
-            HalfInterval::unbound_closed(50).intersection(&HalfInterval::unbound_closed(0)),
-            HalfInterval::unbound_closed(0).into()
+            HalfBounded::unbound_closed(50).intersection(&HalfBounded::unbound_closed(0)),
+            HalfBounded::unbound_closed(0).into()
         );
 
         // [----->
         // (----->
         assert_eq!(
-            HalfInterval::closed_unbound(0).intersection(&HalfInterval::open_unbound(0)),
-            HalfInterval::open_unbound(0).into()
+            HalfBounded::closed_unbound(0).intersection(&HalfBounded::open_unbound(0)),
+            HalfBounded::open_unbound(0).into()
         )
     }
 

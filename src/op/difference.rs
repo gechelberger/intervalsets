@@ -2,7 +2,7 @@ use super::complement::Complement;
 use super::intersection::Intersection;
 use super::union::Union;
 use crate::numeric::Domain;
-use crate::{FiniteInterval, HalfInterval, Interval, IntervalSet};
+use crate::{FiniteInterval, HalfBounded, Interval, IntervalSet};
 
 /// Defines the difference of sets A - B.
 ///
@@ -47,19 +47,19 @@ macro_rules! difference_impl {
 }
 
 difference_impl!(FiniteInterval<T>, FiniteInterval<T>);
-difference_impl!(FiniteInterval<T>, HalfInterval<T>);
-difference_impl!(HalfInterval<T>, FiniteInterval<T>);
-difference_impl!(HalfInterval<T>, HalfInterval<T>);
+difference_impl!(FiniteInterval<T>, HalfBounded<T>);
+difference_impl!(HalfBounded<T>, FiniteInterval<T>);
+difference_impl!(HalfBounded<T>, HalfBounded<T>);
 difference_impl!(Interval<T>, FiniteInterval<T>);
-difference_impl!(Interval<T>, HalfInterval<T>);
+difference_impl!(Interval<T>, HalfBounded<T>);
 difference_impl!(Interval<T>, Interval<T>);
 difference_impl!(FiniteInterval<T>, Interval<T>);
-difference_impl!(HalfInterval<T>, Interval<T>);
+difference_impl!(HalfBounded<T>, Interval<T>);
 difference_impl!(IntervalSet<T>, FiniteInterval<T>);
-difference_impl!(IntervalSet<T>, HalfInterval<T>);
+difference_impl!(IntervalSet<T>, HalfBounded<T>);
 difference_impl!(IntervalSet<T>, Interval<T>);
 difference_impl!(FiniteInterval<T>, IntervalSet<T>);
-difference_impl!(HalfInterval<T>, IntervalSet<T>);
+difference_impl!(HalfBounded<T>, IntervalSet<T>);
 difference_impl!(Interval<T>, IntervalSet<T>);
 difference_impl!(IntervalSet<T>, IntervalSet<T>);
 
@@ -102,19 +102,19 @@ macro_rules! sym_difference_impl {
 }
 
 sym_difference_impl!(FiniteInterval<T>, FiniteInterval<T>);
-sym_difference_impl!(FiniteInterval<T>, HalfInterval<T>);
-sym_difference_impl!(HalfInterval<T>, FiniteInterval<T>);
-sym_difference_impl!(HalfInterval<T>, HalfInterval<T>);
+sym_difference_impl!(FiniteInterval<T>, HalfBounded<T>);
+sym_difference_impl!(HalfBounded<T>, FiniteInterval<T>);
+sym_difference_impl!(HalfBounded<T>, HalfBounded<T>);
 sym_difference_impl!(Interval<T>, FiniteInterval<T>);
-sym_difference_impl!(Interval<T>, HalfInterval<T>);
+sym_difference_impl!(Interval<T>, HalfBounded<T>);
 sym_difference_impl!(Interval<T>, Interval<T>);
 sym_difference_impl!(FiniteInterval<T>, Interval<T>);
-sym_difference_impl!(HalfInterval<T>, Interval<T>);
+sym_difference_impl!(HalfBounded<T>, Interval<T>);
 sym_difference_impl!(IntervalSet<T>, FiniteInterval<T>);
-sym_difference_impl!(IntervalSet<T>, HalfInterval<T>);
+sym_difference_impl!(IntervalSet<T>, HalfBounded<T>);
 sym_difference_impl!(IntervalSet<T>, Interval<T>);
 sym_difference_impl!(FiniteInterval<T>, IntervalSet<T>);
-sym_difference_impl!(HalfInterval<T>, IntervalSet<T>);
+sym_difference_impl!(HalfBounded<T>, IntervalSet<T>);
 sym_difference_impl!(Interval<T>, IntervalSet<T>);
 sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 

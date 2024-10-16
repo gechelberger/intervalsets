@@ -3,7 +3,7 @@ use crate::FiniteInterval;
 use crate::empty::MaybeEmpty;
 use crate::ival::{IVal, Side};
 use crate::numeric::Domain;
-use crate::{HalfInterval, Interval, IntervalSet};
+use crate::{HalfBounded, Interval, IntervalSet};
 
 /// Defines the creation of the minimal contiguous Interval/Set
 /// which covers all of the provided items.
@@ -91,9 +91,9 @@ where
     }
 
     match bounds {
-        (None, None) => Interval::Infinite,
-        (Some(ival), None) => Interval::Half(HalfInterval::new(Side::Left, ival)),
-        (None, Some(ival)) => Interval::Half(HalfInterval::new(Side::Right, ival)),
+        (None, None) => Interval::Unbounded,
+        (Some(ival), None) => Interval::Half(HalfBounded::new(Side::Left, ival)),
+        (None, Some(ival)) => Interval::Half(HalfBounded::new(Side::Right, ival)),
         (Some(left), Some(right)) => Interval::Finite(FiniteInterval::new_unchecked(left, right)),
     }
 }

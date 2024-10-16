@@ -1,7 +1,7 @@
 use num_traits::Zero;
 
 use super::Measurement as M;
-use crate::{Domain, FiniteInterval, HalfInterval, Interval, Side};
+use crate::{Domain, FiniteInterval, HalfBounded, Interval, Side};
 
 /// Defines the measure of a Countable Interval/Set.
 ///
@@ -18,14 +18,14 @@ impl<T: Countable + Zero> Count for FiniteInterval<T> {
     fn count(&self) -> Self::Output {
         match self {
             Self::Empty => M::Finite(T::zero()),
-            Self::NonZero(left, right) => {
+            Self::FullyBounded(left, right) => {
                 T::count_inclusive(&left.value, &right.value).map_or(M::Infinite, |c| M::Finite(c))
             }
         }
     }
 }
 
-impl<T> Count for HalfInterval<T> {
+impl<T> Count for HalfBounded<T> {
     type Output = M<T>;
 
     fn count(&self) -> Self::Output {
