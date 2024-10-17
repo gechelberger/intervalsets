@@ -1,3 +1,21 @@
+//! # intervalsets: Intervals as Sets in Rust
+//!
+//! Intervalsets intends to provide full functionality of sets for
+//! interval data.
+//!
+//! * The [`Interval`] type is a Set implementation representing a
+//!   contiguous set of values.
+//!     * It is generic over any type that implements the [`Domain`] trait
+//!       which is intended to make sure elements are comparable.
+//!
+//! # Overview
+//!
+//! # Features
+//!    
+//! * rust_decimal
+//! * num-bigint
+//! * num-rational
+
 #![allow(unused_variables)] // for now
 
 #[cfg(test)]
@@ -6,52 +24,33 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-// concrete types
-pub mod concrete;
-pub mod ival;
-
-// invariant traits
-mod bounds;
-mod display;
-mod empty;
-mod from;
-mod normalize;
 mod numeric;
-mod partial_ord;
-mod sizable;
+pub use numeric::{Domain, LibZero};
 
-// operation traits
-pub mod op;
+mod bound;
+pub use bound::{Bound, Side};
 
-// predicate traits
-pub(crate) mod pred;
+mod traits;
+pub use traits::bounding::Bounding;
+pub use traits::complement::Complement;
+pub use traits::contains::Contains;
+pub use traits::difference::{Difference, SymmetricDifference};
+pub use traits::empty::MaybeEmpty;
+pub use traits::hull::ConvexHull;
+pub use traits::intersection::Intersection;
+pub use traits::intersects::Intersects;
+pub use traits::merged::Merged;
+pub use traits::union::Union;
 
-pub(crate) mod util;
+mod detail;
 
-// reexports / public APIs
-pub(crate) use concrete::finite::FiniteInterval;
-pub(crate) use concrete::half::HalfInterval;
+pub mod measure;
 
-pub use concrete::interval::Interval;
-pub use concrete::set::IntervalSet;
+mod sets;
+pub use sets::{Interval, IntervalSet};
 
-pub use ival::{Bound, Side};
+mod display;
 
-pub use bounds::Bounds;
-pub use empty::MaybeEmpty;
-pub use numeric::Domain;
-pub use sizable::{ISize, Sizable};
+mod feat;
 
-pub use pred::contains::Contains;
-pub use pred::intersects::Intersects;
-
-pub use op::complement::Complement;
-pub use op::difference::{Difference, SymmetricDifference};
-pub use op::hull::ConvexHull;
-pub use op::intersection::Intersection;
-pub use op::merged::Merged;
-//pub use op::padded::Padded;
-//pub use op::shifted::Shifted;
-pub use op::union::Union;
-
-pub mod feats;
+mod util;
