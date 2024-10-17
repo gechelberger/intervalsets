@@ -6,6 +6,7 @@ mod from;
 mod intersection;
 mod intersects;
 mod merged;
+mod union;
 
 mod partial_ord;
 

@@ -5,3 +5,4 @@ pub mod empty;
 pub mod intersection;
 pub mod intersects;
 pub mod merged;
+pub mod union;

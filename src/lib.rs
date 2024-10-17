@@ -38,6 +38,7 @@ pub use traits::empty::MaybeEmpty;
 pub use traits::intersection::Intersection;
 pub use traits::intersects::Intersects;
 pub use traits::merged::Merged;
+pub use traits::union::Union;
 
 mod detail;
 
