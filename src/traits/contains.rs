@@ -60,7 +60,6 @@ impl<T: Domain> Contains<Self> for IntervalSet<T> {
     }
 }
 
-    
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -76,7 +75,7 @@ mod tests {
         let interval = Interval::<f32>::empty();
         assert_eq!(interval.contains(&x), false)
     }
-    
+
     #[quickcheck]
     fn check_finite_contains_integer(x: i8) {
         let iv = Interval::open(-100, 100);
@@ -158,5 +157,4 @@ mod tests {
         let finite = Interval::closed(a, b);
         assert_eq!(interval.contains(&finite), a <= b);
     }
-
 }

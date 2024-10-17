@@ -39,9 +39,9 @@ macro_rules! interval_op_passthrough_impl {
         impl<T: $crate::numeric::Domain> $tt<$rhs> for $crate::Interval {
             type Output = $out;
             fn $fn(&self, rhs: &$rhs) -> Self::Output {
-                self.0 
+                self.0
             }
         }
-    }
+    };
 }
 pub(crate) use interval_op_passthrough_impl;

@@ -1,7 +1,7 @@
 use crate::traits::bounding::Bounding;
 use crate::{Bound, Domain, Side};
 
-use super::{Finite, HalfBounded, BoundCase};
+use super::{BoundCase, Finite, HalfBounded};
 
 impl<T: Domain> Bounding<T> for Finite<T> {
     fn bound(&self, side: crate::Side) -> Option<&Bound<T>> {
@@ -9,8 +9,8 @@ impl<T: Domain> Bounding<T> for Finite<T> {
             Self::Empty => None,
             Self::FullyBounded(left, right) => match side {
                 Side::Left => Some(left),
-                Side::Right => Some(right)
-            }
+                Side::Right => Some(right),
+            },
         }
     }
 }
@@ -30,7 +30,7 @@ impl<T: Domain> Bounding<T> for BoundCase<T> {
         match self {
             Self::Finite(inner) => inner.bound(side),
             Self::Half(inner) => inner.bound(side),
-            Self::Unbounded => None
+            Self::Unbounded => None,
         }
     }
 }

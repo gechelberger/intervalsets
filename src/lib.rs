@@ -38,3 +38,5 @@ mod detail;
 
 mod sets;
 pub use sets::{Interval, IntervalSet};
+
+mod util;
