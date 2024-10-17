@@ -2,7 +2,6 @@ use crate::{commutative_predicate_impl, Contains, Domain, Intersects, Side};
 
 use super::{BoundCase, Finite, HalfBounded};
 
-
 impl<T: Domain> Intersects<Self> for Finite<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         self.map_or::<bool>(false, |l1, r1| {

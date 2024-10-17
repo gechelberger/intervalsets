@@ -1,10 +1,10 @@
 mod bounding;
+mod complement;
 mod contains;
 mod empty;
 mod from;
 mod intersection;
 mod intersects;
-mod complement;
 mod merged;
 
 mod partial_ord;

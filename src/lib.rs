@@ -31,12 +31,12 @@ mod bound;
 pub use bound::{Bound, Side};
 
 mod traits;
-pub use traits::contains::Contains;
-pub use traits::intersects::Intersects;
-pub use traits::intersection::Intersection;
 pub use traits::bounding::Bounding;
 pub use traits::complement::Complement;
+pub use traits::contains::Contains;
 pub use traits::empty::MaybeEmpty;
+pub use traits::intersection::Intersection;
+pub use traits::intersects::Intersects;
 pub use traits::merged::Merged;
 
 mod detail;

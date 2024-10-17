@@ -34,7 +34,7 @@ impl<T: Domain> Intersects<Self> for Interval<T> {
 
 impl<T: Domain> Intersects<Interval<T>> for IntervalSet<T> {
     fn intersects(&self, rhs: &Interval<T>) -> bool {
-        // binary search for 
+        // binary search for
         self.intervals().iter().any(|subset| subset.intersects(rhs))
     }
 }
@@ -45,7 +45,6 @@ impl<T: Domain> Intersects<Self> for IntervalSet<T> {
         self.intervals().iter().any(|subset| rhs.intersects(subset))
     }
 }
-
 
 #[cfg(test)]
 mod test {

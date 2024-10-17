@@ -64,7 +64,6 @@ impl<T: Clone + PartialOrd> Bound<T> {
     }
 }
 
-
 impl<T> Bound<T> {
     pub fn is_open(&self) -> bool {
         matches!(self, Self::Open(_))
@@ -90,7 +89,6 @@ impl<T> Bound<T> {
 }
 
 impl<T: PartialOrd> Bound<T> {
-
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self {

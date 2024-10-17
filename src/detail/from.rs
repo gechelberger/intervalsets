@@ -43,7 +43,7 @@ impl<T: Domain> From<Finite<T>> for IntervalSet<T> {
         Self::from(BoundCase::from(value))
     }
 }
- 
+
 impl<T: Domain> From<HalfBounded<T>> for IntervalSet<T> {
     fn from(value: HalfBounded<T>) -> Self {
         Self::from(BoundCase::from(value))

@@ -8,9 +8,9 @@ pub trait Complement {
 
 impl<T: Domain> Complement for Interval<T> {
     type Output = IntervalSet<T>;
-    
+
     fn complement(&self) -> Self::Output {
-        self.0.complement().into()
+        self.0.complement()
     }
 }
 
@@ -18,12 +18,12 @@ impl<T: Domain> Complement for IntervalSet<T> {
     type Output = Self;
 
     fn complement(&self) -> Self::Output {
-        self.intervals().iter()
-        .map(|x| x.complement())
-        .fold(Interval::unbounded().into(), |l, r| l.intersection(&r))
+        self.intervals()
+            .iter()
+            .map(|x| x.complement())
+            .fold(Interval::unbounded().into(), |l, r| l.intersection(&r))
     }
 }
-
 
 #[cfg(test)]
 mod test {

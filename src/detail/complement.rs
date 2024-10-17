@@ -2,7 +2,6 @@ use crate::{Complement, Domain, Interval, IntervalSet, Side};
 
 use super::{BoundCase, Finite, HalfBounded};
 
-
 impl<T: Domain> Complement for Finite<T> {
     type Output = IntervalSet<T>;
 
@@ -20,7 +19,6 @@ impl<T: Domain> Complement for Finite<T> {
     }
 }
 
-
 impl<T: Domain> Complement for HalfBounded<T> {
     type Output = HalfBounded<T>;
 
@@ -36,7 +34,7 @@ impl<T: Domain> Complement for BoundCase<T> {
         match self {
             Self::Finite(interval) => interval.complement(),
             Self::Half(interval) => interval.complement().into(),
-            Self::Unbounded => Finite::Empty.into()
+            Self::Unbounded => Finite::Empty.into(),
         }
     }
 }

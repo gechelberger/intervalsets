@@ -106,7 +106,6 @@ pub struct IntervalSet<T: Domain> {
 }
 
 impl<T: Domain> IntervalSet<T> {
-    
     /// Create a new empty IntervalSet
     pub fn empty() -> Self {
         Self { intervals: vec![] }
@@ -114,7 +113,6 @@ impl<T: Domain> IntervalSet<T> {
 
     /// Create a new Set of intervals and enforce invariants.
     pub fn new(intervals: Vec<Interval<T>>) -> Self {
-        
         // O(n)
         if Self::satisfies_invariants(&intervals) {
             return Self::new_unchecked(intervals);
@@ -197,7 +195,6 @@ impl<T: Domain> From<Interval<T>> for IntervalSet<T> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -207,7 +204,6 @@ mod tests {
         let interval = Interval::open(0, 10);
         assert_eq!(interval, Interval::closed(1, 9));
     }
-
 
     fn assert_lt<T: Domain>(itv1: Interval<T>, itv2: Interval<T>) {
         assert!(itv1 < itv2);
@@ -244,7 +240,13 @@ mod tests {
         assert_lt(Interval::unbounded(), Interval::open_unbound(0.0));
 
         // Empty Set should not compare
-        assert_eq!(Interval::<u8>::empty() <= Interval::<u8>::unbounded(), false);
-        assert_eq!(Interval::<u8>::empty() >= Interval::<u8>::unbounded(), false);
+        assert_eq!(
+            Interval::<u8>::empty() <= Interval::<u8>::unbounded(),
+            false
+        );
+        assert_eq!(
+            Interval::<u8>::empty() >= Interval::<u8>::unbounded(),
+            false
+        );
     }
 }

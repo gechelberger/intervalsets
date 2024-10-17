@@ -1,6 +1,5 @@
 use crate::{Domain, Interval};
 
-
 /// Union for two intervals that are contiguous.
 pub trait Merged<Rhs = Self> {
     type Output;

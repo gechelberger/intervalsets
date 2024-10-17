@@ -85,7 +85,7 @@ impl<T: Domain> Intersection<Self> for IntervalSet<T> {
                                     continue;
                                 }
 
-                                let r_max = Bound::max_right(&ra, &rb);
+                                let r_max = Bound::max_right(ra, rb);
                                 if *ra == r_max {
                                     it_a.put_back(a);
                                 } else {
@@ -105,7 +105,7 @@ impl<T: Domain> Intersection<Self> for IntervalSet<T> {
                                 it_b.put_back(b);
                             }
                             (Some(la), Some(lb)) => {
-                                let l_max = Bound::max_left(&la, &lb);
+                                let l_max = Bound::max_left(la, lb);
                                 if *la == l_max {
                                     it_a.put_back(a);
                                 } else {

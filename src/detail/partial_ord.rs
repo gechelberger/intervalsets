@@ -1,11 +1,9 @@
 use std::cmp::Ordering;
 
-use crate::Bounding;
-use crate::MaybeEmpty;
-use crate::{Side, Bound};
 use crate::numeric::Domain;
+use crate::{Bound, Bounding, MaybeEmpty, Side};
 
-use super::{Finite, HalfBounded, BoundCase};
+use super::{BoundCase, Finite, HalfBounded};
 
 /// Partial compare of two boundary conditions
 /// when both are the same side of each interval.
