@@ -69,13 +69,44 @@ impl<T: Domain> Interval<T> {
         HalfBounded::new(Side::Right, Bound::Closed(right)).into()
     }
 
-    /// Returns a new unbounded [`Interval`]
+    /// Returns a new unbounded [`Interval`].
+    ///
+    /// An unbounded interval contains every element in T,
+    /// as well as every set of T except the `Empty` set.
     ///
     /// (<-, ->) = { x in T }
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets::{Interval, Contains};
+    ///
+    /// let x = Interval::<f32>::unbounded();
+    /// assert_eq!(x.contains(&10.0), true);
+    /// assert_eq!(x.contains(&Interval::empty()), false);
+    /// ```
     pub fn unbounded() -> Self {
         BoundCase::Unbounded.into()
     }
 
+    /// Returns a new finite [`Interval`].
+    ///
+    /// If there are no elements that satisfy both left and right bounds
+    /// then an `Empty` interval is returned. Otherwise the result will
+    /// be fully bounded.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets::{Bound, Interval, Bounding};
+    ///
+    /// let x = Interval::open(0, 100);
+    /// let y = Interval::new_finite(x.right().unwrap().flip(), Bound::Closed(200));
+    /// assert_eq!(y, Interval::closed(100, 200));
+    ///
+    /// let x = Interval::open(10, 10);
+    /// assert_eq!(x, Interval::empty());
+    /// ```
     pub fn new_finite(left: Bound<T>, right: Bound<T>) -> Self {
         Finite::new(left, right).into()
     }
@@ -183,6 +214,28 @@ impl<T: Domain> IntervalSet<T> {
 
     pub fn intervals(&self) -> &Vec<Interval<T>> {
         &self.intervals
+    }
+
+    pub fn accum_map<F>(&self, func: F) -> Self
+    where
+        F: Fn(&mut Vec<Interval<T>>, &Interval<T>),
+    {
+        let mut accum: Vec<Interval<T>> = Vec::with_capacity(self.intervals.len());
+        for subset in self.intervals.iter() {
+            func(&mut accum, subset);
+        }
+
+        Self::new(accum)
+    }
+
+    pub fn map<F>(&self, func: F) -> Self
+    where
+        F: Fn(&Interval<T>) -> Self,
+    {
+        self.accum_map(|accum, interval| {
+            let mut result = func(interval);
+            accum.append(&mut result.intervals)
+        })
     }
 }
 

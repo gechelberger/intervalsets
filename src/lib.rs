@@ -49,4 +49,6 @@ pub mod measure;
 mod sets;
 pub use sets::{Interval, IntervalSet};
 
+mod display;
+
 mod util;
