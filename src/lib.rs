@@ -34,6 +34,7 @@ mod traits;
 pub use traits::bounding::Bounding;
 pub use traits::complement::Complement;
 pub use traits::contains::Contains;
+pub use traits::difference::{Difference, SymmetricDifference};
 pub use traits::empty::MaybeEmpty;
 pub use traits::hull::ConvexHull;
 pub use traits::intersection::Intersection;
