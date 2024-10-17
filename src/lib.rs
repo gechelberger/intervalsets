@@ -25,7 +25,7 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 
 mod numeric;
-pub use numeric::Domain;
+pub use numeric::{Domain, LibZero};
 
 mod bound;
 pub use bound::{Bound, Side};
@@ -50,5 +50,7 @@ mod sets;
 pub use sets::{Interval, IntervalSet};
 
 mod display;
+
+mod feat;
 
 mod util;

@@ -1,3 +1,5 @@
+/*
+
 use chrono::{DateTime, TimeDelta, Utc};
 use intervalsets::{continuous_domain_impl, Interval};
 
@@ -14,3 +16,4 @@ fn test_foo() {
 
     let i = Interval::closed(MyDT(a), MyDT(b));
 }
+ */

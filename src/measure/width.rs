@@ -1,4 +1,4 @@
-use crate::{Domain, Interval, IntervalSet};
+use crate::{numeric::LibZero, Domain, Interval, IntervalSet};
 
 use super::Measurement;
 
@@ -54,7 +54,7 @@ pub trait Width {
 impl<T, Out> Width for Interval<T>
 where
     T: Domain + core::ops::Sub<T, Output = Out>,
-    Out: num_traits::Zero,
+    Out: LibZero,
 {
     type Output = Out;
 
@@ -66,7 +66,7 @@ where
 impl<T, Out> Width for IntervalSet<T>
 where
     T: Domain + core::ops::Sub<T, Output = Out>,
-    Out: num_traits::Zero + core::ops::Add<Out, Output = Out> + Clone,
+    Out: LibZero + core::ops::Add<Out, Output = Out> + Clone,
 {
     type Output = Out;
 
@@ -74,7 +74,7 @@ where
         self.intervals()
             .iter()
             .map(|subset| subset.width())
-            .fold(Measurement::Finite(Out::zero()), |accum, item| accum + item)
+            .fold(Measurement::Finite(Out::new_zero()), |accum, item| accum + item)
     }
 }
 
