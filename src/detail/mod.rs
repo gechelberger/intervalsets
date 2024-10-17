@@ -2,6 +2,7 @@ mod contains;
 mod empty;
 mod from;
 mod intersection;
+mod bounding;
 
 use crate::bound::{Bound, Side};
 use crate::Domain;

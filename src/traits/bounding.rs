@@ -1,4 +1,4 @@
-use crate::{Bound, Domain, Side};
+use crate::{Bound, Domain, Interval, Side};
 
 pub trait Bounding<T: Domain> {
     fn bound(&self, side: Side) -> Option<&Bound<T>>;
@@ -17,5 +17,11 @@ pub trait Bounding<T: Domain> {
 
     fn rval(&self) -> Option<&T> {
         self.right().map(|b| b.value())
+    }
+}
+
+impl<T: Domain> Bounding<T> for Interval<T> {
+    fn bound(&self, side: Side) -> Option<&Bound<T>> {
+        self.0.bound(side)
     }
 }
