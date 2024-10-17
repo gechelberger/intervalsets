@@ -35,6 +35,7 @@ pub use traits::bounding::Bounding;
 pub use traits::complement::Complement;
 pub use traits::contains::Contains;
 pub use traits::empty::MaybeEmpty;
+pub use traits::hull::ConvexHull;
 pub use traits::intersection::Intersection;
 pub use traits::intersects::Intersects;
 pub use traits::merged::Merged;
