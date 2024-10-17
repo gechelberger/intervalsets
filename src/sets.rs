@@ -267,6 +267,19 @@ impl<T: Domain> Interval<T> {
     }
 }
 
+
+/// A Set in Z or R consisting of disjoint contiguous intervals.
+///
+/// # Invariants
+///
+/// * All stored intervals are normalized.
+///     * We do not enforce this here because it should be
+///       an invariant of Interval<T> already.
+/// * No stored interval may be the empty set.
+///     * Emptiness is represented by storing no intervals.
+///     * Normalized Interval<T> should have a total ordering w/o empty sets.
+/// * All intervals are stored in ascending order.
+/// * All stored intervals are disjoint subsets of T.
 #[derive(Debug, Clone, PartialEq)] // PartialOrd
 pub struct IntervalSet<T: Domain> {
     intervals: Vec<Interval<T>>,

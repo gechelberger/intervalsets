@@ -3,7 +3,7 @@ use crate::bound::Side;
 /// Defines the zero value for a type.
 /// 
 /// This is intended to work identically to [`num_traits::Zero`].
-/// We have to duplicate the trait in order to work with external
+/// The trait is duplicated in order to work with external
 /// types.
 pub trait LibZero {
     fn new_zero() -> Self;
