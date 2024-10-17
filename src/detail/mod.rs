@@ -8,6 +8,8 @@ mod intersects;
 mod merged;
 mod union;
 
+mod measure;
+
 mod partial_ord;
 
 use crate::bound::{Bound, Side};

@@ -44,6 +44,8 @@ pub use traits::union::Union;
 
 mod detail;
 
+pub mod measure;
+
 mod sets;
 pub use sets::{Interval, IntervalSet};
 
