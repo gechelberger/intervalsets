@@ -1,4 +1,5 @@
-use crate::{commutative_op_impl, Bound, Contains, Domain, Intersection, Side};
+use crate::util::commutative_op_impl;
+use crate::{Bound, Contains, Domain, Intersection, Side};
 
 use super::{BoundCase, Finite, HalfBounded};
 

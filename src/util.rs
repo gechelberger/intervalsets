@@ -5,7 +5,6 @@
 ///
 /// # Examples
 /// commutative_impl!(TraitName, func_name, LeftType, RightType, OutType);
-#[macro_export]
 macro_rules! commutative_op_impl {
     ($tt:ident, $fn:ident, $t_lhs:ty, $t_rhs:ty, $t_out:ty) => {
         impl<T: $crate::numeric::Domain> $tt<$t_rhs> for $t_lhs {
@@ -17,12 +16,12 @@ macro_rules! commutative_op_impl {
         }
     };
 }
+pub(crate) use commutative_op_impl;
 
 /// Generic impl of a commutative predicate trait, reversing lhs and rhs.
 ///
 /// # Examples
 /// commutative_predicate_impl!(TraitName, func_name, LeftType, RightType);
-#[macro_export]
 macro_rules! commutative_predicate_impl {
     ($tt:ident, $fn:ident, $t_lhs:ty, $t_rhs:ty) => {
         impl<T: $crate::numeric::Domain> $tt<$t_rhs> for $t_lhs {
@@ -32,3 +31,4 @@ macro_rules! commutative_predicate_impl {
         }
     };
 }
+pub(crate) use commutative_predicate_impl;

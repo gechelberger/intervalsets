@@ -1,5 +1,5 @@
-use crate::{commutative_predicate_impl, Domain, Interval, IntervalSet};
-
+use crate::util::commutative_predicate_impl;
+use crate::{Domain, Interval, IntervalSet};
 /// Defines whether two sets intersect.
 ///
 /// For these two sets is there at least one

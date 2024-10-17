@@ -1,5 +1,6 @@
 use crate::sets::IntervalSet;
-use crate::{commutative_op_impl, Bound, Domain, Interval};
+use crate::util::commutative_op_impl;
+use crate::{Bound, Domain, Interval};
 
 use super::bounding::Bounding;
 use super::empty::MaybeEmpty;

@@ -1,7 +1,9 @@
 use crate::bound::Bound;
 use crate::detail::{BoundCase, Finite, HalfBounded};
-use crate::{Domain, Intersects, MaybeEmpty, Merged, Side};
+use crate::{Bounding, Domain, Intersects, MaybeEmpty, Merged, Side};
 
+/// TODODOODODODODODO
+///
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
 
@@ -9,6 +11,15 @@ impl<T: Domain> Interval<T> {
     /// Returns a new Empty [`Interval`]
     ///
     /// {} = {x | x not in T }
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets::{Interval, Contains};
+    ///
+    /// let x = Interval::<i32>::empty();
+    /// assert_eq!(x.contains(&10), false);
+    /// ```
     pub fn empty() -> Self {
         Self(BoundCase::Finite(Finite::Empty))
     }
@@ -16,13 +27,42 @@ impl<T: Domain> Interval<T> {
     /// Returns a new closed finite [`Interval`] or Empty
     ///
     /// [a, b] = { x in T | a <= x <= b }
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets::{Interval, Contains};
+    ///
+    /// let x = Interval::closed(10, 20);
+    /// assert_eq!(x.contains(&10), true);
+    /// assert_eq!(x.contains(&15), true);
+    /// assert_eq!(x.contains(&20), true);
+    /// assert_eq!(x.contains(&0), false);
+    /// ```
     pub fn closed(left: T, right: T) -> Self {
         Finite::new(Bound::Closed(left), Bound::Closed(right)).into()
     }
 
     /// Returns a new open finite [`Interval`] or Empty
     ///
+    /// For discrete data types T, open bounds are **normalized** to closed form.
+    /// Continuous(ish) types (like f32, or chrono::DateTime) are left as is.
+    ///
     /// (a, b) = { x in T | a < x < b }
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::{Interval, Contains};
+    ///
+    /// let x = Interval::open(0.0, 10.0);
+    /// assert_eq!(x.contains(&0.0), false);
+    /// assert_eq!(x.contains(&5.0), true);
+    ///
+    /// let y = Interval::open(0, 10);
+    /// assert_eq!(y.contains(&0), false);
+    /// assert_eq!(y.contains(&5), true);
+    /// assert_eq!(y, Interval::closed(1, 9));
+    /// ```
     pub fn open(left: T, right: T) -> Self {
         Finite::new(Bound::Open(left), Bound::Open(right)).into()
     }
@@ -111,10 +151,63 @@ impl<T: Domain> Interval<T> {
         Finite::new(left, right).into()
     }
 
+    /// Returns a ew half bounded [`Interval`].
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::{Interval, Bound, Complement, Bounding, Side};
+    ///
+    /// let x = Interval::unbound_open(0);
+    /// let y = Interval::new_half_bounded(Side::Left, x.right().unwrap().flip());
+    /// assert_eq!(x.complement(), y.into());
+    /// ```
     pub fn new_half_bounded(side: Side, bound: Bound<T>) -> Self {
         HalfBounded::new(side, bound).into()
     }
 
+    /// Returns `true` if the interval is either fully bounded or empty.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::{Interval};
+    ///
+    /// assert_eq!(Interval::<i32>::empty().is_finite(), true);
+    /// assert_eq!(Interval::closed(0, 10).is_finite(), true);
+    ///
+    /// assert_eq!(Interval::unbound_open(10).is_finite(), false);
+    /// assert_eq!(Interval::<i32>::unbounded().is_finite(), false);
+    /// ```
+    pub fn is_finite(&self) -> bool {
+        matches!(self.0, BoundCase::Finite(_))
+    }
+
+    /// Returns `true` if the interval approaches infinity on either side.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::{Interval};
+    ///
+    /// assert_eq!(Interval::<i32>::empty().is_infinite(), false);
+    /// assert_eq!(Interval::<i32>::closed(0, 10).is_infinite(), false);
+    ///
+    /// assert_eq!(Interval::unbound_open(10).is_infinite(), true);
+    /// assert_eq!(Interval::<i32>::unbounded().is_infinite(), true);
+    /// ```
+    pub fn is_infinite(&self) -> bool {
+        !self.is_finite()
+    }
+
+    /// Return `true` if the interval is finite **and** not empty.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::Interval;
+    ///
+    /// assert_eq!(Interval::closed(0, 10).is_fully_bounded(), true);
+    ///
+    /// assert_eq!(Interval::<i32>::empty().is_fully_bounded(), false);
+    /// assert_eq!(Interval::<i32>::unbounded().is_fully_bounded(), false);
+    /// ```
     pub fn is_fully_bounded(&self) -> bool {
         match &self.0 {
             BoundCase::Finite(inner) => matches!(inner, Finite::FullyBounded(_, _)),
@@ -122,10 +215,53 @@ impl<T: Domain> Interval<T> {
         }
     }
 
+    /// Return `true` if the interval is unbounded on exactly one side.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::Interval;
+    ///
+    /// assert_eq!(Interval::closed_unbound(10).is_half_bounded(), true);
+    /// assert_eq!(Interval::<i32>::unbounded().is_half_bounded(), false);
+    ///
+    /// ```
     pub fn is_half_bounded(&self) -> bool {
         matches!(&self.0, BoundCase::Half(_))
     }
 
+    /// Returns `true` if the interval is unbounded on the expected side.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::{Interval, Side};
+    ///
+    /// let x = Interval::unbound_open(10);
+    /// assert_eq!(x.is_half_bounded_on(Side::Right), true);
+    /// assert_eq!(x.is_half_bounded_on(Side::Left), false);
+    ///
+    /// let x = Interval::closed_unbound(10);
+    /// assert_eq!(x.is_half_bounded_on(Side::Right), false);
+    /// assert_eq!(x.is_half_bounded_on(Side::Left), true);
+    /// ```
+    pub fn is_half_bounded_on(&self, side: Side) -> bool {
+        match &self.0 {
+            BoundCase::Half(inner) => inner.bound(side).is_some(),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if the interval is unbounded on both sides.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::{Interval, Merged};
+    ///
+    /// let x = Interval::unbound_closed(10)
+    ///             .merged(&Interval::closed_unbound(-10))
+    ///             .unwrap();
+    ///
+    /// assert_eq!(x.is_unbounded(), true);
+    /// ```
     pub fn is_unbounded(&self) -> bool {
         matches!(&self.0, BoundCase::Unbounded)
     }

@@ -1,5 +1,5 @@
-use crate::{commutative_op_impl, Domain, Interval, IntervalSet, MaybeEmpty};
-
+use crate::util::commutative_op_impl;
+use crate::{Domain, Interval, IntervalSet, MaybeEmpty};
 pub trait Union<Rhs = Self> {
     type Output;
 

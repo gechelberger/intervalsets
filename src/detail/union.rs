@@ -1,4 +1,6 @@
-use crate::{commutative_op_impl, Domain, IntervalSet, Merged, Union};
+use crate::{Domain, IntervalSet, Merged, Union};
+
+use crate::util::commutative_op_impl;
 
 use super::{BoundCase, Finite, HalfBounded};
 
