@@ -9,7 +9,8 @@ use super::Measurement;
 /// then the width is infinite.
 ///
 /// > Mathematically speaking, the width of any Countable set is 0.
-/// > We *do* allow calculating the width over the Reals between two integer bounds.
+/// > We *do* allow calculating the width over the Reals between two integer bounds,
+/// > however unexpected results may occur due to discrete normalization.
 ///
 /// # Example
 /// ```
@@ -29,6 +30,20 @@ use super::Measurement;
 ///     .union(&Interval::closed(5.0, 15.0))
 ///     .union(&Interval::open(100.0, 110.0));
 /// assert_eq!(set.width().finite(), 25.0);
+/// ```
+/// 
+/// ## Normalization problem
+/// ```
+/// use intervalsets::{Interval, Difference};
+/// use intervalsets::measure::Width;
+/// 
+/// let a = Interval::closed(0.0, 10.0);
+/// let a = a.difference(&Interval::closed(5.0, 15.0));
+/// assert_eq!(a.width().finite(), 5.0);
+/// 
+/// let b = Interval::closed(0, 10);
+/// let b = b.difference(&Interval::closed(5, 15));
+/// assert_eq!(b.width().finite(), 4);
 /// ```
 pub trait Width {
     type Output;

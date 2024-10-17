@@ -52,12 +52,12 @@ where
     }
 }
 
-impl<T, Out> Count for Finite<T>
+impl<T> Count for Finite<T>
 where
-    Out: Zero,
-    T: Countable<Output = Out>,
+    T: Countable,
+    T::Output: Zero,
 {
-    type Output = Out;
+    type Output = T::Output;
 
     fn count(&self) -> crate::measure::Measurement<Self::Output> {
         match self {
@@ -71,12 +71,12 @@ where
     }
 }
 
-impl<T, Out> Count for BoundCase<T>
+impl<T> Count for BoundCase<T>
 where
-    Out: Zero,
-    T: Countable<Output = Out>,
+    T: Countable,
+    T::Output: Zero,
 {
-    type Output = <T as Sub>::Output;
+    type Output = T::Output;
 
     fn count(&self) -> crate::measure::Measurement<Self::Output> {
         match self {

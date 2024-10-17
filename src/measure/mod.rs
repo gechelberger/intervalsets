@@ -1,15 +1,16 @@
-//! A Measure is a function of a set that gives a comparable size to another set.
+//! A Measure is a function of a set that gives a comparable size between sets.
 //!
 //! They must obey the following invariants:
 //!
-//! > Let m(S) be our measure
 //! ```ignore
+//! Let m(S) be our measure.
+//!
 //! 1) Monotonicity:
-//!     If A is subset of B then m(A) <= u(B)
+//!     If A is subset of B then m(A) <= m(B)
 //!
 //! 2) Subadditivity:
 //!     If A0, A1, .. An is a countable set of possibly intersecting sets:
-//!         m(A0 U A1 U .. An) <= Sum{ m(Ai) }
+//!         m(A0 U A1 .. An) <= Sum { m(Ai) for i in 0..n }
 //! ```
 //!
 //! Some common measures are Cardinality, Count, and
