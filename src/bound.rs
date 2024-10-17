@@ -2,23 +2,6 @@ use std::ops::{Add, Sub};
 
 use crate::numeric::Domain;
 
-/*
-pub trait MaybeBounded<T> {
-    fn bound(&self, side: Side) -> Option<Bound<&T>>;
-
-    fn left(&self) -> Option<Bound<&T>> {
-        self.bound(Side::Left)
-    }
-
-    fn right(&self) -> Option<Bound<&T>> {
-        self.bound(Side::Right)
-    }
-
-    fn lval(&self) -> Option<&T> {
-        self.left().map(|v| v.value())
-    }
-}*/
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
     Left,
@@ -40,7 +23,7 @@ pub enum Bound<T> {
     Closed(T),
 }
 
-impl<T: Domain> Bound<T> {
+impl<T: Clone + PartialOrd> Bound<T> {
     pub fn min_left(a: &Self, b: &Self) -> Self {
         if a.contains(Side::Left, b.value()) {
             a.clone()
@@ -73,6 +56,16 @@ impl<T: Domain> Bound<T> {
         }
     }
 
+    pub fn flip(&self) -> Self {
+        match self {
+            Self::Open(limit) => Self::Closed(limit.clone()),
+            Self::Closed(limit) => Self::Open(limit.clone()),
+        }
+    }
+}
+
+
+impl<T> Bound<T> {
     pub fn is_open(&self) -> bool {
         matches!(self, Self::Open(_))
     }
@@ -88,19 +81,15 @@ impl<T: Domain> Bound<T> {
         }
     }
 
-    pub fn flip(&self) -> Self {
-        match self {
-            Self::Open(limit) => Self::Closed(limit.clone()),
-            Self::Closed(limit) => Self::Open(limit.clone()),
-        }
-    }
-
     pub fn binary_map(self, func: impl Fn(T, T) -> T, rhs: T) -> Self {
         match self {
             Self::Closed(limit) => Self::Closed(func(limit, rhs)),
             Self::Open(limit) => Self::Open(func(limit, rhs)),
         }
     }
+}
+
+impl<T: PartialOrd> Bound<T> {
 
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
@@ -114,7 +103,9 @@ impl<T: Domain> Bound<T> {
             },
         }
     }
+}
 
+impl<T: Domain> Bound<T> {
     pub fn normalized(self, side: Side) -> Self {
         match self {
             Self::Open(ref limit) => match limit.try_adjacent(side.flip()) {

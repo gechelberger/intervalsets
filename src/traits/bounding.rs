@@ -1,6 +1,6 @@
 use crate::{Bound, Domain, Interval, Side};
 
-pub trait Bounding<T: Domain> {
+pub trait Bounding<T> {
     fn bound(&self, side: Side) -> Option<&Bound<T>>;
 
     fn left(&self) -> Option<&Bound<T>> {

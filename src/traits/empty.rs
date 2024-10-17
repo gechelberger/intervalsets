@@ -1,4 +1,4 @@
-use crate::{Interval, IntervalSet};
+use crate::{Domain, Interval, IntervalSet};
 
 ///
 ///
@@ -12,13 +12,13 @@ pub trait MaybeEmpty {
     fn is_empty(&self) -> bool;
 }
 
-impl<T> MaybeEmpty for Interval<T> {
+impl<T: Domain> MaybeEmpty for Interval<T> {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 }
 
-impl<T> MaybeEmpty for IntervalSet<T> {
+impl<T: Domain> MaybeEmpty for IntervalSet<T> {
     fn is_empty(&self) -> bool {
         self.intervals().len() == 0
     }
