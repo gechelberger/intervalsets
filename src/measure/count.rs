@@ -5,7 +5,7 @@ use crate::{Domain, Interval, IntervalSet, Side};
 
 use super::Measurement;
 
-/// Defines the measure of a [`Countable`] Interval/Set.
+/// Defines the counting measure of a [`Countable`] Interval/Set.
 ///
 ///
 pub trait Count {
@@ -14,10 +14,12 @@ pub trait Count {
     fn count(&self) -> Measurement<Self::Output>;
 }
 
-/// Delegates counting elements of the underlying type.
-/// elements should be counted.
+/// Defines whether a set of type T is countable.
 ///
-/// The default implementation assumes an integer-like underlying type.
+/// [`Count`] delegates to the underlying type that implements [`Countable`].
+///
+/// The default implementation relies on Domain implementations for **discrete**
+/// data types.
 pub trait Countable: Domain + Sub<Self> {
     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
         // TODO: this has a bug at max value...

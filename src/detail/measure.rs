@@ -2,9 +2,7 @@ use core::ops::Sub;
 
 use num_traits::Zero;
 
-use crate::measure::count::{Count, Countable};
-use crate::measure::width::Width;
-use crate::measure::Measurement;
+use crate::measure::{Count, Countable, Measurement, Width};
 use crate::Domain;
 
 use super::{BoundCase, Finite, HalfBounded};

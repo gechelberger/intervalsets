@@ -15,8 +15,10 @@
 //! Some common measures are Cardinality, Count, and
 //! the Lebesgue measure which is Width in R1.
 
-pub mod count;
-pub mod width;
+mod count;
+pub use count::{Count, Countable};
+mod width;
+pub use width::Width;
 
 /// The result of applying a Measure to an Interval/Set.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
@@ -90,7 +92,7 @@ impl<T> Measurement<T> {
 
     /// Returns the contained Finite measurement, consuming self.
     ///
-    /// See also: [`expect_finite`]
+    /// See also: [`expect_finite`](enum.Measurement.html#method.expect_finite)
     pub fn finite(self) -> T {
         self.expect_finite("Measurement should be finite")
     }

@@ -2,6 +2,34 @@ use crate::{Domain, Interval, IntervalSet};
 
 use super::Measurement;
 
+/// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
+///
+/// The width is defined as the absolute difference between the greatest and
+/// least elements within the interval set. If one or more sides is unbounded
+/// then the width is infinite.
+///
+/// > Mathematically speaking, the width of any Countable set is 0.
+/// > We *do* allow calculating the width over the Reals between two integer bounds.
+///
+/// # Example
+/// ```
+/// use intervalsets::{Interval, IntervalSet, Union};
+/// use intervalsets::measure::Width;
+///
+/// let interval = Interval::closed(10.0, 100.0);
+/// assert_eq!(interval.width().finite(), 90.0);
+///
+/// let interval = Interval::open(10.0, 100.0);
+/// assert_eq!(interval.width().finite(), 90.0);
+///
+/// let interval = Interval::closed(0, 10);
+/// assert_eq!(interval.width().finite(), 10);
+///
+/// let set = Interval::closed(0.0, 10.0)
+///     .union(&Interval::closed(5.0, 15.0))
+///     .union(&Interval::open(100.0, 110.0));
+/// assert_eq!(set.width().finite(), 25.0);
+/// ```
 pub trait Width {
     type Output;
 
