@@ -61,6 +61,9 @@
 //!
 //! let b = x.union(&y).union(&z).complement();
 //! assert_eq!(a, b);
+//!
+//! let c = a.sym_difference(&b).expect_interval();
+//! assert_eq!(c, Interval::<f64>::empty());
 //! ```
 //!
 //! ## Measure of a Set

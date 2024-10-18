@@ -439,6 +439,9 @@ impl<T: Domain> IntervalSet<T> {
     ///     .union(&Interval::closed(5, 15))
     ///     .expect_interval();
     /// assert_eq!(a, Interval::closed(0, 15));
+    ///
+    /// let a = IntervalSet::<i32>::from_iter([]);
+    /// assert_eq!(a.expect_interval(), Interval::<i32>::empty());
     /// ```
     ///
     /// ```should_panic
@@ -449,11 +452,10 @@ impl<T: Domain> IntervalSet<T> {
     ///     .expect_interval();
     /// ```
     pub fn expect_interval(mut self) -> Interval<T> {
-        if self.intervals.len() == 1 {
-            self.intervals.remove(0)
-        } else {
-            panic!("Set should have exactly one subset.");
-            //panic!("{} should have exactly one subset.", self);
+        match self.intervals.len() {
+            0 => Interval::<T>::empty(),
+            1 => self.intervals.remove(0),
+            _ => panic!("Set should have exactly one subset."), //panic!("{} should have exactly one subset.", self);
         }
     }
 
