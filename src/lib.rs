@@ -14,9 +14,14 @@
 //!
 //! # Overview
 //!
-//! [`Interval`] and [`IntervalSet`] are both designed to be simple and versatile.
+//! [`Interval`] and [`IntervalSet`] are both intended to be simple, versatile,
+//! and correct. If you find any bugs, please open an issue on the repository.
+//!
 //! They are **immutable** and can be easily be used in a multi-threaded environment,
 //! or as keys in hash-structures as long as the underlying generic type is `Hash`.
+//!
+//! The vast majority of interactions with these `Set` types is governed by
+//! trait implementations.
 //!
 //! # Getting Started
 //!
@@ -40,6 +45,54 @@
 //! ```
 //!
 //! ## Set Operations
+//! ```
+//! use intervalsets::prelude::*;
+//!
+//! let x = Interval::closed(0.0, 100.0);
+//! let y = Interval::closed(1000.0, 1100.0);
+//! let z = Interval::open(2000.0, 2100.0);
+//!
+//! let a = Interval::<f64>::unbounded()
+//!     .difference(&x)
+//!     .difference(&y)
+//!     .difference(&z);
+//!
+//! assert_eq!(a.contains(&50.0), false);
+//!
+//! let b = x.union(&y).union(&z).complement();
+//! assert_eq!(a, b);
+//! ```
+//!
+//! ## Measure of a Set
+//!
+//! Two [measures](measure) are provided.
+//!
+//! They each return a [`measure::Measurement`] which may be infinite.
+//!
+//! ### [`measure::Width`] for continuous data types
+//! ```
+//! use intervalsets::prelude::*;
+//!
+//! let x = Interval::open(0.0, 10.0);
+//! assert_eq!(x.width().finite(), 10.0);
+//!
+//! let x = Interval::closed(0.0, 10.0);
+//! assert_eq!(x.width().finite(), 10.0);
+//!
+//! let x = Interval::closed_unbound(0.0);
+//! assert_eq!(x.width().is_finite(), false);
+//! ```
+//!
+//! ### [`measure::Count`] for discrete data types
+//! ```
+//! use intervalsets::prelude::*;
+//!
+//! let x = Interval::closed(0, 10);
+//! assert_eq!(x.count().finite(), 11);
+//!
+//! let x = Interval::closed_unbound(0);
+//! assert_eq!(x.count().is_finite(), false);
+//! ```
 //!
 //! # Optional Features
 //!    
