@@ -20,3 +20,39 @@ where
         })
     }
 }
+
+impl<D, U, V> LibZero for Quantity<D, U, V>
+where
+    D: uom::si::Dimension + ?Sized,
+    U: uom::si::Units<V> + ?Sized,
+    V: Domain + Num + Conversion<V> + LibZero,
+{
+    fn new_zero() -> Self {
+        Self {
+            dimension: core::marker::PhantomData,
+            units: core::marker::PhantomData,
+            value: V::new_zero(),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use uom::si::f32::*;
+    use uom::si::length::kilometer;
+
+    use crate::prelude::*;
+
+    #[test]
+    fn test_uom_width() {
+        let a = Length::new::<kilometer>(10.0);
+        let b = Length::new::<kilometer>(100.0);
+
+        let interval = Interval::open(a, b);
+
+        assert!(!interval.contains(&a));
+        assert!(interval.contains(&Length::new::<kilometer>(50.0)));
+
+        assert_eq!(interval.width().finite(), Length::new::<kilometer>(90.0));
+    }
+}

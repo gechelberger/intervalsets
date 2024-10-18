@@ -20,6 +20,6 @@ mod uom_tests {
         let interval = Interval::open(a, b);
         assert_eq!(interval.contains(&Length::new::<kilometer>(15.0)), true);
 
-        //assert_eq!(interval.width().finite(), Length::new::<kilometer>(10.0));
+        assert_eq!(interval.width().finite(), Length::new::<kilometer>(10.0));
     }
 }
