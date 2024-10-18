@@ -1,15 +1,13 @@
 use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
-use crate::ops::{Contains, Intersects, Merged};
+use crate::ops::{Adjacent, Contains, Intersects, Merged};
 use crate::{Bound, MaybeEmpty, Side};
 
 impl<T: Domain> Merged<Self> for Finite<T> {
     type Output = Self;
 
     fn merged(&self, rhs: &Self) -> Option<Self::Output> {
-        if self.is_disjoint_from(rhs) {
-            // TODO Adjacency?
-            // For T in Real, (0, 1) U [1, 2] => (0, 2]
+        if self.is_disjoint_from(rhs) && !self.is_adjacent_to(rhs) {
             if self.is_empty() {
                 return Some(rhs.clone());
             } else if rhs.is_empty() {
@@ -41,9 +39,14 @@ impl<T: Domain> Merged<Self> for HalfBounded<T> {
                 Some(rhs.clone().into())
             }
         } else {
-            // unfortunately we have to check from both sides to catch the
-            // case where left and right values are the same but open & closed
-            if self.contains(rhs.bound.value()) && rhs.contains(self.bound.value()) {
+            // <----](---->
+            // <----][---->
+            // <----)[---->
+            // but not <----)(---->
+            if self.contains(rhs.bound.value())
+                || rhs.contains(self.bound.value())
+                || self.is_adjacent_to(rhs)
+            {
                 Some(BoundCase::Unbounded)
             } else {
                 None // disjoint
@@ -64,13 +67,15 @@ impl<T: Domain> Merged<Finite<T>> for HalfBounded<T> {
                     .filter(|bound| self.contains(bound.value()))
                     .count();
 
-                match n_seen {
-                    2 => Some(self.clone().into()),
-                    1 => match self.side {
+                if n_seen == 2 {
+                    Some(self.clone().into())
+                } else if n_seen == 0 && !self.is_adjacent_to(rhs) {
+                    None
+                } else {
+                    match self.side {
                         Side::Left => Some(HalfBounded::new(self.side, left.clone()).into()),
                         Side::Right => Some(HalfBounded::new(self.side, right.clone()).into()),
-                    },
-                    _ => None, // disjoint
+                    }
                 }
             }
         }
