@@ -385,6 +385,38 @@ impl<T: Domain> IntervalSet<T> {
         Self { intervals }
     }
 
+    /// Creates an [`Interval`] that forms a convex hull for this Set.
+    ///
+    /// This should be equivalent to using [`ConvexHull`](crate::ConvexHull),
+    /// but much more efficient and convenient.
+    ///
+    /// > This function call relies on invariants.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// let set = IntervalSet::from_iter([
+    ///     Interval::closed(100, 110),
+    ///     Interval::closed(0, 10),
+    /// ]);
+    /// assert_eq!(set.convex_hull(), Interval::closed(0, 110));
+    ///
+    /// // ConvexHull trait equivalent
+    /// assert_eq!(Interval::convex_hull([set]), Interval::closed(0, 110));
+    /// ```
+    ///
+    pub fn convex_hull(&self) -> Interval<T> {
+        if self.is_empty() {
+            return Interval::<T>::empty();
+        }
+
+        let first = self.intervals.first().unwrap();
+        let last = self.intervals.last().unwrap();
+
+        Interval::new_finite(first.left().unwrap().clone(), last.right().unwrap().clone())
+    }
+
     pub fn intervals(&self) -> &Vec<Interval<T>> {
         &self.intervals
     }
