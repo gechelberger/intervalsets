@@ -1,3 +1,5 @@
+//! Control behavior of data types that comprise the elements of a set.
+
 use crate::bound::Side;
 
 /// Defines the zero value for a type.

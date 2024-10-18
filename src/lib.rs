@@ -14,18 +14,20 @@
 //!
 //! # Overview
 //!
-//! [`Interval`] and [`IntervalSet`] are both intended to be simple, versatile,
-//! and correct. If you find any bugs, please open an issue on the repository.
+//! [`Interval`] and [`IntervalSet`] are intended to be simple, versatile,
+//! and correct. If you find any bugs, please open an issue on the repository
+//! or open a pull request.
 //!
-//! They are **immutable** and can be easily be used in a multi-threaded environment,
-//! or as keys in hash-structures as long as the underlying generic type is `Hash`.
+//! These types are **immutable** and as such can be easily be used in a
+//! multi-threaded environment, or as keys in hash-structures as long as
+//! the underlying generic type is `Hash`.
 //!
 //! The vast majority of interactions with these `Set` types is governed by
-//! trait implementations.
+//! trait implementations in the [`ops`] module.
 //!
 //! # Getting Started
 //!
-//! ## Building Intervals and Sets
+//! ## Constructing Sets
 //!
 //! ```
 //! use intervalsets::prelude::*;
@@ -70,9 +72,9 @@
 //!
 //! Two [measures](measure) are provided.
 //!
-//! They each return a [`measure::Measurement`] which may be infinite.
+//! They each return a [`Measurement`](measure::Measurement) which may be infinite.
 //!
-//! ### [`measure::Width`] for continuous data types
+//! ### [`Width`](measure::Width) for continuous data types
 //! ```
 //! use intervalsets::prelude::*;
 //!
@@ -86,7 +88,7 @@
 //! assert_eq!(x.width().is_finite(), false);
 //! ```
 //!
-//! ### [`measure::Count`] for discrete data types
+//! ### [`Count`](measure::Count) for discrete data types
 //! ```
 //! use intervalsets::prelude::*;
 //!
@@ -98,10 +100,135 @@
 //! ```
 //!
 //! # Optional Features
+//!
+//! `intervalsets` has multiple Cargo features for controlling the underlying
+//! data types used by [`Interval`] and [`IntervalSet`]. None are enabled by
+//! default
 //!    
 //! * rust_decimal
 //! * num-bigint
-//! * num-rational
+//! * chrono
+//! * uom
+//!
+//! # Custom Data Types
+//!
+//! If you have a data type that is not currently supported by `intervalsets`
+//! out of the box, there are a few traits that need to be implemented in order
+//! to get started.
+//!
+//! Firstly, does your library or application own the type you want to use?
+//! [Yes? Great! Skip Ahead](#required-custom-type-traits)
+//!
+//! ## External Type Conflicts
+//!
+//! Rust doesn't allow us to implement traits for types if we don't own at least
+//! one of them for fear that a future upstream change will introduce ambiguity.
+//! The solution to which is the
+//! [New Type Idiom](https://doc.rust-lang.org/rust-by-example/generics/new_types.html).
+//!
+//! So, we need to proxy whatever type we want to work with.
+//!
+//! ```ignore
+//! use num_bigint::BigInt;
+//! pub struct MyBigInt(BigInt);
+//!
+//! // implement all the traits...
+//! ```
+//!
+//! ## Required Custom Type Traits
+//!
+//! `intervalsets` uses a handful of traits to fully define interval and set
+//! behavior.
+//!
+//! * [`Domain`](numeric::Domain)
+//! > The `Domain` trait serves one purpose -- to distinguish between types
+//! > that represent **discrete** vs **continuous** data.
+//! >
+//! > This allows us to do two important things:
+//! > 1. Normalize discrete sets so that there is only a single valid
+//! >    representations of each possible `Set`.
+//! >    eg. **[1, 9]** == (0, 10) == (0, 9] == [1, 10).
+//! > 2. Properly test the adjacency of sets.
+//! >
+//! > The method [`try_adjacent`](numeric::Domain::try_adjacent) is the
+//! > mechanism by which both of these goals is accomplished. Implementations
+//! > for **continuous** types should simply return None.
+//! >
+//! > The macro [`continuous_domain_impl`] exists for exactly this purpose.
+//!
+//! * [`LibZero`](numeric::LibZero)
+//! > The LibZero trait is a direct knock-off of [`Zero`](num_traits::Zero).
+//! > However, it is necessary to resolve issues of external traits and
+//! > types. If a type already implements `Zero` the macro
+//! > [`adapt_num_traits_zero_impl`] can be used directly.
+//! >
+//! > The `LibZero` trait is necessary for the [`measure`] module,
+//! > specifically in regards to the empty set.
+//!
+//! * [`Countable`](measure::Countable)
+//! > The `Countable` trait is only relevant to **discrete** data types. It is
+//! > the mechanism by which a data type can say how many distinct values fall
+//! > between some bounds of that type. There is a macro
+//! > [`default_countable_impl`] which uses [`try_adjacent`](numeric::Domain).
+//!
+//! * [`Add`](core::ops::Add) and [`Sub`](core::ops::Sub)
+//! > The `Add` and `Sub` traits are used by the [`measure`] module, and could
+//! > be used elsewhere in the future. Presumably these are already implemented
+//! > for most types that one would want to use as bounds of a Set.
+//!
+//! ## Putting it all together
+//!
+//! ```
+//! use core::ops::{Add, Sub};
+//! use intervalsets::numeric::{Domain, LibZero};
+//! use intervalsets::measure::Countable;
+//! use intervalsets::Side;
+//!
+//! // minimum required is: Clone, PartialEq, PartialOrd
+//! #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+//! pub struct MyInt(i32);
+//!
+//! impl Domain for MyInt {
+//!     fn try_adjacent(&self, side: Side) -> Option<Self> {
+//!         Some(match side {
+//!             Side::Left => Self(self.0 - 1),
+//!             Side::Right => Self(self.0 + 1),
+//!         })
+//!     }
+//! }
+//!
+//! // MyInt does not already implement num_traits::Zero
+//! // so the adapt_num_traits_zero_impl doesn't help us here,
+//! // even though i32 does.
+//! impl LibZero for MyInt {
+//!     fn new_zero() -> Self {
+//!         Self(0)
+//!     }
+//! }
+//!
+//! // The default_countable_impl macro would work here just fine.
+//! // This would be omitted for a continuous data type.
+//! impl Countable for MyInt {
+//!     type Output = Self;
+//!     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
+//!         Some(Self(right.0 - left.0 + 1))
+//!     }
+//! }
+//!
+//! impl Add for MyInt {
+//!     type Output = Self;
+//!     fn add(self, rhs: Self) -> Self {
+//!         Self(self.0 + rhs.0)
+//!     }
+//! }
+//!
+//! impl Sub for MyInt {
+//!     type Output = Self;
+//!     fn sub(self, rhs: Self) -> Self {
+//!         Self(self.0 - rhs.0)
+//!     }
+//! }
+//! ```
 
 #![allow(unused_variables)] // for now
 
