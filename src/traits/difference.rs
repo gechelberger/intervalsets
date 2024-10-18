@@ -30,7 +30,7 @@ pub trait Difference<Rhs = Self> {
 
 macro_rules! difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::Domain> $crate::Difference<$t_rhs> for $t_lhs {
+        impl<T: $crate::numeric::Domain> $crate::Difference<$t_rhs> for $t_lhs {
             type Output = $crate::IntervalSet<T>;
 
             fn difference(&self, rhs: &$t_rhs) -> Self::Output {
@@ -73,7 +73,7 @@ pub trait SymmetricDifference<Rhs = Self> {
 
 macro_rules! sym_difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::Domain> $crate::SymmetricDifference<$t_rhs> for $t_lhs {
+        impl<T: $crate::numeric::Domain> $crate::SymmetricDifference<$t_rhs> for $t_lhs {
             type Output = $crate::IntervalSet<T>;
 
             fn sym_difference(&self, rhs: &$t_rhs) -> Self::Output {

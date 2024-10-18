@@ -1,7 +1,7 @@
 use crate::continuous_domain_impl;
 use chrono::{DateTime, TimeDelta, TimeZone};
 
-impl<T: TimeZone> crate::Domain for DateTime<T> {
+impl<T: TimeZone> crate::numeric::Domain for DateTime<T> {
     #[inline]
     fn try_adjacent(&self, side: crate::Side) -> Option<Self> {
         None
@@ -10,7 +10,7 @@ impl<T: TimeZone> crate::Domain for DateTime<T> {
 
 continuous_domain_impl!(TimeDelta);
 
-impl crate::LibZero for TimeDelta {
+impl crate::numeric::LibZero for TimeDelta {
     fn new_zero() -> Self {
         Self::zero()
     }

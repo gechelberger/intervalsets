@@ -1,5 +1,6 @@
+use crate::numeric::Domain;
 use crate::util::commutative_op_impl;
-use crate::{Domain, Interval, IntervalSet, MaybeEmpty};
+use crate::{Interval, IntervalSet, MaybeEmpty};
 
 /// Defines a Set with every element of both input Sets.
 ///

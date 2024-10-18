@@ -1,4 +1,5 @@
-use crate::{Domain, IntervalSet, Merged, Union};
+use crate::numeric::Domain;
+use crate::{IntervalSet, Merged, Union};
 
 use crate::util::commutative_op_impl;
 

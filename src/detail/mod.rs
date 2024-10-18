@@ -13,7 +13,7 @@ mod measure;
 mod partial_ord;
 
 use crate::bound::{Bound, Side};
-use crate::Domain;
+use crate::numeric::Domain;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum Finite<T> {

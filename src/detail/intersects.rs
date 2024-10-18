@@ -1,5 +1,6 @@
+use crate::numeric::Domain;
 use crate::util::commutative_predicate_impl;
-use crate::{Contains, Domain, Intersects, Side};
+use crate::{Contains, Intersects, Side};
 
 use super::{BoundCase, Finite, HalfBounded};
 

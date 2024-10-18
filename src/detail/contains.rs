@@ -1,4 +1,5 @@
-use crate::{Contains, Domain};
+use crate::numeric::Domain;
+use crate::Contains;
 
 use super::*;
 

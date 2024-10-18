@@ -13,7 +13,7 @@ pub trait LibZero {
 ///
 /// Example
 /// ```
-/// use intervalsets::LibZero;
+/// use intervalsets::numeric::LibZero;
 /// use intervalsets::adapt_num_traits_zero_impl;
 ///
 /// #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +43,7 @@ pub trait LibZero {
 macro_rules! adapt_num_traits_zero_impl {
     ( $($t:ty), +) => {
         $(
-            impl $crate::LibZero for $t {
+            impl $crate::numeric::LibZero for $t {
                 fn new_zero() -> Self {
                     <$t as num_traits::Zero>::zero()
                 }
@@ -92,7 +92,7 @@ pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
 #[macro_export]
 macro_rules! continuous_domain_impl {
     ($t:ty) => {
-        impl $crate::Domain for $t {
+        impl $crate::numeric::Domain for $t {
             #[inline]
             fn try_adjacent(&self, side: $crate::Side) -> Option<Self> {
                 None
@@ -106,7 +106,7 @@ continuous_domain_impl!(f64);
 
 macro_rules! integer_domain_impl {
     ($t:ty) => {
-        impl Domain for $t {
+        impl $crate::numeric::Domain for $t {
             #[inline]
             fn try_adjacent(&self, side: Side) -> Option<Self> {
                 match side {

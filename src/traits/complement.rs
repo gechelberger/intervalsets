@@ -1,4 +1,5 @@
-use crate::{Domain, Intersection, Interval, IntervalSet};
+use crate::numeric::Domain;
+use crate::{Intersection, Interval, IntervalSet};
 
 /// Defines the complement of a Set.
 ///

@@ -1,9 +1,8 @@
 use core::ops::Sub;
 
-use crate::numeric::LibZero;
+use crate::numeric::{Domain, LibZero};
 
 use crate::measure::{Count, Countable, Measurement, Width};
-use crate::Domain;
 
 use super::{BoundCase, Finite, HalfBounded};
 

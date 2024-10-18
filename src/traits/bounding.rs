@@ -1,4 +1,5 @@
-use crate::{Bound, Domain, Interval, IntervalSet, Side};
+use crate::numeric::Domain;
+use crate::{Bound, Interval, IntervalSet, Side};
 
 /// The boundaries of a Set on the number line.
 ///

@@ -1,6 +1,7 @@
 use crate::bound::Bound;
 use crate::detail::{BoundCase, Finite, HalfBounded};
-use crate::{Bounding, Domain, Intersects, MaybeEmpty, Merged, Side};
+use crate::numeric::Domain;
+use crate::{Bounding, Intersects, MaybeEmpty, Merged, Side};
 
 /// A Set representation of an interval on N, Z, or R.
 ///

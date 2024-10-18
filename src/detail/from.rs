@@ -1,4 +1,5 @@
-use crate::{Domain, Interval, IntervalSet};
+use crate::numeric::Domain;
+use crate::{Interval, IntervalSet};
 
 use super::{BoundCase, Finite, HalfBounded};
 

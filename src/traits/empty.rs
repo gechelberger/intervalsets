@@ -1,4 +1,5 @@
-use crate::{Domain, Interval, IntervalSet};
+use crate::numeric::Domain;
+use crate::{Interval, IntervalSet};
 
 /// Defines an item that may be empty and a way to query it.
 ///

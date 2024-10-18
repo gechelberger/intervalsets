@@ -1,6 +1,7 @@
 use itertools::Itertools;
 
-use crate::{Bound, Bounding, Domain, Interval, Side};
+use crate::numeric::Domain;
+use crate::{Bound, Bounding, Interval, Side};
 
 use crate::detail::{BoundCase, Finite, HalfBounded};
 use crate::IntervalSet;

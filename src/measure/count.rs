@@ -1,7 +1,7 @@
-use crate::numeric::LibZero;
+use crate::numeric::{Domain, LibZero};
 use core::ops::Add;
 
-use crate::{Domain, Interval, IntervalSet};
+use crate::{Interval, IntervalSet};
 
 use super::Measurement;
 
@@ -39,7 +39,8 @@ pub trait Count {
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, Side, Domain, default_countable_impl};
+/// use intervalsets::numeric::Domain;
+/// use intervalsets::{Interval, Side, default_countable_impl};
 /// use intervalsets::measure::{Count, Countable};
 ///
 /// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -59,7 +60,7 @@ pub trait Count {
 ///     }
 /// }
 ///
-/// impl intervalsets::LibZero for MyInt {
+/// impl intervalsets::numeric::LibZero for MyInt {
 ///     fn new_zero() -> Self {
 ///         MyInt(0)
 ///     }

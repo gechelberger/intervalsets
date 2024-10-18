@@ -1,5 +1,5 @@
-use crate::numeric::LibZero;
-use crate::{Domain, Interval, IntervalSet};
+use crate::numeric::{Domain, LibZero};
+use crate::{Interval, IntervalSet};
 
 use super::Measurement;
 

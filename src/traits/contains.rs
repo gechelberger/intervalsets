@@ -1,5 +1,6 @@
-use crate::sets::IntervalSet;
-use crate::{Domain, Interval};
+use crate::numeric::Domain;
+use crate::{Interval, IntervalSet};
+
 /// Defines whether a set fully contains another.
 ///
 /// For our purposes a point is the singleton set [T].

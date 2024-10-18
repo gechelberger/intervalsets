@@ -1,4 +1,5 @@
-use crate::{Domain, Interval};
+use crate::numeric::Domain;
+use crate::Interval;
 
 /// Defines the union of two intervals if contiguous.
 ///

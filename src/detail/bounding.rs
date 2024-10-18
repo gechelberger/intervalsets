@@ -1,5 +1,6 @@
+use crate::numeric::Domain;
 use crate::traits::bounding::Bounding;
-use crate::{Bound, Domain, Side};
+use crate::{Bound, Side};
 
 use super::{BoundCase, Finite, HalfBounded};
 

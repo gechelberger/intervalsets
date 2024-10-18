@@ -6,11 +6,20 @@
 //! * The [`Interval`] type is a Set implementation representing a
 //!   contiguous set of values.
 //!     * It is generic over any type that implements the [`Domain`] trait
-//!       which is intended to make sure elements are comparable.
+//!       which is intended to make sure elements are comparable and allows
+//!       us to differentiate between discrete and continuous data types.
+//!
+//! * The [`IntervalSet`] type is a Set of disjoint, normalized `Intervals`
+//!   maintained in sorted order.
 //!
 //! # Overview
 //!
-//! # Features
+//! # Getting Started
+//! ```
+//!
+//! ```
+//!
+//! # Optional Features
 //!    
 //! * rust_decimal
 //! * num-bigint
@@ -24,8 +33,7 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-mod numeric;
-pub use numeric::{Domain, LibZero};
+pub mod numeric;
 
 mod bound;
 pub use bound::{Bound, Side};
@@ -54,3 +62,8 @@ mod display;
 mod feat;
 
 mod util;
+
+pub mod prelude {
+    pub use crate::sets::{Interval, IntervalSet};
+    pub use crate::traits::union::Union;
+}
