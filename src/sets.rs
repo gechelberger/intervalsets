@@ -385,6 +385,79 @@ impl<T: Domain> IntervalSet<T> {
         Self { intervals }
     }
 
+    /// Creates an [`Interval`] that forms a convex hull for this Set.
+    ///
+    /// This should be equivalent to using [`ConvexHull`](crate::ConvexHull),
+    /// but much more efficient and convenient.
+    ///
+    /// > This function call relies on invariants.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// let set = IntervalSet::from_iter([
+    ///     Interval::closed(100, 110),
+    ///     Interval::closed(0, 10),
+    /// ]);
+    /// assert_eq!(set.convex_hull(), Interval::closed(0, 110));
+    ///
+    /// // ConvexHull trait equivalent
+    /// assert_eq!(Interval::convex_hull([set]), Interval::closed(0, 110));
+    /// ```
+    ///
+    pub fn convex_hull(&self) -> Interval<T> {
+        if self.is_empty() {
+            return Interval::<T>::empty();
+        }
+
+        let first = self.intervals.first().unwrap();
+        let last = self.intervals.last().unwrap();
+
+        Interval::new_finite(first.left().unwrap().clone(), last.right().unwrap().clone())
+    }
+
+    /// Take the only [`Interval`] in this Set. `self` is consumed.
+    ///
+    /// This is useful for operations that *could* return
+    /// multiple intervals such as [`Union`](crate::ops::Union).
+    ///
+    /// # Panics
+    ///
+    /// This method panics if there is not **exactly** one subset.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// let interval = Interval::closed(0, 10);
+    /// let iset = IntervalSet::from(interval.clone());
+    /// let unwrapped = iset.expect_interval(); // iset moved
+    /// assert_eq!(interval, unwrapped);
+    ///
+    /// let a = Interval::closed(0, 10)
+    ///     .union(&Interval::closed(5, 15))
+    ///     .expect_interval();
+    /// assert_eq!(a, Interval::closed(0, 15));
+    /// ```
+    ///
+    /// ```should_panic
+    /// use intervalsets::prelude::*;
+    ///
+    /// let a = Interval::closed(0, 10)
+    ///     .union(&Interval::closed(100, 110))
+    ///     .expect_interval();
+    /// ```
+    pub fn expect_interval(mut self) -> Interval<T> {
+        if self.intervals.len() == 1 {
+            self.intervals.remove(0)
+        } else {
+            panic!("Set should have exactly one subset.");
+            //panic!("{} should have exactly one subset.", self);
+        }
+    }
+
+    /// Return an immutable reference to the subsets.
     pub fn intervals(&self) -> &Vec<Interval<T>> {
         &self.intervals
     }
@@ -396,6 +469,10 @@ impl<T: Domain> IntervalSet<T> {
 
     /// Returns a new IntervalSet mapped from this Set's subsets.
     ///
+    /// The mapping function is given a mutable vector in which to
+    /// collect as many or as few new intervals as desired regardless
+    /// of the intermediate types in question.
+    ///
     /// # Example
     /// ```
     /// use intervalsets::prelude::*;
@@ -404,7 +481,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     .union(&Interval::closed(20, 40))
     ///     .union(&Interval::closed(50, 100));
     ///
-    /// let mapped = x.accum_map(|mut collect, subset| {
+    /// let mapped = x.collect_map(|mut collect, subset| {
     ///     if subset.count().finite() > 30 {
     ///         collect.push(subset.clone())
     ///     }
@@ -413,7 +490,7 @@ impl<T: Domain> IntervalSet<T> {
     /// assert_eq!(mapped, IntervalSet::from(Interval::closed(50, 100)));
     ///
     /// let mask = Interval::closed(5, 25);
-    /// let mapped = x.accum_map(|mut collect, subset| {
+    /// let mapped = x.collect_map(|mut collect, subset| {
     ///     collect.push(mask.intersection(subset));
     /// });
     /// assert_eq!(mapped, IntervalSet::from_iter([
@@ -425,7 +502,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     Interval::closed(20, 30),
     ///     Interval::closed(50, 60),
     /// ]);
-    /// let mapped = x.accum_map(|mut collect, subset| {
+    /// let mapped = x.collect_map(|mut collect, subset| {
     ///     for interval in subset.difference(&mask_set) {
     ///         collect.push(interval)
     ///     }
@@ -436,7 +513,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     Interval::closed(61, 100),
     /// ]));
     /// ```
-    pub fn accum_map<F>(&self, func: F) -> Self
+    pub fn collect_map<F>(&self, func: F) -> Self
     where
         F: Fn(&mut Vec<Interval<T>>, &Interval<T>),
     {
@@ -472,7 +549,7 @@ impl<T: Domain> IntervalSet<T> {
     where
         F: Fn(&Interval<T>) -> Self,
     {
-        self.accum_map(|accum, interval| {
+        self.collect_map(|accum, interval| {
             let mut result = func(interval);
             accum.append(&mut result.intervals)
         })
@@ -508,11 +585,25 @@ mod tests {
     //use core::hash::Hash;
 
     use super::*;
+    use crate::ops::{Complement, Difference};
 
     #[test]
     fn test_interval_normalization() {
         let interval = Interval::open(0, 10);
         assert_eq!(interval, Interval::closed(1, 9));
+    }
+
+    #[test]
+    fn test_interval_set_fold() {
+        let x = IntervalSet::from_iter([Interval::closed(0, 10), Interval::closed(100, 110)]);
+
+        assert_eq!(
+            x.iter().fold(
+                IntervalSet::from(Interval::unbounded()),
+                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(item) }
+            ),
+            x.complement()
+        );
     }
 
     fn assert_lt<T: Domain>(itv1: Interval<T>, itv2: Interval<T>) {
