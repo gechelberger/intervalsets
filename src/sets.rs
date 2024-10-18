@@ -282,7 +282,7 @@ impl<T: Domain> Interval<T> {
     }
 }
 
-/// A Set in Z or R consisting of disjoint contiguous intervals.
+/// A Set in N, Z, or R consisting of disjoint contiguous intervals.
 ///
 /// # Invariants
 ///
@@ -294,6 +294,8 @@ impl<T: Domain> Interval<T> {
 ///     * Normalized `Interval<T>` should have a total ordering w/o empty sets.
 /// * All intervals are stored in ascending order.
 /// * All stored intervals are disjoint subsets of T.
+///     * Stored intervals *should* not be adjacent.
+///         * This can only be assured for T: Eq + Ord
 #[derive(Debug, Clone, PartialEq)] // PartialOrd
 pub struct IntervalSet<T: Domain> {
     intervals: Vec<Interval<T>>,
@@ -371,6 +373,14 @@ impl<T: Domain> IntervalSet<T> {
         true
     }
 
+    /// Creates a new IntervalSet without checking invariants.
+    ///
+    /// The invariants check and enforcement step can be expensive, O(nlog(n)),
+    /// since it sorts all elements. If an operation is certain
+    /// that it has left the invariants in tact it can create a new IntervalSet
+    /// directly.
+    ///
+    /// Behavior is **undefined** if invariants are violated!
     pub fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
         Self { intervals }
     }
@@ -379,6 +389,33 @@ impl<T: Domain> IntervalSet<T> {
         &self.intervals
     }
 
+    /// Returns a new IntervalSet mapped from this Set's subsets.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// let x = Interval::closed(0, 10)
+    ///     .union(&Interval::closed(20, 30))
+    ///     .union(&Interval::closed(40, 100));
+    ///
+    /// let mapped = x.accum_map(|mut collect, subset| {
+    ///     if subset.count().finite() > 20 {
+    ///         collect.push(subset.clone())
+    ///     }
+    /// });
+    ///
+    /// assert_eq!(mapped, IntervalSet::from(Interval::closed(40, 100)));
+    ///
+    /// let mask = Interval::closed(5, 25);
+    /// let mapped = x.accum_map(|mut collect, subset| {
+    ///     collect.push(mask.intersection(subset));
+    /// });
+    /// assert_eq!(mapped, IntervalSet::from_iter([
+    ///     Interval::closed(5, 10),
+    ///     Interval::closed(20, 25)
+    /// ]));
+    /// ```
     pub fn accum_map<F>(&self, func: F) -> Self
     where
         F: Fn(&mut Vec<Interval<T>>, &Interval<T>),
@@ -388,6 +425,7 @@ impl<T: Domain> IntervalSet<T> {
             func(&mut accum, subset);
         }
 
+        accum.shrink_to_fit();
         Self::new(accum)
     }
 
