@@ -35,6 +35,9 @@ implemented as sets with all the associated set operations.
     * disjoint ordered subsets
     * supports all set operations
 * Simple conversion between types with From/Into traits.
+* Convenient display
+    * Interval<_>: {}, (10, 15], (<-, 2), etc...
+    * IntervalSet<_>: {(10, 15], [20, ->)}
 
 ## Usage
 
@@ -47,17 +50,22 @@ assert_eq!(hull.size().unwrap(), 264);
 
 ## [Custom Types]
 
-### Quantized types
+A few external library types are currently supported:
+* rust_decimal
+* num-bigint
+* chrono
 
-For quantized types (like integers) we prefer to
+### Discrete types
+
+For discrete data types (like integers) we prefer to
 normalize to closed form. 
 
 ie. [1, 2] is preferred over (0, 3)
 
-We do this by implementing the `Domain` trait for any type
+We do this by implementing the [`Domain`] trait for any type
 we wish to use in our Intervals/Sets.
 
-It's `try_adjacent` impl should return the next greater or 
+The `try_adjacent` impl should return the next greater or 
 smaller value. This must agree with the PartialOrd impl for
 the type and it must be invertable.
 
@@ -65,8 +73,10 @@ the type and it must be invertable.
 let x = MyBigint::from(0);
 let y = x.try_adjacent(Side::Right).unwrap();
 let z = y.try_adjacent(Side::Left).unwrap();
-assert_eq!(X, Z);
+assert_eq!(x, z);
 ```
+
+#### Example
 
 ```rust
 use intervalsets::{Side, Domain};
@@ -127,11 +137,8 @@ cargo install cargo-fuzz
 ```
 
 ### outstanding
-* unit test coverage
+* better unit test coverage
+* integration tests
 * benchmarks
 * docs
-* should interval bounds be CoW<'_, T>?
-* more formal concepts of measure
-    * lebesgue?
-    * counting?
 * contiguity between disjoint sets?
