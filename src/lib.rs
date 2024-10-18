@@ -12,12 +12,28 @@
 //! * The [`IntervalSet`] type is a Set of disjoint, normalized `Intervals`
 //!   maintained in sorted order.
 //!
-//! # Overview
-//!
 //! # Getting Started
-//! ```
+//!
+//! ## Building Intervals and Sets
 //!
 //! ```
+//! use intervalsets::prelude::*;
+//!
+//! let x = Interval::closed(0, 10);
+//! assert_eq!(x.contains(&5), true);
+//! assert_eq!(x.count().finite(), 11);
+//!
+//! let y = Interval::closed(0.0, 10.0);
+//! assert_eq!(y.contains(&5.0), true);
+//! assert_eq!(y.width().finite(), 10.0);
+//!
+//! let z = Interval::open(100.0, 110.0);
+//!
+//! let set = IntervalSet::new(vec![y, z]);
+//! assert_eq!(set.width().finite(), 20.0);
+//! ```
+//!
+//! ##
 //!
 //! # Optional Features
 //!    
@@ -45,6 +61,7 @@ pub use traits::hull::ConvexHull;
 
 /// Operations on Set types.
 pub mod ops {
+    pub use crate::traits::adjacent::Adjacent;
     pub use crate::traits::contains::Contains;
     pub use crate::traits::intersects::Intersects;
 
@@ -68,7 +85,10 @@ mod feat;
 
 mod util;
 
+/// Common operations & traits
 pub mod prelude {
+    pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
+    pub use crate::{Bounding, ConvexHull, MaybeEmpty};
 }

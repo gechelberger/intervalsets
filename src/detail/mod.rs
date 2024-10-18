@@ -1,3 +1,4 @@
+mod adjacent;
 mod bounding;
 mod complement;
 mod contains;
