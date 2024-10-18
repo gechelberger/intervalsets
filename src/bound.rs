@@ -3,7 +3,7 @@ use std::ops::{Add, Sub};
 use crate::numeric::Domain;
 
 /// Side( Left | Right ) of the number line.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Side {
     Left,
     Right,

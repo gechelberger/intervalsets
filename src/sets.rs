@@ -419,6 +419,8 @@ impl<T: Domain> From<Interval<T>> for IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
+    //use core::hash::Hash;
+
     use super::*;
 
     #[test]

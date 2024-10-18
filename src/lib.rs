@@ -1,6 +1,6 @@
 //! # intervalsets: Intervals as Sets in Rust
 //!
-//! Intervalsets intends to provide full functionality of sets for
+//! Intervalsets intends to provide the full functionality of sets for
 //! interval data.
 //!
 //! * The [`Interval`] type is a Set implementation representing a
@@ -11,6 +11,12 @@
 //!
 //! * The [`IntervalSet`] type is a Set of disjoint, normalized `Intervals`
 //!   maintained in sorted order.
+//!
+//! # Overview
+//!
+//! [`Interval`] and [`IntervalSet`] are both designed to be simple and versatile.
+//! They are **immutable** and can be easily be used in a multi-threaded environment,
+//! or as keys in hash-structures as long as the underlying generic type is `Hash`.
 //!
 //! # Getting Started
 //!
@@ -33,7 +39,7 @@
 //! assert_eq!(set.width().finite(), 20.0);
 //! ```
 //!
-//! ##
+//! ## Set Operations
 //!
 //! # Optional Features
 //!    
@@ -80,6 +86,7 @@ mod sets;
 pub use sets::{Interval, IntervalSet};
 
 mod display;
+mod hash;
 
 mod feat;
 

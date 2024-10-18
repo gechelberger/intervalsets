@@ -3,9 +3,39 @@ use crate::Interval;
 
 /// Defines the union of two intervals if contiguous.
 ///
-/// Disjoint sets return `None` unless one is the `Empty` Set,
-/// in which case the other input Set is the result (which could
-/// be `Empty`).
+/// Two intervals are contiguous if they share any elements **or** if
+/// they are **adjacent** to each other such that they share bounds
+/// with no other elements possible between them.
+///
+/// Other **disjoint sets** return `None` unless one is the `Empty` Set,
+/// in which case the other input Set is the result.
+///
+/// # Note
+///
+/// > For types that do not implement Eq (such as primitive floats),
+/// > the adjacency check breaks down. We support floats for their
+/// > utility, but leave handling the edge cases to the end user.
+/// > If rigorous correctness is required, then a fixed precision
+/// > type should be used instead.
+///
+/// # Example
+/// ```
+/// use intervalsets::Interval;
+/// use intervalsets::ops::Merged;
+///
+/// let x = Interval::closed(0, 10);
+/// let y = Interval::closed(11, 20);
+/// assert_eq!(x.merged(&y).unwrap(), Interval::closed(0, 20));
+///
+/// let y = Interval::closed(20, 30);
+/// assert_eq!(x.merged(&y), None);
+///
+/// let y = Interval::<i32>::empty();
+/// assert_eq!(x.merged(&y).unwrap(), x);
+///
+/// let x = Interval::<i32>::empty();
+/// assert_eq!(x.merged(&y).unwrap(), Interval::empty());
+/// ```
 pub trait Merged<Rhs = Self> {
     type Output;
 
@@ -52,5 +82,42 @@ mod tests {
         let y = Interval::closed(-100, -1);
 
         assert_eq!(x.merged(&y).unwrap(), Interval::closed(-100, i32::MAX));
+    }
+}
+
+#[cfg(feature = "rust_decimal")]
+#[cfg(test)]
+mod decimal_test {
+    use super::*;
+    use crate::MaybeEmpty;
+    use rust_decimal::Decimal;
+
+    #[quickcheck]
+    fn check_decimal_merge(a: f32, b: f32, c: f32) {
+        let a = Decimal::from_f32_retain(a);
+        let b = Decimal::from_f32_retain(b);
+        let c = Decimal::from_f32_retain(c);
+        if a.is_none() || b.is_none() || c.is_none() {
+            return;
+        }
+
+        let a = a.unwrap();
+        let b = b.unwrap();
+        let c = c.unwrap();
+
+        let left = Interval::open(a.clone(), b.clone());
+        let right = Interval::closed(b.clone(), c.clone());
+
+        let merged = left.merged(&right).unwrap();
+        if left.is_empty() {
+            assert_eq!(merged, right);
+        } else if right.is_empty() {
+            assert_eq!(merged, left);
+        } else {
+            assert_eq!(
+                left.merged(&right).unwrap(),
+                Interval::open_closed(a.clone(), c.clone())
+            );
+        }
     }
 }
