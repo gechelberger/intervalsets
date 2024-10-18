@@ -396,6 +396,10 @@ impl<T: Domain> IntervalSet<T> {
 
     /// Returns a new IntervalSet mapped from this Set's subsets.
     ///
+    /// The mapping function is given a mutable vector in which to
+    /// collect as many or as few new intervals as desired regardless
+    /// of the intermediate types in question.
+    ///
     /// # Example
     /// ```
     /// use intervalsets::prelude::*;
@@ -404,7 +408,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     .union(&Interval::closed(20, 40))
     ///     .union(&Interval::closed(50, 100));
     ///
-    /// let mapped = x.accum_map(|mut collect, subset| {
+    /// let mapped = x.collect_map(|mut collect, subset| {
     ///     if subset.count().finite() > 30 {
     ///         collect.push(subset.clone())
     ///     }
@@ -413,7 +417,7 @@ impl<T: Domain> IntervalSet<T> {
     /// assert_eq!(mapped, IntervalSet::from(Interval::closed(50, 100)));
     ///
     /// let mask = Interval::closed(5, 25);
-    /// let mapped = x.accum_map(|mut collect, subset| {
+    /// let mapped = x.collect_map(|mut collect, subset| {
     ///     collect.push(mask.intersection(subset));
     /// });
     /// assert_eq!(mapped, IntervalSet::from_iter([
@@ -425,7 +429,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     Interval::closed(20, 30),
     ///     Interval::closed(50, 60),
     /// ]);
-    /// let mapped = x.accum_map(|mut collect, subset| {
+    /// let mapped = x.collect_map(|mut collect, subset| {
     ///     for interval in subset.difference(&mask_set) {
     ///         collect.push(interval)
     ///     }
@@ -436,7 +440,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     Interval::closed(61, 100),
     /// ]));
     /// ```
-    pub fn accum_map<F>(&self, func: F) -> Self
+    pub fn collect_map<F>(&self, func: F) -> Self
     where
         F: Fn(&mut Vec<Interval<T>>, &Interval<T>),
     {
@@ -472,7 +476,7 @@ impl<T: Domain> IntervalSet<T> {
     where
         F: Fn(&Interval<T>) -> Self,
     {
-        self.accum_map(|accum, interval| {
+        self.collect_map(|accum, interval| {
             let mut result = func(interval);
             accum.append(&mut result.intervals)
         })
