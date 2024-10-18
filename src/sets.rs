@@ -389,6 +389,11 @@ impl<T: Domain> IntervalSet<T> {
         &self.intervals
     }
 
+    /// Returns a new iterator over the subsets in ascending order.
+    pub fn iter(&self) -> impl Iterator<Item = &Interval<T>> {
+        self.intervals.iter()
+    }
+
     /// Returns a new IntervalSet mapped from this Set's subsets.
     ///
     /// # Example
@@ -396,16 +401,16 @@ impl<T: Domain> IntervalSet<T> {
     /// use intervalsets::prelude::*;
     ///
     /// let x = Interval::closed(0, 10)
-    ///     .union(&Interval::closed(20, 30))
-    ///     .union(&Interval::closed(40, 100));
+    ///     .union(&Interval::closed(20, 40))
+    ///     .union(&Interval::closed(50, 100));
     ///
     /// let mapped = x.accum_map(|mut collect, subset| {
-    ///     if subset.count().finite() > 20 {
+    ///     if subset.count().finite() > 30 {
     ///         collect.push(subset.clone())
     ///     }
     /// });
     ///
-    /// assert_eq!(mapped, IntervalSet::from(Interval::closed(40, 100)));
+    /// assert_eq!(mapped, IntervalSet::from(Interval::closed(50, 100)));
     ///
     /// let mask = Interval::closed(5, 25);
     /// let mapped = x.accum_map(|mut collect, subset| {
@@ -414,6 +419,21 @@ impl<T: Domain> IntervalSet<T> {
     /// assert_eq!(mapped, IntervalSet::from_iter([
     ///     Interval::closed(5, 10),
     ///     Interval::closed(20, 25)
+    /// ]));
+    ///
+    /// let mask_set = IntervalSet::from_iter([
+    ///     Interval::closed(20, 30),
+    ///     Interval::closed(50, 60),
+    /// ]);
+    /// let mapped = x.accum_map(|mut collect, subset| {
+    ///     for interval in subset.difference(&mask_set) {
+    ///         collect.push(interval)
+    ///     }
+    /// });
+    /// assert_eq!(mapped, IntervalSet::from_iter([
+    ///     Interval::closed(0, 10),
+    ///     Interval::closed(31, 40),
+    ///     Interval::closed(61, 100),
     /// ]));
     /// ```
     pub fn accum_map<F>(&self, func: F) -> Self
@@ -429,6 +449,25 @@ impl<T: Domain> IntervalSet<T> {
         Self::new(accum)
     }
 
+    /// Returns a new IntervalSet mapped this Set`s subsets.
+    ///
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// let x = Interval::closed(0, 10)
+    ///     .union(&Interval::closed(20, 40))
+    ///     .union(&Interval::closed(50, 100));
+    ///
+    /// let mapped = x.map(|subset| {
+    ///     if subset.count().finite() > 30 {
+    ///         subset.clone().into()
+    ///     } else {
+    ///         Interval::empty().into()
+    ///     }
+    /// });
+    ///
+    /// assert_eq!(mapped, IntervalSet::from(Interval::closed(50, 100)));
+    /// ```
     pub fn map<F>(&self, func: F) -> Self
     where
         F: Fn(&Interval<T>) -> Self,
@@ -443,6 +482,15 @@ impl<T: Domain> IntervalSet<T> {
 impl<T: Domain> FromIterator<Interval<T>> for IntervalSet<T> {
     fn from_iter<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
         Self::new(iter.into_iter().collect())
+    }
+}
+
+impl<T: Domain> IntoIterator for IntervalSet<T> {
+    type Item = Interval<T>;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.intervals.into_iter()
     }
 }
 
