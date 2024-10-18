@@ -417,6 +417,47 @@ impl<T: Domain> IntervalSet<T> {
         Interval::new_finite(first.left().unwrap().clone(), last.right().unwrap().clone())
     }
 
+    /// Take the only [`Interval`] in this Set. `self` is consumed.
+    ///
+    /// This is useful for operations that *could* return
+    /// multiple intervals such as [`Union`](crate::ops::Union).
+    ///
+    /// # Panics
+    ///
+    /// This method panics if there is not **exactly** one subset.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// let interval = Interval::closed(0, 10);
+    /// let iset = IntervalSet::from(interval.clone());
+    /// let unwrapped = iset.expect_interval(); // iset moved
+    /// assert_eq!(interval, unwrapped);
+    ///
+    /// let a = Interval::closed(0, 10)
+    ///     .union(&Interval::closed(5, 15))
+    ///     .expect_interval();
+    /// assert_eq!(a, Interval::closed(0, 15));
+    /// ```
+    ///
+    /// ```should_panic
+    /// use intervalsets::prelude::*;
+    ///
+    /// let a = Interval::closed(0, 10)
+    ///     .union(&Interval::closed(100, 110))
+    ///     .expect_interval();
+    /// ```
+    pub fn expect_interval(mut self) -> Interval<T> {
+        if self.intervals.len() == 1 {
+            self.intervals.remove(0)
+        } else {
+            panic!("Set should have exactly one subset.");
+            //panic!("{} should have exactly one subset.", self);
+        }
+    }
+
+    /// Return an immutable reference to the subsets.
     pub fn intervals(&self) -> &Vec<Interval<T>> {
         &self.intervals
     }
