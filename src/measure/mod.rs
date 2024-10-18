@@ -24,8 +24,8 @@ pub use width::Width;
 /// The result of applying a Measure to an Interval/Set.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub enum Measurement<T> {
-    Infinite,
     Finite(T),
+    Infinite,
 }
 
 impl<T> Measurement<T> {
@@ -217,5 +217,15 @@ where
     /// ```
     fn sub(self, rhs: Self) -> Self::Output {
         self.binop_map(rhs, T::sub)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_measurement_ord() {
+        assert_eq!(Measurement::Finite(10) < Measurement::Infinite, true,);
     }
 }
