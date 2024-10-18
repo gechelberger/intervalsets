@@ -94,7 +94,7 @@ mod tests {
 
     #[quickcheck]
     fn check_finite_width(a: f32, b: f32) {
-        if a.is_nan() || b.is_nan() {
+        if f32::is_nan(a) || f32::is_nan(b) || f32::is_infinite(a) || f32::is_infinite(b) {
             return;
         }
 

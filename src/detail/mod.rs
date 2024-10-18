@@ -4,6 +4,7 @@ mod complement;
 mod contains;
 mod empty;
 mod from;
+mod hash;
 mod intersection;
 mod intersects;
 mod merged;
