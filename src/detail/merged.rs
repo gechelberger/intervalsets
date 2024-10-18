@@ -1,7 +1,9 @@
-use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
-use crate::ops::{Adjacent, Contains, Intersects, Merged};
+use crate::ops::{Contains, Intersects, Merged};
 use crate::{Bound, MaybeEmpty, Side};
+
+use super::adjacent::Adjacent;
+use super::{BoundCase, Finite, HalfBounded};
 
 impl<T: Domain> Merged<Self> for Finite<T> {
     type Output = Self;

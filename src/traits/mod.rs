@@ -1,4 +1,3 @@
-pub mod adjacent;
 pub mod bounding;
 pub mod complement;
 pub mod contains;

@@ -61,7 +61,7 @@ pub use traits::hull::ConvexHull;
 
 /// Operations on Set types.
 pub mod ops {
-    pub use crate::traits::adjacent::Adjacent;
+    //pub use crate::traits::adjacent::Adjacent;
     pub use crate::traits::contains::Contains;
     pub use crate::traits::intersects::Intersects;
 

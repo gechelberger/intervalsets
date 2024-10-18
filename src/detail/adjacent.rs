@@ -1,9 +1,26 @@
 use crate::numeric::Domain;
-use crate::ops::Adjacent;
 use crate::util::commutative_predicate_impl;
 use crate::{Bound, Side};
 
 use super::{BoundCase, Finite, HalfBounded};
+
+/// Defines whether two sets are contiguous.
+///
+/// Given two Sets A and B which are both
+/// Subsets of T:
+///
+/// > A and B are adjacent if their extrema
+/// > have no elements in T between them.
+///
+/// # Example
+///
+/// > [1, 5] is adjacent to [6, 10]
+///
+/// > [1.0, 5.0] is not adjacent to [6.0, 10.0]
+///
+pub trait Adjacent<Rhs = Self> {
+    fn is_adjacent_to(&self, rhs: &Rhs) -> bool;
+}
 
 fn are_continuous_adjacent<T: PartialEq>(right: &Bound<T>, left: &Bound<T>) -> bool {
     // not sure how to deal with the rounding issues of floats
@@ -88,5 +105,43 @@ impl<T: Domain> Adjacent<Self> for BoundCase<T> {
             Self::Half(rhs) => self.is_adjacent_to(rhs),
             Self::Unbounded => false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use crate::Interval;
+
+    #[test]
+    fn test_is_adjacent_to() {
+        assert_eq!(
+            Interval::closed(0, 10)
+                .0
+                .is_adjacent_to(&Interval::closed(10, 20).0),
+            false
+        );
+
+        assert_eq!(
+            Interval::closed(0, 10)
+                .0
+                .is_adjacent_to(&Interval::closed(11, 20).0),
+            true
+        );
+
+        assert_eq!(
+            Interval::closed(0.0, 10.0)
+                .0
+                .is_adjacent_to(&Interval::closed(10.0, 20.0).0),
+            true
+        );
+
+        assert_eq!(
+            Interval::open(0.0, 10.0)
+                .0
+                .is_adjacent_to(&Interval::open(10.0, 20.0).0),
+            false,
+        );
     }
 }
