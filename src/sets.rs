@@ -512,11 +512,25 @@ mod tests {
     //use core::hash::Hash;
 
     use super::*;
+    use crate::ops::{Complement, Difference};
 
     #[test]
     fn test_interval_normalization() {
         let interval = Interval::open(0, 10);
         assert_eq!(interval, Interval::closed(1, 9));
+    }
+
+    #[test]
+    fn test_interval_set_fold() {
+        let x = IntervalSet::from_iter([Interval::closed(0, 10), Interval::closed(100, 110)]);
+
+        assert_eq!(
+            x.iter().fold(
+                IntervalSet::from(Interval::unbounded()),
+                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(item) }
+            ),
+            x.complement()
+        );
     }
 
     fn assert_lt<T: Domain>(itv1: Interval<T>, itv2: Interval<T>) {
