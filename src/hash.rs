@@ -70,6 +70,19 @@ mod tests {
         //)
     }
 
+    #[test]
+    fn test_hash_stable_set() {
+        check_hash(&IntervalSet::<i8>::empty(), &Interval::<i8>::empty().into());
+    }
+
+    #[quickcheck]
+    fn check_hash_interval_set(a: i8, b: i8) {
+        let set = IntervalSet::from_iter([Interval::closed(-50, 50)]);
+
+        let other: IntervalSet<_> = Interval::closed(a, b).into();
+        check_hash(&set, &other);
+    }
+
     #[quickcheck]
     fn check_hash_stable_interval(a: i8, b: i8) {
         let interval = Interval::closed(-50, 50);
