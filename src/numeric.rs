@@ -56,9 +56,10 @@ adapt_num_traits_zero_impl!(u8, u16, u32, u64, u128, usize);
 adapt_num_traits_zero_impl!(i8, i16, i32, i64, i128, isize);
 adapt_num_traits_zero_impl!(f32, f64);
 
-
-
-
+/// Defines the data types whose elements make up a Set.
+/// 
+/// `try_adjacent` determines whether the elements are
+/// treated as continuous or discrete data.
 pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
     fn try_adjacent(&self, side: Side) -> Option<Self>;
 }

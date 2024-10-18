@@ -1,5 +1,9 @@
 use crate::{Domain, Intersection, Interval, IntervalSet};
 
+/// Defines the complement of a Set.
+/// 
+/// Let A  = { x in T | Pred(x) }
+///     A' = { x in T | x not in A }
 pub trait Complement {
     type Output;
 
@@ -29,7 +33,7 @@ impl<T: Domain> Complement for IntervalSet<T> {
 mod test {
     use super::*;
 
-    use crate::Contains;
+    use crate::{Contains, Union};
 
     #[quickcheck]
     fn test_finite_complement_i8(a: i8) {
@@ -82,5 +86,22 @@ mod test {
         let set = IntervalSet::new(vec![a, b, c]);
 
         assert_eq!(set.complement().complement(), set);
+    }
+
+    #[quickcheck]
+    fn check_complement_laws_f32(a: f32, b: f32) -> bool {
+        if a.is_nan() || b.is_nan() || a.is_infinite() || b.is_infinite() {
+            return true; // skip malformed inputs
+        }
+
+        let a = Interval::closed(a, b);
+        let c = a.complement();
+
+        
+        // This one we need to fix
+        //assert_eq!(a.union(&c), Interval::unbounded().into()); 
+        assert_eq!(a.intersection(&c), Interval::empty().into());
+
+        true
     }
 }

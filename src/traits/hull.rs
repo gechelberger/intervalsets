@@ -1,8 +1,8 @@
 use crate::numeric::Domain;
 use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
 
-/// Defines the creation of the minimal contiguous Interval/Set
-/// which covers all of the provided items.
+/// Defines the minimal contiguous Interval
+/// which fully contains every provided item.
 ///
 /// # Example
 /// ```

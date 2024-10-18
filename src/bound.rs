@@ -17,6 +17,10 @@ impl Side {
     }
 }
 
+/// Defines the `Bound` or limit that constrains a Set.
+/// 
+/// An Open(limit) does not include limit as an element of the set,
+/// while a Closed(limit) does.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Bound<T> {
     Open(T),

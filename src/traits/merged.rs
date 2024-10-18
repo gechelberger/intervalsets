@@ -1,6 +1,10 @@
 use crate::{Domain, Interval};
 
-/// Union for two intervals that are contiguous.
+/// Defines the union of two intervals if contiguous.
+/// 
+/// Disjoint sets return `None` unless one is the `Empty` Set,
+/// in which case the other input Set is the result (which could
+/// be `Empty`).
 pub trait Merged<Rhs = Self> {
     type Output;
 

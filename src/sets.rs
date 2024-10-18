@@ -2,8 +2,15 @@ use crate::bound::Bound;
 use crate::detail::{BoundCase, Finite, HalfBounded};
 use crate::{Bounding, Domain, Intersects, MaybeEmpty, Merged, Side};
 
-/// TODODOODODODODODO
+/// A Set representation of an interval on N, Z, or R.
 ///
+/// Integer types (N, R) are normalized to closed form
+/// on creation.
+/// 
+/// All bounding conditions are supported.
+/// 
+/// Most operations are supported through 
+/// [trait implementations](#trait-implementations).
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
 
@@ -277,7 +284,7 @@ impl<T: Domain> Interval<T> {
 ///       an invariant of Interval<T> already.
 /// * No stored interval may be the empty set.
 ///     * Emptiness is represented by storing no intervals.
-///     * Normalized Interval<T> should have a total ordering w/o empty sets.
+///     * Normalized `Interval<T>` should have a total ordering w/o empty sets.
 /// * All intervals are stored in ascending order.
 /// * All stored intervals are disjoint subsets of T.
 #[derive(Debug, Clone, PartialEq)] // PartialOrd
