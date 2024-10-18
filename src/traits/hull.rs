@@ -6,11 +6,32 @@ use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
 ///
 /// # Example
 /// ```
-/// use intervalsets::Interval;
-/// use intervalsets::ConvexHull;
+/// use intervalsets::{ConvexHull, Interval, IntervalSet, Union};
 ///
-/// let interval = Interval::convex_hull([5, 3, -120, 44, 100, -100]);
-/// assert_eq!(interval, Interval::closed(-120, 100));
+/// // from points on the number line
+/// let hull = Interval::convex_hull([5, 3, -120, 44, 100, -100]);
+/// assert_eq!(hull, Interval::closed(-120, 100));
+///
+///
+/// // from intervals
+/// let intervals = vec![
+///     Interval::open(30.0, 50.0),
+///     Interval::closed(20.0, 40.0),
+///     Interval::closed(1000.0, 2000.0),
+///     Interval::unbound_open(0.0),
+/// ];
+/// let hull = Interval::convex_hull(intervals);
+/// assert_eq!(hull, Interval::unbound_closed(2000.0));
+///
+///
+/// // from sets
+/// let sets: Vec<IntervalSet<i32>> = vec![
+///     Interval::closed(0, 10).union(&Interval::closed(1000, 1010)),
+///     Interval::closed(-1000, 10).into(),
+///     Interval::closed(-500, 500).union(&Interval::closed_unbound(800))
+/// ];
+/// let hull: Interval<i32> = Interval::convex_hull(sets);
+/// assert_eq!(hull, Interval::closed_unbound(-1000))
 /// ```
 pub trait ConvexHull<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self;
@@ -172,5 +193,13 @@ mod tests {
             Interval::convex_hull(sets),
             Interval::closed_open(-1000.0, 210.0)
         );
+
+        let sets: Vec<IntervalSet<i32>> = vec![
+            Interval::closed(0, 10).union(&Interval::closed(1000, 1010)),
+            Interval::closed(-1000, 10).into(),
+            Interval::closed(-500, 500).union(&Interval::closed_unbound(800)),
+        ];
+        let hull: Interval<i32> = Interval::<i32>::convex_hull(sets);
+        assert_eq!(hull, Interval::closed_unbound(-1000))
     }
 }

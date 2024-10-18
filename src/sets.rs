@@ -6,10 +6,10 @@ use crate::{Bounding, Domain, Intersects, MaybeEmpty, Merged, Side};
 ///
 /// Integer types (N, R) are normalized to closed form
 /// on creation.
-/// 
+///
 /// All bounding conditions are supported.
-/// 
-/// Most operations are supported through 
+///
+/// Most operations are supported through
 /// [trait implementations](#trait-implementations).
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
@@ -274,7 +274,6 @@ impl<T: Domain> Interval<T> {
     }
 }
 
-
 /// A Set in Z or R consisting of disjoint contiguous intervals.
 ///
 /// # Invariants
@@ -392,6 +391,12 @@ impl<T: Domain> IntervalSet<T> {
             let mut result = func(interval);
             accum.append(&mut result.intervals)
         })
+    }
+}
+
+impl<T: Domain> FromIterator<Interval<T>> for IntervalSet<T> {
+    fn from_iter<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
+        Self::new(iter.into_iter().collect())
     }
 }
 

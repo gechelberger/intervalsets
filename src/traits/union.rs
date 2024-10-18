@@ -2,7 +2,7 @@ use crate::util::commutative_op_impl;
 use crate::{Domain, Interval, IntervalSet, MaybeEmpty};
 
 /// Defines a Set with every element of both input Sets.
-/// 
+///
 /// S_out = { x | x in S_left or x in S_right }
 pub trait Union<Rhs = Self> {
     type Output;

@@ -1,9 +1,9 @@
 use crate::{Bound, Domain, Interval, IntervalSet, Side};
 
 /// The boundaries of a Set on the number line.
-/// 
+///
 /// The left and right boundary represented here
-/// are are extrema of a Set, and would properly 
+/// are are extrema of a Set, and would properly
 /// define the convex hull of a Set.
 pub trait Bounding<T> {
     fn bound(&self, side: Side) -> Option<&Bound<T>>;

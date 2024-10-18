@@ -1,7 +1,7 @@
 use crate::bound::Side;
 
 /// Defines the zero value for a type.
-/// 
+///
 /// This is intended to work identically to [`num_traits::Zero`].
 /// The trait is duplicated in order to work with external
 /// types.
@@ -10,32 +10,32 @@ pub trait LibZero {
 }
 
 /// Create [`LibZero`] impl(s) that delegate to [`num_traits::Zero`]
-/// 
+///
 /// Example
 /// ```
 /// use intervalsets::LibZero;
 /// use intervalsets::adapt_num_traits_zero_impl;
-/// 
+///
 /// #[derive(Debug, Clone, PartialEq, Eq)]
 /// struct MyInt(u8);
-/// 
+///
 /// impl core::ops::Add for MyInt {
 ///     type Output = Self;
 ///     fn add(self, rhs: Self) -> Self {
 ///         MyInt(self.0 + rhs.0)
 ///     }
 /// }
-/// 
+///
 /// impl num_traits::Zero for MyInt {
 ///     fn zero() -> Self {
 ///         MyInt(0)
 ///     }
-/// 
+///
 ///     fn is_zero(&self) -> bool {
 ///         self.0 == 0
 ///     }
 /// }
-/// 
+///
 /// adapt_num_traits_zero_impl!(MyInt);
 /// assert_eq!(MyInt::new_zero(), MyInt(0));
 /// ```
@@ -57,7 +57,7 @@ adapt_num_traits_zero_impl!(i8, i16, i32, i64, i128, isize);
 adapt_num_traits_zero_impl!(f32, f64);
 
 /// Defines the data types whose elements make up a Set.
-/// 
+///
 /// `try_adjacent` determines whether the elements are
 /// treated as continuous or discrete data.
 pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
@@ -137,7 +137,5 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_zeros() {
-        
-    }
+    fn test_zeros() {}
 }

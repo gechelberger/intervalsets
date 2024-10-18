@@ -1,7 +1,7 @@
 use crate::{Domain, Intersection, Interval, IntervalSet};
 
 /// Defines the complement of a Set.
-/// 
+///
 /// Let A  = { x in T | Pred(x) }
 ///     A' = { x in T | x not in A }
 pub trait Complement {
@@ -97,9 +97,8 @@ mod test {
         let a = Interval::closed(a, b);
         let c = a.complement();
 
-        
         // This one we need to fix
-        //assert_eq!(a.union(&c), Interval::unbounded().into()); 
+        //assert_eq!(a.union(&c), Interval::unbounded().into());
         assert_eq!(a.intersection(&c), Interval::empty().into());
 
         true

@@ -1,4 +1,5 @@
-use crate::{numeric::LibZero, Domain, Interval, IntervalSet};
+use crate::numeric::LibZero;
+use crate::{Domain, Interval, IntervalSet};
 
 use super::Measurement;
 
@@ -31,16 +32,17 @@ use super::Measurement;
 ///     .union(&Interval::open(100.0, 110.0));
 /// assert_eq!(set.width().finite(), 25.0);
 /// ```
-/// 
-/// ## Normalization problem
+///
+/// # Normalization problem
+///
 /// ```
 /// use intervalsets::{Interval, Difference};
 /// use intervalsets::measure::Width;
-/// 
+///
 /// let a = Interval::closed(0.0, 10.0);
 /// let a = a.difference(&Interval::closed(5.0, 15.0));
 /// assert_eq!(a.width().finite(), 5.0);
-/// 
+///
 /// let b = Interval::closed(0, 10);
 /// let b = b.difference(&Interval::closed(5, 15));
 /// assert_eq!(b.width().finite(), 4);
@@ -74,7 +76,9 @@ where
         self.intervals()
             .iter()
             .map(|subset| subset.width())
-            .fold(Measurement::Finite(Out::new_zero()), |accum, item| accum + item)
+            .fold(Measurement::Finite(Out::new_zero()), |accum, item| {
+                accum + item
+            })
     }
 }
 

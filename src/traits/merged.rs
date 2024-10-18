@@ -1,7 +1,7 @@
 use crate::{Domain, Interval};
 
 /// Defines the union of two intervals if contiguous.
-/// 
+///
 /// Disjoint sets return `None` unless one is the `Empty` Set,
 /// in which case the other input Set is the result (which could
 /// be `Empty`).

@@ -1,5 +1,5 @@
-use chrono::{DateTime, TimeDelta, TimeZone};
 use crate::continuous_domain_impl;
+use chrono::{DateTime, TimeDelta, TimeZone};
 
 impl<T: TimeZone> crate::Domain for DateTime<T> {
     #[inline]
@@ -21,8 +21,8 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
-    use crate::Interval;
     use crate::measure::Width;
+    use crate::Interval;
 
     #[test]
     fn test_chrono_datetime() {
@@ -38,7 +38,7 @@ mod tests {
     fn test_chrono_timedelta() {
         let a = TimeDelta::new(100, 0).unwrap();
         let b = a + a;
-        
+
         let interval = Interval::open(a, b);
         assert_eq!(interval.width().finite(), a);
     }

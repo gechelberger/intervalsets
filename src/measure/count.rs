@@ -1,13 +1,32 @@
-use core::ops::{Add, Sub};
 use crate::numeric::LibZero;
+use core::ops::Add;
 
-use crate::{Domain, Interval, IntervalSet, Side};
+use crate::{Domain, Interval, IntervalSet};
 
 use super::Measurement;
 
-/// Defines the counting measure of a [`Countable`] Interval/Set.
+/// Defines the counting measure of a [`Countable`] Set.
 ///
+/// # Example
+/// ```
+/// use intervalsets::{Interval, IntervalSet, Union};
+/// use intervalsets::measure::Count;
 ///
+/// let x = Interval::closed(1, 10);
+/// assert_eq!(x.count().finite(), 10);
+///
+/// let x: IntervalSet<_> = x.union(&Interval::closed(101, 200));
+/// assert_eq!(x.count().finite(), 110);
+/// ```
+///
+/// # Restricted to types implementing Countable
+/// ```compile_fail
+/// use intervalsets::{Interval};
+/// use intervalsets::measure::Count;
+///
+/// // f32 does not implement [`Countable`]
+/// let x = Interval::closed(0.0, 10.0).count();
+/// ```
 pub trait Count {
     type Output;
 
@@ -74,8 +93,6 @@ pub trait Countable: Domain {
     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output>;
 }
 
-///
-///
 #[macro_export]
 macro_rules! default_countable_impl {
     ($t_in_out:ty) => {
@@ -135,7 +152,9 @@ where
         self.intervals()
             .iter()
             .map(|subset| subset.count())
-            .fold(Measurement::Finite(Out::new_zero()), |accum, item| accum + item)
+            .fold(Measurement::Finite(Out::new_zero()), |accum, item| {
+                accum + item
+            })
     }
 }
 

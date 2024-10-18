@@ -1,7 +1,4 @@
-use crate::continuous_domain_impl;
-use crate::adapt_num_traits_zero_impl;
-use crate::Side;
-use crate::numeric::Domain;
+use crate::{adapt_num_traits_zero_impl, continuous_domain_impl};
 use rust_decimal::Decimal;
 
 continuous_domain_impl!(Decimal);
@@ -11,9 +8,8 @@ adapt_num_traits_zero_impl!(Decimal);
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Contains;
-    use crate::Interval;
     use crate::measure::Width;
+    use crate::{Contains, Interval};
 
     #[test]
     fn test_decimal_interval() {

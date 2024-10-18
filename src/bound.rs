@@ -2,6 +2,7 @@ use std::ops::{Add, Sub};
 
 use crate::numeric::Domain;
 
+/// Side( Left | Right ) of the number line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Side {
     Left,
@@ -18,7 +19,7 @@ impl Side {
 }
 
 /// Defines the `Bound` or limit that constrains a Set.
-/// 
+///
 /// An Open(limit) does not include limit as an element of the set,
 /// while a Closed(limit) does.
 #[derive(Debug, Clone, PartialEq, Eq)]

@@ -1,6 +1,6 @@
 use crate::{Domain, Interval, IntervalSet};
 
-///
+/// Defines an item that may be empty and a way to query it.
 ///
 /// This trait is intended to fix degeneracy of bounds so we can
 /// differentiate between a lack of a bound because the interval
