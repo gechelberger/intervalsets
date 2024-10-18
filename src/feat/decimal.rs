@@ -9,7 +9,8 @@ adapt_num_traits_zero_impl!(Decimal);
 mod test {
     use super::*;
     use crate::measure::Width;
-    use crate::{Contains, Interval};
+    use crate::ops::Contains;
+    use crate::Interval;
 
     #[test]
     fn test_decimal_interval() {

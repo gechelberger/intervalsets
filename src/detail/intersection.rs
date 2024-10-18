@@ -1,6 +1,7 @@
 use crate::numeric::Domain;
+use crate::ops::{Contains, Intersection};
 use crate::util::commutative_op_impl;
-use crate::{Bound, Contains, Intersection, Side};
+use crate::{Bound, Side};
 
 use super::{BoundCase, Finite, HalfBounded};
 

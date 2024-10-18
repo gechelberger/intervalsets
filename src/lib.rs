@@ -40,15 +40,20 @@ pub use bound::{Bound, Side};
 
 mod traits;
 pub use traits::bounding::Bounding;
-pub use traits::complement::Complement;
-pub use traits::contains::Contains;
-pub use traits::difference::{Difference, SymmetricDifference};
 pub use traits::empty::MaybeEmpty;
 pub use traits::hull::ConvexHull;
-pub use traits::intersection::Intersection;
-pub use traits::intersects::Intersects;
-pub use traits::merged::Merged;
-pub use traits::union::Union;
+
+/// Operations on Set types.
+pub mod ops {
+    pub use crate::traits::contains::Contains;
+    pub use crate::traits::intersects::Intersects;
+
+    pub use crate::traits::complement::Complement;
+    pub use crate::traits::difference::{Difference, SymmetricDifference};
+    pub use crate::traits::intersection::Intersection;
+    pub use crate::traits::merged::Merged;
+    pub use crate::traits::union::Union;
+}
 
 mod detail;
 
@@ -64,6 +69,6 @@ mod feat;
 mod util;
 
 pub mod prelude {
+    pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
-    pub use crate::traits::union::Union;
 }

@@ -1,5 +1,5 @@
 use crate::numeric::Domain;
-use crate::Contains;
+use crate::ops::Contains;
 
 use super::*;
 

@@ -1,5 +1,6 @@
 use crate::numeric::Domain;
-use crate::{Intersection, Interval, IntervalSet};
+use crate::ops::Intersection;
+use crate::{Interval, IntervalSet};
 
 /// Defines the complement of a Set.
 ///
@@ -34,7 +35,7 @@ impl<T: Domain> Complement for IntervalSet<T> {
 mod test {
     use super::*;
 
-    use crate::{Contains, Union};
+    use crate::ops::{Contains, Union};
 
     #[quickcheck]
     fn test_finite_complement_i8(a: i8) {

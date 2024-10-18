@@ -15,7 +15,8 @@ use super::Measurement;
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet, Union};
+/// use intervalsets::{Interval, IntervalSet};
+/// use intervalsets::ops::Union;
 /// use intervalsets::measure::Width;
 ///
 /// let interval = Interval::closed(10.0, 100.0);
@@ -36,7 +37,8 @@ use super::Measurement;
 /// # Normalization problem
 ///
 /// ```
-/// use intervalsets::{Interval, Difference};
+/// use intervalsets::Interval;
+/// use intervalsets::ops::Difference;
 /// use intervalsets::measure::Width;
 ///
 /// let a = Interval::closed(0.0, 10.0);
@@ -84,7 +86,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::Intersects;
+    use crate::ops::Intersects;
 
     use super::*;
 

@@ -79,7 +79,8 @@ pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
 ///
 /// ```
 /// use intervalsets::continuous_domain_impl;
-/// use intervalsets::{Interval, Contains};
+/// use intervalsets::Interval;
+/// use intervalsets::ops::Contains;
 ///
 /// #[derive(Clone, PartialEq, PartialOrd)]
 /// struct MyFloat(f64);

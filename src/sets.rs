@@ -1,7 +1,8 @@
 use crate::bound::Bound;
 use crate::detail::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
-use crate::{Bounding, Intersects, MaybeEmpty, Merged, Side};
+use crate::ops::{Intersects, Merged};
+use crate::{Bounding, MaybeEmpty, Side};
 
 /// A Set representation of an interval on N, Z, or R.
 ///
@@ -23,7 +24,8 @@ impl<T: Domain> Interval<T> {
     /// # Example
     ///
     /// ```
-    /// use intervalsets::{Interval, Contains};
+    /// use intervalsets::Interval;
+    /// use intervalsets::ops::Contains;
     ///
     /// let x = Interval::<i32>::empty();
     /// assert_eq!(x.contains(&10), false);
@@ -39,7 +41,8 @@ impl<T: Domain> Interval<T> {
     /// # Example
     ///
     /// ```
-    /// use intervalsets::{Interval, Contains};
+    /// use intervalsets::Interval;
+    /// use intervalsets::ops::Contains;
     ///
     /// let x = Interval::closed(10, 20);
     /// assert_eq!(x.contains(&10), true);
@@ -60,7 +63,8 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Contains};
+    /// use intervalsets::Interval;
+    /// use intervalsets::ops::Contains;
     ///
     /// let x = Interval::open(0.0, 10.0);
     /// assert_eq!(x.contains(&0.0), false);
@@ -127,7 +131,8 @@ impl<T: Domain> Interval<T> {
     /// # Example
     ///
     /// ```
-    /// use intervalsets::{Interval, Contains};
+    /// use intervalsets::Interval;
+    /// use intervalsets::ops::Contains;
     ///
     /// let x = Interval::<f32>::unbounded();
     /// assert_eq!(x.contains(&10.0), true);
@@ -163,7 +168,8 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Bound, Complement, Bounding, Side};
+    /// use intervalsets::{Interval, Bound, Bounding, Side};
+    /// use intervalsets::ops::Complement;
     ///
     /// let x = Interval::unbound_open(0);
     /// let y = Interval::new_half_bounded(Side::Left, x.right().unwrap().flip());
@@ -177,7 +183,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval};
+    /// use intervalsets::Interval;
     ///
     /// assert_eq!(Interval::<i32>::empty().is_finite(), true);
     /// assert_eq!(Interval::closed(0, 10).is_finite(), true);
@@ -193,7 +199,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval};
+    /// use intervalsets::Interval;
     ///
     /// assert_eq!(Interval::<i32>::empty().is_infinite(), false);
     /// assert_eq!(Interval::<i32>::closed(0, 10).is_infinite(), false);
@@ -262,7 +268,8 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Merged};
+    /// use intervalsets::Interval;
+    /// use intervalsets::ops::Merged;
     ///
     /// let x = Interval::unbound_closed(10)
     ///             .merged(&Interval::closed_unbound(-10))

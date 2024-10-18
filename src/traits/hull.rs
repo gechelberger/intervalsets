@@ -6,7 +6,8 @@ use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
 ///
 /// # Example
 /// ```
-/// use intervalsets::{ConvexHull, Interval, IntervalSet, Union};
+/// use intervalsets::{ConvexHull, Interval, IntervalSet};
+/// use intervalsets::ops::Union;
 ///
 /// // from points on the number line
 /// let hull = Interval::convex_hull([5, 3, -120, 44, 100, -100]);
@@ -137,7 +138,7 @@ impl<T: Domain> ConvexHull<IntervalSet<T>> for Interval<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::Union;
+    use crate::ops::Union;
 
     use super::*;
 

@@ -9,7 +9,8 @@ use super::Measurement;
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet, Union};
+/// use intervalsets::{Interval, IntervalSet};
+/// use intervalsets::ops::Union;
 /// use intervalsets::measure::Count;
 ///
 /// let x = Interval::closed(1, 10);
@@ -21,7 +22,7 @@ use super::Measurement;
 ///
 /// # Restricted to types implementing Countable
 /// ```compile_fail
-/// use intervalsets::{Interval};
+/// use intervalsets::Interval;
 /// use intervalsets::measure::Count;
 ///
 /// // f32 does not implement [`Countable`]

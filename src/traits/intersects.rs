@@ -13,7 +13,7 @@ use crate::{Interval, IntervalSet};
 ///
 /// ```
 /// use intervalsets::Interval;
-/// use intervalsets::Intersects;
+/// use intervalsets::ops::Intersects;
 ///
 /// let interval = Interval::closed(10, 20);
 /// if interval.intersects(&Interval::closed_unbound(15)) {

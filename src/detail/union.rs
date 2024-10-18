@@ -1,5 +1,6 @@
 use crate::numeric::Domain;
-use crate::{IntervalSet, Merged, Union};
+use crate::ops::{Merged, Union};
+use crate::IntervalSet;
 
 use crate::util::commutative_op_impl;
 

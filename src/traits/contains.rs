@@ -14,7 +14,7 @@ use crate::{Interval, IntervalSet};
 /// # Example
 /// ```
 /// use intervalsets::Interval;
-/// use intervalsets::Contains;
+/// use intervalsets::ops::Contains;
 ///
 /// let x = Interval::open(0, 10);
 /// assert_eq!(x.contains(&5), true);

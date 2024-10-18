@@ -1,4 +1,5 @@
-use crate::{Complement, Intersection, Interval, IntervalSet, Union};
+use crate::ops::{Complement, Intersection, Union};
+use crate::{Interval, IntervalSet};
 
 /// Defines the difference of sets A - B.
 ///
@@ -9,7 +10,8 @@ use crate::{Complement, Intersection, Interval, IntervalSet, Union};
 /// # Example
 ///
 /// ```
-/// use intervalsets::{Interval, Difference, Union};
+/// use intervalsets::Interval;
+/// use intervalsets::ops::{Difference, Union};
 ///
 /// let a = Interval::closed(0.0, 100.0);
 /// let b = Interval::closed(50.0, 150.0);
@@ -30,7 +32,7 @@ pub trait Difference<Rhs = Self> {
 
 macro_rules! difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain> $crate::Difference<$t_rhs> for $t_lhs {
+        impl<T: $crate::numeric::Domain> $crate::ops::Difference<$t_rhs> for $t_lhs {
             type Output = $crate::IntervalSet<T>;
 
             fn difference(&self, rhs: &$t_rhs) -> Self::Output {
@@ -54,8 +56,7 @@ difference_impl!(IntervalSet<T>, IntervalSet<T>);
 /// Example:
 /// ```
 /// use intervalsets::Interval;
-/// use intervalsets::SymmetricDifference;
-/// use intervalsets::Union;
+/// use intervalsets::ops::{SymmetricDifference, Union};
 ///
 /// let a = Interval::closed(0.0, 10.0);
 /// let b = Interval::closed(5.0, 15.0);
@@ -73,7 +74,7 @@ pub trait SymmetricDifference<Rhs = Self> {
 
 macro_rules! sym_difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain> $crate::SymmetricDifference<$t_rhs> for $t_lhs {
+        impl<T: $crate::numeric::Domain> $crate::ops::SymmetricDifference<$t_rhs> for $t_lhs {
             type Output = $crate::IntervalSet<T>;
 
             fn sym_difference(&self, rhs: &$t_rhs) -> Self::Output {
