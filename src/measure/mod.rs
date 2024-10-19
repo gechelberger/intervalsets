@@ -108,6 +108,16 @@ impl<T> Measurement<T> {
 
     /// Returns Infinite if the measurement is Infinite, otherwise
     /// calls `func` with the Finite value and returns the result.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use intervalsets::measure::Measurement;
+    ///
+    /// let m1 = Measurement::Finite(10);
+    /// let m2 = m1.flat_map(|x| Measurement::Finite(x as f32));
+    /// assert_eq!(m2.finite(), 10.0);
+    /// ```
     pub fn flat_map<F, U>(self, func: F) -> Measurement<U>
     where
         F: FnOnce(T) -> Measurement<U>,
