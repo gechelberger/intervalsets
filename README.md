@@ -60,7 +60,8 @@ git commit -m "{type}{!}?: {[{issue|resolves}? #xx]? {description}"
 git commit -m "feat: [resolves #55] added new function struct::foo"
 
 # major semver change, references github issue #67
-git commit -m "feat!: [issue #67] changed public api for Bar"
+# single quotes required because of the exclamation point.
+git commit -m 'feat!: [issue #67] changed public api for Bar'
 
 # patch semver change, closes github issue #33
 git commit -m "fix: [resolves #33] fence post error in Baz"
