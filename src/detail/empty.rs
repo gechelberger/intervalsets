@@ -23,7 +23,7 @@ mod tests {
 
     #[test]
     fn test_private_maybe_empty() {
-        let x = Finite::new(Bound::Closed(0), Bound::Closed(10));
+        let x = Finite::new(Bound::closed(0), Bound::closed(10));
         assert_eq!(x.is_empty(), false);
 
         let x = BoundCase::Finite(x);
@@ -35,7 +35,7 @@ mod tests {
         let x = BoundCase::Finite(x);
         assert_eq!(x.is_empty(), true);
 
-        let x = HalfBounded::new(Side::Left, Bound::Closed(0));
+        let x = HalfBounded::new(Side::Left, Bound::closed(0));
         let x = BoundCase::Half(x);
         assert_eq!(x.is_empty(), false);
     }

@@ -2,7 +2,7 @@ use std::ops::{Add, Sub};
 
 use crate::numeric::Domain;
 
-/// Side( Left | Right ) of the number line.
+/// Side( Left | Right ) on the number line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Side {
     Left,
@@ -18,15 +18,27 @@ impl Side {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub enum BoundType {
+    Closed,
+    Open,
+}
+
+impl BoundType {
+    pub fn flip(self) -> Self {
+        match self {
+            Self::Closed => Self::Open,
+            Self::Open => Self::Closed,
+        }
+    }
+}
+
 /// Defines the `Bound` or limit that constrains a Set.
 ///
 /// An Open(limit) does not include limit as an element of the set,
 /// while a Closed(limit) does.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Bound<T> {
-    Open(T),
-    Closed(T),
-}
+pub struct Bound<T>(BoundType, T);
 
 impl<T: Clone + PartialOrd> Bound<T> {
     pub fn min_left(a: &Self, b: &Self) -> Self {
@@ -62,54 +74,54 @@ impl<T: Clone + PartialOrd> Bound<T> {
     }
 
     pub fn flip(&self) -> Self {
-        match self {
-            Self::Open(limit) => Self::Closed(limit.clone()),
-            Self::Closed(limit) => Self::Open(limit.clone()),
-        }
+        Self(self.0.flip(), self.1.clone())
     }
 }
 
 impl<T> Bound<T> {
-    pub fn new_limit(&self, limit: T) -> Self {
-        match self {
-            Self::Closed(_) => Self::Closed(limit),
-            Self::Open(_) => Self::Open(limit),
-        }
+    pub fn closed(limit: T) -> Self {
+        Self(BoundType::Closed, limit)
+    }
+
+    pub fn open(limit: T) -> Self {
+        Self(BoundType::Open, limit)
+    }
+
+    pub fn map<U>(&self, func: impl FnOnce(&T) -> U) -> Bound<U> {
+        Bound::<U>(self.0, func(self.value()))
     }
 
     pub fn is_open(&self) -> bool {
-        matches!(self, Self::Open(_))
+        matches!(self.0, BoundType::Open)
     }
 
     pub fn is_closed(&self) -> bool {
-        matches!(self, Self::Closed(_))
+        matches!(self.0, BoundType::Closed)
+    }
+
+    pub fn bound_type(&self) -> BoundType {
+        self.0
     }
 
     pub fn value(&self) -> &T {
-        match self {
-            Self::Open(limit) => limit,
-            Self::Closed(limit) => limit,
-        }
+        &self.1
     }
 
     pub fn binary_map(self, func: impl Fn(T, T) -> T, rhs: T) -> Self {
-        match self {
-            Self::Closed(limit) => Self::Closed(func(limit, rhs)),
-            Self::Open(limit) => Self::Open(func(limit, rhs)),
-        }
+        Self(self.0, func(self.1, rhs))
     }
 }
 
 impl<T: PartialOrd> Bound<T> {
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
-            Side::Left => match self {
-                Self::Open(limit) => limit < value,
-                Self::Closed(limit) => limit <= value,
+            Side::Left => match self.0 {
+                BoundType::Open => self.value() < value,
+                BoundType::Closed => self.value() <= value,
             },
-            Side::Right => match self {
-                Self::Open(limit) => value < limit,
-                Self::Closed(limit) => value <= limit,
+            Side::Right => match self.0 {
+                BoundType::Open => value < self.value(),
+                BoundType::Closed => value <= self.value(),
             },
         }
     }
@@ -117,12 +129,12 @@ impl<T: PartialOrd> Bound<T> {
 
 impl<T: Domain> Bound<T> {
     pub fn normalized(self, side: Side) -> Self {
-        match self {
-            Self::Open(ref limit) => match limit.try_adjacent(side.flip()) {
+        match self.0 {
+            BoundType::Open => match self.value().try_adjacent(side.flip()) {
                 None => self,
-                Some(new_limit) => Self::Closed(new_limit),
+                Some(new_limit) => Self::closed(new_limit),
             },
-            Self::Closed(_) => self,
+            BoundType::Closed => self,
         }
     }
 }
