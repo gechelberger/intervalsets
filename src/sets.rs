@@ -50,7 +50,7 @@ impl<T: Domain> Interval<T> {
     /// assert_eq!(x.contains(&0), false);
     /// ```
     pub fn closed(left: T, right: T) -> Self {
-        Finite::new(Bound::Closed(left), Bound::Closed(right)).into()
+        Finite::new(Bound::closed(left), Bound::closed(right)).into()
     }
 
     /// Returns a new open finite [`Interval`] or Empty
@@ -75,49 +75,49 @@ impl<T: Domain> Interval<T> {
     /// assert_eq!(y, Interval::closed(1, 9));
     /// ```
     pub fn open(left: T, right: T) -> Self {
-        Finite::new(Bound::Open(left), Bound::Open(right)).into()
+        Finite::new(Bound::open(left), Bound::open(right)).into()
     }
 
     /// Returns a new left open finite [`Interval`] or Empty
     ///
     ///  (a, b] = { x in T | a < x <= b }
     pub fn open_closed(left: T, right: T) -> Self {
-        Finite::new(Bound::Open(left), Bound::Closed(right)).into()
+        Finite::new(Bound::open(left), Bound::closed(right)).into()
     }
 
     /// Returns a new right open finite [`Interval`] or Empty
     ///
     ///  [a, b) = { x in T | a <= x < b }
     pub fn closed_open(left: T, right: T) -> Self {
-        Finite::new(Bound::Closed(left), Bound::Open(right)).into()
+        Finite::new(Bound::closed(left), Bound::open(right)).into()
     }
 
     /// Returns a new open, right-unbound [`Interval`]
     ///
     ///  (a, ->) = { x in T | a < x }
     pub fn open_unbound(left: T) -> Self {
-        HalfBounded::new(Side::Left, Bound::Open(left)).into()
+        HalfBounded::new(Side::Left, Bound::open(left)).into()
     }
 
     /// Returns a new closed, right-unbound [`Interval`]
     ///
     ///  [a, ->) = {x in T | a <= x }
     pub fn closed_unbound(left: T) -> Self {
-        HalfBounded::new(Side::Left, Bound::Closed(left)).into()
+        HalfBounded::new(Side::Left, Bound::closed(left)).into()
     }
 
     /// Returns a new open, left-unbound [`Interval`]
     ///
     /// (a, ->) = { x in T | a < x }
     pub fn unbound_open(right: T) -> Self {
-        HalfBounded::new(Side::Right, Bound::Open(right)).into()
+        HalfBounded::new(Side::Right, Bound::open(right)).into()
     }
 
     /// Returns a new closed, left-unbound [`Interval`]
     ///
     ///  [a, ->) = { x in T | a <= x }
     pub fn unbound_closed(right: T) -> Self {
-        HalfBounded::new(Side::Right, Bound::Closed(right)).into()
+        HalfBounded::new(Side::Right, Bound::closed(right)).into()
     }
 
     /// Returns a new unbounded [`Interval`].
@@ -153,7 +153,7 @@ impl<T: Domain> Interval<T> {
     /// use intervalsets::{Bound, Interval, Bounding};
     ///
     /// let x = Interval::open(0, 100);
-    /// let y = Interval::new_finite(x.right().unwrap().flip(), Bound::Closed(200));
+    /// let y = Interval::new_finite(x.right().unwrap().flip(), Bound::closed(200));
     /// assert_eq!(y, Interval::closed(100, 200));
     ///
     /// let x = Interval::open(10, 10);
@@ -293,7 +293,7 @@ impl<T: Domain> Interval<T> {
     ///     T: Domain + core::ops::Add<T, Output=T>
     /// {
     ///     let shift_bound = |bound: &Bound<T>| {
-    ///         bound.new_limit(bound.value().clone() + amount.clone())
+    ///         bound.map(|v| v.clone() + amount.clone())
     ///     };
     ///
     ///     interval.flat_map(|left, right| {
@@ -407,8 +407,7 @@ impl<T: Domain> Interval<T> {
     /// fn shift(interval: Interval<i32>, amount: i32) -> Interval<i32> {
     ///     interval.flat_map_finite(|left, right| {
     ///         Interval::new_finite(
-    ///             left.new_limit(left.value() + amount),
-    ///             right.new_limit(right.value() + amount)
+    ///             left.map(|v| v + amount), right.map(|v| v + amount)
     ///         )
     ///     })
     /// }

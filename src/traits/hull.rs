@@ -45,11 +45,11 @@ impl<T: Domain> ConvexHull<T> for Interval<T> {
         // check our empty case first
         let mut bounds = match iter.next() {
             None => return Interval::empty(),
-            Some(item) => (Bound::Closed(item.clone()), Bound::Closed(item)),
+            Some(item) => (Bound::closed(item.clone()), Bound::closed(item)),
         };
 
         for item in iter {
-            let item_ival = Bound::Closed(item);
+            let item_ival = Bound::closed(item);
             let left = Bound::min_left(&bounds.0, &item_ival);
             let right = Bound::max_right(&bounds.1, &item_ival);
             bounds = (left, right);

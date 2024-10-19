@@ -154,8 +154,8 @@ mod tests {
             return;
         }
 
-        let x = Finite::new(Bound::Closed(p[0]), Bound::Closed(p[2]));
-        let y = Finite::new(Bound::Closed(p[1]), Bound::Closed(p[3]));
+        let x = Finite::new(Bound::closed(p[0]), Bound::closed(p[2]));
+        let y = Finite::new(Bound::closed(p[1]), Bound::closed(p[3]));
 
         assert!(x < y);
         assert!(y > x);

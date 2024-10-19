@@ -37,7 +37,7 @@
 //! assert_eq!(x.is_empty(), false);
 //! assert_eq!(x.is_finite(), true);
 //! assert_eq!(x.is_fully_bounded(), true);
-//! assert_eq!(*x.right().unwrap(), Bound::Closed(10));
+//! assert_eq!(*x.right().unwrap(), Bound::closed(10));
 //! assert_eq!(*x.rval().unwrap(), 10);
 //! assert_eq!(format!("x = {}", x), "x = [0, 10]");
 //!
@@ -47,7 +47,7 @@
 //! assert_eq!(x.is_half_bounded_on(Side::Left), true);
 //!
 //! let x = Interval::closed_open(-100.0, -50.0);
-//! assert_eq!(*x.right().unwrap(), Bound::Open(-50.0));
+//! assert_eq!(*x.right().unwrap(), Bound::open(-50.0));
 //!
 //! let y = Interval::convex_hull([5.0, 10.0, 23.0, -3.0, 22.0, 9.0, 99.9]);
 //! assert_eq!(y, Interval::closed(-3.0, 99.9));
@@ -85,20 +85,14 @@
 //!
 //! let x = Interval::closed(1, 5);
 //! let y = x.flat_map_finite(|left, right| {
-//!     Interval::new_finite(
-//!         left.new_limit(10 * left.value()),
-//!         right.new_limit(20 * right.value()),
-//!     )
+//!     Interval::new_finite(left.map(|v| 10 * v), right.map(|v| 20 * v))
 //! });
 //! assert_eq!(y, Interval::closed(10, 100));
 //!
 //! let z = IntervalSet::from_iter([x.clone(), y.clone()]);
 //! let z = z.collect_map(|mut sets, subset| {
 //!     let mirror_image = subset.flat_map_finite(|left, right| {
-//!         Interval::new_finite(
-//!             left.new_limit(-*right.value()),
-//!             right.new_limit(-*left.value()),
-//!         )
+//!         Interval::new_finite(right.map(|v| -v), left.map(|v| -v))
 //!     });
 //!     sets.push(mirror_image);
 //!     sets.push(subset.clone());
@@ -284,7 +278,7 @@ extern crate quickcheck_macros;
 pub mod numeric;
 
 mod bound;
-pub use bound::{Bound, Side};
+pub use bound::{Bound, BoundType, Side};
 
 mod traits;
 pub use traits::bounding::Bounding;

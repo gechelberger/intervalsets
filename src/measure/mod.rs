@@ -2,7 +2,7 @@
 //!
 //! They must obey the following invariants:
 //!
-//! ```ignore
+//! ```text
 //! Let m(S) be our measure.
 //!
 //! 1) Monotonicity:
