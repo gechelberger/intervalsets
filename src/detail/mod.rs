@@ -66,6 +66,17 @@ impl<T: Domain> Finite<T> {
             Self::Empty => default,
         }
     }
+
+    pub fn map_or_else<F, D, U>(&self, default: D, func: F) -> U
+    where
+        D: FnOnce() -> U,
+        F: FnOnce(&Bound<T>, &Bound<T>) -> U,
+    {
+        match self {
+            Self::FullyBounded(left, right) => func(left, right),
+            Self::Empty => default(),
+        }
+    }
 }
 
 impl<T: Domain> HalfBounded<T> {

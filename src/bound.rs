@@ -70,6 +70,13 @@ impl<T: Clone + PartialOrd> Bound<T> {
 }
 
 impl<T> Bound<T> {
+    pub fn new_limit(&self, limit: T) -> Self {
+        match self {
+            Self::Closed(_) => Self::Closed(limit),
+            Self::Open(_) => Self::Open(limit),
+        }
+    }
+
     pub fn is_open(&self) -> bool {
         matches!(self, Self::Open(_))
     }

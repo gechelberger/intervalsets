@@ -4,10 +4,9 @@ use crate::numeric::Domain;
 use crate::ops::{Intersects, Merged};
 use crate::{Bounding, MaybeEmpty, Side};
 
-/// A Set representation of an interval on N, Z, or R.
+/// A Set representation of a contiguous interval on N, Z, or R.
 ///
-/// Integer types (N, R) are normalized to closed form
-/// on creation.
+/// Discrete types (integers) are normalized to closed form on creation.
 ///
 /// All bounding conditions are supported.
 ///
@@ -280,6 +279,163 @@ impl<T: Domain> Interval<T> {
     pub fn is_unbounded(&self) -> bool {
         matches!(&self.0, BoundCase::Unbounded)
     }
+
+    /// Map the bounds of this interval to a new one or else `Empty`.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    /// use intervalsets::{Bound, Side};
+    /// use intervalsets::numeric::Domain;
+    ///
+    /// fn shift<T: Domain>(interval: Interval<T>, amount: T) -> Interval<T>
+    /// where
+    ///     T: Domain + core::ops::Add<T, Output=T>
+    /// {
+    ///     let shift_bound = |bound: &Bound<T>| {
+    ///         bound.new_limit(bound.value().clone() + amount.clone())
+    ///     };
+    ///
+    ///     interval.flat_map(|left, right| {
+    ///         match (left, right) {
+    ///             (None, None) => Interval::unbounded(),
+    ///             (None, Some(right)) => {
+    ///                 Interval::new_half_bounded(Side::Right, shift_bound(right))
+    ///             },
+    ///             (Some(left), None) => {
+    ///                 Interval::new_half_bounded(Side::Left, shift_bound(left))
+    ///             },
+    ///             (Some(left), Some(right)) => {
+    ///                 Interval::new_finite(shift_bound(left), shift_bound(right))
+    ///             }
+    ///         }
+    ///     })
+    /// }
+    ///
+    /// assert_eq!(shift(Interval::empty(), 10), Interval::empty());
+    /// assert_eq!(shift(Interval::closed(0, 10), 10), Interval::closed(10, 20));
+    /// assert_eq!(shift(Interval::unbound_closed(0), 10), Interval::unbound_closed(10));
+    /// assert_eq!(shift(Interval::closed_unbound(0), 10), Interval::closed_unbound(10));
+    /// ```
+    pub fn flat_map<F>(&self, func: F) -> Self
+    where
+        F: FnOnce(Option<&Bound<T>>, Option<&Bound<T>>) -> Self,
+    {
+        self.map_or_else(Self::empty, func)
+    }
+
+    /// Map the bounds of this interval or return default if `Empty`.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// fn is_finite(interval: Interval<i32>) -> bool {
+    ///     interval.map_or(true, |left, right| {
+    ///         matches!((left, right), (Some(_), Some(_)))
+    ///     })
+    /// }
+    ///
+    /// assert_eq!(is_finite(Interval::empty()), true);
+    /// assert_eq!(is_finite(Interval::closed(0, 10)), true);
+    /// assert_eq!(is_finite(Interval::unbound_closed(0)), false);
+    /// assert_eq!(is_finite(Interval::closed_unbound(0)), false);
+    /// assert_eq!(is_finite(Interval::unbounded()), false);
+    /// ```
+    pub fn map_or<F, U>(&self, default: U, func: F) -> U
+    where
+        F: FnOnce(Option<&Bound<T>>, Option<&Bound<T>>) -> U,
+    {
+        if self.is_empty() {
+            return default;
+        }
+        func(self.left(), self.right())
+    }
+
+    /// Map the bounds of this interval or result of default fn if `Empty`.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    /// use intervalsets::Side;
+    ///
+    /// fn my_complement(interval: &Interval<i32>) -> Interval<i32> {
+    ///     interval.map_or_else(Interval::unbounded, |left, right| {
+    ///         match (left, right) {
+    ///             (None, None) => Interval::empty(),
+    ///             (None, Some(right)) => Interval::new_half_bounded(Side::Left, right.flip()),
+    ///             (Some(left), None) => Interval::new_half_bounded(Side::Right, left.flip()),
+    ///             (Some(left), Some(right)) => panic!("... elided ...")
+    ///         }
+    ///     })
+    /// }
+    ///
+    /// let x = Interval::closed_unbound(0);
+    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
+    ///
+    /// let x = Interval::unbound_closed(0);
+    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
+    ///
+    /// let x = Interval::empty();
+    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
+    ///
+    /// let x = Interval::unbounded();
+    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
+    /// ```
+    pub fn map_or_else<F, D, U>(&self, default: D, func: F) -> U
+    where
+        D: FnOnce() -> U,
+        F: FnOnce(Option<&Bound<T>>, Option<&Bound<T>>) -> U,
+    {
+        if self.is_empty() {
+            default()
+        } else {
+            func(self.left(), self.right())
+        }
+    }
+
+    /// Map bounds to a new Interval if and only if fully bounded else `Empty`.
+    ///
+    /// # Panics
+    ///
+    /// This method panics if called on an unbounded interval.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::prelude::*;
+    ///
+    /// fn shift(interval: Interval<i32>, amount: i32) -> Interval<i32> {
+    ///     interval.flat_map_finite(|left, right| {
+    ///         Interval::new_finite(
+    ///             left.new_limit(left.value() + amount),
+    ///             right.new_limit(right.value() + amount)
+    ///         )
+    ///     })
+    /// }
+    /// assert_eq!(shift(Interval::empty(), 10), Interval::empty());
+    /// assert_eq!(shift(Interval::closed(0, 10), 10), Interval::closed(10, 20));
+    /// ```
+    /// ```should_panic
+    /// use intervalsets::prelude::*;
+    ///
+    /// fn shift(interval: Interval<i32>, amount: i32) -> Interval<i32> {
+    ///     interval.flat_map_finite(|left, right| Interval::empty())
+    /// }
+    ///
+    /// // any of these should panic:
+    /// assert_eq!(shift(Interval::unbound_closed(0), 10), Interval::empty());
+    /// assert_eq!(shift(Interval::closed_unbound(0), 10), Interval::empty());
+    /// assert_eq!(shift(Interval::unbounded(), 10), Interval::empty());
+    /// ```
+    pub fn flat_map_finite<F>(&self, func: F) -> Self
+    where
+        F: FnOnce(&Bound<T>, &Bound<T>) -> Self,
+    {
+        match &self.0 {
+            BoundCase::Finite(inner) => inner.map_or_else(Self::empty, func),
+            _ => panic!("Expected finite interval"),
+        }
+    }
 }
 
 /// A Set in N, Z, or R consisting of disjoint contiguous intervals.
@@ -296,7 +452,7 @@ impl<T: Domain> Interval<T> {
 /// * All stored intervals are disjoint subsets of T.
 ///     * Stored intervals *should* not be adjacent.
 ///         * This can only be assured for T: Eq + Ord
-#[derive(Debug, Clone, PartialEq)] // PartialOrd
+#[derive(Debug, Clone, PartialEq, PartialOrd)] // PartialOrd
 pub struct IntervalSet<T: Domain> {
     intervals: Vec<Interval<T>>,
 }
@@ -528,7 +684,7 @@ impl<T: Domain> IntervalSet<T> {
         Self::new(accum)
     }
 
-    /// Returns a new IntervalSet mapped this Set`s subsets.
+    /// Returns a new IntervalSet mapped from this Set`s subsets.
     ///
     /// ```
     /// use intervalsets::prelude::*;
@@ -537,7 +693,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     .union(&Interval::closed(20, 40))
     ///     .union(&Interval::closed(50, 100));
     ///
-    /// let mapped = x.map(|subset| {
+    /// let mapped = x.flat_map(|subset| {
     ///     if subset.count().finite() > 30 {
     ///         subset.clone().into()
     ///     } else {
@@ -547,7 +703,7 @@ impl<T: Domain> IntervalSet<T> {
     ///
     /// assert_eq!(mapped, IntervalSet::from(Interval::closed(50, 100)));
     /// ```
-    pub fn map<F>(&self, func: F) -> Self
+    pub fn flat_map<F>(&self, func: F) -> Self
     where
         F: Fn(&Interval<T>) -> Self,
     {
