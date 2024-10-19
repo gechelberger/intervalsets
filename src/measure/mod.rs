@@ -118,10 +118,7 @@ impl<T> Measurement<T> {
     /// let m2 = m1.flat_map(|x| Measurement::Finite(x as f32));
     /// assert_eq!(m2.finite(), 10.0);
     /// ```
-    pub fn flat_map<F, U>(self, func: F) -> Measurement<U>
-    where
-        F: FnOnce(T) -> Measurement<U>,
-    {
+    pub fn flat_map<U>(self, func: impl FnOnce(T) -> Measurement<U>) -> Measurement<U> {
         match self {
             Self::Finite(inner) => func(inner),
             Self::Infinite => Measurement::<U>::Infinite,
