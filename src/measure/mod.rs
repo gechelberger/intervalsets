@@ -128,7 +128,7 @@ impl<T> Measurement<T> {
         }
     }
 
-    /// Maps a `Measurement<T>` to `Measurement<T>` by applying
+    /// Maps a `Measurement<T>` to `Measurement<U>` by applying
     /// a function to a finite value or returns `Infinite`.
     ///
     /// Examples
@@ -137,15 +137,15 @@ impl<T> Measurement<T> {
     /// use intervalsets::measure::Measurement;
     ///
     /// let x: Measurement<i32> = Measurement::Finite(10);
-    /// assert_eq!(x.map(|v| v * 2), Measurement::Finite(20));
+    /// assert_eq!(x.map(|v| v as f32 * 2.0), Measurement::Finite(20.0));
     ///
     /// let x: Measurement<i32> = Measurement::Infinite;
     /// assert_eq!(x.map(|v| v * 2), Measurement::Infinite);
     /// ```
-    pub fn map(self, func: impl FnOnce(T) -> T) -> Self {
+    pub fn map<U>(self, func: impl FnOnce(T) -> U) -> Measurement<U> {
         match self {
-            Self::Finite(inner) => Self::Finite(func(inner)),
-            Self::Infinite => Self::Infinite,
+            Self::Finite(inner) => Measurement::Finite(func(inner)),
+            Self::Infinite => Measurement::<U>::Infinite,
         }
     }
 
