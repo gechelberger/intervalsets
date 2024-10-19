@@ -12,7 +12,7 @@ use crate::{Bounding, MaybeEmpty, Side};
 ///
 /// Most operations are supported through
 /// [trait implementations](#trait-implementations).
-#[derive(Debug, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
 
 impl<T: Domain> Interval<T> {
@@ -438,6 +438,20 @@ impl<T: Domain> Interval<T> {
     }
 }
 
+impl<T: Domain + Eq> Eq for Interval<T> {}
+
+impl<T: Domain + PartialOrd> PartialOrd for Interval<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+impl<T: Domain + Ord> Ord for Interval<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
 /// A Set in N, Z, or R consisting of disjoint contiguous intervals.
 ///
 /// # Invariants
@@ -452,7 +466,7 @@ impl<T: Domain> Interval<T> {
 /// * All stored intervals are disjoint subsets of T.
 ///     * Stored intervals *should* not be adjacent.
 ///         * This can only be assured for T: Eq + Ord
-#[derive(Debug, Clone, PartialEq, PartialOrd)] // PartialOrd
+#[derive(Debug, Clone, PartialEq)]
 pub struct IntervalSet<T: Domain> {
     intervals: Vec<Interval<T>>,
 }
@@ -735,6 +749,20 @@ impl<T: Domain> From<Interval<T>> for IntervalSet<T> {
             return IntervalSet::new_unchecked(vec![]);
         }
         IntervalSet::new_unchecked(vec![value])
+    }
+}
+
+impl<T: Domain + Eq> Eq for IntervalSet<T> {}
+
+impl<T: Domain + PartialOrd> PartialOrd for IntervalSet<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.intervals.partial_cmp(&other.intervals)
+    }
+}
+
+impl<T: Domain + Ord> Ord for IntervalSet<T> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.intervals.cmp(&other.intervals)
     }
 }
 
