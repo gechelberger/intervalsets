@@ -136,6 +136,32 @@ impl<T: Domain + Ord> Ord for BoundCase<T> {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use itertools::Itertools;
+
+    #[quickcheck]
+    fn test_finite_ordering(a: f32, b: f32, c: f32, d: f32) {
+        if a.is_nan() || b.is_nan() || c.is_nan() || d.is_nan() {
+            return;
+        }
+
+        let mut p = vec![a, b, c, d];
+        p.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+        if p.iter().dedup().count() == 1 {
+            return;
+        }
+
+        let x = Finite::new(Bound::Closed(p[0]), Bound::Closed(p[2]));
+        let y = Finite::new(Bound::Closed(p[1]), Bound::Closed(p[3]));
+
+        assert!(x < y);
+        assert!(y > x);
+    }
+}
+
 /*
 // this might be interesting to try as an impl for a while
 // just because it's less likely to silently swallow an ordering issue.
