@@ -108,10 +108,13 @@ impl<T> Measurement<T> {
 
     /// Returns Infinite if the measurement is Infinite, otherwise
     /// calls `func` with the Finite value and returns the result.
-    pub fn and_then(self, func: impl FnOnce(T) -> Self) -> Self {
+    pub fn flat_map<F, U>(self, func: F) -> Measurement<U>
+    where
+        F: FnOnce(T) -> Measurement<U>,
+    {
         match self {
             Self::Finite(inner) => func(inner),
-            Self::Infinite => Self::Infinite,
+            Self::Infinite => Measurement::<U>::Infinite,
         }
     }
 
