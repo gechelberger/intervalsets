@@ -101,3 +101,82 @@ impl<T: Domain> PartialOrd for Finite<T> {
         impl_partial_cmp(self, rhs)
     }
 }
+
+fn impl_total_ord_cmp<T, S>(lhs: &S, rhs: &S) -> std::cmp::Ordering
+where
+    T: Domain + Eq + Ord,
+    S: Bounding<T> + MaybeEmpty,
+{
+    match (lhs.is_empty(), rhs.is_empty()) {
+        (true, true) => Ordering::Equal,
+        (true, false) => Ordering::Less,
+        (false, true) => Ordering::Greater,
+        (false, false) => impl_cmp(lhs, rhs),
+    }
+}
+
+impl<T: Domain + Eq> Eq for Finite<T> {}
+impl<T: Domain + Ord> Ord for Finite<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        impl_total_ord_cmp(self, other)
+    }
+}
+
+impl<T: Domain + Eq> Eq for HalfBounded<T> {}
+impl<T: Domain + Ord> Ord for HalfBounded<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        impl_cmp(self, other)
+    }
+}
+
+impl<T: Domain + Eq> Eq for BoundCase<T> {}
+impl<T: Domain + Ord> Ord for BoundCase<T> {
+    fn cmp(&self, other: &Self) -> Ordering {
+        impl_total_ord_cmp(self, other)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use itertools::Itertools;
+
+    #[quickcheck]
+    fn test_finite_ordering(a: f32, b: f32, c: f32, d: f32) {
+        if a.is_nan() || b.is_nan() || c.is_nan() || d.is_nan() {
+            return;
+        }
+
+        let mut p = vec![a, b, c, d];
+        p.sort_by(|a, b| a.partial_cmp(b).unwrap());
+
+        if p.iter().dedup().count() == 1 {
+            return;
+        }
+
+        let x = Finite::new(Bound::Closed(p[0]), Bound::Closed(p[2]));
+        let y = Finite::new(Bound::Closed(p[1]), Bound::Closed(p[3]));
+
+        assert!(x < y);
+        assert!(y > x);
+    }
+}
+
+/*
+// this might be interesting to try as an impl for a while
+// just because it's less likely to silently swallow an ordering issue.
+
+fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+    match self.partial_cmp(other) {
+        Some(ordering) => ordering,
+        // one or both are the empty set (or else something is broken).
+        // we choose to put empty in a total ordering first before any other.
+        None => match (self.is_empty(), other.is_empty()) {
+            (true, true) => std::cmp::Ordering::Equal,
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            (false, false) => panic!("T claims Ord; We done did screwed up somewhere")
+        }
+    }
+}
+*/
