@@ -31,19 +31,29 @@
 //!
 //! ```
 //! use intervalsets::prelude::*;
+//! use intervalsets::{Bound, Side};
 //!
 //! let x = Interval::closed(0, 10);
-//! assert_eq!(x.contains(&5), true);
-//! assert_eq!(x.count().finite(), 11);
+//! assert_eq!(x.is_empty(), false);
+//! assert_eq!(x.is_finite(), true);
+//! assert_eq!(x.is_fully_bounded(), true);
+//! assert_eq!(*x.right().unwrap(), Bound::Closed(10));
+//! assert_eq!(*x.rval().unwrap(), 10);
+//! assert_eq!(format!("x = {}", x), "x = [0, 10]");
 //!
-//! let y = Interval::closed(0.0, 10.0);
-//! assert_eq!(y.contains(&5.0), true);
-//! assert_eq!(y.width().finite(), 10.0);
+//! let x = Interval::closed_unbound(0.0);
+//! assert_eq!(x.right(), None);
+//! assert_eq!(x.is_half_bounded(), true);
+//! assert_eq!(x.is_half_bounded_on(Side::Left), true);
 //!
-//! let z = Interval::open(100.0, 110.0);
+//! let x = Interval::closed_open(-100.0, -50.0);
+//! assert_eq!(*x.right().unwrap(), Bound::Open(-50.0));
 //!
-//! let set = IntervalSet::new(vec![y, z]);
-//! assert_eq!(set.width().finite(), 20.0);
+//! let y = Interval::convex_hull([5.0, 10.0, 23.0, -3.0, 22.0, 9.0, 99.9]);
+//! assert_eq!(y, Interval::closed(-3.0, 99.9));
+//!
+//! let iset = IntervalSet::from_iter([x, y]);
+//! assert_eq!(iset.intervals().len(), 2);
 //! ```
 //!
 //! ## Set Operations
@@ -66,6 +76,39 @@
 //!
 //! let c = a.sym_difference(&b).expect_interval();
 //! assert_eq!(c, Interval::<f64>::empty());
+//! ```
+//!
+//! ## General Mapping
+//!
+//! ```
+//! use intervalsets::prelude::*;
+//!
+//! let x = Interval::closed(1, 5);
+//! let y = x.flat_map_finite(|left, right| {
+//!     Interval::new_finite(
+//!         left.new_limit(10 * left.value()),
+//!         right.new_limit(20 * right.value()),
+//!     )
+//! });
+//! assert_eq!(y, Interval::closed(10, 100));
+//!
+//! let z = IntervalSet::from_iter([x.clone(), y.clone()]);
+//! let z = z.collect_map(|mut sets, subset| {
+//!     let mirror_image = subset.flat_map_finite(|left, right| {
+//!         Interval::new_finite(
+//!             left.new_limit(-*right.value()),
+//!             right.new_limit(-*left.value()),
+//!         )
+//!     });
+//!     sets.push(mirror_image);
+//!     sets.push(subset.clone());
+//! });
+//! assert_eq!(z, IntervalSet::from_iter([
+//!     x,
+//!     y,
+//!     Interval::closed(-5, -1),
+//!     Interval::closed(-100, -10),
+//! ]));
 //! ```
 //!
 //! ## Measure of a Set
