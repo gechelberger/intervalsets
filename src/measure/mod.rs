@@ -99,7 +99,7 @@ impl<T> Measurement<T> {
     }
 
     /// Returns the contained Finite value or a provided default.
-    pub fn unwrap_or(self, default: T) -> T {
+    pub fn finite_or(self, default: T) -> T {
         match self {
             Self::Finite(inner) => inner,
             _ => default,
