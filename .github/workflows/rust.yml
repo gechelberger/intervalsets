@@ -22,7 +22,7 @@ jobs:
   msrv_check:
     runs-on: ubuntu-latest
     steps:
-    - uses: action/checkout@v4
+    - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@master
       with:
         toolchange: "1.65.0"
