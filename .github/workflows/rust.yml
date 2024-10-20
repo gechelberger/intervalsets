@@ -25,7 +25,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: dtolnay/rust-toolchain@master
       with:
-        toolchange: "1.65.0"
+        toolchain: "1.65.0"
     - run: cargo test --all-features --verbose
 
   check-docs:
