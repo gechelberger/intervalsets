@@ -30,9 +30,12 @@ impl<T: Hash + Domain> Hash for IntervalSet<T> {
 mod tests {
     use super::*;
 
-    use std::hash::{DefaultHasher, Hash, Hasher};
+    use core::hash::{Hash, Hasher};
+    use siphasher::sip::SipHasher13;
+
     fn do_hash<T: Hash>(item: T) -> u64 {
-        let mut hasher = DefaultHasher::new();
+        let key: &[u8; 16] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let mut hasher = SipHasher13::new_with_key(key);
         item.hash(&mut hasher);
         hasher.finish()
     }
