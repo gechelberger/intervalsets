@@ -57,7 +57,7 @@ impl<T: Domain> Contains<Interval<T>> for IntervalSet<T> {
 
 impl<T: Domain> Contains<Self> for IntervalSet<T> {
     fn contains(&self, rhs: &Self) -> bool {
-        self.intervals().iter().all(|subset| self.contains(subset))
+        rhs.intervals().iter().all(|subset| self.contains(subset))
     }
 }
 
@@ -157,5 +157,19 @@ mod tests {
 
         let finite = Interval::closed(a, b);
         assert_eq!(interval.contains(&finite), a <= b);
+    }
+
+    #[test]
+    fn test_iset_contains_iset() {
+        let superset =
+            IntervalSet::from_iter([Interval::closed(0, 100), Interval::closed(200, 300)]);
+
+        let subset = IntervalSet::from_iter([Interval::closed(40, 60), Interval::closed(240, 260)]);
+
+        assert_eq!(superset.contains(&subset), true);
+        assert_eq!(subset.contains(&superset), false);
+
+        assert_eq!(superset.contains(&superset), true);
+        assert_eq!(subset.contains(&subset), true);
     }
 }
