@@ -2,10 +2,8 @@ name: codecov
 
 on:
   push: 
-    branches: []
-  pull_request:
     branches: [ "main" ]
-    
+
 jobs:
   # Run code coverage using cargo-llvm-cov then upload to codecov.io
   job_code_coverage:
