@@ -10,6 +10,7 @@ The intervalsets crate provides bounded and unbounded intervals
 implemented as sets with all the associated set operations.
 """
 repository = "https://github.com/gechelberger/intervalsets"
+documentation = "https://docs.rs/intervalsets"
 license = "MIT"
 keywords = [
     "interval",
