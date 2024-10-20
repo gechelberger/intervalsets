@@ -29,7 +29,7 @@ pub enum Measurement<T> {
 }
 
 impl<T> Measurement<T> {
-    /// Returns `true` if the measurement is an [`Infinite`] value.
+    /// Returns `true` if the measurement is an `Infinite` value.
     ///
     /// # Examples
     ///
@@ -46,7 +46,7 @@ impl<T> Measurement<T> {
         matches!(self, Self::Infinite)
     }
 
-    /// Returns `true` if the measurement is a [`Finite`] value.
+    /// Returns `true` if the measurement is a `Finite` value.
     ///
     /// # Examples
     ///
@@ -67,7 +67,7 @@ impl<T> Measurement<T> {
     ///
     /// # Panics
     ///
-    /// Panics if self is [`Infinite`] with a custom panic msg.
+    /// Panics if self is `Infinite` with a custom panic msg.
     ///
     /// # Examples
     ///

@@ -5,7 +5,7 @@
 //!
 //! * The [`Interval`] type is a Set implementation representing a
 //!   contiguous set of values.
-//!     * It is generic over any type that implements the [`Domain`] trait
+//!     * It is generic over any type that implements the [`Domain`](numeric::Domain) trait
 //!       which is intended to make sure elements are comparable and allows
 //!       us to differentiate between discrete and continuous data types.
 //!

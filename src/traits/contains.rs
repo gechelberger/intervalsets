@@ -3,7 +3,13 @@ use crate::{Interval, IntervalSet};
 
 /// Defines whether a set fully contains another.
 ///
-/// For our purposes a point is the singleton set [T].
+/// ```text
+/// Let A ⊆ T, B* ⊆ T:
+///
+/// A ⊇ B <=> ∀(x ∈ B => x ∈ A)
+///
+/// *let B = [rhs, rhs] for individual elements of T.
+/// ```
 ///
 /// A contains B if and only if
 /// for every element x of B,
