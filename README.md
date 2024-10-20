@@ -1,6 +1,20 @@
 # intervalsets
 
-![CI](https://github.com/gechelberger/intervalsets/actions/workflows/rust.yml/badge.svg)
+[![CI][gh-image]][gh-checks]
+[![intervalsets on docs.rs][docsrs-image]][docsrs]
+[![intervalsets on crates.io][cratesio-image]][cratesio]
+![Crates.io MSRV](https://img.shields.io/crates/msrv/intervalsets)
+
+
+[gh-image]: https://github.com/gechelberger/intervalsets/actions/workflows/rust.yml/badge.svg?branch=main
+[gh-checks]: https://github.com/gechelberger/intervalsets/actions/workflows/test.yml?query=branch%3Amain
+[docsrs-image]: https://docs.rs/intervalsets/badge.svg
+[docsrs]: https://docs.rs/intervalsets
+[cratesio-image]: https://img.shields.io/crates/v/intervalsets.svg
+[cratesio]: https://crates.io/crates/intervalsets
+[cratesio-msrv-image]: https://img.shields.io/crates/msrv/intervalsets
+
+
 
 This crate provides bounded and unbounded intervals 
 implemented as sets with all the associated set operations.
