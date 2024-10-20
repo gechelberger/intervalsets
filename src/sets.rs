@@ -457,14 +457,14 @@ impl<T: Domain + Ord> Ord for Interval<T> {
 ///
 /// * All stored intervals are normalized.
 ///     * We do not enforce this here because it should be
-///       an invariant of Interval<T> already.
+///       an invariant of `Interval<T>` already.
 /// * No stored interval may be the empty set.
 ///     * Emptiness is represented by storing no intervals.
 ///     * Normalized `Interval<T>` should have a total ordering w/o empty sets.
 /// * All intervals are stored in ascending order.
 /// * All stored intervals are disjoint subsets of T.
 ///     * Stored intervals *should* not be adjacent.
-///         * This can only be assured for T: Eq + Ord
+///         * This can only be assured for `T: Eq + Ord`
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntervalSet<T: Domain> {
     intervals: Vec<Interval<T>>,

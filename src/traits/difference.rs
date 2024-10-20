@@ -3,7 +3,11 @@ use crate::{Interval, IntervalSet};
 
 /// Defines the difference of sets A - B.
 ///
-/// { x in T | x in A<T> && x not in B<T>}
+/// ```text
+/// Let A ⊆ T, B ⊆ T:
+///
+/// { x | x ∈ A && x ∉ B }
+/// ```
 ///
 /// Difference is not commutative.
 ///
@@ -47,9 +51,13 @@ difference_impl!(Interval<T>, IntervalSet<T>);
 difference_impl!(IntervalSet<T>, Interval<T>);
 difference_impl!(IntervalSet<T>, IntervalSet<T>);
 
-/// Defines the symmetric difference for sets A and B.
+/// Defines the symmetric difference for sets A ⊕ B.
 ///
-/// {x in T | (x in A || x in B) && (x not in A intersect B)}
+/// ```text
+/// Let A ⊆ T, B ⊆ T:
+///
+/// {x | x ∈ (A ∪ B) && x ∉ (A ∩ B) }
+/// ```
 ///
 /// Symmetric difference is commutative.
 ///
