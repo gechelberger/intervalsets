@@ -1,5 +1,6 @@
 use itertools::Itertools;
 
+use crate::bound::BoundType;
 use crate::numeric::Domain;
 use crate::{Bound, Bounding, Interval, Side};
 
@@ -8,13 +9,13 @@ use crate::IntervalSet;
 
 use core::fmt;
 
-fn bound_symbol<T>(side: Side, bound: &Bound<T>) -> char {
-    match bound {
-        Bound::Open(_) => match side {
+fn bound_symbol(side: Side, bound_type: BoundType) -> char {
+    match bound_type {
+        BoundType::Open => match side {
             Side::Left => '(',
             Side::Right => ')',
         },
-        Bound::Closed(_) => match side {
+        BoundType::Closed => match side {
             Side::Left => '[',
             Side::Right => ']',
         },
@@ -28,8 +29,16 @@ fn format_bound<T: fmt::Display>(side: Side, bound: Option<&Bound<T>>) -> String
             Side::Right => "->)".to_string(),
         },
         Some(bound) => match side {
-            Side::Left => format!("{}{}", bound_symbol(side, bound), bound.value()),
-            Side::Right => format!("{}{}", bound.value(), bound_symbol(side, bound)),
+            Side::Left => format!(
+                "{}{}",
+                bound_symbol(side, bound.bound_type()),
+                bound.value()
+            ),
+            Side::Right => format!(
+                "{}{}",
+                bound.value(),
+                bound_symbol(side, bound.bound_type())
+            ),
         },
     }
 }

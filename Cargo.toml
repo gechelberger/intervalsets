@@ -1,6 +1,6 @@
 [package]
 name = "intervalsets"
-version = "0.1.0-alpha.1"
+version = "0.1.0-alpha.2"
 authors = ["Greg Echelberger"]
 edition = "2021"
 rust-version = "1.65.0"
@@ -31,6 +31,7 @@ uom = { version = "0.36.0", optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
+husky-rs = "0.1.1"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 

@@ -7,16 +7,8 @@ use crate::{Interval, IntervalSet};
 impl<T: Hash> Hash for Bound<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         "Bound".hash(state);
-        match self {
-            Self::Open(limit) => {
-                "Open".hash(state);
-                limit.hash(state);
-            }
-            Self::Closed(limit) => {
-                "Closed".hash(state);
-                limit.hash(state);
-            }
-        }
+        self.bound_type().hash(state);
+        self.value().hash(state);
     }
 }
 

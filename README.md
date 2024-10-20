@@ -41,11 +41,33 @@ See the [documentation](https://docs.rs/intervalsets/latest) for details.
 
 ## development
 
-### git hooks
+### hooks
 
-```bash
-cargo install cargo-hook
-cargo hook
+```sh
+# the commit-msg git hook uses commitlint
+cargo install commitlint-rs
+
+# should install git hooks
+cargo clean && cargo test
+```
+
+#### commit msgs
+
+```sh
+git commit -m "{type}{!}?: {[{issue|resolves}? #xx]? {description}"
+
+# minor semver change, closes github issue #55
+git commit -m "feat: [resolves #55] added new function struct::foo"
+
+# major semver change, references github issue #67
+# single quotes required because of the exclamation point.
+git commit -m 'feat!: [issue #67] changed public api for Bar'
+
+# patch semver change, closes github issue #33
+git commit -m "fix: [resolves #33] fence post error in Baz"
+
+# no semver change
+git commit -m "chore: changed ci pipeline"
 ```
 
 ### outstanding

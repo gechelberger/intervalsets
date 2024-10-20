@@ -2,7 +2,7 @@
 //!
 //! They must obey the following invariants:
 //!
-//! ```ignore
+//! ```text
 //! Let m(S) be our measure.
 //!
 //! 1) Monotonicity:
@@ -99,7 +99,7 @@ impl<T> Measurement<T> {
     }
 
     /// Returns the contained Finite value or a provided default.
-    pub fn unwrap_or(self, default: T) -> T {
+    pub fn finite_or(self, default: T) -> T {
         match self {
             Self::Finite(inner) => inner,
             _ => default,
@@ -108,14 +108,24 @@ impl<T> Measurement<T> {
 
     /// Returns Infinite if the measurement is Infinite, otherwise
     /// calls `func` with the Finite value and returns the result.
-    pub fn and_then(self, func: impl FnOnce(T) -> Self) -> Self {
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use intervalsets::measure::Measurement;
+    ///
+    /// let m1 = Measurement::Finite(10);
+    /// let m2 = m1.flat_map(|x| Measurement::Finite(x as f32));
+    /// assert_eq!(m2.finite(), 10.0);
+    /// ```
+    pub fn flat_map<U>(self, func: impl FnOnce(T) -> Measurement<U>) -> Measurement<U> {
         match self {
             Self::Finite(inner) => func(inner),
-            Self::Infinite => Self::Infinite,
+            Self::Infinite => Measurement::<U>::Infinite,
         }
     }
 
-    /// Maps a `Measurement<T>` to `Measurement<T>` by applying
+    /// Maps a `Measurement<T>` to `Measurement<U>` by applying
     /// a function to a finite value or returns `Infinite`.
     ///
     /// Examples
@@ -124,15 +134,15 @@ impl<T> Measurement<T> {
     /// use intervalsets::measure::Measurement;
     ///
     /// let x: Measurement<i32> = Measurement::Finite(10);
-    /// assert_eq!(x.map(|v| v * 2), Measurement::Finite(20));
+    /// assert_eq!(x.map(|v| v as f32 * 2.0), Measurement::Finite(20.0));
     ///
     /// let x: Measurement<i32> = Measurement::Infinite;
     /// assert_eq!(x.map(|v| v * 2), Measurement::Infinite);
     /// ```
-    pub fn map(self, func: impl FnOnce(T) -> T) -> Self {
+    pub fn map<U>(self, func: impl FnOnce(T) -> U) -> Measurement<U> {
         match self {
-            Self::Finite(inner) => Self::Finite(func(inner)),
-            Self::Infinite => Self::Infinite,
+            Self::Finite(inner) => Measurement::Finite(func(inner)),
+            Self::Infinite => Measurement::<U>::Infinite,
         }
     }
 
