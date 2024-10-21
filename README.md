@@ -2,9 +2,9 @@
 
 [![CI][gh-image]][gh-checks]
 [![intervalsets on docs.rs][docsrs-image]][docsrs]
+[![codecov.io][codecov-img]][codecov-link]
 [![intervalsets on crates.io][cratesio-image]][cratesio]
 ![Crates.io MSRV](https://img.shields.io/crates/msrv/intervalsets)
-
 
 [gh-image]: https://github.com/gechelberger/intervalsets/actions/workflows/rust.yml/badge.svg?branch=main
 [gh-checks]: https://github.com/gechelberger/intervalsets/actions/workflows/test.yml?query=branch%3Amain
@@ -13,8 +13,8 @@
 [cratesio-image]: https://img.shields.io/crates/v/intervalsets.svg
 [cratesio]: https://crates.io/crates/intervalsets
 [cratesio-msrv-image]: https://img.shields.io/crates/msrv/intervalsets
-
-
+[codecov-img]: https://img.shields.io/codecov/c/github/gechelberger/intervalsets?logo=codecov
+[codecov-link]: https://codecov.io/gh/gechelberger/intervalsets
 
 This crate provides bounded and unbounded intervals 
 implemented as sets with all the associated set operations.
@@ -67,9 +67,11 @@ cargo clean && cargo test
 
 #### commit msgs
 
-```sh
-git commit -m "{type}{!}?: {[{issue|resolves}? #xx]? {description}"
+This project follows a subset of [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
+for changelog management with git-cliff. [.commitlintrc.yaml] defines the linting
+rules.
 
+```sh
 # minor semver change, closes github issue #55
 git commit -m "feat: [resolves #55] added new function struct::foo"
 
@@ -83,9 +85,3 @@ git commit -m "fix: [resolves #33] fence post error in Baz"
 # no semver change
 git commit -m "chore: changed ci pipeline"
 ```
-
-### outstanding
-* integration tests
-* benchmarks
-* fuzz
-* docs
