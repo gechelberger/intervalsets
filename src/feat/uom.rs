@@ -55,4 +55,18 @@ mod tests {
 
         assert_eq!(interval.width().finite(), Length::new::<kilometer>(90.0));
     }
+
+    #[test]
+    fn test_uom_diff() {
+        let a = Length::new::<kilometer>(0.0);
+        let b = Length::new::<kilometer>(10.0);
+        let c = Length::new::<kilometer>(20.0);
+        let d = Length::new::<kilometer>(30.0);
+
+        let ac = Interval::closed(a, c);
+        let bd = Interval::closed(b, d);
+
+        assert_eq!(ac.clone().intersection(bd.clone()), Interval::closed(b, c));
+        assert_eq!(ac.union(bd).expect_interval(), Interval::closed(a, d));
+    }
 }

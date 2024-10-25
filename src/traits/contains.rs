@@ -45,25 +45,25 @@ impl<T: Domain> Contains<Self> for Interval<T> {
 
 impl<T: Domain> Contains<IntervalSet<T>> for Interval<T> {
     fn contains(&self, rhs: &IntervalSet<T>) -> bool {
-        rhs.intervals().iter().all(|subset| self.contains(subset))
+        rhs.iter().all(|subset| self.contains(subset))
     }
 }
 
 impl<T: Domain> Contains<T> for IntervalSet<T> {
     fn contains(&self, rhs: &T) -> bool {
-        self.intervals().iter().any(|subset| subset.contains(rhs))
+        self.iter().any(|subset| subset.contains(rhs))
     }
 }
 
 impl<T: Domain> Contains<Interval<T>> for IntervalSet<T> {
     fn contains(&self, rhs: &Interval<T>) -> bool {
-        self.intervals().iter().any(|subset| subset.contains(rhs))
+        self.iter().any(|subset| subset.contains(rhs))
     }
 }
 
 impl<T: Domain> Contains<Self> for IntervalSet<T> {
     fn contains(&self, rhs: &Self) -> bool {
-        rhs.intervals().iter().all(|subset| self.contains(subset))
+        rhs.iter().all(|subset| self.contains(subset))
     }
 }
 

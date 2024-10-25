@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+use std::borrow::Cow::*;
 use std::ops::{Add, Sub};
 
 use crate::numeric::Domain;
@@ -14,6 +16,13 @@ impl Side {
         match self {
             Self::Left => Self::Right,
             Self::Right => Self::Left,
+        }
+    }
+
+    pub fn select<T>(self, left: T, right: T) -> T {
+        match self {
+            Self::Left => left,
+            Self::Right => right,
         }
     }
 }
@@ -43,46 +52,106 @@ impl BoundType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Bound<T>(BoundType, T);
 
+impl<T: PartialOrd + Clone> Bound<T> {
+    pub fn min_cow<'a>(
+        side: Side,
+        a: Cow<'a, Bound<T>>,
+        b: Cow<'a, Bound<T>>,
+    ) -> Cow<'a, Bound<T>> {
+        if a.contains(side, b.value()) {
+            side.select(a, b)
+        } else {
+            side.select(b, a)
+        }
+    }
+
+    pub fn max_cow<'a>(
+        side: Side,
+        a: Cow<'a, Bound<T>>,
+        b: Cow<'a, Bound<T>>,
+    ) -> Cow<'a, Bound<T>> {
+        if a.contains(side, b.value()) {
+            side.select(b, a)
+        } else {
+            side.select(a, b)
+        }
+    }
+
+    pub fn take_min(side: Side, a: Bound<T>, b: Bound<T>) -> Bound<T> {
+        Self::min_cow(side, Owned(a), Owned(b)).into_owned()
+    }
+
+    pub fn take_max(side: Side, a: Bound<T>, b: Bound<T>) -> Bound<T> {
+        Self::max_cow(side, Owned(a), Owned(b)).into_owned()
+    }
+}
+
+impl<T: PartialOrd> Bound<T> {
+    pub fn min<'a>(side: Side, a: &'a Bound<T>, b: &'a Bound<T>) -> &'a Bound<T> {
+        if a.contains(side, b.value()) {
+            side.select(a, b)
+        } else {
+            side.select(b, a)
+        }
+    }
+
+    pub fn max<'a>(side: Side, a: &'a Bound<T>, b: &'a Bound<T>) -> &'a Bound<T> {
+        if a.contains(side, b.value()) {
+            side.select(b, a)
+        } else {
+            side.select(a, b)
+        }
+    }
+
+    pub fn iter_min<'a, I>(side: Side, iter: I) -> Option<I::Item>
+    where
+        I: IntoIterator<Item = &'a Bound<T>>,
+    {
+        let mut iter = iter.into_iter();
+        let mut result = iter.next();
+        for item in iter {
+            result = Some(Self::min(side, result.unwrap(), item))
+        }
+        result
+    }
+
+    pub fn iter_max<'a, I>(side: Side, iter: I) -> Option<I::Item>
+    where
+        I: IntoIterator<Item = &'a Bound<T>>,
+    {
+        let mut iter = iter.into_iter();
+        let mut result = iter.next();
+        for item in iter {
+            result = Some(Self::max(side, result.unwrap(), item));
+        }
+        result
+    }
+}
+
 impl<T: Clone + PartialOrd> Bound<T> {
     /// Returns the smaller `Bound`, treating args as left hand (lower) bounds.
     pub fn min_left(a: &Self, b: &Self) -> Self {
-        if a.contains(Side::Left, b.value()) {
-            a.clone()
-        } else {
-            b.clone()
-        }
+        Self::min(Side::Left, a, b).clone()
     }
 
     /// Returns the smaller `Bound`, treating args as right hand (upper) bounds.
     pub fn min_right(a: &Self, b: &Self) -> Self {
-        if a.contains(Side::Right, b.value()) {
-            b.clone()
-        } else {
-            a.clone()
-        }
+        Self::min(Side::Right, a, b).clone()
     }
 
     /// Returns the larger `Bound`, treating args as left hand (lower) bounds.
     pub fn max_left(a: &Self, b: &Self) -> Self {
-        if a.contains(Side::Left, b.value()) {
-            b.clone()
-        } else {
-            a.clone()
-        }
+        Self::max(Side::Left, a, b).clone()
     }
 
     /// Returns the larger `Bound`, treating args as right hand (upper) bounds.
     pub fn max_right(a: &Self, b: &Self) -> Self {
-        if a.contains(Side::Right, b.value()) {
-            a.clone()
-        } else {
-            b.clone()
-        }
+        Self::max(Side::Right, a, b).clone()
     }
 
-    /// Return a new `Bound` with the same limit, but flipped `BoundType`.
-    pub fn flip(&self) -> Self {
-        Self(self.0.flip(), self.1.clone())
+    /// Return a new `Bound` keeps limit, flips `BoundType`. `self` is consumed.
+    pub fn flip(self) -> Self {
+        Self(self.0.flip(), self.1)
     }
 }
 
@@ -97,20 +166,20 @@ impl<T> Bound<T> {
         Self(BoundType::Open, limit)
     }
 
-    /// Returns a new `Bound`, retaining BoundType, with a new limit.
+    /// Returns a new `Bound`, keeps BoundType, new limit; `self` is consumed.
     ///
     /// # Examples
     /// ```
     /// use intervalsets::Bound;
     /// let bound = Bound::closed(10);
-    /// let shift = bound.map(|limit| limit + 10);
+    /// let shift = bound.clone().map(|limit| limit + 10);
     /// assert_eq!(shift, Bound::closed(20));
     ///
-    /// let float = bound.map(|limit| *limit as f32);
+    /// let float = bound.map(|limit| limit as f32);
     /// assert_eq!(float, Bound::closed(10.0));
     /// ```
-    pub fn map<U>(&self, func: impl FnOnce(&T) -> U) -> Bound<U> {
-        Bound::<U>(self.0, func(self.value()))
+    pub fn map<U>(self, func: impl FnOnce(T) -> U) -> Bound<U> {
+        Bound::<U>(self.0, func(self.1))
     }
 
     /// Returns `true` if this bound's `BoundType` is `Open`.
@@ -182,7 +251,55 @@ impl<T: Domain + core::ops::Sub<T, Output = T>> Sub<T> for Bound<T> {
     }
 }
 
+impl<T: Copy> Copy for Bound<T> {}
+
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_bound_min_max() {
+        assert_eq!(
+            Bound::min(Side::Left, &Bound::closed(0), &Bound::closed(10)).clone(),
+            //Bound::min_left(&Bound::closed(0), &Bound::closed(10))
+            Bound::closed(0)
+        );
+
+        assert_eq!(
+            Bound::min(Side::Left, &Bound::closed(0), &Bound::open(0)).clone(),
+            //Bound::min_left(&Bound::closed(0), &Bound::open(0)),
+            Bound::closed(0)
+        );
+
+        assert_eq!(
+            Bound::max(Side::Left, &Bound::closed(0), &Bound::closed(10)).clone(),
+            //Bound::max_left(&Bound::closed(0), &Bound::closed(10)),
+            Bound::closed(10)
+        );
+
+        assert_eq!(
+            Bound::max(Side::Left, &Bound::closed(0), &Bound::open(0)).clone(),
+            Bound::open(0)
+        );
+
+        assert_eq!(
+            Bound::min(Side::Right, &Bound::closed(0), &Bound::closed(10)).clone(),
+            Bound::closed(0)
+        );
+
+        assert_eq!(
+            Bound::min(Side::Right, &Bound::closed(0), &Bound::open(0)).clone(),
+            Bound::open(0)
+        );
+
+        assert_eq!(
+            Bound::max(Side::Right, &Bound::closed(0), &Bound::closed(10)).clone(),
+            Bound::closed(10)
+        );
+
+        assert_eq!(
+            Bound::max(Side::Right, &Bound::closed(0), &Bound::open(0)).clone(),
+            Bound::closed(0)
+        )
+    }
 }

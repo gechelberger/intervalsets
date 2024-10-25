@@ -44,6 +44,12 @@ fn are_adjacent<T: Domain>(right: &Bound<T>, left: &Bound<T>) -> bool {
 
 impl<T: Domain> Adjacent<Self> for Finite<T> {
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
+        self.ref_map_or(false, |a_left, a_right| {
+            rhs.ref_map_or(false, |b_left, b_right| {
+                are_adjacent(a_right, b_left) || are_adjacent(b_right, a_left)
+            })
+        })
+        /*
         match self {
             Self::FullyBounded(a_left, a_right) => match rhs {
                 Self::FullyBounded(b_left, b_right) => {
@@ -52,7 +58,7 @@ impl<T: Domain> Adjacent<Self> for Finite<T> {
                 Self::Empty => false,
             },
             Self::Empty => false,
-        }
+        }*/
     }
 }
 
@@ -68,7 +74,7 @@ impl<T: Domain> Adjacent<Self> for HalfBounded<T> {
 
 impl<T: Domain> Adjacent<HalfBounded<T>> for Finite<T> {
     fn is_adjacent_to(&self, rhs: &HalfBounded<T>) -> bool {
-        self.map_or(false, |left, right| match rhs.side {
+        self.ref_map_or(false, |left, right| match rhs.side {
             Side::Left => are_adjacent(right, &rhs.bound),
             Side::Right => are_adjacent(&rhs.bound, left),
         })

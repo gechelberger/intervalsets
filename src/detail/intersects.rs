@@ -7,8 +7,8 @@ use super::{BoundCase, Finite, HalfBounded};
 
 impl<T: Domain> Intersects<Self> for Finite<T> {
     fn intersects(&self, rhs: &Self) -> bool {
-        self.map_or::<bool>(false, |l1, r1| {
-            rhs.map_or::<bool>(false, |l2, r2| {
+        self.ref_map_or::<bool>(false, |l1, r1| {
+            rhs.ref_map_or::<bool>(false, |l2, r2| {
                 l1.contains(Side::Left, r2.value())
                     && l2.contains(Side::Left, r1.value())
                     && r1.contains(Side::Right, l1.value())
@@ -20,7 +20,7 @@ impl<T: Domain> Intersects<Self> for Finite<T> {
 
 impl<T: Domain> Intersects<Finite<T>> for HalfBounded<T> {
     fn intersects(&self, rhs: &Finite<T>) -> bool {
-        rhs.map_or(false, |left, right| {
+        rhs.ref_map_or(false, |left, right| {
             self.contains(left.value()) || self.contains(right.value())
         })
     }

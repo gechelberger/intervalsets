@@ -7,12 +7,13 @@ mod from;
 mod hash;
 mod intersection;
 mod intersects;
+mod measure;
 mod merged;
+mod partial_ord;
 mod union;
 
-mod measure;
-
-mod partial_ord;
+#[cfg(test)]
+pub(crate) mod test;
 
 use crate::bound::{Bound, Side};
 use crate::numeric::Domain;
@@ -56,21 +57,50 @@ impl<T: Domain> Finite<T> {
         Self::FullyBounded(left, right)
     }
 
-    pub fn map(&self, func: impl FnOnce(&Bound<T>, &Bound<T>) -> Self) -> Self {
-        self.map_or(Self::Empty, func)
+    pub fn ref_map(&self, func: impl FnOnce(&Bound<T>, &Bound<T>) -> Self) -> Self {
+        self.ref_map_or(Self::Empty, func)
     }
 
-    pub fn map_or<U>(&self, default: U, func: impl FnOnce(&Bound<T>, &Bound<T>) -> U) -> U {
+    pub fn ref_map_or<U>(&self, default: U, func: impl FnOnce(&Bound<T>, &Bound<T>) -> U) -> U {
         match self {
             Self::FullyBounded(left, right) => func(left, right),
             Self::Empty => default,
         }
     }
 
-    pub fn map_or_else<F, D, U>(&self, default: D, func: F) -> U
+    pub fn ref_map_or_else<F, D, U>(&self, default: D, func: F) -> U
     where
         D: FnOnce() -> U,
         F: FnOnce(&Bound<T>, &Bound<T>) -> U,
+    {
+        match self {
+            Self::FullyBounded(left, right) => func(left, right),
+            Self::Empty => default(),
+        }
+    }
+
+    pub fn map<F>(self, func: F) -> Self
+    where
+        F: FnOnce(Bound<T>, Bound<T>) -> Self,
+    {
+        self.map_or(Self::Empty, func)
+    }
+
+    pub fn map_or<F, U>(self, default: U, func: F) -> U
+    where
+        F: FnOnce(Bound<T>, Bound<T>) -> U,
+    {
+        match self {
+            Self::FullyBounded(left, right) => func(left, right),
+            Self::Empty => default,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub fn map_or_else<F, D, U>(self, default: D, func: F) -> U
+    where
+        D: FnOnce() -> U,
+        F: FnOnce(Bound<T>, Bound<T>) -> U,
     {
         match self {
             Self::FullyBounded(left, right) => func(left, right),

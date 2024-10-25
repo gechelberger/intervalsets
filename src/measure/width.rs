@@ -29,8 +29,8 @@ use super::Measurement;
 /// assert_eq!(interval.width().finite(), 10);
 ///
 /// let set = Interval::closed(0.0, 10.0)
-///     .union(&Interval::closed(5.0, 15.0))
-///     .union(&Interval::open(100.0, 110.0));
+///     .union(Interval::closed(5.0, 15.0))
+///     .union(Interval::open(100.0, 110.0));
 /// assert_eq!(set.width().finite(), 25.0);
 /// ```
 ///
@@ -42,11 +42,11 @@ use super::Measurement;
 /// use intervalsets::measure::Width;
 ///
 /// let a = Interval::closed(0.0, 10.0);
-/// let a = a.difference(&Interval::closed(5.0, 15.0));
+/// let a = a.difference(Interval::closed(5.0, 15.0));
 /// assert_eq!(a.width().finite(), 5.0);
 ///
 /// let b = Interval::closed(0, 10);
-/// let b = b.difference(&Interval::closed(5, 15));
+/// let b = b.difference(Interval::closed(5, 15));
 /// assert_eq!(b.width().finite(), 4);
 /// ```
 pub trait Width {
@@ -75,8 +75,7 @@ where
     type Output = Out;
 
     fn width(&self) -> Measurement<Self::Output> {
-        self.intervals()
-            .iter()
+        self.iter()
             .map(|subset| subset.width())
             .fold(Measurement::Finite(Out::new_zero()), |accum, item| {
                 accum + item

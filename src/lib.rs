@@ -18,12 +18,12 @@
 //! and correct. If you find any bugs, please open an issue on the repository
 //! or open a pull request.
 //!
-//! These types are **immutable** and as such can be easily be used in a
-//! multi-threaded environment, or as keys in hash-structures as long as
-//! the underlying generic type is `Hash`.
-//!
-//! The vast majority of interactions with these `Set` types is governed by
+//! The vast majority of interactions with these `Set` types are governed by
 //! trait implementations in the [`ops`] module.
+//!
+//! # Limitations
+//!
+//! Neither [`Interval`] nor [`IntervalSet`] are `Copy`.
 //!
 //! # Getting Started
 //!
@@ -53,7 +53,7 @@
 //! assert_eq!(y, Interval::closed(-3.0, 99.9));
 //!
 //! let iset = IntervalSet::from_iter([x, y]);
-//! assert_eq!(iset.intervals().len(), 2);
+//! assert_eq!(iset.subsets().len(), 2);
 //! ```
 //!
 //! ## Set Operations
@@ -65,16 +65,16 @@
 //! let z = Interval::open(2000.0, 2100.0);
 //!
 //! let a = Interval::<f64>::unbounded()
-//!     .difference(&x)
-//!     .difference(&y)
-//!     .difference(&z);
+//!     .ref_difference(&x)
+//!     .ref_difference(&y)
+//!     .ref_difference(&z);
 //!
 //! assert_eq!(a.contains(&50.0), false);
 //!
-//! let b = x.union(&y).union(&z).complement();
+//! let b = x.union(y).union(z).complement();
 //! assert_eq!(a, b);
 //!
-//! let c = a.sym_difference(&b).expect_interval();
+//! let c = a.sym_difference(b).expect_interval();
 //! assert_eq!(c, Interval::<f64>::empty());
 //! ```
 //!
@@ -85,14 +85,14 @@
 //!
 //! let x = Interval::closed(1, 5);
 //! let y = x.flat_map_finite(|left, right| {
-//!     Interval::new_finite(left.map(|v| 10 * v), right.map(|v| 20 * v))
+//!     Interval::new_finite(left.clone().map(|v| 10 * v), right.clone().map(|v| 20 * v))
 //! });
 //! assert_eq!(y, Interval::closed(10, 100));
 //!
 //! let z = IntervalSet::from_iter([x.clone(), y.clone()]);
 //! let z = z.collect_map(|mut sets, subset| {
 //!     let mirror_image = subset.flat_map_finite(|left, right| {
-//!         Interval::new_finite(right.map(|v| -v), left.map(|v| -v))
+//!         Interval::new_finite(right.clone().map(|v| -v), left.clone().map(|v| -v))
 //!     });
 //!     sets.push(mirror_image);
 //!     sets.push(subset.clone());
@@ -292,10 +292,12 @@ pub mod ops {
     pub use crate::traits::intersects::Intersects;
 
     pub use crate::traits::complement::Complement;
-    pub use crate::traits::difference::{Difference, SymmetricDifference};
-    pub use crate::traits::intersection::Intersection;
-    pub use crate::traits::merged::Merged;
-    pub use crate::traits::union::Union;
+    pub use crate::traits::difference::{
+        Difference, RefDifference, RefSymmetricDifference, SymmetricDifference,
+    };
+    pub use crate::traits::intersection::{Intersection, RefIntersection};
+    pub use crate::traits::merged::{Merged, RefMerged};
+    pub use crate::traits::union::{RefUnion, Union};
 }
 
 mod detail;

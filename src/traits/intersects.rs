@@ -37,14 +37,14 @@ impl<T: Domain> Intersects<Self> for Interval<T> {
 impl<T: Domain> Intersects<Interval<T>> for IntervalSet<T> {
     fn intersects(&self, rhs: &Interval<T>) -> bool {
         // binary search for
-        self.intervals().iter().any(|subset| subset.intersects(rhs))
+        self.iter().any(|subset| subset.intersects(rhs))
     }
 }
 commutative_predicate_impl!(Intersects, intersects, Interval<T>, IntervalSet<T>);
 
 impl<T: Domain> Intersects<Self> for IntervalSet<T> {
     fn intersects(&self, rhs: &Self) -> bool {
-        self.intervals().iter().any(|subset| rhs.intersects(subset))
+        self.iter().any(|subset| rhs.intersects(subset))
     }
 }
 

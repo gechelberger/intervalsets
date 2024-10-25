@@ -1,6 +1,8 @@
 use crate::numeric::Domain;
 use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
 
+use std::borrow::Cow::*;
+
 /// Defines the minimal contiguous Interval
 /// which fully contains every provided item.
 ///
@@ -13,6 +15,9 @@ use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
 /// let hull = Interval::convex_hull([5, 3, -120, 44, 100, -100]);
 /// assert_eq!(hull, Interval::closed(-120, 100));
 ///
+/// let items = vec![5, 3, -120, 44, 100, -100];
+/// let hull = Interval::convex_hull(&items);
+/// assert_eq!(hull, Interval::closed(-120, 100));
 ///
 /// // from intervals
 /// let intervals = vec![
@@ -27,9 +32,9 @@ use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
 ///
 /// // from sets
 /// let sets: Vec<IntervalSet<i32>> = vec![
-///     Interval::closed(0, 10).union(&Interval::closed(1000, 1010)),
+///     Interval::closed(0, 10).union(Interval::closed(1000, 1010)),
 ///     Interval::closed(-1000, 10).into(),
-///     Interval::closed(-500, 500).union(&Interval::closed_unbound(800))
+///     Interval::closed(-500, 500).union(Interval::closed_unbound(800))
 /// ];
 /// let hull: Interval<i32> = Interval::convex_hull(sets);
 /// assert_eq!(hull, Interval::closed_unbound(-1000))
@@ -42,20 +47,37 @@ impl<T: Domain> ConvexHull<T> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self {
         let mut iter = iter.into_iter();
 
-        // check our empty case first
-        let mut bounds = match iter.next() {
+        let (mut left, mut right) = match iter.next() {
             None => return Interval::empty(),
             Some(item) => (Bound::closed(item.clone()), Bound::closed(item)),
         };
 
         for item in iter {
-            let item_ival = Bound::closed(item);
-            let left = Bound::min_left(&bounds.0, &item_ival);
-            let right = Bound::max_right(&bounds.1, &item_ival);
-            bounds = (left, right);
+            let candidate = Bound::closed(item);
+            left = Bound::min_cow(Side::Left, Owned(left), Borrowed(&candidate)).into_owned();
+            right = Bound::max_cow(Side::Right, Owned(right), Owned(candidate)).into_owned();
         }
 
-        Interval::new_finite(bounds.0, bounds.1)
+        Interval::new_finite(left, right)
+    }
+}
+
+impl<'a, T: Domain> ConvexHull<&'a T> for Interval<T> {
+    fn convex_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Self {
+        let mut iter = iter.into_iter();
+
+        let (mut left, mut right) = match iter.next() {
+            None => return Interval::empty(),
+            Some(item) => (Bound::closed(item.clone()), Bound::closed(item.clone())),
+        };
+
+        for item in iter {
+            let candidate = Bound::closed(item.clone());
+            left = Bound::min_cow(Side::Left, Owned(left), Borrowed(&candidate)).into_owned();
+            right = Bound::max_cow(Side::Right, Owned(right), Owned(candidate)).into_owned();
+        }
+
+        Interval::new_finite(left, right)
     }
 }
 
@@ -72,7 +94,7 @@ where
     // take from iterator until (skipping over empty intervals):
     // 1) it is exhausted -> return Empty
     // 2) we find a non-empty interval and extract it's left and right bounds (or None for +/- inf)
-    let mut bounds = loop {
+    let (mut left, mut right) = loop {
         match iter.next() {
             None => return Interval::empty(),
             Some(set) => {
@@ -91,18 +113,18 @@ where
         }
 
         // None should take the greatest precedence since it represents infinity.
-        let left = bounds
-            .0
-            .and_then(|prev| item.left().map(|value| Bound::min_left(&prev, value)));
+        left = left.and_then(|prev| {
+            item.left()
+                .map(|value| Bound::min_cow(Side::Left, Owned(prev), Borrowed(value)).into_owned())
+        });
 
-        let right = bounds
-            .1
-            .and_then(|prev| item.right().map(|value| Bound::max_right(&prev, value)));
-
-        bounds = (left, right);
+        right = right.and_then(|prev| {
+            item.right()
+                .map(|value| Bound::max_cow(Side::Right, Owned(prev), Borrowed(value)).into_owned())
+        });
     }
 
-    match bounds {
+    match (left, right) {
         (Some(left), Some(right)) => Interval::new_finite(left, right),
         (Some(bound), None) => Interval::new_half_bounded(Side::Left, bound),
         (None, Some(bound)) => Interval::new_half_bounded(Side::Right, bound),
@@ -130,8 +152,20 @@ impl<T: Domain> ConvexHull<Interval<T>> for Interval<T> {
     }
 }
 
+impl<'a, T: Domain> ConvexHull<&'a Interval<T>> for Interval<T> {
+    fn convex_hull<U: IntoIterator<Item = &'a Interval<T>>>(iter: U) -> Self {
+        convex_hull_bounds_impl(iter)
+    }
+}
+
 impl<T: Domain> ConvexHull<IntervalSet<T>> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = IntervalSet<T>>>(iter: U) -> Self {
+        convex_hull_bounds_impl(iter)
+    }
+}
+
+impl<'a, T: Domain> ConvexHull<&'a IntervalSet<T>> for Interval<T> {
+    fn convex_hull<U: IntoIterator<Item = &'a IntervalSet<T>>>(iter: U) -> Self {
         convex_hull_bounds_impl(iter)
     }
 }
@@ -143,9 +177,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_finite_hull_of_points() {
-        let iv = Interval::convex_hull(vec![5, 3, -1, 30, 2, -22, 100, -100]);
-        assert_eq!(iv, Interval::closed(-100, 100))
+    fn test_hull_of_points_empty() {
+        let points: Vec<i32> = vec![];
+
+        let hull = Interval::convex_hull(points);
+        assert_eq!(hull, Interval::empty());
+    }
+
+    #[test]
+    fn test_hull_of_points_by_value() {
+        let points = vec![5, 3, -1, 30, 2, -22, 100, -100];
+
+        let hull = Interval::convex_hull(points);
+        assert_eq!(hull, Interval::closed(-100, 100));
+    }
+
+    #[test]
+    fn test_hull_of_points_by_reference() {
+        let points = vec![5, 3, -1, 30, 2, -22, 100, -100];
+
+        let hull = Interval::convex_hull(points.iter());
+        assert_eq!(hull, Interval::closed(-100, 100));
     }
 
     #[test]
@@ -155,15 +207,29 @@ mod tests {
     }
 
     #[test]
-    fn test_hull_of_intervals() {
-        let iv = Interval::convex_hull(vec![
+    fn test_hull_of_intervals_by_value() {
+        let items = vec![
             Interval::empty(),
             Interval::empty(),
             Interval::closed(0, 10),
             Interval::empty(),
             Interval::empty(),
-        ]);
-        assert_eq!(iv, Interval::closed(0, 10));
+        ];
+        let hull = Interval::convex_hull(items);
+        assert_eq!(hull, Interval::closed(0, 10));
+    }
+
+    #[test]
+    fn test_hull_of_intervals_by_reference() {
+        let items = vec![
+            Interval::empty(),
+            Interval::empty(),
+            Interval::closed(0, 10),
+            Interval::empty(),
+            Interval::empty(),
+        ];
+        let hull = Interval::convex_hull(items.iter());
+        assert_eq!(hull, Interval::closed(0, 10));
     }
 
     #[test]
@@ -181,14 +247,21 @@ mod tests {
     }
 
     #[test]
-    fn test_hull_of_sets() {
+    fn test_hull_of_sets_empty() {
+        let sets: Vec<IntervalSet<f32>> = vec![];
+        let hull = Interval::convex_hull(sets);
+        assert_eq!(hull, Interval::empty())
+    }
+
+    #[test]
+    fn test_hull_of_sets_by_value() {
         let sets: Vec<IntervalSet<f64>> = vec![
             IntervalSet::empty(),
             Interval::closed(0.0, 10.0)
-                .union(&Interval::open(100.0, 110.0))
-                .union(&Interval::open(200.0, 210.0)),
+                .union(Interval::open(100.0, 110.0))
+                .union(Interval::open(200.0, 210.0)),
             IntervalSet::empty(),
-            Interval::closed(-110.0, -100.0).union(&Interval::closed(-1000.0, -900.0)),
+            Interval::closed(-110.0, -100.0).union(Interval::closed(-1000.0, -900.0)),
         ];
         assert_eq!(
             Interval::convex_hull(sets),
@@ -196,11 +269,35 @@ mod tests {
         );
 
         let sets: Vec<IntervalSet<i32>> = vec![
-            Interval::closed(0, 10).union(&Interval::closed(1000, 1010)),
+            Interval::closed(0, 10).union(Interval::closed(1000, 1010)),
             Interval::closed(-1000, 10).into(),
-            Interval::closed(-500, 500).union(&Interval::closed_unbound(800)),
+            Interval::closed(-500, 500).union(Interval::closed_unbound(800)),
         ];
         let hull: Interval<i32> = Interval::<i32>::convex_hull(sets);
+        assert_eq!(hull, Interval::closed_unbound(-1000))
+    }
+
+    #[test]
+    fn test_hull_of_sets_by_reference() {
+        let sets: Vec<IntervalSet<f64>> = vec![
+            IntervalSet::empty(),
+            Interval::closed(0.0, 10.0)
+                .union(Interval::open(100.0, 110.0))
+                .union(Interval::open(200.0, 210.0)),
+            IntervalSet::empty(),
+            Interval::closed(-110.0, -100.0).union(Interval::closed(-1000.0, -900.0)),
+        ];
+        assert_eq!(
+            Interval::convex_hull(sets.iter()),
+            Interval::closed_open(-1000.0, 210.0)
+        );
+
+        let sets: Vec<IntervalSet<i32>> = vec![
+            Interval::closed(0, 10).union(Interval::closed(1000, 1010)),
+            Interval::closed(-1000, 10).into(),
+            Interval::closed(-500, 500).union(Interval::closed_unbound(800)),
+        ];
+        let hull: Interval<i32> = Interval::convex_hull(sets.iter());
         assert_eq!(hull, Interval::closed_unbound(-1000))
     }
 }

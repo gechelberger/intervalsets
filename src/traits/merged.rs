@@ -21,32 +21,47 @@ use crate::Interval;
 /// # Example
 /// ```
 /// use intervalsets::Interval;
-/// use intervalsets::ops::Merged;
+/// use intervalsets::ops::{Merged, RefMerged};
 ///
 /// let x = Interval::closed(0, 10);
 /// let y = Interval::closed(11, 20);
-/// assert_eq!(x.merged(&y).unwrap(), Interval::closed(0, 20));
+/// assert_eq!(x.ref_merged(&y).unwrap(), Interval::closed(0, 20));
 ///
 /// let y = Interval::closed(20, 30);
-/// assert_eq!(x.merged(&y), None);
+/// assert_eq!(x.ref_merged(&y), None);
 ///
 /// let y = Interval::<i32>::empty();
-/// assert_eq!(x.merged(&y).unwrap(), x);
+/// assert_eq!(x.ref_merged(&y).unwrap(), x);
 ///
 /// let x = Interval::<i32>::empty();
-/// assert_eq!(x.merged(&y).unwrap(), Interval::empty());
+/// assert_eq!(x.merged(y).unwrap(), Interval::empty());
 /// ```
 pub trait Merged<Rhs = Self> {
     type Output;
 
-    fn merged(&self, rhs: &Rhs) -> Option<Self::Output>;
+    fn merged(self, rhs: Rhs) -> Option<Self::Output>;
+}
+
+pub trait RefMerged<Rhs = Self>: Merged<Rhs> + Clone
+where
+    Rhs: Clone,
+{
+    fn ref_merged(&self, rhs: &Rhs) -> Option<Self::Output> {
+        self.clone().merged(rhs.clone())
+    }
 }
 
 impl<T: Domain> Merged<Self> for Interval<T> {
     type Output = Self;
 
-    fn merged(&self, rhs: &Self) -> Option<Self::Output> {
-        self.0.merged(&rhs.0).map(|v| v.into())
+    fn merged(self, rhs: Self) -> Option<Self::Output> {
+        self.0.merged(rhs.0).map(|v| v.into())
+    }
+}
+
+impl<T: Domain> RefMerged<Self> for Interval<T> {
+    fn ref_merged(&self, rhs: &Self) -> Option<Self::Output> {
+        self.0.ref_merged(&rhs.0).map(|v| v.into())
     }
 }
 
@@ -63,17 +78,17 @@ mod tests {
         }
 
         let x = Interval::unbound_closed(x);
-        let y = x.complement().intervals()[0].clone();
+        let y = x.clone().complement().expect_interval();
 
-        assert_eq!(x.merged(&y).unwrap(), Interval::unbounded());
+        assert_eq!(x.ref_merged(&y).unwrap(), Interval::unbounded());
     }
 
     #[quickcheck]
     fn check_merge_half_complements_i32(x: i32) {
         let x = Interval::closed_unbound(x);
-        let y = x.complement().intervals()[0].clone();
+        let y = x.clone().complement().expect_interval();
 
-        assert_eq!(x.merged(&y).unwrap(), Interval::unbounded());
+        assert_eq!(x.ref_merged(&y).unwrap(), Interval::unbounded());
     }
 
     #[test]
@@ -81,7 +96,7 @@ mod tests {
         let x = Interval::closed(0, i32::MAX);
         let y = Interval::closed(-100, -1);
 
-        assert_eq!(x.merged(&y).unwrap(), Interval::closed(-100, i32::MAX));
+        assert_eq!(x.ref_merged(&y).unwrap(), Interval::closed(-100, i32::MAX));
     }
 }
 
@@ -108,14 +123,14 @@ mod decimal_test {
         let left = Interval::open(a.clone(), b.clone());
         let right = Interval::closed(b.clone(), c.clone());
 
-        let merged = left.merged(&right).unwrap();
+        let merged = left.ref_merged(&right).unwrap();
         if left.is_empty() {
             assert_eq!(merged, right);
         } else if right.is_empty() {
             assert_eq!(merged, left);
         } else {
             assert_eq!(
-                left.merged(&right).unwrap(),
+                left.merged(right).unwrap(),
                 Interval::open_closed(a.clone(), c.clone())
             );
         }

@@ -16,7 +16,7 @@ use super::Measurement;
 /// let x = Interval::closed(1, 10);
 /// assert_eq!(x.count().finite(), 10);
 ///
-/// let x: IntervalSet<_> = x.union(&Interval::closed(101, 200));
+/// let x: IntervalSet<_> = x.union(Interval::closed(101, 200));
 /// assert_eq!(x.count().finite(), 110);
 /// ```
 ///
@@ -151,8 +151,7 @@ where
     type Output = Out;
 
     fn count(&self) -> Measurement<Self::Output> {
-        self.intervals()
-            .iter()
+        self.iter()
             .map(|subset| subset.count())
             .fold(Measurement::Finite(Out::new_zero()), |accum, item| {
                 accum + item

@@ -5,7 +5,7 @@ use super::*;
 
 impl<T: Domain> Contains<T> for Finite<T> {
     fn contains(&self, rhs: &T) -> bool {
-        self.map_or(false, |left, right| {
+        self.ref_map_or(false, |left, right| {
             left.contains(Side::Left, rhs) && right.contains(Side::Right, rhs)
         })
     }
@@ -13,8 +13,8 @@ impl<T: Domain> Contains<T> for Finite<T> {
 
 impl<T: Domain> Contains<Self> for Finite<T> {
     fn contains(&self, rhs: &Self) -> bool {
-        self.map_or(false, |left_out, right_out| {
-            rhs.map_or(false, |left_in, right_in| {
+        self.ref_map_or(false, |left_out, right_out| {
+            rhs.ref_map_or(false, |left_in, right_in| {
                 left_out.contains(Side::Left, left_in.value())
                     && right_out.contains(Side::Right, right_in.value())
             })
@@ -60,7 +60,7 @@ impl<T: Domain> Contains<T> for HalfBounded<T> {
 
 impl<T: Domain> Contains<Finite<T>> for HalfBounded<T> {
     fn contains(&self, rhs: &Finite<T>) -> bool {
-        rhs.map_or(false, |left, right| {
+        rhs.ref_map_or(false, |left, right| {
             self.contains(left.value()) && self.contains(right.value())
         })
     }
