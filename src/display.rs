@@ -2,7 +2,7 @@ use itertools::Itertools;
 
 use crate::bound::BoundType;
 use crate::numeric::Domain;
-use crate::{Bound, Bounding, Interval, Side};
+use crate::{Bound, Bounding, Interval, MaybeEmpty, Side};
 
 use crate::detail::{BoundCase, Finite, HalfBounded};
 use crate::IntervalSet;
@@ -88,10 +88,10 @@ impl<T: fmt::Display + Domain> fmt::Display for Interval<T> {
 
 impl<T: fmt::Display + Domain> fmt::Display for IntervalSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.intervals().is_empty() {
+        if self.is_empty() {
             Finite::<i32>::Empty.fmt(f)
         } else {
-            write!(f, "{{{}}}", self.intervals().iter().join(", "))
+            write!(f, "{{{}}}", self.iter().join(", "))
         }
     }
 }
@@ -139,9 +139,9 @@ mod tests {
             format!(
                 "{}",
                 Interval::unbound_closed(-9.9)
-                    .union(&Interval::open(5.5, 9.9))
-                    .union(&Interval::closed_open(11.1, 22.2))
-                    .union(&Interval::open_unbound(33.3))
+                    .union(Interval::open(5.5, 9.9))
+                    .union(Interval::closed_open(11.1, 22.2))
+                    .union(Interval::open_unbound(33.3))
             ),
             "{(<-, -9.9], (5.5, 9.9), [11.1, 22.2), (33.3, ->)}"
         )

@@ -4,18 +4,20 @@ use crate::{Interval, IntervalSet};
 
 /// Defines the complement of a Set.
 ///
-/// Let A  = { x in T | Pred(x) }
-///     A' = { x in T | x not in A }
+/// ```text
+/// Let A  = { x | P(x) } =>
+///     A' = { x | x ∉ A } = { x | !P(x) }
+/// ```
 pub trait Complement {
     type Output;
 
-    fn complement(&self) -> Self::Output;
+    fn complement(self) -> Self::Output;
 }
 
 impl<T: Domain> Complement for Interval<T> {
     type Output = IntervalSet<T>;
 
-    fn complement(&self) -> Self::Output {
+    fn complement(self) -> Self::Output {
         self.0.complement()
     }
 }
@@ -23,11 +25,11 @@ impl<T: Domain> Complement for Interval<T> {
 impl<T: Domain> Complement for IntervalSet<T> {
     type Output = Self;
 
-    fn complement(&self) -> Self::Output {
-        self.intervals()
-            .iter()
+    fn complement(self) -> Self::Output {
+        self.into_iter()
             .map(|x| x.complement())
-            .fold(Interval::unbounded().into(), |l, r| l.intersection(&r))
+            //.fold(Interval::unbounded().into(), |l, r| l.intersection(r))
+            .fold(Interval::unbounded().into(), Intersection::intersection)
     }
 }
 
@@ -40,7 +42,7 @@ mod test {
     #[quickcheck]
     fn test_finite_complement_i8(a: i8) {
         let baseline = Interval::open_closed(0, 50);
-        let complement = baseline.complement();
+        let complement = baseline.clone().complement();
 
         assert!(baseline.contains(&a) != complement.contains(&a))
     }
@@ -52,14 +54,14 @@ mod test {
         }
 
         let baseline = Interval::open_closed(0 as f32, 50.0);
-        let complement = baseline.complement();
+        let complement = baseline.clone().complement();
         assert!(baseline.contains(&a) != complement.contains(&a))
     }
 
     #[quickcheck]
     fn test_half_complement_i8(a: i8) {
         let baseline = Interval::unbound_closed(50 as i8);
-        let complement = baseline.complement();
+        let complement = baseline.clone().complement();
 
         assert!(baseline.contains(&a) != complement.contains(&a));
     }
@@ -72,7 +74,7 @@ mod test {
 
         let set = IntervalSet::new(vec![a, b, c]);
 
-        assert_eq!(set.complement().complement(), set);
+        assert_eq!(set.clone().complement().complement(), set);
     }
 
     #[quickcheck]
@@ -87,7 +89,7 @@ mod test {
 
         let set = IntervalSet::new(vec![a, b, c]);
 
-        assert_eq!(set.complement().complement(), set);
+        assert_eq!(set.clone().complement().complement(), set);
     }
 
     #[quickcheck]
@@ -97,11 +99,14 @@ mod test {
         }
 
         let a = Interval::closed(a, b);
-        let c = a.complement();
+        let c = a.clone().complement();
 
         // This one we need to fix
-        //assert_eq!(a.union(&c), Interval::unbounded().into());
-        assert_eq!(a.intersection(&c), Interval::empty().into());
+        assert_eq!(
+            a.clone().union(c.clone()).expect_interval(),
+            Interval::unbounded()
+        );
+        assert_eq!(a.intersection(c).expect_interval(), Interval::empty());
 
         true
     }

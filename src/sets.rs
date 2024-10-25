@@ -153,7 +153,7 @@ impl<T: Domain> Interval<T> {
     /// use intervalsets::{Bound, Interval, Bounding};
     ///
     /// let x = Interval::open(0, 100);
-    /// let y = Interval::new_finite(x.right().unwrap().flip(), Bound::closed(200));
+    /// let y = Interval::new_finite(x.right().unwrap().clone().flip(), Bound::closed(200));
     /// assert_eq!(y, Interval::closed(100, 200));
     ///
     /// let x = Interval::open(10, 10);
@@ -171,7 +171,7 @@ impl<T: Domain> Interval<T> {
     /// use intervalsets::ops::Complement;
     ///
     /// let x = Interval::unbound_open(0);
-    /// let y = Interval::new_half_bounded(Side::Left, x.right().unwrap().flip());
+    /// let y = Interval::new_half_bounded(Side::Left, x.right().unwrap().clone().flip());
     /// assert_eq!(x.complement(), y.into());
     /// ```
     pub fn new_half_bounded(side: Side, bound: Bound<T>) -> Self {
@@ -271,7 +271,7 @@ impl<T: Domain> Interval<T> {
     /// use intervalsets::ops::Merged;
     ///
     /// let x = Interval::unbound_closed(10)
-    ///             .merged(&Interval::closed_unbound(-10))
+    ///             .merged(Interval::closed_unbound(-10))
     ///             .unwrap();
     ///
     /// assert_eq!(x.is_unbounded(), true);
@@ -293,7 +293,7 @@ impl<T: Domain> Interval<T> {
     ///     T: Domain + core::ops::Add<T, Output=T>
     /// {
     ///     let shift_bound = |bound: &Bound<T>| {
-    ///         bound.map(|v| v.clone() + amount.clone())
+    ///         bound.clone().map(|v| v + amount.clone())
     ///     };
     ///
     ///     interval.flat_map(|left, right| {
@@ -363,8 +363,8 @@ impl<T: Domain> Interval<T> {
     ///     interval.map_or_else(Interval::unbounded, |left, right| {
     ///         match (left, right) {
     ///             (None, None) => Interval::empty(),
-    ///             (None, Some(right)) => Interval::new_half_bounded(Side::Left, right.flip()),
-    ///             (Some(left), None) => Interval::new_half_bounded(Side::Right, left.flip()),
+    ///             (None, Some(right)) => Interval::new_half_bounded(Side::Left, right.clone().flip()),
+    ///             (Some(left), None) => Interval::new_half_bounded(Side::Right, left.clone().flip()),
     ///             (Some(left), Some(right)) => panic!("... elided ...")
     ///         }
     ///     })
@@ -407,7 +407,7 @@ impl<T: Domain> Interval<T> {
     /// fn shift(interval: Interval<i32>, amount: i32) -> Interval<i32> {
     ///     interval.flat_map_finite(|left, right| {
     ///         Interval::new_finite(
-    ///             left.map(|v| v + amount), right.map(|v| v + amount)
+    ///             left.clone().map(|v| v + amount), right.clone().map(|v| v + amount)
     ///         )
     ///     })
     /// }
@@ -431,7 +431,7 @@ impl<T: Domain> Interval<T> {
         F: FnOnce(&Bound<T>, &Bound<T>) -> Self,
     {
         match &self.0 {
-            BoundCase::Finite(inner) => inner.map_or_else(Self::empty, func),
+            BoundCase::Finite(inner) => inner.ref_map_or_else(Self::empty, func),
             _ => panic!("Expected finite interval"),
         }
     }
@@ -450,6 +450,8 @@ impl<T: Domain + Ord> Ord for Interval<T> {
         self.0.cmp(&other.0)
     }
 }
+
+//impl<T: Domain + Copy> Copy for Interval<T> {}
 
 /// A Set in N, Z, or R consisting of disjoint contiguous intervals.
 ///
@@ -477,43 +479,41 @@ impl<T: Domain> IntervalSet<T> {
     }
 
     /// Create a new Set of intervals and enforce invariants.
-    pub fn new(intervals: Vec<Interval<T>>) -> Self {
-        // O(n)
+    pub fn new<I>(intervals: I) -> Self
+    where
+        I: IntoIterator<Item = Interval<T>>,
+    {
+        let mut intervals = intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
+
         if Self::satisfies_invariants(&intervals) {
-            return Self::new_unchecked(intervals);
-        }
-
-        let mut intervals: Vec<Interval<T>> =
-            intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
-
-        if intervals.is_empty() {
+            // includes empty case
             return Self::new_unchecked(intervals);
         }
 
         // most of the time intervals should already by sorted
-        // O(n)
-        //if !intervals.is_sorted() {
-        // O(n*log(n))
         intervals.sort_by(|a, b| {
-                a.partial_cmp(b)
-                    .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
-            });
-        //}
+            a.partial_cmp(b)
+                .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
+        });
 
-        Self {
-            intervals: Self::merge_sorted(intervals),
-        }
+        Self::merge_sorted(intervals)
     }
 
-    /// Merge overlapping intervals assuming that they are already sorted
-    pub(crate) fn merge_sorted(intervals: Vec<Interval<T>>) -> Vec<Interval<T>> {
-        let mut merged_sets: Vec<Interval<T>> = Vec::with_capacity(intervals.len());
+    /// Merge overlapping intervals assuming all other invariants are
+    /// already satisfied.
+    pub(crate) fn merge_sorted<I>(intervals: I) -> Self
+    where
+        I: IntoIterator<Item = Interval<T>>,
+    {
         let mut it = intervals.into_iter();
+        let mut current = match it.next() {
+            None => return Self::empty(),
+            Some(head) => head,
+        };
 
-        // empty already checked so there is at least one subset.
-        let mut current = it.next().unwrap();
+        let mut merged_sets: Vec<Interval<T>> = Vec::new();
         for rhs in it {
-            match current.merged(&rhs) {
+            match current.clone().merged(rhs.clone()) {
                 Some(merged) => {
                     current = merged;
                 }
@@ -524,7 +524,9 @@ impl<T: Domain> IntervalSet<T> {
             }
         }
         merged_sets.push(current);
-        merged_sets
+        Self {
+            intervals: merged_sets,
+        }
     }
 
     pub fn satisfies_invariants(intervals: &Vec<Interval<T>>) -> bool {
@@ -605,7 +607,7 @@ impl<T: Domain> IntervalSet<T> {
     /// assert_eq!(interval, unwrapped);
     ///
     /// let a = Interval::closed(0, 10)
-    ///     .union(&Interval::closed(5, 15))
+    ///     .union(Interval::closed(5, 15))
     ///     .expect_interval();
     /// assert_eq!(a, Interval::closed(0, 15));
     ///
@@ -617,7 +619,7 @@ impl<T: Domain> IntervalSet<T> {
     /// use intervalsets::prelude::*;
     ///
     /// let a = Interval::closed(0, 10)
-    ///     .union(&Interval::closed(100, 110))
+    ///     .union(Interval::closed(100, 110))
     ///     .expect_interval();
     /// ```
     pub fn expect_interval(mut self) -> Interval<T> {
@@ -628,8 +630,7 @@ impl<T: Domain> IntervalSet<T> {
         }
     }
 
-    /// Return an immutable reference to the subsets.
-    pub fn intervals(&self) -> &Vec<Interval<T>> {
+    pub fn subsets(&self) -> &[Interval<T>] {
         &self.intervals
     }
 
@@ -649,8 +650,8 @@ impl<T: Domain> IntervalSet<T> {
     /// use intervalsets::prelude::*;
     ///
     /// let x = Interval::closed(0, 10)
-    ///     .union(&Interval::closed(20, 40))
-    ///     .union(&Interval::closed(50, 100));
+    ///     .union(Interval::closed(20, 40))
+    ///     .union(Interval::closed(50, 100));
     ///
     /// let mapped = x.collect_map(|mut collect, subset| {
     ///     if subset.count().finite() > 30 {
@@ -662,7 +663,7 @@ impl<T: Domain> IntervalSet<T> {
     ///
     /// let mask = Interval::closed(5, 25);
     /// let mapped = x.collect_map(|mut collect, subset| {
-    ///     collect.push(mask.intersection(subset));
+    ///     collect.push(mask.ref_intersection(subset));
     /// });
     /// assert_eq!(mapped, IntervalSet::from_iter([
     ///     Interval::closed(5, 10),
@@ -674,7 +675,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     Interval::closed(50, 60),
     /// ]);
     /// let mapped = x.collect_map(|mut collect, subset| {
-    ///     for interval in subset.difference(&mask_set) {
+    ///     for interval in subset.ref_difference(&mask_set) {
     ///         collect.push(interval)
     ///     }
     /// });
@@ -688,12 +689,11 @@ impl<T: Domain> IntervalSet<T> {
     where
         F: Fn(&mut Vec<Interval<T>>, &Interval<T>),
     {
-        let mut accum: Vec<Interval<T>> = Vec::with_capacity(self.intervals.len());
+        let mut accum: Vec<Interval<T>> = Vec::new();
         for subset in self.intervals.iter() {
             func(&mut accum, subset);
         }
 
-        accum.shrink_to_fit();
         Self::new(accum)
     }
 
@@ -703,8 +703,8 @@ impl<T: Domain> IntervalSet<T> {
     /// use intervalsets::prelude::*;
     ///
     /// let x = Interval::closed(0, 10)
-    ///     .union(&Interval::closed(20, 40))
-    ///     .union(&Interval::closed(50, 100));
+    ///     .union(Interval::closed(20, 40))
+    ///     .union(Interval::closed(50, 100));
     ///
     /// let mapped = x.flat_map(|subset| {
     ///     if subset.count().finite() > 30 {
@@ -729,7 +729,7 @@ impl<T: Domain> IntervalSet<T> {
 
 impl<T: Domain> FromIterator<Interval<T>> for IntervalSet<T> {
     fn from_iter<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
-        Self::new(iter.into_iter().collect())
+        Self::new(iter)
     }
 }
 
@@ -785,7 +785,7 @@ mod tests {
         assert_eq!(
             x.iter().fold(
                 IntervalSet::from(Interval::unbounded()),
-                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(item) }
+                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(item.clone()) }
             ),
             x.complement()
         );

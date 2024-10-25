@@ -32,11 +32,25 @@ impl<T: Domain> Bounding<T> for Interval<T> {
     }
 }
 
+impl<'a, T: Domain> Bounding<T> for &'a Interval<T> {
+    fn bound(&self, side: Side) -> Option<&'a Bound<T>> {
+        (*self).bound(side)
+    }
+}
+
 impl<T: Domain> Bounding<T> for IntervalSet<T> {
     fn bound(&self, side: Side) -> Option<&Bound<T>> {
-        match side {
-            Side::Left => self.intervals().first().and_then(|s| s.left()),
-            Side::Right => self.intervals().last().and_then(|s| s.right()),
-        }
+        let maybe_interval = match side {
+            Side::Left => self.subsets().first(),
+            Side::Right => self.subsets().last(),
+        };
+
+        maybe_interval.and_then(|s| s.bound(side))
+    }
+}
+
+impl<'a, T: Domain> Bounding<T> for &'a IntervalSet<T> {
+    fn bound(&self, side: Side) -> Option<&'a Bound<T>> {
+        (*self).bound(side)
     }
 }

@@ -19,8 +19,20 @@ impl<T: Domain> MaybeEmpty for Interval<T> {
     }
 }
 
+impl<T: Domain> MaybeEmpty for &Interval<T> {
+    fn is_empty(&self) -> bool {
+        (*self).is_empty()
+    }
+}
+
 impl<T: Domain> MaybeEmpty for IntervalSet<T> {
     fn is_empty(&self) -> bool {
-        self.intervals().len() == 0
+        self.subsets().len() == 0
+    }
+}
+
+impl<T: Domain> MaybeEmpty for &IntervalSet<T> {
+    fn is_empty(&self) -> bool {
+        (*self).is_empty()
     }
 }
