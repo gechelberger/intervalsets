@@ -297,6 +297,7 @@ pub mod ops {
     };
     pub use crate::traits::intersection::{Intersection, RefIntersection};
     pub use crate::traits::merged::{Merged, RefMerged};
+    pub use crate::traits::split::{RefSplit, Split};
     pub use crate::traits::union::{RefUnion, Union};
 }
 
