@@ -478,6 +478,15 @@ impl<T: Domain> IntervalSet<T> {
         Self { intervals: vec![] }
     }
 
+    /*
+    pub fn coerse<Iter, Iv>(iter: Iter) -> Self
+    where
+        Iv: Into<Interval<T>>,
+        Iter: IntoIterator<Item=Iv>,
+    {
+        Self::new(iter.into_iter().map(|x| x.into()))
+    }*/
+
     /// Create a new Set of intervals and enforce invariants.
     pub fn new<I>(intervals: I) -> Self
     where
@@ -611,7 +620,7 @@ impl<T: Domain> IntervalSet<T> {
     ///     .expect_interval();
     /// assert_eq!(a, Interval::closed(0, 15));
     ///
-    /// let a = IntervalSet::<i32>::from_iter([]);
+    /// let a = IntervalSet::from_iter::<[(i32, i32); 0]>([]);
     /// assert_eq!(a.expect_interval(), Interval::<i32>::empty());
     /// ```
     ///
@@ -630,13 +639,27 @@ impl<T: Domain> IntervalSet<T> {
         }
     }
 
-    pub fn subsets(&self) -> &[Interval<T>] {
+    /// Returns a slice of the [`Interval`].
+    pub fn slice(&self) -> &[Interval<T>] {
         &self.intervals
     }
 
     /// Returns a new iterator over the subsets in ascending order.
     pub fn iter(&self) -> impl Iterator<Item = &Interval<T>> {
         self.intervals.iter()
+    }
+
+    /// Returns the underlying vector of intervals; `self` is consumed.
+    ///
+    /// # Examples
+    ///
+    /// ```compile_fail
+    /// let set = IntervalSet::from((0, 10));
+    /// let intervals = set.into_raw();
+    /// let q = set.contains(5) // set is moved
+    /// ```
+    pub fn into_raw(self) -> Vec<Interval<T>> {
+        self.intervals
     }
 
     /// Returns a new IntervalSet mapped from this Set's subsets.
@@ -727,9 +750,13 @@ impl<T: Domain> IntervalSet<T> {
     }
 }
 
-impl<T: Domain> FromIterator<Interval<T>> for IntervalSet<T> {
-    fn from_iter<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Self {
-        Self::new(iter)
+impl<T, I> FromIterator<I> for IntervalSet<T>
+where
+    T: Domain,
+    I: Into<Interval<T>>,
+{
+    fn from_iter<U: IntoIterator<Item = I>>(iter: U) -> Self {
+        Self::new(iter.into_iter().map(|x| x.into()))
     }
 }
 
@@ -739,15 +766,6 @@ impl<T: Domain> IntoIterator for IntervalSet<T> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.intervals.into_iter()
-    }
-}
-
-impl<T: Domain> From<Interval<T>> for IntervalSet<T> {
-    fn from(value: Interval<T>) -> Self {
-        if value.is_empty() {
-            return IntervalSet::new_unchecked(vec![]);
-        }
-        IntervalSet::new_unchecked(vec![value])
     }
 }
 

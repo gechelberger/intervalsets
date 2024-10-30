@@ -41,8 +41,8 @@ impl<'a, T: Domain> Bounding<T> for &'a Interval<T> {
 impl<T: Domain> Bounding<T> for IntervalSet<T> {
     fn bound(&self, side: Side) -> Option<&Bound<T>> {
         let maybe_interval = match side {
-            Side::Left => self.subsets().first(),
-            Side::Right => self.subsets().last(),
+            Side::Left => self.slice().first(),
+            Side::Right => self.slice().last(),
         };
 
         maybe_interval.and_then(|s| s.bound(side))

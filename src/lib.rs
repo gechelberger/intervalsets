@@ -53,7 +53,7 @@
 //! assert_eq!(y, Interval::closed(-3.0, 99.9));
 //!
 //! let iset = IntervalSet::from_iter([x, y]);
-//! assert_eq!(iset.subsets().len(), 2);
+//! assert_eq!(iset.slice().len(), 2);
 //! ```
 //!
 //! ## Set Operations
