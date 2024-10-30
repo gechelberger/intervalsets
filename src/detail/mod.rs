@@ -10,6 +10,7 @@ mod intersects;
 mod measure;
 mod merged;
 mod partial_ord;
+mod split;
 mod union;
 
 #[cfg(test)]
@@ -111,6 +112,15 @@ impl<T: Domain> Finite<T> {
 
 impl<T: Domain> HalfBounded<T> {
     pub fn new(side: Side, bound: Bound<T>) -> Self {
+        let bound = bound.normalized(side);
         Self { side, bound }
+    }
+
+    pub fn right(bound: Bound<T>) -> Self {
+        Self::new(Side::Right, bound)
+    }
+
+    pub fn left(bound: Bound<T>) -> Self {
+        Self::new(Side::Left, bound)
     }
 }
