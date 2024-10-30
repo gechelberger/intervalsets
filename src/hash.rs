@@ -23,7 +23,7 @@ impl<T: Hash + Domain> Hash for IntervalSet<T> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         "IntervalSet".hash(state);
         //self.intervals().hash(state);
-        self.subsets().hash(state);
+        self.slice().hash(state);
     }
 }
 
