@@ -3,8 +3,8 @@ use intervalsets::prelude::*;
 
 // use lib::euler1; // function to profile
 
-pub fn bench_intersection(c: &mut Criterion) {
-    c.bench_function("intersect", |b| {
+pub fn bench_interval_intersection(c: &mut Criterion) {
+    c.bench_function("interval-intersection", |b| {
         let expected = Interval::closed(5, 10);
         b.iter(|| {
             let intersection =
@@ -14,8 +14,8 @@ pub fn bench_intersection(c: &mut Criterion) {
     });
 }
 
-pub fn bench_union(c: &mut Criterion) {
-    c.bench_function("union-adjacent", |b| {
+pub fn bench_interval_union(c: &mut Criterion) {
+    c.bench_function("interval-union-adjacent", |b| {
         let expected = IntervalSet::from((0, 20));
         b.iter(|| {
             let (a, b, c, d) = black_box((0, 10, 11, 20));
@@ -89,13 +89,37 @@ pub fn bench_interval_hull_by_ref(c: &mut Criterion) {
     });
 }
 
+pub fn bench_interval_difference(c: &mut Criterion) {
+    c.bench_function("interval-difference", |b| {
+        b.iter(|| {
+            let (a, b, c, d) = black_box((0, 5, 10, 15));
+            let ac = Interval::closed(a, c);
+            let bd = Interval::closed(b, d);
+            ac.difference(bd)
+        })
+    });
+}
+
+pub fn bench_interval_sym_difference(c: &mut Criterion) {
+    c.bench_function("interval-sym-difference", |b| {
+        b.iter(|| {
+            let (a, b, c, d) = black_box((0, 5, 10, 15));
+            let ac = Interval::closed(a, c);
+            let bd = Interval::closed(b, d);
+            ac.sym_difference(bd)
+        })
+    });
+}
+
 criterion_group!(
     benches,
-    bench_intersection,
-    bench_union,
     bench_set_complement,
     bench_set_split,
     bench_interval_hull_by_value,
     bench_interval_hull_by_ref,
+    bench_interval_difference,
+    bench_interval_sym_difference,
+    bench_interval_intersection,
+    bench_interval_union,
 );
 criterion_main!(benches);
