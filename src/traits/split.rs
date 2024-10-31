@@ -53,6 +53,7 @@ impl<T: Domain> Split<T> for IntervalSet<T> {
         let mut left = Vec::<Interval<T>>::new();
         let mut right = Vec::<Interval<T>>::new();
 
+        // faster than a binary search for small (typical) N.
         for subset in self.into_iter() {
             if subset.contains(&at) {
                 let (ileft, iright) = subset.split(at.clone(), closed);
@@ -70,36 +71,6 @@ impl<T: Domain> Split<T> for IntervalSet<T> {
         }
 
         (Self::new_unchecked(left), Self::new_unchecked(right))
-
-        /*
-        let mut iter = self.into_iter();
-        let first = iter.next().unwrap();
-        if first.contains(&at) {
-            let (i_left, i_right) = first.split(at, closed);
-            left.push(i_left);
-            right.push(i_right);
-            right.extend(iter);
-            return (Self::new_unchecked(left), Self::new_unchecked(right));
-        } else if first.left().is_some_and(|b| !b.contains(Side::Left, &at)) {
-            right.push(first);
-            right.extend(iter);
-            return (Self::new_unchecked(left), Self::new_unchecked(right));
-        }
-
-        while let Some(interval) = iter.next() {
-            if interval.contains(&at) {
-                let (i_left, i_right) = interval.split(at.clone(), closed);
-                left.push(i_left);
-                right.push(i_right);
-                right.extend(iter);
-                break;
-            } else {
-                left.push(interval);
-            }
-        }
-
-        (Self::new_unchecked(left), Self::new_unchecked(right))
-        */
     }
 }
 

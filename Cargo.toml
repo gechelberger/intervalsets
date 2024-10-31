@@ -13,11 +13,11 @@ repository = "https://github.com/gechelberger/intervalsets"
 documentation = "https://docs.rs/intervalsets"
 license = "MIT"
 keywords = [
-    "interval",
+    "intervals",
     "math",
-    "set",
+    "sets",
     "measure",
-    "bound"
+    "bounds"
 ]
 categories = ["mathematics", "science", "data-structures"]
 exclude = ["notes/", "fuzz/"]
@@ -32,6 +32,7 @@ uom = { version = "0.36.0", optional = true }
 
 [dev-dependencies]
 approx = "0.5.1"
+criterion = "0.5.1"
 husky-rs = "0.1.1"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
@@ -42,3 +43,7 @@ rust_decimal = ["dep:rust_decimal"]
 num-bigint = ["dep:num-bigint"]
 chrono = ["dep:chrono"]
 uom = ["dep:uom"]
+
+[[bench]]
+name = "intervalsets"
+harness = false
