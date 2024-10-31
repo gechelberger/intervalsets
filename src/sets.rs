@@ -478,15 +478,6 @@ impl<T: Domain> IntervalSet<T> {
         Self { intervals: vec![] }
     }
 
-    /*
-    pub fn coerse<Iter, Iv>(iter: Iter) -> Self
-    where
-        Iv: Into<Interval<T>>,
-        Iter: IntoIterator<Item=Iv>,
-    {
-        Self::new(iter.into_iter().map(|x| x.into()))
-    }*/
-
     /// Create a new Set of intervals and enforce invariants.
     pub fn new<I>(intervals: I) -> Self
     where

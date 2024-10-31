@@ -6,8 +6,8 @@
 //! * The [`Interval`] type is a Set implementation representing a
 //!   contiguous set of values.
 //!     * It is generic over any type that implements the [`Domain`](numeric::Domain) trait
-//!       which is intended to make sure elements are comparable and allows
-//!       us to differentiate between discrete and continuous data types.
+//!       which makes sure elements are comparable and differentiates
+//!       between discrete and continuous data types.
 //!
 //! * The [`IntervalSet`] type is a Set of disjoint, normalized `Intervals`
 //!   maintained in sorted order.
@@ -15,8 +15,9 @@
 //! # Overview
 //!
 //! [`Interval`] and [`IntervalSet`] are intended to be simple, versatile,
-//! and correct. If you find any bugs, please open an issue on the repository
-//! or open a pull request.
+//! and correct. If you find any bugs, please
+//! [open an issue](https://github.com/gechelberger/intervalsets/issues/new)
+//! or create a pull request.
 //!
 //! The vast majority of interactions with these `Set` types are governed by
 //! trait implementations in the [`ops`] module.
@@ -46,14 +47,16 @@
 //! assert_eq!(x.is_half_bounded(), true);
 //! assert_eq!(x.is_half_bounded_on(Side::Left), true);
 //!
-//! let x = Interval::closed_open(-100.0, -50.0);
-//! assert_eq!(*x.right().unwrap(), Bound::open(-50.0));
-//!
+//! let x = Interval::closed(-100.0, -50.0);
 //! let y = Interval::convex_hull([5.0, 10.0, 23.0, -3.0, 22.0, 9.0, 99.9]);
 //! assert_eq!(y, Interval::closed(-3.0, 99.9));
 //!
 //! let iset = IntervalSet::from_iter([x, y]);
 //! assert_eq!(iset.slice().len(), 2);
+//!
+//! // closed intervals can also be converted from tuples
+//! let iset2 = IntervalSet::from_iter([(-100.0, -50.0), (-3.0, 99.9)]);
+//! assert_eq!(iset, iset2);
 //! ```
 //!
 //! ## Set Operations
@@ -320,5 +323,5 @@ pub mod prelude {
     pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
-    pub use crate::{Bounding, ConvexHull, MaybeEmpty};
+    pub use crate::{Bounding, ConvexHull, MaybeEmpty, Side};
 }

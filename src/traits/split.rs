@@ -3,9 +3,20 @@ use crate::numeric::Domain;
 use crate::ops::Contains;
 use crate::{Bounding, Interval, IntervalSet, MaybeEmpty};
 
-/// Split a Set into disjoint subsets.
+/// Split a Set into two disjoint subsets, fully covering the original.
 ///
 /// `at` provides the new bound where the set should be split.
+///
+/// # Example
+///
+/// ```
+/// use intervalsets::prelude::*;
+///
+/// let x = Interval::closed(0, 10);
+/// let (left, right) = x.split(5, Side::Left);
+/// assert_eq!(left, Interval::closed(0, 5));
+/// assert_eq!(right, Interval::closed(6, 10));
+/// ```
 pub trait Split<T> {
     type Output: Sized;
 
@@ -127,6 +138,35 @@ mod tests {
         let (left, right) = Interval::<f32>::unbounded().split(0.0, Side::Right);
         assert_eq!(left, Interval::unbound_open(0.0));
         assert_eq!(right, Interval::closed_unbound(0.0));
+    }
+
+    #[test]
+    fn test_split_interval_on_bound() {
+        let x = Interval::closed(0, 10);
+        let (left, right) = x.clone().split(0, Side::Left);
+        assert_eq!(left, (0, 0).into());
+        assert_eq!(right, (1, 10).into());
+
+        let (left, right) = x.clone().split(0, Side::Right);
+        assert_eq!(left, Interval::empty());
+        assert_eq!(right, x);
+
+        let x = Interval::closed(0.0, 10.0);
+        let (left, right) = x.clone().split(0.0, Side::Left);
+        assert_eq!(left, (0.0, 0.0).into());
+        assert_eq!(right, Interval::open_closed(0.0, 10.0));
+
+        let (left, right) = x.clone().split(0.0, Side::Right);
+        assert_eq!(left, Interval::empty());
+        assert_eq!(right, x.clone());
+
+        let (left, right) = x.clone().split(10.0, Side::Left);
+        assert_eq!(left, x.clone());
+        assert_eq!(right, Interval::empty());
+
+        let (left, right) = x.clone().split(10.0, Side::Right);
+        assert_eq!(left, Interval::closed_open(0.0, 10.0));
+        assert_eq!(right, (10.0, 10.0).into());
     }
 
     #[test]

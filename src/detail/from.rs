@@ -78,6 +78,7 @@ mod tests {
     #[test]
     fn test_convert_tuple() {
         let x: Interval<_> = (0, 10).into();
+        let x: Interval<_> = (0.0, 10.0).into();
 
         let z = IntervalSet::new([(0, 10), (10, 20)].iter().map_into());
         let zz: IntervalSet<_> = [(0, 10), (20, 30), (40, 50)].iter().collect();
@@ -89,7 +90,8 @@ mod tests {
             .map(Interval::from)
             .collect::<IntervalSet<_>>();
 
-        //let y = IntervalSet::from_iter([(0, 5), (20, 25)]);
+        let y = IntervalSet::from_iter([(0, 5), (20, 25)]);
+        let y = IntervalSet::from_iter([(0.0, 5.0)]);
 
         //let zzz = IntervalSet::coerse([(0, 10), (20, 30), (40, 50)]);
     }
