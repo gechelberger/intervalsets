@@ -1,3 +1,5 @@
+#![cfg_attr(docsrs, feature(doc_cfg))]
+
 //! # intervalsets: Intervals as Sets in Rust
 //!
 //! Intervalsets intends to provide the full functionality of sets for
@@ -304,8 +306,8 @@ pub mod ops {
     pub use crate::traits::union::{RefUnion, Union};
 }
 
-mod factory;
-pub use factory::{Factory, IFactory};
+pub mod factory;
+pub use factory::Factory;
 
 mod detail;
 
@@ -323,7 +325,7 @@ mod util;
 
 /// Common operations & traits
 pub mod prelude {
-    pub use crate::factory::{Factory, IFactory};
+    pub use crate::factory::{Cvt, Factory, IFactory};
     pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};

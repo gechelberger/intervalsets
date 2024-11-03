@@ -17,6 +17,43 @@ impl<T> Cvt<T> for Identity {
     }
 }
 
+/// The [`Factory`] trait is intended to provide a common
+/// interface for creating the full spectrum of possible
+/// intervals. [`Interval`] itself is a factory using
+/// the [`Identity`] converter. Use [`IFactory`] to supply
+/// a custom converter.
+///
+/// Sometimes it is preferable for the underlying storage
+/// to be a wrapper or NewType. [`Cvt`] provides a mechanism
+/// to do so with less boiler plate.
+///
+/// # Examples
+/// ```
+/// use intervalsets::prelude::*;
+/// type Fct = Interval<u32>;
+/// let x = Fct::closed(0, 10);
+/// let y = Fct::closed(5, 15);
+/// assert_eq!(x.intersection(y), Fct::closed(5, 10))
+/// ```
+///
+/// This example uses the optional [`ordered-float`] feature.
+///
+/// ```ignore
+/// use intervalsets::prelude::*;
+/// use ordered_float::NotNan;
+///
+/// // explicit
+/// let x = Interval::open(
+///     NotNan::<f32>::new(0.0).unwrap(),
+///     NotNan::<f32>::new(10.0).unwrap()
+/// );
+///
+/// // factory with converter
+/// type Fct = IFactory<f32, NotNan<f32>>;
+/// let y = Fct::open(0.0, 10.0);
+///
+/// assert_eq!(x, y);
+/// ```
 pub trait Factory<T, C = Identity>
 where
     C: Cvt<T>,
@@ -39,8 +76,40 @@ where
     /// ```
     fn empty() -> Self::Output;
 
+    /// Returns a new finite [`Interval`].
+    ///
+    /// If there are no elements that satisfy both left and right bounds
+    /// then an `Empty` interval is returned. Otherwise the result will
+    /// be fully bounded.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets::{Bound, Interval, Bounding, Factory};
+    ///
+    /// let x = Interval::open(0, 100);
+    /// let y = Interval::finite(
+    ///     x.right().unwrap().clone().flip(),
+    ///     Bound::closed(200)
+    /// );
+    /// assert_eq!(y, Interval::closed(100, 200));
+    ///
+    /// let x = Interval::open(10, 10);
+    /// assert_eq!(x, Interval::empty());
+    /// ```
     fn finite(left: Bound<C::To>, right: Bound<C::To>) -> Self::Output;
 
+    /// Returns a ew half bounded [`Interval`].
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets::{Interval, Bound, Bounding, Side, Factory};
+    /// use intervalsets::ops::Complement;
+    ///
+    /// let x = Interval::unbound_open(0);
+    /// let y = Interval::half_bounded(Side::Left, x.right().unwrap().clone().flip());
+    /// assert_eq!(x.complement(), y.into());
+    /// ```
     fn half_bounded(side: Side, bound: Bound<C::To>) -> Self::Output;
 
     /// Returns a new unbounded [`Interval`].

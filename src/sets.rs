@@ -18,45 +18,6 @@ use crate::factory::Factory;
 pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
 
 impl<T: Domain> Interval<T> {
-    /*
-    /// Returns a new finite [`Interval`].
-    ///
-    /// If there are no elements that satisfy both left and right bounds
-    /// then an `Empty` interval is returned. Otherwise the result will
-    /// be fully bounded.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use intervalsets::{Bound, Interval, Bounding};
-    ///
-    /// let x = Interval::open(0, 100);
-    /// let y = Interval::new_finite(x.right().unwrap().clone().flip(), Bound::closed(200));
-    /// assert_eq!(y, Interval::closed(100, 200));
-    ///
-    /// let x = Interval::open(10, 10);
-    /// assert_eq!(x, Interval::empty());
-    /// ```
-    pub fn new_finite(left: Bound<T>, right: Bound<T>) -> Self {
-        Finite::new(left, right).into()
-    }
-
-    /// Returns a ew half bounded [`Interval`].
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::{Interval, Bound, Bounding, Side};
-    /// use intervalsets::ops::Complement;
-    ///
-    /// let x = Interval::unbound_open(0);
-    /// let y = Interval::new_half_bounded(Side::Left, x.right().unwrap().clone().flip());
-    /// assert_eq!(x.complement(), y.into());
-    /// ```
-    pub fn new_half_bounded(side: Side, bound: Bound<T>) -> Self {
-        HalfBounded::new(side, bound).into()
-    }
-    */
-
     /// Returns `true` if the interval is either fully bounded or empty.
     ///
     /// # Example
