@@ -97,10 +97,7 @@ mod tests {
         type A = IFactory<f32, ordered_float::NotNan<f32>>;
         let x = A::closed(0.0, 5.0);
 
-        assert_eq!(
-            x.left().unwrap(),
-            &Bound::closed(NotNan::<f32>::new(0.0).unwrap())
-        );
+        assert_eq!(x.left().unwrap().value(), &NotNan::<f32>::new(0.0).unwrap());
     }
 
     #[test]

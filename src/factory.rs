@@ -1,12 +1,40 @@
 use crate::detail::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
-use crate::{Bound, Interval, Side};
+use crate::{Bound, Interval, IntervalSet, Side};
 
+/// The [`Cvt`] trait provides a mechanism to wrap
+/// or coerse a convenient type into one that meets
+/// the requirements for sets.
+///
+/// Examples
+///
+/// ```
+/// use intervalsets::prelude::*;
+///
+/// #[derive(Copy, Clone)]
+/// struct Timestamp{
+///     seconds: u32,
+///     nanos: u32
+/// };
+/// let a = Timestamp{ seconds: 0, nanos: 0};
+/// let b = Timestamp{ seconds: 10, nanos: 0};
+///
+/// impl Cvt<Timestamp> for u64 {
+///     type To = u64;
+///     fn convert_to(value: Timestamp) -> Self::To {
+///         (value.seconds as u64) << 32 | value.nanos as u64
+///     }
+/// }
+///
+/// type Fct = IFactory<Timestamp, u64>;
+/// let x = Fct::closed(a, b);
+/// ```
 pub trait Cvt<From> {
     type To;
     fn convert_to(value: From) -> Self::To;
 }
 
+/// [`Identity`] is the default [`Cvt`] implementation and is a NOOP.
 pub struct Identity;
 
 impl<T> Cvt<T> for Identity {
@@ -277,11 +305,66 @@ impl<T: Domain> Factory<T, Identity> for Interval<T> {
     }
 }
 
-#[test]
-fn test_foo() {
-    let a = IFactory::<u32>::closed(0, 10);
+pub struct SFactory<T, C>(std::marker::PhantomData<(T, C)>);
 
-    type IF = IFactory<f32, Identity>;
+impl<T, C> Factory<T, C> for SFactory<T, C>
+where
+    C: Cvt<T>,
+    C::To: Domain,
+{
+    type Output = IntervalSet<C::To>;
 
-    let y = IF::closed(0.0, 2.0);
+    fn empty() -> Self::Output {
+        Self::Output::empty()
+    }
+
+    fn finite(left: Bound<C::To>, right: Bound<C::To>) -> Self::Output {
+        Interval::finite(left, right).into()
+    }
+
+    fn half_bounded(side: Side, bound: Bound<C::To>) -> Self::Output {
+        Interval::half_bounded(side, bound).into()
+    }
+
+    fn unbounded() -> Self::Output {
+        Interval::unbounded().into()
+    }
+}
+
+impl<T: Domain> Factory<T, Identity> for IntervalSet<T> {
+    type Output = IntervalSet<T>;
+
+    fn empty() -> Self::Output {
+        Interval::empty().into()
+    }
+
+    fn finite(left: Bound<T>, right: Bound<T>) -> Self::Output {
+        Interval::finite(left, right).into()
+    }
+
+    fn half_bounded(side: Side, bound: Bound<T>) -> Self::Output {
+        Interval::half_bounded(side, bound).into()
+    }
+
+    fn unbounded() -> Self::Output {
+        Interval::unbounded().into()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_interval_factory() {
+        let a = IFactory::<u32, Identity>::closed(0, 10);
+        let b = Interval::<u32>::closed(0, 10);
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn test_interval_set_factory() {
+        let x = IntervalSet::closed(0, 10);
+        assert_eq!(x.expect_interval(), Interval::closed(0, 10));
+    }
 }
