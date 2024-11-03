@@ -1,5 +1,5 @@
 use crate::numeric::Domain;
-use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
+use crate::{Bound, Bounding, Factory, Interval, IntervalSet, MaybeEmpty, Side};
 
 use std::borrow::Cow::*;
 
@@ -8,7 +8,7 @@ use std::borrow::Cow::*;
 ///
 /// # Example
 /// ```
-/// use intervalsets::{ConvexHull, Interval, IntervalSet};
+/// use intervalsets::{ConvexHull, Interval, IntervalSet, Factory};
 /// use intervalsets::ops::Union;
 ///
 /// // from points on the number line
@@ -58,7 +58,7 @@ impl<T: Domain> ConvexHull<T> for Interval<T> {
             right = Bound::max_cow(Side::Right, Owned(right), Owned(candidate)).into_owned();
         }
 
-        Interval::new_finite(left, right)
+        Interval::finite(left, right)
     }
 }
 
@@ -77,7 +77,7 @@ impl<'a, T: Domain> ConvexHull<&'a T> for Interval<T> {
             right = Bound::max_cow(Side::Right, Owned(right), Owned(candidate)).into_owned();
         }
 
-        Interval::new_finite(left, right)
+        Interval::finite(left, right)
     }
 }
 
@@ -125,9 +125,9 @@ where
     }
 
     match (left, right) {
-        (Some(left), Some(right)) => Interval::new_finite(left, right),
-        (Some(bound), None) => Interval::new_half_bounded(Side::Left, bound),
-        (None, Some(bound)) => Interval::new_half_bounded(Side::Right, bound),
+        (Some(left), Some(right)) => Interval::finite(left, right),
+        (Some(bound), None) => Interval::half_bounded(Side::Left, bound),
+        (None, Some(bound)) => Interval::half_bounded(Side::Right, bound),
         (None, None) => Interval::unbounded(),
     }
 }
@@ -137,7 +137,7 @@ impl<T: Domain> ConvexHull<Interval<T>> for Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::Interval;
+    /// use intervalsets::{Interval, Factory};
     /// use intervalsets::ConvexHull;
     ///
     /// let iv = Interval::convex_hull(vec![
@@ -173,6 +173,7 @@ impl<'a, T: Domain> ConvexHull<&'a IntervalSet<T>> for Interval<T> {
 #[cfg(test)]
 mod tests {
     use crate::ops::Union;
+    use crate::Factory;
 
     use super::*;
 

@@ -70,6 +70,8 @@ impl<T: Domain> RefUnion<IntervalSet<T>> for IntervalSet<T> {}
 mod tests {
     use super::*;
 
+    use crate::Factory;
+
     #[test]
     fn test_finite_union_empty() {
         assert_eq!(

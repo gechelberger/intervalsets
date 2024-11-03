@@ -147,6 +147,7 @@ impl<T: Domain> Intersection<Self> for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Factory;
 
     #[test]
     fn test_finite_intersection_empty() {

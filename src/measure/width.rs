@@ -15,7 +15,7 @@ use super::Measurement;
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet};
+/// use intervalsets::{Interval, IntervalSet, Factory};
 /// use intervalsets::ops::Union;
 /// use intervalsets::measure::Width;
 ///
@@ -37,7 +37,7 @@ use super::Measurement;
 /// # Normalization problem
 ///
 /// ```
-/// use intervalsets::Interval;
+/// use intervalsets::{Interval, Factory};
 /// use intervalsets::ops::Difference;
 /// use intervalsets::measure::Width;
 ///
@@ -86,6 +86,7 @@ where
 #[cfg(test)]
 mod tests {
     use crate::ops::Intersects;
+    use crate::Factory;
 
     use super::*;
 

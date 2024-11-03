@@ -9,7 +9,7 @@ use super::Measurement;
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet};
+/// use intervalsets::{Interval, IntervalSet, Factory};
 /// use intervalsets::ops::Union;
 /// use intervalsets::measure::Count;
 ///
@@ -41,7 +41,7 @@ pub trait Count {
 /// # Example
 /// ```
 /// use intervalsets::numeric::Domain;
-/// use intervalsets::{Interval, Side, default_countable_impl};
+/// use intervalsets::{Interval, Factory, Side, default_countable_impl};
 /// use intervalsets::measure::{Count, Countable};
 ///
 /// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

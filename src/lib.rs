@@ -88,14 +88,14 @@
 //!
 //! let x = Interval::closed(1, 5);
 //! let y = x.flat_map_finite(|left, right| {
-//!     Interval::new_finite(left.clone().map(|v| 10 * v), right.clone().map(|v| 20 * v))
+//!     Interval::finite(left.clone().map(|v| 10 * v), right.clone().map(|v| 20 * v))
 //! });
 //! assert_eq!(y, Interval::closed(10, 100));
 //!
 //! let z = IntervalSet::from_iter([x.clone(), y.clone()]);
 //! let z = z.collect_map(|mut sets, subset| {
 //!     let mirror_image = subset.flat_map_finite(|left, right| {
-//!         Interval::new_finite(right.clone().map(|v| -v), left.clone().map(|v| -v))
+//!         Interval::finite(right.clone().map(|v| -v), left.clone().map(|v| -v))
 //!     });
 //!     sets.push(mirror_image);
 //!     sets.push(subset.clone());
@@ -304,6 +304,9 @@ pub mod ops {
     pub use crate::traits::union::{RefUnion, Union};
 }
 
+mod factory;
+pub use factory::{Factory, IFactory};
+
 mod detail;
 
 pub mod measure;
@@ -320,6 +323,7 @@ mod util;
 
 /// Common operations & traits
 pub mod prelude {
+    pub use crate::factory::{Factory, IFactory};
     pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};

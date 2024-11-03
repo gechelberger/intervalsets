@@ -12,7 +12,7 @@ use crate::{Interval, IntervalSet};
 /// # Example
 ///
 /// ```
-/// use intervalsets::Interval;
+/// use intervalsets::{Interval, Factory};
 /// use intervalsets::ops::Intersects;
 ///
 /// let interval = Interval::closed(10, 20);
@@ -51,6 +51,7 @@ impl<T: Domain> Intersects<Self> for IntervalSet<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Factory;
 
     #[test]
     fn test_finite_intersects() {

@@ -83,6 +83,7 @@ impl<T: Domain> RefSplit<T> for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use crate::ops::Union;
+    use crate::Factory;
 
     use super::*;
 
