@@ -3,27 +3,13 @@ use ordered_float::{FloatCore, NotNan, OrderedFloat};
 use crate::factory::Cvt;
 use crate::numeric::{Domain, LibZero};
 
-impl LibZero for NotNan<f32> {
+impl<T> LibZero for NotNan<T> {
     fn new_zero() -> Self {
-        // SAFETY: const 0.0 should never fail
         unsafe { Self::new_unchecked(0.0) }
     }
 }
 
-impl LibZero for NotNan<f64> {
-    fn new_zero() -> Self {
-        // SAFETY const 0.0 should never fail
-        unsafe { Self::new_unchecked(0.0) }
-    }
-}
-
-impl LibZero for OrderedFloat<f32> {
-    fn new_zero() -> Self {
-        Self(0.0)
-    }
-}
-
-impl LibZero for OrderedFloat<f64> {
+impl<T> LibZero for OrderedFloat<T> {
     fn new_zero() -> Self {
         Self(0.0)
     }

@@ -8,12 +8,18 @@ use crate::factory::Factory;
 
 /// A Set representation of a contiguous interval on N, Z, or R.
 ///
-/// Discrete types (integers) are normalized to closed form on creation.
-///
-/// All bounding conditions are supported.
+/// Discrete types (integers) are normalized to closed form.
 ///
 /// Most operations are supported through
 /// [trait implementations](#trait-implementations).
+///
+/// Creation is managed through the [`Factory`](crate::factory::Factory)
+/// trait.
+///
+/// ```
+/// use intervalsets::prelude::*;
+/// let x = Interval::closed(0, 10);
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
 

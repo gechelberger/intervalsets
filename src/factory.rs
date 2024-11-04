@@ -20,7 +20,7 @@ use crate::{Bound, Interval, IntervalSet, Side};
 /// let b = Timestamp{ seconds: 10, nanos: 0};
 ///
 /// impl Cvt<Timestamp> for u64 {
-///     type To = u64;
+///     type To = u64; // impl Domain & LibZero
 ///     fn convert_to(value: Timestamp) -> Self::To {
 ///         (value.seconds as u64) << 32 | value.nanos as u64
 ///     }
