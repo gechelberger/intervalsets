@@ -2,61 +2,7 @@
 
 use crate::bound::Side;
 
-/// Defines the zero value for a type.
-///
-/// This is intended to work identically to [`num_traits::Zero`].
-/// The trait is duplicated in order to work with external
-/// types.
-pub trait LibZero {
-    fn new_zero() -> Self;
-}
-
-/// Create [`LibZero`] impl(s) that delegate to [`num_traits::Zero`]
-///
-/// Example
-/// ```
-/// use intervalsets::numeric::LibZero;
-/// use intervalsets::adapt_num_traits_zero_impl;
-///
-/// #[derive(Debug, Clone, PartialEq, Eq)]
-/// struct MyInt(u8);
-///
-/// impl core::ops::Add for MyInt {
-///     type Output = Self;
-///     fn add(self, rhs: Self) -> Self {
-///         MyInt(self.0 + rhs.0)
-///     }
-/// }
-///
-/// impl num_traits::Zero for MyInt {
-///     fn zero() -> Self {
-///         MyInt(0)
-///     }
-///
-///     fn is_zero(&self) -> bool {
-///         self.0 == 0
-///     }
-/// }
-///
-/// adapt_num_traits_zero_impl!(MyInt);
-/// assert_eq!(MyInt::new_zero(), MyInt(0));
-/// ```
-#[macro_export]
-macro_rules! adapt_num_traits_zero_impl {
-    ( $($t:ty), +) => {
-        $(
-            impl $crate::numeric::LibZero for $t {
-                fn new_zero() -> Self {
-                    <$t as num_traits::Zero>::zero()
-                }
-            }
-        )*
-    };
-}
-
-adapt_num_traits_zero_impl!(u8, u16, u32, u64, u128, usize);
-adapt_num_traits_zero_impl!(i8, i16, i32, i64, i128, isize);
-adapt_num_traits_zero_impl!(f32, f64);
+pub use num_traits::Zero;
 
 /// Defines the data types whose elements make up a Set.
 ///

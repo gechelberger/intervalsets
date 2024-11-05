@@ -198,14 +198,12 @@
 //! >
 //! > The macro [`continuous_domain_impl`] exists for exactly this purpose.
 //!
-//! * [`LibZero`](numeric::LibZero)
-//! > The LibZero trait is a direct knock-off of [`Zero`](num_traits::Zero).
-//! > However, it is necessary to resolve issues of external traits and
-//! > types. If a type already implements `Zero` the macro
-//! > [`adapt_num_traits_zero_impl`] can be used directly.
+//! * [`Zero`](numeric::Zero)
+//! > The `Zero`` trait is just a re-export of [`Zero`](num_traits::Zero) from
+//! > `num_traits`.
 //! >
-//! > The `LibZero` trait is necessary for the [`measure`] module,
-//! > specifically in regards to the empty set.
+//! > The `Zero` trait is necessary for the [`measure`] module,
+//! > specifically in handling the empty set.
 //!
 //! * [`Countable`](measure::Countable)
 //! > The `Countable` trait is only relevant to **discrete** data types. It is
@@ -222,7 +220,7 @@
 //!
 //! ```
 //! use core::ops::{Add, Sub};
-//! use intervalsets::numeric::{Domain, LibZero};
+//! use intervalsets::numeric::{Domain, Zero};
 //! use intervalsets::measure::Countable;
 //! use intervalsets::Side;
 //!
@@ -242,9 +240,13 @@
 //! // MyInt does not already implement num_traits::Zero
 //! // so the adapt_num_traits_zero_impl doesn't help us here,
 //! // even though i32 does.
-//! impl LibZero for MyInt {
-//!     fn new_zero() -> Self {
+//! impl Zero for MyInt {
+//!     fn zero() -> Self {
 //!         Self(0)
+//!     }
+//!
+//!     fn is_zero(&self) -> bool {
+//!         self.0 == 0
 //!     }
 //! }
 //!

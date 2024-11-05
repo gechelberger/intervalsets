@@ -4,7 +4,7 @@ use num_traits::Num;
 use uom::si::Quantity;
 use uom::Conversion;
 
-use crate::numeric::{Domain, LibZero};
+use crate::numeric::{Domain, Zero};
 
 impl<D, U, V> Domain for Quantity<D, U, V>
 where
@@ -21,20 +21,21 @@ where
     }
 }
 
-impl<D, U, V> LibZero for Quantity<D, U, V>
+/*
+impl<D, U, V> Zero for Quantity<D, U, V>
 where
     D: uom::si::Dimension + ?Sized,
     U: uom::si::Units<V> + ?Sized,
-    V: Domain + Num + Conversion<V> + LibZero,
+    V: Domain + Num + Conversion<V> + Zero,
 {
-    fn new_zero() -> Self {
+    fn zero() -> Self {
         Self {
             dimension: core::marker::PhantomData,
             units: core::marker::PhantomData,
-            value: V::new_zero(),
+            value: V::zero(),
         }
     }
-}
+}*/
 
 #[cfg(test)]
 mod tests {

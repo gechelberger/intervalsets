@@ -1,4 +1,4 @@
-use crate::numeric::{Domain, LibZero};
+use crate::numeric::{Domain, Zero};
 use core::ops::Add;
 
 use crate::{Interval, IntervalSet};
@@ -61,9 +61,13 @@ pub trait Count {
 ///     }
 /// }
 ///
-/// impl intervalsets::numeric::LibZero for MyInt {
-///     fn new_zero() -> Self {
+/// impl intervalsets::numeric::Zero for MyInt {
+///     fn zero() -> Self {
 ///         MyInt(0)
+///     }
+///
+///     fn is_zero(&self) -> bool {
+///         self.0 == 0
 ///     }
 /// }
 ///
@@ -134,7 +138,7 @@ default_countable_impl!(isize);
 impl<T> Count for Interval<T>
 where
     T: Countable,
-    T::Output: LibZero,
+    T::Output: Zero,
 {
     type Output = T::Output;
 
@@ -146,16 +150,14 @@ where
 impl<T, Out> Count for IntervalSet<T>
 where
     T: Countable<Output = Out>,
-    Out: LibZero + Clone + Add<Out, Output = Out>,
+    Out: Zero + Clone + Add<Out, Output = Out>,
 {
     type Output = Out;
 
     fn count(&self) -> Measurement<Self::Output> {
         self.iter()
             .map(|subset| subset.count())
-            .fold(Measurement::Finite(Out::new_zero()), |accum, item| {
-                accum + item
-            })
+            .fold(Measurement::Finite(Out::zero()), |accum, item| accum + item)
     }
 }
 

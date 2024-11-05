@@ -1,6 +1,6 @@
 use core::ops::Sub;
 
-use crate::numeric::{Domain, LibZero};
+use crate::numeric::{Domain, Zero};
 
 use crate::measure::{Count, Countable, Measurement, Width};
 
@@ -8,14 +8,14 @@ use super::{BoundCase, Finite, HalfBounded};
 
 impl<T, Out> Width for Finite<T>
 where
-    Out: LibZero,
+    Out: Zero,
     T: Domain + Sub<T, Output = Out>,
 {
     type Output = Out;
 
     fn width(&self) -> Measurement<Self::Output> {
         match self {
-            Self::Empty => Measurement::Finite(Out::new_zero()),
+            Self::Empty => Measurement::Finite(Out::zero()),
             Self::FullyBounded(left, right) => {
                 Measurement::Finite(right.value().clone() - left.value().clone())
             }
@@ -25,7 +25,7 @@ where
 
 impl<T, Out> Width for HalfBounded<T>
 where
-    Out: LibZero,
+    Out: Zero,
     T: Domain + Sub<T, Output = Out>,
 {
     type Output = Out;
@@ -37,7 +37,7 @@ where
 
 impl<T, Out> Width for BoundCase<T>
 where
-    Out: LibZero,
+    Out: Zero,
     T: Domain + Sub<T, Output = Out>,
 {
     type Output = Out;
@@ -54,7 +54,7 @@ where
 impl<T> Count for Finite<T>
 where
     T: Countable,
-    T::Output: LibZero,
+    T::Output: Zero,
 {
     type Output = T::Output;
 
@@ -65,7 +65,7 @@ where
                     .expect("Count should be Some since interval is FullyBounded");
                 Measurement::Finite(count)
             }
-            Self::Empty => Measurement::Finite(Self::Output::new_zero()),
+            Self::Empty => Measurement::Finite(Self::Output::zero()),
         }
     }
 }
@@ -73,7 +73,7 @@ where
 impl<T> Count for BoundCase<T>
 where
     T: Countable,
-    T::Output: LibZero,
+    T::Output: Zero,
 {
     type Output = T::Output;
 
