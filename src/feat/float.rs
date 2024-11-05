@@ -3,15 +3,15 @@ use ordered_float::{FloatCore, NotNan, OrderedFloat};
 use crate::factory::Cvt;
 use crate::numeric::{Domain, LibZero};
 
-impl<T> LibZero for NotNan<T> {
+impl<T: LibZero> LibZero for NotNan<T> {
     fn new_zero() -> Self {
-        unsafe { Self::new_unchecked(0.0) }
+        unsafe { Self::new_unchecked(T::new_zero()) }
     }
 }
 
-impl<T> LibZero for OrderedFloat<T> {
+impl<T: LibZero> LibZero for OrderedFloat<T> {
     fn new_zero() -> Self {
-        Self(0.0)
+        Self(T::new_zero())
     }
 }
 
