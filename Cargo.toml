@@ -27,7 +27,6 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
-chrono = { version = "0.4.38", optional = true }
 itertools = "0.13.0"
 num-bigint = { version = "0.4.6", optional = true }
 num-traits = "0.2.19"
@@ -46,7 +45,6 @@ siphasher = "1.0.1"
 [features]
 rust_decimal = ["dep:rust_decimal"]
 num-bigint = ["dep:num-bigint"]
-chrono = ["dep:chrono"]
 uom = ["dep:uom"]
 ordered-float = ["dep:ordered-float"]
 

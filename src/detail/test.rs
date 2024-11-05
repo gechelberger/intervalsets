@@ -1,7 +1,7 @@
 use core::ops::{Add, Div, Mul, Sub};
 
 use crate::default_countable_impl;
-use crate::numeric::{Domain, LibZero};
+use crate::numeric::{Domain, Zero};
 
 // This provides a non-copy data type for tests.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -35,9 +35,13 @@ impl Div for CloneInt {
     }
 }
 
-impl LibZero for CloneInt {
-    fn new_zero() -> Self {
+impl Zero for CloneInt {
+    fn zero() -> Self {
         Self(0)
+    }
+
+    fn is_zero(&self) -> bool {
+        self.0 == 0
     }
 }
 
