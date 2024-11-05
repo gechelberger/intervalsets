@@ -4,7 +4,7 @@ use num_traits::Num;
 use uom::si::Quantity;
 use uom::Conversion;
 
-use crate::numeric::{Domain, Zero};
+use crate::numeric::Domain;
 
 impl<D, U, V> Domain for Quantity<D, U, V>
 where

@@ -1,9 +1,7 @@
-use crate::{adapt_num_traits_zero_impl, continuous_domain_impl};
+use crate::continuous_domain_impl;
 use rust_decimal::Decimal;
 
 continuous_domain_impl!(Decimal);
-
-adapt_num_traits_zero_impl!(Decimal);
 
 #[cfg(test)]
 mod test {

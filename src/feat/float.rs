@@ -1,7 +1,7 @@
 use ordered_float::{FloatCore, NotNan, OrderedFloat};
 
 use crate::factory::Cvt;
-use crate::numeric::{Domain, Zero};
+use crate::numeric::Domain;
 
 impl<T: Clone + PartialOrd> Domain for NotNan<T> {
     fn try_adjacent(&self, side: crate::Side) -> Option<Self> {
@@ -15,7 +15,7 @@ impl<T: FloatCore> Domain for OrderedFloat<T> {
     }
 }
 
-impl<T> crate::factory::Cvt<T> for NotNan<T>
+impl<T> Cvt<T> for NotNan<T>
 where
     T: FloatCore,
 {
@@ -26,7 +26,7 @@ where
     }
 }
 
-impl<T> crate::factory::Cvt<T> for OrderedFloat<T>
+impl<T> Cvt<T> for OrderedFloat<T>
 where
     T: FloatCore,
 {
@@ -42,7 +42,7 @@ mod tests {
     use super::*;
     use crate::factory::{Factory, IFactory};
     use crate::ops::Intersection;
-    use crate::{Bound, Bounding, Interval};
+    use crate::{Bounding, Interval};
 
     #[test]
     fn test_not_nan() {

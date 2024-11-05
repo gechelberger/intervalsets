@@ -2,7 +2,7 @@ use num_bigint::{BigInt, BigUint};
 use num_traits::{CheckedAdd, CheckedSub, One};
 
 use crate::numeric::Domain;
-use crate::{adapt_num_traits_zero_impl, default_countable_impl, Side};
+use crate::{default_countable_impl, Side};
 
 impl Domain for BigInt {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
@@ -25,8 +25,6 @@ impl Domain for BigUint {
 }
 
 default_countable_impl!(BigUint);
-
-adapt_num_traits_zero_impl!(BigInt, BigUint);
 
 #[cfg(test)]
 mod tests {
