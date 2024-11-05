@@ -31,6 +31,7 @@ impl<T: Hash + Domain> Hash for IntervalSet<T> {
 mod tests {
     use super::*;
 
+    use crate::Factory;
     use core::hash::{Hash, Hasher};
     use siphasher::sip::SipHasher13;
 
@@ -90,6 +91,7 @@ mod tests {
 #[cfg(test)]
 mod decimal_tests {
     use super::*;
+    use crate::Factory;
     use rust_decimal::Decimal;
 
     #[quickcheck]

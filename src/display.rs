@@ -99,6 +99,7 @@ impl<T: fmt::Display + Domain> fmt::Display for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use crate::ops::Union;
+    use crate::Factory;
 
     use super::*;
 

@@ -1,188 +1,34 @@
 use crate::bound::Bound;
-use crate::detail::{BoundCase, Finite, HalfBounded};
+use crate::detail::{BoundCase, Finite};
 use crate::numeric::Domain;
 use crate::ops::{Intersects, Merged};
 use crate::{Bounding, MaybeEmpty, Side};
 
+use crate::factory::Factory;
+
 /// A Set representation of a contiguous interval on N, Z, or R.
 ///
-/// Discrete types (integers) are normalized to closed form on creation.
-///
-/// All bounding conditions are supported.
+/// Discrete types (integers) are normalized to closed form.
 ///
 /// Most operations are supported through
 /// [trait implementations](#trait-implementations).
+///
+/// Creation is managed through the [`Factory`](crate::factory::Factory)
+/// trait.
+///
+/// ```
+/// use intervalsets::prelude::*;
+/// let x = Interval::closed(0, 10);
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
 
 impl<T: Domain> Interval<T> {
-    /// Returns a new Empty [`Interval`]
-    ///
-    /// {} = {x | x not in T }
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use intervalsets::Interval;
-    /// use intervalsets::ops::Contains;
-    ///
-    /// let x = Interval::<i32>::empty();
-    /// assert_eq!(x.contains(&10), false);
-    /// ```
-    pub fn empty() -> Self {
-        Self(BoundCase::Finite(Finite::Empty))
-    }
-
-    /// Returns a new closed finite [`Interval`] or Empty
-    ///
-    /// [a, b] = { x in T | a <= x <= b }
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use intervalsets::Interval;
-    /// use intervalsets::ops::Contains;
-    ///
-    /// let x = Interval::closed(10, 20);
-    /// assert_eq!(x.contains(&10), true);
-    /// assert_eq!(x.contains(&15), true);
-    /// assert_eq!(x.contains(&20), true);
-    /// assert_eq!(x.contains(&0), false);
-    /// ```
-    pub fn closed(left: T, right: T) -> Self {
-        Finite::new(Bound::closed(left), Bound::closed(right)).into()
-    }
-
-    /// Returns a new open finite [`Interval`] or Empty
-    ///
-    /// For discrete data types T, open bounds are **normalized** to closed form.
-    /// Continuous(ish) types (like f32, or chrono::DateTime) are left as is.
-    ///
-    /// (a, b) = { x in T | a < x < b }
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::Interval;
-    /// use intervalsets::ops::Contains;
-    ///
-    /// let x = Interval::open(0.0, 10.0);
-    /// assert_eq!(x.contains(&0.0), false);
-    /// assert_eq!(x.contains(&5.0), true);
-    ///
-    /// let y = Interval::open(0, 10);
-    /// assert_eq!(y.contains(&0), false);
-    /// assert_eq!(y.contains(&5), true);
-    /// assert_eq!(y, Interval::closed(1, 9));
-    /// ```
-    pub fn open(left: T, right: T) -> Self {
-        Finite::new(Bound::open(left), Bound::open(right)).into()
-    }
-
-    /// Returns a new left open finite [`Interval`] or Empty
-    ///
-    ///  (a, b] = { x in T | a < x <= b }
-    pub fn open_closed(left: T, right: T) -> Self {
-        Finite::new(Bound::open(left), Bound::closed(right)).into()
-    }
-
-    /// Returns a new right open finite [`Interval`] or Empty
-    ///
-    ///  [a, b) = { x in T | a <= x < b }
-    pub fn closed_open(left: T, right: T) -> Self {
-        Finite::new(Bound::closed(left), Bound::open(right)).into()
-    }
-
-    /// Returns a new open, right-unbound [`Interval`]
-    ///
-    ///  (a, ->) = { x in T | a < x }
-    pub fn open_unbound(left: T) -> Self {
-        HalfBounded::new(Side::Left, Bound::open(left)).into()
-    }
-
-    /// Returns a new closed, right-unbound [`Interval`]
-    ///
-    ///  [a, ->) = {x in T | a <= x }
-    pub fn closed_unbound(left: T) -> Self {
-        HalfBounded::new(Side::Left, Bound::closed(left)).into()
-    }
-
-    /// Returns a new open, left-unbound [`Interval`]
-    ///
-    /// (a, ->) = { x in T | a < x }
-    pub fn unbound_open(right: T) -> Self {
-        HalfBounded::new(Side::Right, Bound::open(right)).into()
-    }
-
-    /// Returns a new closed, left-unbound [`Interval`]
-    ///
-    ///  [a, ->) = { x in T | a <= x }
-    pub fn unbound_closed(right: T) -> Self {
-        HalfBounded::new(Side::Right, Bound::closed(right)).into()
-    }
-
-    /// Returns a new unbounded [`Interval`].
-    ///
-    /// An unbounded interval contains every element in T,
-    /// as well as every set of T except the `Empty` set.
-    ///
-    /// (<-, ->) = { x in T }
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use intervalsets::Interval;
-    /// use intervalsets::ops::Contains;
-    ///
-    /// let x = Interval::<f32>::unbounded();
-    /// assert_eq!(x.contains(&10.0), true);
-    /// assert_eq!(x.contains(&Interval::empty()), false);
-    /// ```
-    pub fn unbounded() -> Self {
-        BoundCase::Unbounded.into()
-    }
-
-    /// Returns a new finite [`Interval`].
-    ///
-    /// If there are no elements that satisfy both left and right bounds
-    /// then an `Empty` interval is returned. Otherwise the result will
-    /// be fully bounded.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use intervalsets::{Bound, Interval, Bounding};
-    ///
-    /// let x = Interval::open(0, 100);
-    /// let y = Interval::new_finite(x.right().unwrap().clone().flip(), Bound::closed(200));
-    /// assert_eq!(y, Interval::closed(100, 200));
-    ///
-    /// let x = Interval::open(10, 10);
-    /// assert_eq!(x, Interval::empty());
-    /// ```
-    pub fn new_finite(left: Bound<T>, right: Bound<T>) -> Self {
-        Finite::new(left, right).into()
-    }
-
-    /// Returns a ew half bounded [`Interval`].
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::{Interval, Bound, Bounding, Side};
-    /// use intervalsets::ops::Complement;
-    ///
-    /// let x = Interval::unbound_open(0);
-    /// let y = Interval::new_half_bounded(Side::Left, x.right().unwrap().clone().flip());
-    /// assert_eq!(x.complement(), y.into());
-    /// ```
-    pub fn new_half_bounded(side: Side, bound: Bound<T>) -> Self {
-        HalfBounded::new(side, bound).into()
-    }
-
     /// Returns `true` if the interval is either fully bounded or empty.
     ///
     /// # Example
     /// ```
-    /// use intervalsets::Interval;
+    /// use intervalsets::{Interval, Factory};
     ///
     /// assert_eq!(Interval::<i32>::empty().is_finite(), true);
     /// assert_eq!(Interval::closed(0, 10).is_finite(), true);
@@ -198,7 +44,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::Interval;
+    /// use intervalsets::{Interval, Factory};
     ///
     /// assert_eq!(Interval::<i32>::empty().is_infinite(), false);
     /// assert_eq!(Interval::<i32>::closed(0, 10).is_infinite(), false);
@@ -214,7 +60,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::Interval;
+    /// use intervalsets::{Interval, Factory};
     ///
     /// assert_eq!(Interval::closed(0, 10).is_fully_bounded(), true);
     ///
@@ -232,7 +78,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::Interval;
+    /// use intervalsets::{Interval, Factory};
     ///
     /// assert_eq!(Interval::closed_unbound(10).is_half_bounded(), true);
     /// assert_eq!(Interval::<i32>::unbounded().is_half_bounded(), false);
@@ -246,7 +92,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Side};
+    /// use intervalsets::{Interval, Side, Factory};
     ///
     /// let x = Interval::unbound_open(10);
     /// assert_eq!(x.is_half_bounded_on(Side::Right), true);
@@ -267,7 +113,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::Interval;
+    /// use intervalsets::{Interval, Factory};
     /// use intervalsets::ops::Merged;
     ///
     /// let x = Interval::unbound_closed(10)
@@ -300,13 +146,13 @@ impl<T: Domain> Interval<T> {
     ///         match (left, right) {
     ///             (None, None) => Interval::unbounded(),
     ///             (None, Some(right)) => {
-    ///                 Interval::new_half_bounded(Side::Right, shift_bound(right))
+    ///                 Interval::half_bounded(Side::Right, shift_bound(right))
     ///             },
     ///             (Some(left), None) => {
-    ///                 Interval::new_half_bounded(Side::Left, shift_bound(left))
+    ///                 Interval::half_bounded(Side::Left, shift_bound(left))
     ///             },
     ///             (Some(left), Some(right)) => {
-    ///                 Interval::new_finite(shift_bound(left), shift_bound(right))
+    ///                 Interval::finite(shift_bound(left), shift_bound(right))
     ///             }
     ///         }
     ///     })
@@ -363,8 +209,8 @@ impl<T: Domain> Interval<T> {
     ///     interval.map_or_else(Interval::unbounded, |left, right| {
     ///         match (left, right) {
     ///             (None, None) => Interval::empty(),
-    ///             (None, Some(right)) => Interval::new_half_bounded(Side::Left, right.clone().flip()),
-    ///             (Some(left), None) => Interval::new_half_bounded(Side::Right, left.clone().flip()),
+    ///             (None, Some(right)) => Interval::half_bounded(Side::Left, right.clone().flip()),
+    ///             (Some(left), None) => Interval::half_bounded(Side::Right, left.clone().flip()),
     ///             (Some(left), Some(right)) => panic!("... elided ...")
     ///         }
     ///     })
@@ -406,7 +252,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// fn shift(interval: Interval<i32>, amount: i32) -> Interval<i32> {
     ///     interval.flat_map_finite(|left, right| {
-    ///         Interval::new_finite(
+    ///         Interval::finite(
     ///             left.clone().map(|v| v + amount), right.clone().map(|v| v + amount)
     ///         )
     ///     })
@@ -585,7 +431,7 @@ impl<T: Domain> IntervalSet<T> {
         let first = self.intervals.first().unwrap();
         let last = self.intervals.last().unwrap();
 
-        Interval::new_finite(first.left().unwrap().clone(), last.right().unwrap().clone())
+        Interval::finite(first.left().unwrap().clone(), last.right().unwrap().clone())
     }
 
     /// Take the only [`Interval`] in this Set. `self` is consumed.

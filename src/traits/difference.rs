@@ -14,7 +14,7 @@ use crate::{Interval, IntervalSet};
 /// # Example
 ///
 /// ```
-/// use intervalsets::Interval;
+/// use intervalsets::{Interval, Factory};
 /// use intervalsets::ops::{Difference, Union};
 ///
 /// let a = Interval::closed(0.0, 100.0);
@@ -87,7 +87,7 @@ ref_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 ///
 /// Example:
 /// ```
-/// use intervalsets::Interval;
+/// use intervalsets::{Interval, Factory};
 /// use intervalsets::ops::{SymmetricDifference, Union};
 ///
 /// let a = Interval::closed(0.0, 10.0);
@@ -152,6 +152,7 @@ mod tests {
     use super::*;
 
     use crate::ops::Union;
+    use crate::Factory;
 
     #[test]
     fn test_finite_difference() {

@@ -8,9 +8,7 @@ adapt_num_traits_zero_impl!(Decimal);
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::measure::Width;
-    use crate::ops::Contains;
-    use crate::Interval;
+    use crate::prelude::*;
 
     #[test]
     fn test_decimal_interval() {

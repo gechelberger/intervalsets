@@ -21,6 +21,7 @@ mod tests {
     use super::*;
     use chrono::Utc;
 
+    use crate::factory::Factory;
     use crate::measure::Width;
     use crate::Interval;
 

@@ -19,7 +19,7 @@ use crate::{Interval, IntervalSet};
 ///
 /// # Example
 /// ```
-/// use intervalsets::Interval;
+/// use intervalsets::{Interval, Factory};
 /// use intervalsets::ops::Contains;
 ///
 /// let x = Interval::open(0, 10);
@@ -70,6 +70,7 @@ impl<T: Domain> Contains<Self> for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Factory;
 
     #[quickcheck]
     fn check_empty_contains_integer(x: i8) {

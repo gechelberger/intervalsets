@@ -20,7 +20,7 @@ use crate::Interval;
 ///
 /// # Example
 /// ```
-/// use intervalsets::Interval;
+/// use intervalsets::{Interval, Factory};
 /// use intervalsets::ops::{Merged, RefMerged};
 ///
 /// let x = Interval::closed(0, 10);
@@ -68,6 +68,7 @@ impl<T: Domain> RefMerged<Self> for Interval<T> {
 #[cfg(test)]
 mod tests {
     use crate::ops::Complement;
+    use crate::Factory;
 
     use super::*;
 
@@ -104,7 +105,7 @@ mod tests {
 #[cfg(test)]
 mod decimal_test {
     use super::*;
-    use crate::MaybeEmpty;
+    use crate::{Factory, MaybeEmpty};
     use rust_decimal::Decimal;
 
     #[quickcheck]

@@ -7,11 +7,6 @@
 
 STAGED_FILES=$(git diff --cached --name-only --diff-filter=ACMR | sed 's| |\\ |g')
 
-echo "----------------------"
-echo "- Running commitlint -"
-echo "----------------------"
-commitlint 
-
 echo "---------------------------"
 echo "- ✨  Running clippy   ✨ -"
 echo "---------------------------"
@@ -39,7 +34,7 @@ git add -f $STAGED_FILES
 echo "---------------------------"
 echo "- ✨   Running tests   ✨ -"
 echo "---------------------------"
-cargo test
+cargo test --all-features
 TEST_EXIT_CODE=$?
 
 if [ $TEST_EXIT_CODE -ne 0 ]; then

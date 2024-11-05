@@ -118,7 +118,7 @@ impl<T: Domain> Adjacent<Self> for BoundCase<T> {
 mod tests {
     use super::*;
 
-    use crate::Interval;
+    use crate::{Factory, Interval};
 
     #[test]
     fn test_is_adjacent_to() {

@@ -9,3 +9,6 @@ pub mod chrono;
 
 #[cfg(feature = "uom")]
 pub mod uom;
+
+#[cfg(feature = "ordered-float")]
+pub mod float;

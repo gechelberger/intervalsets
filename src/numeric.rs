@@ -82,7 +82,7 @@ pub trait Domain: Sized + Clone + PartialOrd + PartialEq {
 ///
 /// ```
 /// use intervalsets::continuous_domain_impl;
-/// use intervalsets::Interval;
+/// use intervalsets::{Interval, Factory};
 /// use intervalsets::ops::Contains;
 ///
 /// #[derive(Clone, PartialEq, PartialOrd)]

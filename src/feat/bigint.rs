@@ -32,6 +32,7 @@ adapt_num_traits_zero_impl!(BigInt, BigUint);
 mod tests {
     use num_bigint::ToBigInt;
 
+    use crate::factory::Factory;
     use crate::measure::Width;
     use crate::Interval;
 

@@ -1,6 +1,6 @@
 use crate::numeric::Domain;
 use crate::ops::Intersection;
-use crate::{Interval, IntervalSet};
+use crate::{Factory, Interval, IntervalSet};
 
 /// Defines the complement of a Set.
 ///
