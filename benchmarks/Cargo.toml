@@ -1,0 +1,13 @@
+[package]
+name = "benchmarks"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+criterion = "0.5.1"
+intervalsets = { version = "0.1.0-alpha.2", path = "../intervalsets" }
+intervalsets-core = { version = "0.1.0", path = "../intervalsets-core" }
+
+[[bench]]
+name = "intervalsets"
+harness = false
