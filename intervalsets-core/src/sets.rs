@@ -13,8 +13,6 @@ const ISET_N: usize = 2;
 
 pub type StackSetStorage<T> = heapless::Vec<T, ISET_N>;
 
-pub trait NumericSet<T> {}
-
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FiniteInterval<T> {
     Empty,

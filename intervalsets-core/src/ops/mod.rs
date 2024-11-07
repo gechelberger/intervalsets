@@ -2,6 +2,8 @@
 
 use adjacent::Adjacent;
 
+use crate::MaybeEmpty;
+
 pub mod adjacent;
 pub mod contains;
 pub mod intersects;
@@ -176,7 +178,8 @@ pub trait Split<T> {
 
 pub fn mergeable<A, B>(a: &A, b: &B) -> bool
 where
-    A: Intersects<B> + Adjacent<B>,
+    A: MaybeEmpty + Intersects<B> + Adjacent<B>,
+    B: MaybeEmpty,
 {
-    a.intersects(b) || a.is_adjacent_to(b)
+    a.intersects(b) || a.is_adjacent_to(b) || a.is_empty() || b.is_empty()
 }
