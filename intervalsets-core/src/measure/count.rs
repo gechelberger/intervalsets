@@ -2,30 +2,29 @@ use core::ops::Add;
 
 use super::Measurement;
 use crate::numeric::{Domain, Zero};
-use crate::sets::{FiniteInterval, HalfInterval, EnumInterval, StackSet};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 
 /// Defines the counting measure of a [`Countable`] Set.
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet, Factory};
-/// use intervalsets::ops::Union;
-/// use intervalsets::measure::Count;
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::measure::Count;
 ///
-/// let x = Interval::closed(1, 10);
+/// let x = EnumInterval::closed(1, 10);
 /// assert_eq!(x.count().finite(), 10);
 ///
-/// let x: IntervalSet<_> = x.union(Interval::closed(101, 200));
+/// let x: StackSet<_> = x.union(EnumInterval::closed(101, 200));
 /// assert_eq!(x.count().finite(), 110);
 /// ```
 ///
 /// # Restricted to types implementing Countable
 /// ```compile_fail
-/// use intervalsets::Interval;
-/// use intervalsets::measure::Count;
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::measure::Count;
 ///
 /// // f32 does not implement [`Countable`]
-/// let x = Interval::closed(0.0, 10.0).count();
+/// let x = EnumInterval::closed(0.0, 10.0).count();
 /// ```
 pub trait Count {
     type Output;
@@ -39,9 +38,10 @@ pub trait Count {
 ///
 /// # Example
 /// ```
-/// use intervalsets::numeric::Domain;
-/// use intervalsets::{Interval, Factory, Side, default_countable_impl};
-/// use intervalsets::measure::{Count, Countable};
+/// use intervalsets_core::numeric::Domain;
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::default_countable_impl;
+/// use intervalsets_core::measure::{Count, Countable};
 ///
 /// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 /// struct MyInt(i32);
@@ -60,7 +60,7 @@ pub trait Count {
 ///     }
 /// }
 ///
-/// impl intervalsets::numeric::Zero for MyInt {
+/// impl num_traits::Zero for MyInt {
 ///     fn zero() -> Self {
 ///         MyInt(0)
 ///     }
@@ -89,7 +89,7 @@ pub trait Count {
 ///     }
 /// }*/
 ///
-/// let interval = Interval::closed(MyInt(0), MyInt(10));
+/// let interval = FiniteInterval::closed(MyInt(0), MyInt(10));
 /// assert_eq!(interval.count().finite(), MyInt(11));
 /// ```
 pub trait Countable: Domain {
@@ -134,7 +134,6 @@ default_countable_impl!(i64);
 default_countable_impl!(i128);
 default_countable_impl!(isize);
 
-
 impl<T> Count for FiniteInterval<T>
 where
     T: Countable,
@@ -154,6 +153,14 @@ where
     }
 }
 
+impl<T> Count for HalfInterval<T> {
+    type Output = ();
+
+    fn count(&self) -> Measurement<Self::Output> {
+        Measurement::Infinite
+    }
+}
+
 impl<T> Count for EnumInterval<T>
 where
     T: Countable,
@@ -169,6 +176,18 @@ where
     }
 }
 
+impl<T, Out> Count for StackSet<T>
+where
+    T: Countable<Output = Out>,
+    Out: Zero + Add + Clone,
+{
+    type Output = Out;
+
+    fn count(&self) -> Measurement<Self::Output> {
+        self.iter()
+            .fold(Measurement::Finite(T::Output::zero()), |a, b| a + b.count())
+    }
+}
 
 #[cfg(test)]
 mod tests {

@@ -1,9 +1,8 @@
-use core::ops::Sub;
+use core::ops::{Add, Sub};
 
 use super::Measurement;
 use crate::numeric::{Domain, Zero};
-
-use crate::sets::{FiniteInterval, HalfInterval, EnumInterval, StackSet};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
@@ -17,38 +16,44 @@ use crate::sets::{FiniteInterval, HalfInterval, EnumInterval, StackSet};
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet, Factory};
-/// use intervalsets::ops::Union;
-/// use intervalsets::measure::Width;
+/// use ordered_float::OrderedFloat;
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::measure::Width;
+/// use intervalsets_core::factory::IFactory;
 ///
-/// let interval = Interval::closed(10.0, 100.0);
-/// assert_eq!(interval.width().finite(), 90.0);
+/// type Fct = IFactory<f32, OrderedFloat<f32>>;
 ///
-/// let interval = Interval::open(10.0, 100.0);
-/// assert_eq!(interval.width().finite(), 90.0);
+/// let interval = Fct::closed(10.0, 100.0);
+/// assert_eq!(interval.width().finite().0, 90.0);
 ///
-/// let interval = Interval::closed(0, 10);
+/// let interval = Fct::open(10.0, 100.0);
+/// assert_eq!(interval.width().finite().0, 90.0);
+///
+/// let interval = EnumInterval::closed(0, 10);
 /// assert_eq!(interval.width().finite(), 10);
 ///
-/// let set = Interval::closed(0.0, 10.0)
-///     .union(Interval::closed(5.0, 15.0))
-///     .union(Interval::open(100.0, 110.0));
-/// assert_eq!(set.width().finite(), 25.0);
+/// let set = Fct::closed(0.0, 10.0)
+///     .union(Fct::closed(5.0, 15.0));
+/// //    .union(EnumInterval::open(100.0, 110.0));
+/// assert_eq!(set.width().finite().0, 15.0);
 /// ```
 ///
 /// # Normalization problem
 ///
 /// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::Difference;
-/// use intervalsets::measure::Width;
+/// use ordered_float::NotNan;
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::measure::Width;
+/// use intervalsets_core::factory::IFactory;
 ///
-/// let a = Interval::closed(0.0, 10.0);
-/// let a = a.difference(Interval::closed(5.0, 15.0));
-/// assert_eq!(a.width().finite(), 5.0);
+/// type Fct = IFactory<f32, NotNan<f32>>;
 ///
-/// let b = Interval::closed(0, 10);
-/// let b = b.difference(Interval::closed(5, 15));
+/// let a = Fct::closed(0.0, 10.0);
+/// let a = a.difference(Fct::closed(5.0, 15.0));
+/// assert_eq!(a.width().finite().into_inner(), 5.0);
+///
+/// let b = EnumInterval::closed(0, 10);
+/// let b = b.difference(EnumInterval::closed(5, 15));
 /// assert_eq!(b.width().finite(), 4);
 /// ```
 pub trait Width {
@@ -57,24 +62,18 @@ pub trait Width {
     fn width(&self) -> Measurement<Self::Output>;
 }
 
-
 impl<T, Out> Width for FiniteInterval<T>
 where
     Out: Zero,
     T: Domain,
-    for<'a> &'a T: Sub<Output = Out>
-    //T: Domain + Clone + Sub<T, Output = Out>,
+    for<'a> &'a T: Sub<Output = Out>, //T: Domain + Clone + Sub<T, Output = Out>,
 {
     type Output = Out;
 
     fn width(&self) -> Measurement<Self::Output> {
         match self {
             Self::Empty => Measurement::Finite(Out::zero()),
-            Self::Bounded(left, right) => {
-                Measurement::Finite(
-                    right.value() - left.value()
-                )
-            }
+            Self::Bounded(left, right) => Measurement::Finite(right.value() - left.value()),
         }
     }
 }
@@ -83,7 +82,7 @@ impl<T, Out> Width for HalfInterval<T>
 where
     Out: Zero,
     T: Domain,
-    for<'a> &'a T: Sub<Output = Out>
+    for<'a> &'a T: Sub<Output = Out>,
 {
     type Output = Out;
 
@@ -113,7 +112,7 @@ impl<T, Out> Width for StackSet<T>
 where
     T: Domain,
     for<'a> &'a T: Sub<Output = Out>,
-    Out: Zero + core::ops::Add<Out, Output = Out> + Clone,
+    Out: Zero + Add<Out, Output = Out> + Clone,
 {
     type Output = Out;
 

@@ -34,7 +34,7 @@ impl<T> Measurement<T> {
     /// # Examples
     ///
     /// ```
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let x: Measurement<u32> = Measurement::Finite(10);
     /// assert_eq!(x.is_infinite(), false);
@@ -51,7 +51,7 @@ impl<T> Measurement<T> {
     /// # Examples
     ///
     /// ```
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let x: Measurement<u32> = Measurement::Finite(10);
     /// assert_eq!(x.is_finite(), true);
@@ -72,14 +72,14 @@ impl<T> Measurement<T> {
     /// # Examples
     ///
     /// ```
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let x: Measurement<i32> = Measurement::Finite(0);
     /// assert_eq!(x.expect_finite("Measurement should be finite"), 0);
     /// ```
     ///
     /// ```should_panic
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let x: Measurement<i32> = Measurement::Infinite;
     /// assert_eq!(x.expect_finite("Measurement should be finite"), 0);
@@ -112,7 +112,7 @@ impl<T> Measurement<T> {
     /// # Examples
     ///
     /// ```
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let m1 = Measurement::Finite(10);
     /// let m2 = m1.flat_map(|x| Measurement::Finite(x as f32));
@@ -131,7 +131,7 @@ impl<T> Measurement<T> {
     /// Examples
     ///
     /// ```
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let x: Measurement<i32> = Measurement::Finite(10);
     /// assert_eq!(x.map(|v| v as f32 * 2.0), Measurement::Finite(20.0));
@@ -191,7 +191,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let x = Measurement::Finite(100);
     /// let y = Measurement::Finite(10);
@@ -216,7 +216,7 @@ where
     /// # Examples
     ///
     /// ```
-    /// use intervalsets::measure::Measurement;
+    /// use intervalsets_core::measure::Measurement;
     ///
     /// let x = Measurement::Finite(100);
     /// let y = Measurement::Finite(10);
