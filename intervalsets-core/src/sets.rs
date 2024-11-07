@@ -171,6 +171,12 @@ pub enum EnumInterval<T> {
     Unbounded,
 }
 
+impl<T> EnumInterval<T> {
+    pub fn empty() -> Self {
+        Self::Finite(FiniteInterval::Empty)
+    }
+}
+
 impl<T> OrdBounded<T> for EnumInterval<T> {
     fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
         match self {
