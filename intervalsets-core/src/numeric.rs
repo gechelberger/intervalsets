@@ -13,9 +13,8 @@ pub trait Domain: Sized + PartialEq + PartialOrd {
 
 /// Automatically implements [`Domain`] for a type.
 ///
-/// [`Interval`](crate::Interval) and [`IntervalSet`](crate::IntervalSet)
-/// expect their generic types to implement
-/// the [`Domain`] trait. It's primary function is to help normalize **disrete**
+/// Interval/Set types require generic storage types to implement
+/// the [`Domain`] trait. It's primary function is to normalize **disrete**
 /// data types.
 ///
 /// For **continuous** data types, normalization is a **noop**, but the trait

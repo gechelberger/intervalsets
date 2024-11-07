@@ -4,7 +4,7 @@ use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 
-/// The [`Cvt`] trait provides a mechanism to wrap
+/// The [`Converter`] trait provides a mechanism to wrap
 /// or coerse a convenient type into one that meets
 /// the requirements for sets.
 ///
@@ -64,12 +64,12 @@ impl<T: num_traits::float::FloatCore> Converter<T> for OrderedFloat<T> {
 
 /// The [`Factory`] trait is intended to provide a common
 /// interface for creating the full spectrum of possible
-/// intervals. [`Interval`] itself is a factory using
+/// intervals. [`EnumInterval`] itself is a factory using
 /// the [`Identity`] converter. Use [`IFactory`] to supply
 /// a custom converter.
 ///
 /// Sometimes it is preferable for the underlying storage
-/// to be a wrapper or NewType. [`Cvt`] provides a mechanism
+/// to be a wrapper or NewType. [`Converter`] provides a mechanism
 /// to do so with less boiler plate.
 ///
 /// # Examples
@@ -107,7 +107,7 @@ where
 {
     type Output;
 
-    /// Returns a new Empty [`Interval`]
+    /// Returns a new Empty Set
     ///
     /// {} = {x | x not in T }
     ///
@@ -121,7 +121,7 @@ where
     /// ```
     fn empty() -> Self::Output;
 
-    /// Returns a new finite [`Interval`].
+    /// Returns a new finite interval.
     ///
     /// If there are no elements that satisfy both left and right bounds
     /// then an `Empty` interval is returned. Otherwise the result will
@@ -144,7 +144,7 @@ where
     /// ```
     fn finite(left: FiniteBound<C::To>, right: FiniteBound<C::To>) -> Self::Output;
 
-    /// Returns a ew half bounded [`Interval`].
+    /// Returns a ew half bounded interval.
     ///
     /// # Example
     /// ```
@@ -156,7 +156,7 @@ where
     /// ```
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;
 
-    /// Returns a new unbounded [`Interval`].
+    /// Returns a new unbounded interval.
     ///
     /// An unbounded interval contains every element in T,
     /// as well as every set of T except the `Empty` set.
@@ -174,7 +174,7 @@ where
     /// ```
     fn unbounded() -> Self::Output;
 
-    /// Returns a new closed finite [`Interval`] or Empty
+    /// Returns a new closed finite interval or Empty
     ///
     /// [a, b] = { x in T | a <= x <= b }
     ///
@@ -196,7 +196,7 @@ where
         )
     }
 
-    /// Returns a new open finite [`Interval`] or Empty
+    /// Returns a new open finite interval or Empty
     ///
     /// For discrete data types T, open bounds are **normalized** to closed form.
     /// Continuous(ish) types (like f32, or chrono::DateTime) are left as is.
@@ -223,7 +223,7 @@ where
         )
     }
 
-    /// Returns a new left open finite [`Interval`] or Empty
+    /// Returns a new left open finite interval or Empty
     ///
     ///  (a, b] = { x in T | a < x <= b }
     fn open_closed(left: T, right: T) -> Self::Output {
@@ -233,7 +233,7 @@ where
         )
     }
 
-    /// Returns a new right open finite [`Interval`] or Empty
+    /// Returns a new right open finite interval or Empty
     ///
     ///  [a, b) = { x in T | a <= x < b }
     fn closed_open(left: T, right: T) -> Self::Output {
@@ -243,28 +243,28 @@ where
         )
     }
 
-    /// Returns a new open, right-unbound [`Interval`]
+    /// Returns a new open, right-unbound interval
     ///
     ///  (a, ->) = { x in T | a < x }
     fn open_unbound(left: T) -> Self::Output {
         Self::half_bounded(Side::Left, FiniteBound::open(C::convert(left)))
     }
 
-    /// Returns a new closed, right-unbound [`Interval`]
+    /// Returns a new closed, right-unbound interval
     ///
     ///  [a, ->) = {x in T | a <= x }
     fn closed_unbound(left: T) -> Self::Output {
         Self::half_bounded(Side::Left, FiniteBound::closed(C::convert(left)))
     }
 
-    /// Returns a new open, left-unbound [`Interval`]
+    /// Returns a new open, left-unbound interval
     ///
     /// (a, ->) = { x in T | a < x }
     fn unbound_open(right: T) -> Self::Output {
         Self::half_bounded(Side::Right, FiniteBound::open(C::convert(right)))
     }
 
-    /// Returns a new closed, left-unbound [`Interval`]
+    /// Returns a new closed, left-unbound interval
     ///
     ///  [a, ->) = { x in T | a <= x }
     fn unbound_closed(right: T) -> Self::Output {
