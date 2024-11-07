@@ -1,6 +1,6 @@
-# obviously requires just to already be installed
+# cargo install just
 
-MSRV := "1.74.0"
+MSRV := "1.81.0"
 
 # just run the tests
 default: test
