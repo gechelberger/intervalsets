@@ -1,7 +1,6 @@
+use super::Measurement;
 use crate::numeric::{Domain, Zero};
 use crate::{Interval, IntervalSet};
-
-use super::Measurement;
 
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
@@ -83,12 +82,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::ops::Intersects;
-    use crate::Factory;
+    use approx::relative_eq;
 
     use super::*;
-
-    use approx::relative_eq;
+    use crate::ops::Intersects;
+    use crate::Factory;
 
     #[quickcheck]
     fn check_finite_width(a: f32, b: f32) {

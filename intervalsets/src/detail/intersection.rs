@@ -1,11 +1,10 @@
+use std::borrow::Cow::*;
+
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::ops::{Contains, Intersection, RefIntersection};
 use crate::util::commutative_op_move_impl;
 use crate::{Bound, Side};
-
-use super::{BoundCase, Finite, HalfBounded};
-
-use std::borrow::Cow::*;
 
 impl<T: Domain> Intersection<Self> for Finite<T> {
     type Output = Self;

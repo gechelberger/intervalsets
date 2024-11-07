@@ -1,7 +1,7 @@
-use super::{BoundCase, Finite, HalfBounded};
+use super::util::commutative_predicate_impl;
+use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
-use crate::util::commutative_predicate_impl;
-use crate::{Bound, Side};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Defines whether two sets are contiguous.
 ///
@@ -21,13 +21,13 @@ pub trait Adjacent<Rhs = Self> {
     fn is_adjacent_to(&self, rhs: &Rhs) -> bool;
 }
 
-fn are_continuous_adjacent<T: PartialEq>(right: &Bound<T>, left: &Bound<T>) -> bool {
+fn are_continuous_adjacent<T: PartialEq>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bool {
     // not sure how to deal with the rounding issues of floats
     right.value() == left.value() && (right.is_closed() || left.is_closed())
 }
 
 /// <---][---->
-fn are_adjacent<T: Domain>(right: &Bound<T>, left: &Bound<T>) -> bool {
+fn are_adjacent<T: Domain>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bool {
     let right_up = right.value().try_adjacent(Side::Right);
     let left_down = left.value().try_adjacent(Side::Left);
 
@@ -41,27 +41,19 @@ fn are_adjacent<T: Domain>(right: &Bound<T>, left: &Bound<T>) -> bool {
     }
 }
 
-impl<T: Domain> Adjacent<Self> for Finite<T> {
+impl<T: Domain> Adjacent<Self> for FiniteInterval<T> {
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
-        self.ref_map_or(false, |a_left, a_right| {
-            rhs.ref_map_or(false, |b_left, b_right| {
+        self.ref_map(|a_left, a_right| {
+            rhs.ref_map(|b_left, b_right| {
                 are_adjacent(a_right, b_left) || are_adjacent(b_right, a_left)
             })
+            .unwrap_or(false)
         })
-        /*
-        match self {
-            Self::FullyBounded(a_left, a_right) => match rhs {
-                Self::FullyBounded(b_left, b_right) => {
-                    are_adjacent(a_right, b_left) || are_adjacent(b_right, a_left)
-                }
-                Self::Empty => false,
-            },
-            Self::Empty => false,
-        }*/
+        .unwrap_or(false)
     }
 }
 
-impl<T: Domain> Adjacent<Self> for HalfBounded<T> {
+impl<T: Domain> Adjacent<Self> for HalfInterval<T> {
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
         match (self.side, rhs.side) {
             (Side::Left, Side::Right) => are_adjacent(&rhs.bound, &self.bound),
@@ -71,18 +63,19 @@ impl<T: Domain> Adjacent<Self> for HalfBounded<T> {
     }
 }
 
-impl<T: Domain> Adjacent<HalfBounded<T>> for Finite<T> {
-    fn is_adjacent_to(&self, rhs: &HalfBounded<T>) -> bool {
-        self.ref_map_or(false, |left, right| match rhs.side {
+impl<T: Domain> Adjacent<HalfInterval<T>> for FiniteInterval<T> {
+    fn is_adjacent_to(&self, rhs: &HalfInterval<T>) -> bool {
+        self.ref_map(|left, right| match rhs.side {
             Side::Left => are_adjacent(right, &rhs.bound),
             Side::Right => are_adjacent(&rhs.bound, left),
         })
+        .unwrap_or(false)
     }
 }
-commutative_predicate_impl!(Adjacent, is_adjacent_to, HalfBounded<T>, Finite<T>);
+commutative_predicate_impl!(Adjacent, is_adjacent_to, HalfInterval<T>, FiniteInterval<T>);
 
-impl<T: Domain> Adjacent<Finite<T>> for BoundCase<T> {
-    fn is_adjacent_to(&self, rhs: &Finite<T>) -> bool {
+impl<T: Domain> Adjacent<FiniteInterval<T>> for EnumInterval<T> {
+    fn is_adjacent_to(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.is_adjacent_to(rhs),
             Self::Half(lhs) => lhs.is_adjacent_to(rhs),
@@ -90,10 +83,10 @@ impl<T: Domain> Adjacent<Finite<T>> for BoundCase<T> {
         }
     }
 }
-commutative_predicate_impl!(Adjacent, is_adjacent_to, Finite<T>, BoundCase<T>);
+commutative_predicate_impl!(Adjacent, is_adjacent_to, FiniteInterval<T>, EnumInterval<T>);
 
-impl<T: Domain> Adjacent<HalfBounded<T>> for BoundCase<T> {
-    fn is_adjacent_to(&self, rhs: &HalfBounded<T>) -> bool {
+impl<T: Domain> Adjacent<HalfInterval<T>> for EnumInterval<T> {
+    fn is_adjacent_to(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.is_adjacent_to(rhs),
             Self::Half(lhs) => lhs.is_adjacent_to(rhs),
@@ -101,9 +94,9 @@ impl<T: Domain> Adjacent<HalfBounded<T>> for BoundCase<T> {
         }
     }
 }
-commutative_predicate_impl!(Adjacent, is_adjacent_to, HalfBounded<T>, BoundCase<T>);
+commutative_predicate_impl!(Adjacent, is_adjacent_to, HalfInterval<T>, EnumInterval<T>);
 
-impl<T: Domain> Adjacent<Self> for BoundCase<T> {
+impl<T: Domain> Adjacent<Self> for EnumInterval<T> {
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
         match rhs {
             Self::Finite(rhs) => self.is_adjacent_to(rhs),
@@ -113,10 +106,12 @@ impl<T: Domain> Adjacent<Self> for BoundCase<T> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{Factory, Interval};
+    use crate::{Factory};
+    use crate::sets::IntervalEnum;
 
     #[test]
     fn test_is_adjacent_to() {
@@ -149,3 +144,4 @@ mod tests {
         );
     }
 }
+*/

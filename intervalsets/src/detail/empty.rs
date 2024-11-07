@@ -1,6 +1,5 @@
-use crate::traits::empty::MaybeEmpty;
-
 use super::*;
+use crate::traits::empty::MaybeEmpty;
 
 impl<T> MaybeEmpty for Finite<T> {
     fn is_empty(&self) -> bool {

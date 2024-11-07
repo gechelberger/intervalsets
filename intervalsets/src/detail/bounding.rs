@@ -1,8 +1,7 @@
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::traits::bounding::Bounding;
 use crate::{Bound, Side};
-
-use super::{BoundCase, Finite, HalfBounded};
 
 impl<T: Domain> Bounding<T> for Finite<T> {
     fn bound(&self, side: crate::Side) -> Option<&Bound<T>> {

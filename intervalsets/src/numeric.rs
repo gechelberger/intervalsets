@@ -1,8 +1,8 @@
 //! Control behavior of data types that comprise the elements of a set.
 
-use crate::bound::Side;
-
 pub use num_traits::Zero;
+
+use crate::bound::Side;
 
 /// Defines the data types whose elements make up a Set.
 ///

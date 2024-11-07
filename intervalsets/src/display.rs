@@ -1,13 +1,11 @@
+use core::fmt;
+
 use itertools::Itertools;
 
 use crate::bound::BoundType;
-use crate::numeric::Domain;
-use crate::{Bound, Bounding, Interval, MaybeEmpty, Side};
-
 use crate::detail::{BoundCase, Finite, HalfBounded};
-use crate::IntervalSet;
-
-use core::fmt;
+use crate::numeric::Domain;
+use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
 
 fn bound_symbol(side: Side, bound_type: BoundType) -> char {
     match bound_type {
@@ -98,10 +96,9 @@ impl<T: fmt::Display + Domain> fmt::Display for IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::ops::Union;
     use crate::Factory;
-
-    use super::*;
 
     #[test]
     fn test_display_finite() {

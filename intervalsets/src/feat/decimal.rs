@@ -1,5 +1,6 @@
-use crate::continuous_domain_impl;
 use rust_decimal::Decimal;
+
+use crate::continuous_domain_impl;
 
 continuous_domain_impl!(Decimal);
 

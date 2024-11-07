@@ -1,23 +1,27 @@
-use super::*;
+use super::Contains;
+use crate::bound::Side;
 use crate::numeric::Domain;
-use crate::ops::Contains;
+use crate::sets::*;
 
-impl<T: Domain> Contains<T> for Finite<T> {
+impl<T: Domain> Contains<T> for FiniteInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
-        self.ref_map_or(false, |left, right| {
+        self.ref_map(|left, right| {
             left.contains(Side::Left, rhs) && right.contains(Side::Right, rhs)
         })
+        .unwrap_or(false)
     }
 }
 
-impl<T: Domain> Contains<Self> for Finite<T> {
+impl<T: Domain> Contains<Self> for FiniteInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
-        self.ref_map_or(false, |left_out, right_out| {
-            rhs.ref_map_or(false, |left_in, right_in| {
+        self.ref_map(|left_out, right_out| {
+            rhs.ref_map(|left_in, right_in| {
                 left_out.contains(Side::Left, left_in.value())
                     && right_out.contains(Side::Right, right_in.value())
             })
+            .unwrap_or(false)
         })
+        .unwrap_or(false)
 
         /*
         I'm curious to bench mark the two of these and see if there is any difference
@@ -35,53 +39,52 @@ impl<T: Domain> Contains<Self> for Finite<T> {
     }
 }
 
-impl<T: Domain> Contains<HalfBounded<T>> for Finite<T> {
-    fn contains(&self, rhs: &HalfBounded<T>) -> bool {
+impl<T: Domain> Contains<HalfInterval<T>> for FiniteInterval<T> {
+    fn contains(&self, _rhs: &HalfInterval<T>) -> bool {
         false
     }
 }
 
-impl<T: Domain> Contains<BoundCase<T>> for Finite<T> {
-    fn contains(&self, rhs: &BoundCase<T>) -> bool {
+impl<T: Domain> Contains<EnumInterval<T>> for FiniteInterval<T> {
+    fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match rhs {
-            BoundCase::Finite(rhs) => self.contains(rhs),
-            BoundCase::Half(rhs) => self.contains(rhs),
-            BoundCase::Unbounded => false,
+            EnumInterval::Finite(rhs) => self.contains(rhs),
+            EnumInterval::Half(rhs) => self.contains(rhs),
+            EnumInterval::Unbounded => false,
         }
     }
 }
 
-impl<T: Domain> Contains<T> for HalfBounded<T> {
+impl<T: Domain> Contains<T> for HalfInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.bound.contains(self.side, rhs)
     }
 }
 
-impl<T: Domain> Contains<Finite<T>> for HalfBounded<T> {
-    fn contains(&self, rhs: &Finite<T>) -> bool {
-        rhs.ref_map_or(false, |left, right| {
-            self.contains(left.value()) && self.contains(right.value())
-        })
+impl<T: Domain> Contains<FiniteInterval<T>> for HalfInterval<T> {
+    fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
+        rhs.ref_map(|left, right| self.contains(left.value()) && self.contains(right.value()))
+            .unwrap_or(false)
     }
 }
 
-impl<T: Domain> Contains<Self> for HalfBounded<T> {
+impl<T: Domain> Contains<Self> for HalfInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         self.side == rhs.side && self.contains(rhs.bound.value())
     }
 }
 
-impl<T: Domain> Contains<BoundCase<T>> for HalfBounded<T> {
-    fn contains(&self, rhs: &BoundCase<T>) -> bool {
+impl<T: Domain> Contains<EnumInterval<T>> for HalfInterval<T> {
+    fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match rhs {
-            BoundCase::Finite(rhs) => self.contains(rhs),
-            BoundCase::Half(rhs) => self.contains(rhs),
-            BoundCase::Unbounded => false,
+            EnumInterval::Finite(rhs) => self.contains(rhs),
+            EnumInterval::Half(rhs) => self.contains(rhs),
+            EnumInterval::Unbounded => false,
         }
     }
 }
 
-impl<T: Domain> Contains<T> for BoundCase<T> {
+impl<T: Domain> Contains<T> for EnumInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -91,18 +94,18 @@ impl<T: Domain> Contains<T> for BoundCase<T> {
     }
 }
 
-impl<T: Domain> Contains<Finite<T>> for BoundCase<T> {
-    fn contains(&self, rhs: &Finite<T>) -> bool {
+impl<T: Domain> Contains<FiniteInterval<T>> for EnumInterval<T> {
+    fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => *rhs != Finite::Empty,
+            Self::Unbounded => *rhs != FiniteInterval::Empty,
         }
     }
 }
 
-impl<T: Domain> Contains<HalfBounded<T>> for BoundCase<T> {
-    fn contains(&self, rhs: &HalfBounded<T>) -> bool {
+impl<T: Domain> Contains<HalfInterval<T>> for EnumInterval<T> {
+    fn contains(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
@@ -111,7 +114,7 @@ impl<T: Domain> Contains<HalfBounded<T>> for BoundCase<T> {
     }
 }
 
-impl<T: Domain> Contains<Self> for BoundCase<T> {
+impl<T: Domain> Contains<Self> for EnumInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),

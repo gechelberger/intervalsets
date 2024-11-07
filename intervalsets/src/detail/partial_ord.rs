@@ -1,9 +1,8 @@
 use std::cmp::Ordering;
 
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::{Bound, Bounding, MaybeEmpty, Side};
-
-use super::{BoundCase, Finite, HalfBounded};
 
 /// Partial compare of two boundary conditions
 /// when both are the same side of each interval.
@@ -138,8 +137,9 @@ impl<T: Domain + Ord> Ord for BoundCase<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use itertools::Itertools;
+
+    use super::*;
 
     #[quickcheck]
     fn test_finite_ordering(a: f32, b: f32, c: f32, d: f32) {

@@ -1,2 +1,7 @@
 imports_granularity = "Module"
+group_imports = "StdExternalCrate"
 reorder_imports = true
+imports_indent = "Block"
+
+reorder_modules = true
+

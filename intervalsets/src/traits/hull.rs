@@ -1,7 +1,7 @@
+use std::borrow::Cow::*;
+
 use crate::numeric::Domain;
 use crate::{Bound, Bounding, Factory, Interval, IntervalSet, MaybeEmpty, Side};
-
-use std::borrow::Cow::*;
 
 /// Defines the minimal contiguous Interval
 /// which fully contains every provided item.
@@ -172,10 +172,9 @@ impl<'a, T: Domain> ConvexHull<&'a IntervalSet<T>> for Interval<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::ops::Union;
     use crate::Factory;
-
-    use super::*;
 
     #[test]
     fn test_hull_of_points_empty() {

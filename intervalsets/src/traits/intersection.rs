@@ -1,9 +1,8 @@
+use super::bounding::Bounding;
+use super::empty::MaybeEmpty;
 use crate::numeric::Domain;
 use crate::util::commutative_op_move_impl;
 use crate::{Bound, Interval, IntervalSet};
-
-use super::bounding::Bounding;
-use super::empty::MaybeEmpty;
 
 /// Defines the intersection of two sets.
 pub trait Intersection<Rhs = Self> {

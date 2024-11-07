@@ -1,9 +1,8 @@
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::ops::{Contains, Intersects};
 use crate::util::commutative_predicate_impl;
 use crate::Side;
-
-use super::{BoundCase, Finite, HalfBounded};
 
 impl<T: Domain> Intersects<Self> for Finite<T> {
     fn intersects(&self, rhs: &Self) -> bool {

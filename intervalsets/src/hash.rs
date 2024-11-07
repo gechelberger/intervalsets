@@ -29,11 +29,12 @@ impl<T: Hash + Domain> Hash for IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
-    use crate::Factory;
     use core::hash::{Hash, Hasher};
+
     use siphasher::sip::SipHasher13;
+
+    use super::*;
+    use crate::Factory;
 
     fn do_hash<T: Hash>(item: T) -> u64 {
         let key: &[u8; 16] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
@@ -90,9 +91,10 @@ mod tests {
 #[cfg(feature = "rust_decimal")]
 #[cfg(test)]
 mod decimal_tests {
+    use rust_decimal::Decimal;
+
     use super::*;
     use crate::Factory;
-    use rust_decimal::Decimal;
 
     #[quickcheck]
     fn check_hash_decimal_interval(a: f32, b: f32) {

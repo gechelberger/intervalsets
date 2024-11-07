@@ -1,8 +1,7 @@
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::ops::Complement;
 use crate::{Interval, IntervalSet, Side};
-
-use super::{BoundCase, Finite, HalfBounded};
 
 impl<T: Domain> Complement for Finite<T> {
     type Output = IntervalSet<T>;

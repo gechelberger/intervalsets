@@ -1,9 +1,8 @@
-use crate::numeric::{Domain, Zero};
 use core::ops::Add;
 
-use crate::{Interval, IntervalSet};
-
 use super::Measurement;
+use crate::numeric::{Domain, Zero};
+use crate::{Interval, IntervalSet};
 
 /// Defines the counting measure of a [`Countable`] Set.
 ///

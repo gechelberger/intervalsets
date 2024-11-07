@@ -67,10 +67,9 @@ impl<T: Domain> RefMerged<Self> for Interval<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::ops::Complement;
     use crate::Factory;
-
-    use super::*;
 
     #[quickcheck]
     fn check_merge_half_complements_f32(x: f32) {
@@ -104,9 +103,10 @@ mod tests {
 #[cfg(feature = "rust_decimal")]
 #[cfg(test)]
 mod decimal_test {
+    use rust_decimal::Decimal;
+
     use super::*;
     use crate::{Factory, MaybeEmpty};
-    use rust_decimal::Decimal;
 
     #[quickcheck]
     fn check_decimal_merge(a: f32, b: f32, c: f32) {

@@ -82,10 +82,9 @@ impl<T: Domain> RefSplit<T> for IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::ops::Union;
     use crate::Factory;
-
-    use super::*;
 
     #[test]
     fn test_split_interval_empty() {

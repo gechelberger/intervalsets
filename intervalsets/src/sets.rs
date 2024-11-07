@@ -1,10 +1,9 @@
 use crate::bound::Bound;
 use crate::detail::{BoundCase, Finite};
+use crate::factory::Factory;
 use crate::numeric::Domain;
 use crate::ops::{Intersects, Merged};
 use crate::{Bounding, MaybeEmpty, Side};
-
-use crate::factory::Factory;
 
 /// A Set representation of a contiguous interval on N, Z, or R.
 ///

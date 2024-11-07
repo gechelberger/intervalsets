@@ -69,7 +69,6 @@ impl<T: Domain> RefUnion<IntervalSet<T>> for IntervalSet<T> {}
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::Factory;
 
     #[test]

@@ -150,7 +150,6 @@ ref_sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 #[cfg(test)]
 mod tests {
     use super::*;
-
     use crate::ops::Union;
     use crate::Factory;
 

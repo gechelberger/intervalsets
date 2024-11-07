@@ -1,7 +1,6 @@
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::{Factory, Interval, IntervalSet, MaybeEmpty};
-
-use super::{BoundCase, Finite, HalfBounded};
 
 impl<T: Domain> From<Finite<T>> for BoundCase<T> {
     fn from(value: Finite<T>) -> Self {
@@ -72,8 +71,9 @@ interval_set_delegate_from_impl!(&(T, T));
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use itertools::Itertools;
+
+    use super::*;
 
     #[test]
     fn test_convert_tuple() {

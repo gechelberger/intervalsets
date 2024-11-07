@@ -295,14 +295,13 @@ pub use traits::hull::ConvexHull;
 /// Operations on Set types.
 pub mod ops {
     //pub use crate::traits::adjacent::Adjacent;
-    pub use crate::traits::contains::Contains;
-    pub use crate::traits::intersects::Intersects;
-
     pub use crate::traits::complement::Complement;
+    pub use crate::traits::contains::Contains;
     pub use crate::traits::difference::{
         Difference, RefDifference, RefSymmetricDifference, SymmetricDifference,
     };
     pub use crate::traits::intersection::{Intersection, RefIntersection};
+    pub use crate::traits::intersects::Intersects;
     pub use crate::traits::merged::{Merged, RefMerged};
     pub use crate::traits::split::{RefSplit, Split};
     pub use crate::traits::union::{RefUnion, Union};

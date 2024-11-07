@@ -1,10 +1,8 @@
 use core::ops::Sub;
 
-use crate::numeric::{Domain, Zero};
-
-use crate::measure::{Count, Countable, Measurement, Width};
-
 use super::{BoundCase, Finite, HalfBounded};
+use crate::measure::{Count, Countable, Measurement, Width};
+use crate::numeric::{Domain, Zero};
 
 impl<T, Out> Width for Finite<T>
 where

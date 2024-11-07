@@ -9,7 +9,7 @@ rules:
       - test
       - style
       - perf
-      - api!
+      - api
 
   subject-empty:
     level: error

@@ -36,7 +36,6 @@ impl<T: Domain> Complement for IntervalSet<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-
     use crate::ops::{Contains, Union};
 
     #[quickcheck]

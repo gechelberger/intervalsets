@@ -1,10 +1,8 @@
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::ops::{Merged, RefMerged, RefUnion, Union};
-use crate::IntervalSet;
-
 use crate::util::commutative_op_move_impl;
-
-use super::{BoundCase, Finite, HalfBounded};
+use crate::IntervalSet;
 
 impl<T: Domain> Union<Self> for Finite<T> {
     type Output = IntervalSet<T>;

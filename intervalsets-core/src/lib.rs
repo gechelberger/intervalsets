@@ -1,14 +1,33 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! intervalsets-core
+//! -----------------
+//!
+//!
+#![no_std]
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod bound;
+pub mod numeric;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+pub mod error;
+pub mod sets;
+pub use sets::EnumInterval;
+
+pub mod ops;
+
+pub mod factory;
+pub use factory::Factory;
+
+mod from;
+
+mod traits;
+
+mod empty;
+
+#[allow(unused_imports)]
+pub mod prelude {
+    pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
+    pub use crate::empty::MaybeEmpty;
+    pub use crate::error::Error;
+    pub use crate::factory::Factory;
+    pub use crate::ops::*;
+    pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 }

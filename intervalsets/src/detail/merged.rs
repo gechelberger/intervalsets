@@ -1,12 +1,11 @@
+use std::borrow::Cow::*;
+
+use super::adjacent::Adjacent;
+use super::{BoundCase, Finite, HalfBounded};
 use crate::numeric::Domain;
 use crate::ops::{Contains, Intersects, Merged};
 use crate::traits::merged::RefMerged;
 use crate::{Bound, MaybeEmpty, Side};
-
-use super::adjacent::Adjacent;
-use super::{BoundCase, Finite, HalfBounded};
-
-use std::borrow::Cow::*;
 
 impl<T: Domain> Merged<Self> for Finite<T> {
     type Output = Self;
