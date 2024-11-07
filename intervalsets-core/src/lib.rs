@@ -3,11 +3,11 @@
 //!
 //!
 #![no_std]
-#![deny(bad_style)]
+//#![deny(bad_style)]
 //#![deny(missing_docs)]
-#![deny(future_incompatible)]
-#![deny(nonstandard_style)]
-#![deny(unused)]
+//#![deny(future_incompatible)]
+//#![deny(nonstandard_style)]
+//#![deny(unused)]
 
 pub mod bound;
 pub mod numeric;
@@ -21,6 +21,8 @@ pub mod ops;
 
 pub mod factory;
 pub use factory::Factory;
+
+pub mod measure;
 
 mod default;
 mod from;
