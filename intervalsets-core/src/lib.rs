@@ -8,6 +8,7 @@ pub mod bound;
 pub mod numeric;
 
 pub mod error;
+pub mod feat;
 pub mod sets;
 pub use sets::EnumInterval;
 
@@ -18,9 +19,8 @@ pub use factory::Factory;
 
 mod from;
 
-mod traits;
-
 mod empty;
+pub use empty::MaybeEmpty;
 
 #[allow(unused_imports)]
 pub mod prelude {

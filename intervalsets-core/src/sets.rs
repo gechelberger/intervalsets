@@ -15,7 +15,7 @@ pub type StackSetStorage<T> = heapless::Vec<T, ISET_N>;
 
 pub trait NumericSet<T> {}
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum FiniteInterval<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
@@ -107,7 +107,7 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct HalfInterval<T> {
     pub side: Side,
     pub bound: FiniteBound<T>,
@@ -164,7 +164,7 @@ impl<T> SetBounds<T> for HalfInterval<T> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
     Half(HalfInterval<T>),
@@ -200,7 +200,7 @@ impl<T> SetBounds<T> for EnumInterval<T> {
 }
 
 // A Set allocated on the stack, with a (low) fixed capacity.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct StackSet<T> {
     intervals: heapless::Vec<EnumInterval<T>, ISET_N>,
 }

@@ -75,7 +75,7 @@ impl BoundType {
 ///
 /// An Open(limit) does not include limit as an element of the set,
 /// while a Closed(limit) does.
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct FiniteBound<T>(BoundType, T);
 
 impl<T> FiniteBound<T> {
