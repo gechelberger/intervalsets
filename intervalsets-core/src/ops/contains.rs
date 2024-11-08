@@ -1,9 +1,8 @@
 use super::Contains;
 use crate::bound::Side;
-use crate::numeric::Domain;
-use crate::sets::*;
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 
-impl<T: Domain> Contains<T> for FiniteInterval<T> {
+impl<T: PartialOrd> Contains<T> for FiniteInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.ref_map(|left, right| {
             left.contains(Side::Left, rhs) && right.contains(Side::Right, rhs)
@@ -12,7 +11,7 @@ impl<T: Domain> Contains<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<Self> for FiniteInterval<T> {
+impl<T: PartialOrd> Contains<Self> for FiniteInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         self.ref_map(|left_out, right_out| {
             rhs.ref_map(|left_in, right_in| {
@@ -39,13 +38,13 @@ impl<T: Domain> Contains<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: PartialOrd> Contains<HalfInterval<T>> for FiniteInterval<T> {
     fn contains(&self, _rhs: &HalfInterval<T>) -> bool {
         false
     }
 }
 
-impl<T: Domain> Contains<EnumInterval<T>> for FiniteInterval<T> {
+impl<T: PartialOrd> Contains<EnumInterval<T>> for FiniteInterval<T> {
     fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match rhs {
             EnumInterval::Finite(rhs) => self.contains(rhs),
@@ -55,26 +54,26 @@ impl<T: Domain> Contains<EnumInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<T> for HalfInterval<T> {
+impl<T: PartialOrd> Contains<T> for HalfInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.bound.contains(self.side, rhs)
     }
 }
 
-impl<T: Domain> Contains<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: PartialOrd> Contains<FiniteInterval<T>> for HalfInterval<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         rhs.ref_map(|left, right| self.contains(left.value()) && self.contains(right.value()))
             .unwrap_or(false)
     }
 }
 
-impl<T: Domain> Contains<Self> for HalfInterval<T> {
+impl<T: PartialOrd> Contains<Self> for HalfInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         self.side == rhs.side && self.contains(rhs.bound.value())
     }
 }
 
-impl<T: Domain> Contains<EnumInterval<T>> for HalfInterval<T> {
+impl<T: PartialOrd> Contains<EnumInterval<T>> for HalfInterval<T> {
     fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match rhs {
             EnumInterval::Finite(rhs) => self.contains(rhs),
@@ -84,7 +83,7 @@ impl<T: Domain> Contains<EnumInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<T> for EnumInterval<T> {
+impl<T: PartialOrd> Contains<T> for EnumInterval<T> {
     fn contains(&self, rhs: &T) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -94,7 +93,7 @@ impl<T: Domain> Contains<T> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<FiniteInterval<T>> for EnumInterval<T> {
+impl<T: PartialOrd> Contains<FiniteInterval<T>> for EnumInterval<T> {
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -104,7 +103,7 @@ impl<T: Domain> Contains<FiniteInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<HalfInterval<T>> for EnumInterval<T> {
+impl<T: PartialOrd> Contains<HalfInterval<T>> for EnumInterval<T> {
     fn contains(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -114,7 +113,7 @@ impl<T: Domain> Contains<HalfInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain> Contains<Self> for EnumInterval<T> {
+impl<T: PartialOrd> Contains<Self> for EnumInterval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -125,5 +124,53 @@ impl<T: Domain> Contains<Self> for EnumInterval<T> {
                 Self::Unbounded => true,
             },
         }
+    }
+}
+
+impl<T: PartialOrd> Contains<T> for StackSet<T> {
+    fn contains(&self, rhs: &T) -> bool {
+        self.iter().any(|subset| subset.contains(rhs))
+    }
+}
+
+impl<T: PartialOrd> Contains<FiniteInterval<T>> for StackSet<T> {
+    fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
+        self.iter().any(|subset| subset.contains(rhs))
+    }
+}
+
+impl<T: PartialOrd> Contains<HalfInterval<T>> for StackSet<T> {
+    fn contains(&self, rhs: &HalfInterval<T>) -> bool {
+        self.iter().any(|subset| subset.contains(rhs))
+    }
+}
+
+impl<T: PartialOrd> Contains<EnumInterval<T>> for StackSet<T> {
+    fn contains(&self, rhs: &EnumInterval<T>) -> bool {
+        self.iter().any(|subset| subset.contains(rhs))
+    }
+}
+
+impl<T: PartialOrd> Contains<StackSet<T>> for StackSet<T> {
+    fn contains(&self, rhs: &StackSet<T>) -> bool {
+        rhs.iter().all(|subset| self.contains(subset))
+    }
+}
+
+impl<T: PartialOrd> Contains<StackSet<T>> for FiniteInterval<T> {
+    fn contains(&self, rhs: &StackSet<T>) -> bool {
+        rhs.iter().all(|subset| self.contains(subset))
+    }
+}
+
+impl<T: PartialOrd> Contains<StackSet<T>> for HalfInterval<T> {
+    fn contains(&self, rhs: &StackSet<T>) -> bool {
+        rhs.iter().all(|subset| self.contains(subset))
+    }
+}
+
+impl<T: PartialOrd> Contains<StackSet<T>> for EnumInterval<T> {
+    fn contains(&self, rhs: &StackSet<T>) -> bool {
+        rhs.iter().all(|subset| self.contains(subset))
     }
 }

@@ -219,14 +219,16 @@ where
     }
 }
 
-impl<T: Ord> StackSet<T> {
+impl<T: Domain> StackSet<T> {
     pub fn new<I: IntoIterator<Item = EnumInterval<T>>>(iter: I) -> Self {
-        let mut intervals = heapless::Vec::from_iter(iter.into_iter().filter(|x| !x.is_empty()));
+        let mut intervals: StackSetStorage<_> =
+            heapless::Vec::from_iter(iter.into_iter().filter(|x| !x.is_empty()));
 
-        intervals.sort_unstable();
+        intervals
+            .as_mut_slice()
+            .sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
 
-        // TODO: invariants
-        Self { intervals }
+        unsafe { Self::new_unchecked(crate::ops::union::MergeSorted::new(intervals)) }
     }
 }
 
@@ -243,9 +245,7 @@ impl<T> StackSet<T> {
             intervals: heapless::Vec::from_iter(iter),
         }
     }
-}
 
-impl<T> StackSet<T> {
     pub fn empty() -> Self {
         Self {
             intervals: heapless::Vec::new(),
@@ -324,5 +324,15 @@ mod tests {
 
         assert_eq!(x.left().unwrap(), &FiniteBound::closed(0));
         assert_eq!(x.right().unwrap(), &FiniteBound::closed(10));
+    }
+
+    #[test]
+    fn new_stack_set() -> Result<(), Error> {
+        let a = EnumInterval::closed(0, 10);
+        let b = EnumInterval::closed(5, 15);
+        let c = StackSet::from_iter([b, a, EnumInterval::empty()]);
+        assert_eq!(c.expect_interval()?, EnumInterval::closed(0, 15));
+
+        Ok(())
     }
 }

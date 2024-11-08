@@ -158,20 +158,21 @@ impl<T: Domain + Ord> Union<StackSet<T>> for EnumInterval<T> {
 }
 
 /// todo ...
-pub struct MergeSorted<T, I: Iterator<Item = EnumInterval<T>>> {
-    sorted: itertools::PutBack<I>,
+pub struct MergeSorted<T: Domain, I: Iterator<Item = EnumInterval<T>>> {
+    sorted: core::iter::Peekable<I>,
 }
 
 impl<T, I> MergeSorted<T, I>
 where
+    T: Domain,
     I: Iterator<Item = EnumInterval<T>>,
 {
-    fn new<U>(sorted: U) -> Self
+    pub fn new<U>(sorted: U) -> Self
     where
         U: IntoIterator<Item = EnumInterval<T>, IntoIter = I>,
     {
         Self {
-            sorted: itertools::put_back(sorted),
+            sorted: sorted.into_iter().peekable(),
         }
     }
 }
@@ -186,13 +187,13 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         let mut current = self.sorted.next()?;
 
-        while let Some(candidate) = self.sorted.next() {
-            if mergeable(&current, &candidate) {
-                current = current.merged(candidate).unwrap();
-            } else {
-                self.sorted.put_back(candidate);
+        while let Some(peek) = self.sorted.peek() {
+            if !mergeable(&current, peek) {
                 break;
             }
+
+            let candidate = self.sorted.next().unwrap();
+            current = current.merged(candidate).unwrap();
         }
 
         Some(current)

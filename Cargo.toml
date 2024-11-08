@@ -1,2 +1,3 @@
 [workspace]
 members = [ "benchmarks","intervalsets", "intervalsets-core"]
+resolver = "2"

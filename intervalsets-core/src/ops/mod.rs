@@ -87,6 +87,10 @@ pub trait Merged<Rhs = Self> {
     fn merged(self, rhs: Rhs) -> Option<Self::Output>;
 }
 
+pub trait RefMerged<Rhs = Self>: Merged<Rhs> {
+    fn ref_merged(&self, rhs: &Rhs) -> Option<Self::Output>;
+}
+
 pub trait Union<Rhs = Self> {
     type Output;
     fn union(self, rhs: Rhs) -> Self::Output;
@@ -176,6 +180,7 @@ pub trait Split<T> {
     fn split(self, at: T, closed: crate::bound::Side) -> (Self::Output, Self::Output);
 }
 
+#[inline]
 pub fn mergeable<A, B>(a: &A, b: &B) -> bool
 where
     A: MaybeEmpty + Intersects<B> + Adjacent<B>,

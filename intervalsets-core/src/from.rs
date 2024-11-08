@@ -5,7 +5,7 @@ use crate::bound::{BoundType, FiniteBound, Side};
 use crate::error::Error;
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
-use crate::Factory;
+use crate::{Factory, MaybeEmpty};
 
 impl<T: Domain> TryFrom<(T, T)> for FiniteInterval<T> {
     type Error = Error;
@@ -75,7 +75,11 @@ impl<T> TryFrom<EnumInterval<T>> for HalfInterval<T> {
 
 impl<T: Ord> From<EnumInterval<T>> for StackSet<T> {
     fn from(value: EnumInterval<T>) -> Self {
-        Self::new([value])
+        if value.is_empty() {
+            Self::empty()
+        } else {
+            unsafe { Self::new_unchecked([value]) }
+        }
     }
 }
 

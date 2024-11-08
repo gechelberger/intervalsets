@@ -35,6 +35,37 @@ impl<T: Domain> Merged<Self> for FiniteInterval<T> {
     }
 }
 
+/*
+impl<T: Domain> RefMerged<Self> for FiniteInterval<T> {
+    type Output = Self;
+
+    fn ref_merged(&self, rhs: &Self) -> Option<Self::Output> {
+        if self.is_disjoint_from(&rhs) && !self.is_adjacent_to(&rhs) {
+            if self.is_empty() {
+                return Some(rhs);
+            } else if rhs.is_empty() {
+                return Some(self);
+            } else {
+                return None;
+            }
+        }
+
+        let merged = self
+            .map(|a_left, a_right| {
+                rhs.map(|b_left, b_right| {
+                    FiniteInterval::Bounded(
+                        FiniteBound::take_min(Side::Left, a_left, b_left),
+                        FiniteBound::take_max(Side::Right, a_right, b_right),
+                    )
+                })
+                .expect("Expected to merge sets")
+            })
+            .expect("Expected to merge sets");
+
+        Some(merged)
+    }
+}*/
+
 impl<T: Domain> Merged<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
