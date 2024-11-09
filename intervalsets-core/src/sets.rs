@@ -252,6 +252,10 @@ impl<T> StackSet<T> {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.intervals.is_empty()
+    }
+
     pub fn expect_interval(mut self) -> Result<EnumInterval<T>, Error> {
         match self.intervals.len() {
             0 => Ok(FiniteInterval::<T>::empty().into()),

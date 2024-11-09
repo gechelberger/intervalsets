@@ -1,7 +1,7 @@
 use super::{Contains, Split};
-use crate::bound::{FiniteBound, Side};
+use crate::bound::{FiniteBound, SetBounds, Side};
 use crate::numeric::Domain;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 
 fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBound<T>) {
     match closed {
@@ -81,5 +81,39 @@ impl<T: Domain + Clone> Split<T> for EnumInterval<T> {
                 )
             }
         }
+    }
+}
+
+impl<T: Domain + Clone> Split<T> for StackSet<T> {
+    type Output = Self;
+
+    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
+        if self.is_empty() {
+            return (Self::empty(), Self::empty());
+        }
+
+        let mut left = crate::sets::StackSetStorage::new();
+        let mut right = crate::sets::StackSetStorage::new();
+
+        let intervals = self.into_raw();
+
+        // faster than a binary search for small (typical) N.
+        for subset in intervals.into_iter() {
+            if subset.contains(&at) {
+                let (ileft, iright) = subset.split(at.clone(), closed);
+                let _ = left.push(ileft);
+                let _ = right.push(iright);
+            } else if let Some(rbound) = subset.right() {
+                if !rbound.contains(Side::Right, &at) {
+                    let _ = left.push(subset);
+                } else {
+                    let _ = right.push(subset);
+                }
+            } else {
+                let _ = right.push(subset);
+            }
+        }
+
+        unsafe { (Self::new_unchecked(left), Self::new_unchecked(right)) }
     }
 }
