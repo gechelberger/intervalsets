@@ -1,3 +1,6 @@
+use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
+use crate::bound::Side;
 use crate::numeric::Domain;
 use crate::ops::Intersection;
 use crate::{Factory, Interval, IntervalSet};
@@ -14,6 +17,40 @@ pub trait Complement {
     fn complement(self) -> Self::Output;
 }
 
+impl<T: Domain> Complement for FiniteInterval<T> {
+    type Output = IntervalSet<T>;
+
+    fn complement(self) -> Self::Output {
+        match self {
+            Self::Empty => IntervalSet::new_unchecked(vec![Interval::unbounded()]),
+            Self::Bounded(lhs, rhs) => IntervalSet::new_unchecked(vec![
+                Interval::half_bounded(Side::Right, lhs.flip()),
+                Interval::half_bounded(Side::Left, rhs.flip()),
+            ]),
+        }
+    }
+}
+
+impl<T: Domain> Complement for HalfInterval<T> {
+    type Output = IntervalSet<T>;
+
+    fn complement(self) -> Self::Output {
+        HalfInterval::new(self.side.flip(), self.bound.flip()).into()
+    }
+}
+
+impl<T: Domain> Complement for EnumInterval<T> {
+    type Output = IntervalSet<T>;
+
+    fn complement(self) -> Self::Output {
+        match self {
+            Self::Finite(inner) => inner.complement(),
+            Self::Half(inner) => inner.complement(),
+            Self::Unbounded => IntervalSet::empty(),
+        }
+    }
+}
+
 impl<T: Domain> Complement for Interval<T> {
     type Output = IntervalSet<T>;
 
@@ -22,13 +59,12 @@ impl<T: Domain> Complement for Interval<T> {
     }
 }
 
-impl<T: Domain> Complement for IntervalSet<T> {
+impl<T: Domain + Clone> Complement for IntervalSet<T> {
     type Output = Self;
 
     fn complement(self) -> Self::Output {
         self.into_iter()
             .map(|x| x.complement())
-            //.fold(Interval::unbounded().into(), |l, r| l.intersection(r))
             .fold(Interval::unbounded().into(), Intersection::intersection)
     }
 }

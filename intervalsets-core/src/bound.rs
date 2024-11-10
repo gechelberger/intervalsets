@@ -1,13 +1,13 @@
 use crate::numeric::Domain;
 
-type Extremum<T> = Option<FiniteBound<T>>;
-type Envelope<T> = (Extremum<T>, Extremum<T>);
+//type Extremum<T> = Option<FiniteBound<T>>;
+//type Envelope<T> = (Extremum<T>, Extremum<T>);
 
 /// todo...
 pub trait SetBounds<T> {
     fn bound(&self, side: Side) -> Option<&FiniteBound<T>>;
 
-    fn into_bounds(self) -> Option<Envelope<T>>;
+    //fn into_bounds(self) -> Option<Envelope<T>>;
 
     #[inline]
     fn left(&self) -> Option<&FiniteBound<T>> {
@@ -222,6 +222,8 @@ impl<T: Domain> FiniteBound<T> {
 }
 
 pub mod ord {
+    use core::cmp::Ordering;
+
     use super::{BoundType, FiniteBound};
 
     /// todo...
@@ -236,6 +238,38 @@ pub mod ord {
         RightUnbounded,
     }
 
+    impl<T> OrdBound<T> {
+        pub fn left_open(limit: T) -> Self {
+            Self::Finite(limit, OrdBoundFinite::LeftOpen)
+        }
+
+        pub fn closed(limit: T) -> Self {
+            Self::Finite(limit, OrdBoundFinite::Closed)
+        }
+
+        pub fn right_open(limit: T) -> Self {
+            Self::Finite(limit, OrdBoundFinite::RightOpen)
+        }
+    }
+
+    impl<T: PartialOrd> OrdBound<T> {
+        pub fn partial_min(self, rhs: Self) -> Option<Self> {
+            match self.partial_cmp(&rhs)? {
+                Ordering::Less => Some(self),
+                Ordering::Greater => Some(rhs),
+                Ordering::Equal => Some(self),
+            }
+        }
+
+        pub fn partial_max(self, rhs: Self) -> Option<Self> {
+            match self.partial_cmp(&rhs)? {
+                Ordering::Less => Some(rhs),
+                Ordering::Greater => Some(self),
+                Ordering::Equal => Some(self),
+            }
+        }
+    }
+
     impl<'a, T> OrdBound<&'a T> {
         pub fn left(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
@@ -248,6 +282,16 @@ pub mod ord {
             match bound.bound_type() {
                 BoundType::Closed => Self::Finite(bound.value(), Closed),
                 BoundType::Open => Self::Finite(bound.value(), RightOpen),
+            }
+        }
+    }
+
+    impl<T: Clone> OrdBound<&T> {
+        pub fn cloned(self) -> OrdBound<T> {
+            match self {
+                Finite(value, order) => Finite(value.clone(), order),
+                LeftUnbounded => LeftUnbounded,
+                RightUnbounded => RightUnbounded,
             }
         }
     }
@@ -284,13 +328,15 @@ pub mod ord {
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     pub struct OrdBoundPair<T>(OrdBound<T>, OrdBound<T>);
 
+    impl<T: PartialEq> OrdBoundPair<T> {
+        pub fn is_empty(&self) -> bool {
+            *self == Self(LeftUnbounded, LeftUnbounded)
+        }
+    }
+
     impl<T> OrdBoundPair<T> {
         pub fn empty() -> Self {
             Self(LeftUnbounded, LeftUnbounded)
-        }
-
-        pub fn is_empty(&self) -> bool {
-            matches!(self, Self(LeftUnbounded, LeftUnbounded))
         }
 
         pub fn new(left: OrdBound<T>, right: OrdBound<T>) -> Self {
@@ -314,6 +360,8 @@ pub mod ord {
 }
 #[cfg(test)]
 mod test {
+    use ord::OrdBound;
+
     use super::*;
 
     #[test]
@@ -372,6 +420,32 @@ mod test {
         assert_eq!(
             FiniteBound::max(Side::Right, &FiniteBound::closed(0), &FiniteBound::open(0)),
             &FiniteBound::closed(0)
+        )
+    }
+
+    #[test]
+    fn test_partial_min_max() {
+        let f0 = 0.0;
+        let f1 = 100.0;
+
+        assert_eq!(
+            OrdBound::closed(f0).partial_min(OrdBound::closed(f1)),
+            Some(OrdBound::closed(f0))
+        );
+
+        assert_eq!(
+            OrdBound::closed(&f0).partial_min(OrdBound::closed(&f1)),
+            Some(OrdBound::closed(&f0))
+        );
+
+        assert_eq!(
+            OrdBound::LeftUnbounded.partial_max(OrdBound::closed(f1)),
+            Some(OrdBound::closed(f1))
+        );
+
+        assert_eq!(
+            OrdBound::LeftUnbounded.partial_max(OrdBound::closed(&f1)),
+            Some(OrdBound::closed(&f1))
         )
     }
 }

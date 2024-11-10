@@ -1,4 +1,4 @@
-#![feature(sort_floats)]
+//#![feature(sort_floats)]
 
 use std::cmp::Ordering;
 
@@ -7,53 +7,6 @@ use intervalsets::prelude::*;
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
 use rand::Rng;
-
-fn random_list<T>(n: usize) -> Vec<T>
-where
-    Standard: Distribution<T>,
-{
-    let mut rng = rand::thread_rng();
-    let mut input: Vec<T> = vec![];
-    for _ in 0..n {
-        input.push(rng.gen());
-    }
-    input
-}
-
-pub fn bench_partial_ord_sort(c: &mut Criterion) {
-    let integers: Vec<u64> = random_list(1000);
-    let floats: Vec<f32> = integers.iter().map(|x| *x as f32).collect();
-
-    let mut group = c.benchmark_group("partial-ord-sort");
-    group.bench_function("slice::sort_floats", |b| {
-        b.iter(|| {
-            let mut input = black_box(floats.clone());
-            input.as_mut_slice().sort_floats();
-        })
-    });
-
-    group.bench_function("slice::sort-unstable-total-cmp-f32", |b| {
-        b.iter(|| {
-            let mut input = black_box(floats.clone());
-            input.as_mut_slice().sort_unstable_by(|a, b| a.total_cmp(b));
-        })
-    });
-    group.bench_function("slice::sort-unstable-partial-cmp-f32", |b| {
-        b.iter(|| {
-            let mut input = black_box(floats.clone());
-            input
-                .as_mut_slice()
-                .sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-        })
-    });
-
-    group.bench_function("slice::sort-unstable-u64", |b| {
-        b.iter(|| {
-            let mut input = black_box(integers.clone());
-            input.as_mut_slice().sort_unstable();
-        })
-    });
-}
 
 pub fn bench_interval_intersection(c: &mut Criterion) {
     c.bench_function("interval-intersection", |b| {
@@ -68,7 +21,7 @@ pub fn bench_interval_intersection(c: &mut Criterion) {
 
 pub fn bench_interval_union(c: &mut Criterion) {
     c.bench_function("interval-union-adjacent", |b| {
-        let expected = IntervalSet::from((0, 20));
+        let expected = IntervalSet::from([0, 20]);
         b.iter(|| {
             let (a, b, c, d) = black_box((0, 10, 11, 20));
             let lhs = Interval::closed(a, b);
@@ -165,7 +118,6 @@ pub fn bench_interval_sym_difference(c: &mut Criterion) {
 
 criterion_group!(
     benches,
-    bench_partial_ord_sort,
     bench_set_complement,
     bench_set_split,
     bench_interval_hull_by_value,

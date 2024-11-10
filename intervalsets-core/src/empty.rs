@@ -1,5 +1,5 @@
 use crate::bound::ord::OrdBoundPair;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 pub trait MaybeEmpty {
     fn is_empty(&self) -> bool;
@@ -27,13 +27,7 @@ impl<T> MaybeEmpty for EnumInterval<T> {
     }
 }
 
-impl<T> MaybeEmpty for StackSet<T> {
-    fn is_empty(&self) -> bool {
-        self.slice().len() == 0
-    }
-}
-
-impl<T> MaybeEmpty for OrdBoundPair<T> {
+impl<T: PartialEq> MaybeEmpty for OrdBoundPair<T> {
     fn is_empty(&self) -> bool {
         self.is_empty() // forwards to the concrete impl
     }
@@ -49,20 +43,13 @@ mod tests {
         let empty = FiniteInterval::<u32>::empty();
         assert!(empty.is_empty());
 
-        let not_empty =
-            FiniteInterval::<u32>::new(FiniteBound::closed(0), FiniteBound::closed(10)).unwrap();
+        let not_empty = FiniteInterval::<u32>::new(FiniteBound::closed(0), FiniteBound::closed(10));
         assert!(!not_empty.is_empty());
 
         let empty = EnumInterval::Finite(empty);
         assert!(empty.is_empty());
 
         let not_empty = EnumInterval::Finite(not_empty);
-        assert!(!not_empty.is_empty());
-
-        let empty = StackSet::new([empty]);
-        assert!(empty.is_empty());
-
-        let not_empty = StackSet::new([not_empty]);
         assert!(!not_empty.is_empty());
     }
 }

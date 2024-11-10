@@ -2,7 +2,7 @@ use ordered_float::{NotNan, OrderedFloat};
 
 use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// The [`Converter`] trait provides a mechanism to wrap
 /// or coerse a convenient type into one that meets
@@ -152,7 +152,8 @@ where
     ///
     /// let x = EnumInterval::unbound_open(0);
     /// let y = EnumInterval::half_bounded(Side::Left, x.right().unwrap().clone().flip());
-    /// assert_eq!(x.complement(), y.into());
+    /// let z = x.try_merge(y).unwrap();
+    /// assert_eq!(z, EnumInterval::Unbounded);
     /// ```
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;
 
@@ -283,7 +284,7 @@ where
     }
 
     fn finite(left: FiniteBound<T>, right: FiniteBound<T>) -> Self::Output {
-        Self::new(left, right).expect("todo")
+        Self::new(left, right)
     }
 
     fn half_bounded(_: Side, _: FiniteBound<T>) -> Self::Output {
@@ -309,7 +310,7 @@ where
     }
 
     fn finite(left: FiniteBound<C::To>, right: FiniteBound<C::To>) -> Self::Output {
-        FiniteInterval::new(left, right).unwrap().into()
+        FiniteInterval::new(left, right).into()
     }
 
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
@@ -329,7 +330,7 @@ impl<T: Domain> Factory<T, Identity> for EnumInterval<T> {
     }
 
     fn finite(left: FiniteBound<T>, right: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::new(left, right).unwrap().into()
+        FiniteInterval::new(left, right).into()
     }
 
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
@@ -341,69 +342,14 @@ impl<T: Domain> Factory<T, Identity> for EnumInterval<T> {
     }
 }
 
-pub struct SFactory<T, C>(core::marker::PhantomData<(T, C)>);
-
-impl<T, C> Factory<T, C> for SFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Domain + Ord,
-{
-    type Output = StackSet<C::To>;
-
-    fn empty() -> Self::Output {
-        Self::Output::empty()
-    }
-
-    fn finite(left: FiniteBound<C::To>, right: FiniteBound<C::To>) -> Self::Output {
-        EnumInterval::finite(left, right).into()
-    }
-
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
-        EnumInterval::half_bounded(side, bound).into()
-    }
-
-    fn unbounded() -> Self::Output {
-        EnumInterval::unbounded().into()
-    }
-}
-
-impl<T: Domain + Ord> Factory<T, Identity> for StackSet<T> {
-    type Output = Self;
-
-    fn empty() -> Self::Output {
-        EnumInterval::empty().into()
-    }
-
-    fn finite(left: FiniteBound<T>, right: FiniteBound<T>) -> Self::Output {
-        EnumInterval::finite(left, right).into()
-    }
-
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        EnumInterval::half_bounded(side, bound).into()
-    }
-
-    fn unbounded() -> Self::Output {
-        EnumInterval::unbounded().into()
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::Error;
 
     #[test]
     fn test_interval_factory() {
         let a = IFactory::<u32, Identity>::closed(0, 10);
         let b = EnumInterval::<u32>::closed(0, 10);
         assert_eq!(a, b);
-    }
-
-    #[test]
-    fn test_interval_set_factory() -> Result<(), Error> {
-        let x = StackSet::closed(0, 10);
-        assert_eq!(x.expect_interval()?, EnumInterval::closed(0, 10));
-
-        Ok(())
     }
 }

@@ -1,48 +1,27 @@
+pub use intervalsets_core::ops::Intersects;
+
 use crate::numeric::Domain;
-use crate::util::commutative_predicate_impl;
 use crate::{Interval, IntervalSet};
 
-/// Defines whether two sets intersect.
-///
-/// For these two sets is there at least one
-/// element which is contained in each?
-///
-/// Intersects is commutative.
-///
-/// # Example
-///
-/// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::Intersects;
-///
-/// let interval = Interval::closed(10, 20);
-/// if interval.intersects(&Interval::closed_unbound(15)) {
-///     // true: do something
-/// }
-/// ```
-pub trait Intersects<Rhs = Self> {
-    fn intersects(&self, rhs: &Rhs) -> bool;
-
-    fn is_disjoint_from(&self, rhs: &Rhs) -> bool {
-        !self.intersects(rhs)
-    }
-}
-
-impl<T: Domain> Intersects<Self> for Interval<T> {
+impl<T: PartialOrd> Intersects<&Self> for Interval<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         self.0.intersects(&rhs.0)
     }
 }
 
-impl<T: Domain> Intersects<Interval<T>> for IntervalSet<T> {
+impl<T: PartialOrd> Intersects<&Interval<T>> for IntervalSet<T> {
     fn intersects(&self, rhs: &Interval<T>) -> bool {
-        // binary search for
         self.iter().any(|subset| subset.intersects(rhs))
     }
 }
-commutative_predicate_impl!(Intersects, intersects, Interval<T>, IntervalSet<T>);
 
-impl<T: Domain> Intersects<Self> for IntervalSet<T> {
+impl<T: PartialOrd> Intersects<&IntervalSet<T>> for Interval<T> {
+    fn intersects(&self, rhs: &IntervalSet<T>) -> bool {
+        rhs.intersects(self)
+    }
+}
+
+impl<T: Domain> Intersects<&Self> for IntervalSet<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         self.iter().any(|subset| rhs.intersects(subset))
     }

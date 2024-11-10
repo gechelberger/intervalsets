@@ -1,8 +1,6 @@
-use core::ops::Add;
-
 use super::Measurement;
 use crate::numeric::{Domain, Zero};
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Defines the counting measure of a [`Countable`] Set.
 ///
@@ -11,11 +9,8 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::measure::Count;
 ///
-/// let x = EnumInterval::closed(1, 10);
-/// assert_eq!(x.count().finite(), 10);
-///
-/// let x: StackSet<_> = x.union(EnumInterval::closed(101, 200));
-/// assert_eq!(x.count().finite(), 110);
+/// let x = EnumInterval::closed(0, 10);
+/// assert_eq!(x.count().finite(), 11);
 /// ```
 ///
 /// # Restricted to types implementing Countable
@@ -173,19 +168,6 @@ where
             Self::Finite(inner) => inner.count(),
             _ => Measurement::Infinite,
         }
-    }
-}
-
-impl<T, Out> Count for StackSet<T>
-where
-    T: Countable<Output = Out>,
-    Out: Zero + Add + Clone,
-{
-    type Output = Out;
-
-    fn count(&self) -> Measurement<Self::Output> {
-        self.iter()
-            .fold(Measurement::Finite(T::Output::zero()), |a, b| a + b.count())
     }
 }
 

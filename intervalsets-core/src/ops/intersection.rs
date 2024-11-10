@@ -9,48 +9,63 @@ use crate::sets::*;
 impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
     type Output = Self;
 
+    #[inline]
     fn intersection(self, rhs: Self) -> Self::Output {
-        self.flat_map(|a_lhs, a_rhs| {
-            rhs.flat_map(|b_lhs, b_rhs| {
-                Self::new(
-                    FiniteBound::take_max(Side::Left, a_lhs, b_lhs),
-                    FiniteBound::take_min(Side::Right, a_rhs, b_rhs),
-                )
-                .unwrap_or(Self::Empty)
-            })
-        })
+        let Self::Bounded(lhs_min, lhs_max) = self else {
+            return Self::Empty;
+        };
+
+        let Self::Bounded(rhs_min, rhs_max) = rhs else {
+            return Self::Empty;
+        };
+
+        // Safety: self and rhs should already be normalized.
+        unsafe {
+            Self::new_norm(
+                FiniteBound::take_max(Side::Left, lhs_min, rhs_min),
+                FiniteBound::take_min(Side::Right, lhs_max, rhs_max),
+            )
+        }
     }
 }
 
 impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     type Output = Self;
 
+    #[inline]
     fn intersection(self, rhs: HalfInterval<T>) -> Self::Output {
-        self.map(|left, right| {
-            let n = [&left, &right]
-                .into_iter()
-                .filter(|bound| rhs.contains(bound.value()))
-                .count();
+        let Self::Bounded(lhs_min, lhs_max) = self else {
+            return Self::Empty;
+        };
 
-            if n == 2 {
-                Self::Bounded(left, right)
-            } else if n == 1 {
-                match rhs.side {
-                    Side::Left => Self::new(rhs.bound, right),
-                    Side::Right => Self::new(left, rhs.bound),
-                }
-                .unwrap()
-            } else {
-                Self::Empty
+        let n = [&lhs_min, &lhs_max]
+            .into_iter()
+            .filter(|bound| rhs.contains(bound.value()))
+            .count();
+
+        if n == 2 {
+            unsafe { Self::new_unchecked(lhs_min, lhs_max) }
+        } else if n == 1 {
+            match rhs.side {
+                Side::Left => unsafe {
+                    // SAFETY: bound should already be normalized
+                    Self::new_norm(rhs.bound, lhs_max)
+                },
+                Side::Right => unsafe {
+                    // SAFETY: bound should already be normalized
+                    Self::new_norm(lhs_min, rhs.bound)
+                },
             }
-        })
-        .unwrap_or(Self::Empty)
+        } else {
+            Self::Empty
+        }
     }
 }
 
 impl<T: Domain> Intersection<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
+    #[inline]
     fn intersection(self, rhs: Self) -> Self::Output {
         if self.side == rhs.side {
             if self.contains(rhs.bound.value()) {
@@ -59,11 +74,12 @@ impl<T: Domain> Intersection<Self> for HalfInterval<T> {
                 self.into()
             }
         } else {
-            match self.side {
-                Side::Left => FiniteInterval::new(self.bound, rhs.bound),
-                Side::Right => FiniteInterval::new(rhs.bound, self.bound),
+            unsafe {
+                match self.side {
+                    Side::Left => FiniteInterval::new_norm(self.bound, rhs.bound),
+                    Side::Right => FiniteInterval::new_norm(rhs.bound, self.bound),
+                }
             }
-            .unwrap_or(FiniteInterval::Empty)
             .into()
         }
     }
@@ -126,35 +142,6 @@ commutative_op_move_impl!(
     EnumInterval<T>,
     EnumInterval<T>
 );
-
-impl<T: Domain + Clone + Ord> Intersection<EnumInterval<T>> for StackSet<T> {
-    type Output = Self;
-
-    fn intersection(self, rhs: EnumInterval<T>) -> Self::Output {
-        if self.is_empty() || rhs.is_empty() {
-            return Self::empty();
-        }
-
-        // invariants:
-        // intervals remain sorted; remain disjoint; filter out empty results;
-        let intervals: crate::sets::StackSetStorage<_> = self
-            .into_raw()
-            .into_iter()
-            .map(|iv| iv.intersection(rhs.clone()))
-            .filter(|iv| !iv.is_empty())
-            .collect();
-
-        unsafe { Self::new_unchecked(intervals) }
-    }
-}
-
-impl<T: Domain + Clone + Ord> Intersection<StackSet<T>> for EnumInterval<T> {
-    type Output = StackSet<T>;
-
-    fn intersection(self, rhs: StackSet<T>) -> Self::Output {
-        rhs.intersection(self)
-    }
-}
 
 /// Compute the intersection of two iterators of intervals.
 ///
@@ -223,6 +210,7 @@ where
         let b = self.b.next()?;
 
         let ab = a.clone().intersection(b.clone());
+        //let ab = a.ref_intersection(&b);
         if !ab.is_empty() {
             // since `a` and `b` intersect, we want to look at the right hand
             // bounds to decide which one (or both) to discard.
@@ -250,42 +238,21 @@ where
     }
 }
 
-impl<T: Domain + Clone> Intersection<Self> for StackSet<T> {
-    type Output = StackSet<T>;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Factory;
 
-    fn intersection(self, rhs: Self) -> Self::Output {
-        unsafe { Self::new_unchecked(SetSetIntersection::new(self.into_raw(), rhs.into_raw())) }
-    }
-}
+    #[test]
+    fn test_finite_finite() {
+        assert_eq!(
+            FiniteInterval::closed(0, 100).intersection(FiniteInterval::closed(50, 150)),
+            FiniteInterval::closed(50, 100)
+        );
 
-impl<T: Domain + Clone + Ord> Intersection<HalfInterval<T>> for StackSet<T> {
-    type Output = StackSet<T>;
-
-    fn intersection(self, rhs: HalfInterval<T>) -> Self::Output {
-        self.intersection(EnumInterval::from(rhs))
-    }
-}
-
-impl<T: Domain + Clone + Ord> Intersection<StackSet<T>> for HalfInterval<T> {
-    type Output = StackSet<T>;
-
-    fn intersection(self, rhs: StackSet<T>) -> Self::Output {
-        rhs.intersection(self)
-    }
-}
-
-impl<T: Domain + Clone + Ord> Intersection<FiniteInterval<T>> for StackSet<T> {
-    type Output = StackSet<T>;
-
-    fn intersection(self, rhs: FiniteInterval<T>) -> Self::Output {
-        self.intersection(EnumInterval::from(rhs))
-    }
-}
-
-impl<T: Domain + Clone + Ord> Intersection<StackSet<T>> for FiniteInterval<T> {
-    type Output = StackSet<T>;
-
-    fn intersection(self, rhs: StackSet<T>) -> Self::Output {
-        rhs.intersection(self)
+        assert_eq!(
+            FiniteInterval::closed(0, 100).intersection(FiniteInterval::Empty),
+            FiniteInterval::Empty
+        );
     }
 }

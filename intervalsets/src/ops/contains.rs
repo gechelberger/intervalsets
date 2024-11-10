@@ -1,67 +1,39 @@
+pub use intervalsets_core::ops::Contains;
+
 use crate::numeric::Domain;
 use crate::{Interval, IntervalSet};
 
-/// Defines whether a set fully contains another.
-///
-/// ```text
-/// Let A ⊆ T, B* ⊆ T:
-///
-/// A ⊇ B <=> ∀(x ∈ B => x ∈ A)
-///
-/// *let B = [rhs, rhs] for individual elements of T.
-/// ```
-///
-/// A contains B if and only if
-/// for every element x of B,
-/// x is also an element of A.
-///
-/// Contains is not commutative.
-///
-/// # Example
-/// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::Contains;
-///
-/// let x = Interval::open(0, 10);
-/// assert_eq!(x.contains(&5), true);
-/// assert_eq!(x.contains(&10), false);
-/// assert_eq!(x.contains(&Interval::open(0, 10)), true);
-/// ```
-pub trait Contains<Rhs = Self> {
-    fn contains(&self, rhs: &Rhs) -> bool;
-}
-
-impl<T: Domain> Contains<T> for Interval<T> {
+impl<T: Domain> Contains<&T> for Interval<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.0.contains(rhs)
     }
 }
 
-impl<T: Domain> Contains<Self> for Interval<T> {
+impl<T: Domain> Contains<&Self> for Interval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         self.0.contains(&rhs.0)
     }
 }
 
-impl<T: Domain> Contains<IntervalSet<T>> for Interval<T> {
+impl<T: Domain> Contains<&IntervalSet<T>> for Interval<T> {
     fn contains(&self, rhs: &IntervalSet<T>) -> bool {
         rhs.iter().all(|subset| self.contains(subset))
     }
 }
 
-impl<T: Domain> Contains<T> for IntervalSet<T> {
+impl<T: Domain> Contains<&T> for IntervalSet<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.iter().any(|subset| subset.contains(rhs))
     }
 }
 
-impl<T: Domain> Contains<Interval<T>> for IntervalSet<T> {
+impl<T: Domain> Contains<&Interval<T>> for IntervalSet<T> {
     fn contains(&self, rhs: &Interval<T>) -> bool {
         self.iter().any(|subset| subset.contains(rhs))
     }
 }
 
-impl<T: Domain> Contains<Self> for IntervalSet<T> {
+impl<T: Domain> Contains<&Self> for IntervalSet<T> {
     fn contains(&self, rhs: &Self) -> bool {
         rhs.iter().all(|subset| self.contains(subset))
     }

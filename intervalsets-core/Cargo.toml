@@ -3,7 +3,7 @@ name = "intervalsets-core"
 version = "0.1.0-alpha.2"
 authors = ["Greg Echelberger"]
 edition = "2021"
-rust-version = "1.81.0"
+rust-version = "1.65.0"
 readme = "README.md"
 description = """
 intervalsets-core provides no-std compatible intervals and set operations.
@@ -31,7 +31,6 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 
 [dependencies]
-const_env = "0.1.2"
 heapless = "0.8.0"
 itertools = { version = "0.13.0", default-features = false }
 num-traits = { version = "0.2.19", default-features = false }

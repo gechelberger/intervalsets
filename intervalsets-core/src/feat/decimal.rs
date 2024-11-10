@@ -16,6 +16,6 @@ mod test {
         assert!(interval.contains(&Decimal::new(5, 0)));
         assert!(!interval.contains(&Decimal::new(10, 0)));
 
-        //assert_eq!(interval.width().finite(), Decimal::new(798, 2));
+        assert_eq!(interval.width().finite(), Decimal::new(798, 2));
     }
 }

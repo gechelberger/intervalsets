@@ -1,4 +1,4 @@
-use crate::ops::{Complement, Intersection, RefIntersection, RefUnion};
+use crate::ops::{Complement, Intersection, Union};
 use crate::{Interval, IntervalSet};
 
 /// Defines the difference of sets A - B.
@@ -34,18 +34,9 @@ pub trait Difference<Rhs = Self> {
     fn difference(self, rhs: Rhs) -> Self::Output;
 }
 
-pub trait RefDifference<Rhs>: Difference<Rhs> + Clone
-where
-    Rhs: Clone,
-{
-    fn ref_difference(&self, rhs: &Rhs) -> Self::Output {
-        self.clone().difference(rhs.clone())
-    }
-}
-
 macro_rules! difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain> $crate::ops::Difference<$t_rhs> for $t_lhs {
+        impl<T: $crate::numeric::Domain + Clone> $crate::ops::Difference<$t_rhs> for $t_lhs {
             type Output = $crate::IntervalSet<T>;
 
             fn difference(self, rhs: $t_rhs) -> Self::Output {
@@ -60,21 +51,6 @@ difference_impl!(Interval<T>, IntervalSet<T>);
 difference_impl!(IntervalSet<T>, Interval<T>);
 difference_impl!(IntervalSet<T>, IntervalSet<T>);
 
-macro_rules! ref_difference_impl {
-    ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain> $crate::ops::RefDifference<$t_rhs> for $t_lhs {
-            fn ref_difference(&self, rhs: &$t_rhs) -> <Self as $crate::ops::Difference>::Output {
-                self.ref_intersection(&rhs.clone().complement()).into()
-            }
-        }
-    };
-}
-
-ref_difference_impl!(Interval<T>, Interval<T>);
-ref_difference_impl!(Interval<T>, IntervalSet<T>);
-ref_difference_impl!(IntervalSet<T>, Interval<T>);
-ref_difference_impl!(IntervalSet<T>, IntervalSet<T>);
-
 /// Defines the symmetric difference (A ⊕ B). A and B are consumed.
 ///
 /// ```text
@@ -88,7 +64,7 @@ ref_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 /// Example:
 /// ```
 /// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::{SymmetricDifference, Union};
+/// use intervalsets::ops::{SymDifference, Union};
 ///
 /// let a = Interval::closed(0.0, 10.0);
 /// let b = Interval::closed(5.0, 15.0);
@@ -98,28 +74,21 @@ ref_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 /// assert_eq!(b.clone().sym_difference(a.clone()), expected);
 /// assert_eq!(a.clone().sym_difference(a), Interval::empty().into())
 /// ```
-pub trait SymmetricDifference<Rhs = Self> {
+pub trait SymDifference<Rhs = Self> {
     type Output;
 
     fn sym_difference(self, rhs: Rhs) -> Self::Output;
 }
 
-pub trait RefSymmetricDifference<Rhs = Self>: SymmetricDifference<Rhs> + Clone
-where
-    Rhs: Clone,
-{
-    fn ref_sym_difference(&self, rhs: &Rhs) -> Self::Output {
-        self.clone().sym_difference(rhs.clone())
-    }
-}
-
 macro_rules! sym_difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain> $crate::ops::SymmetricDifference<$t_rhs> for $t_lhs {
+        impl<T: $crate::numeric::Domain + Clone> $crate::ops::SymDifference<$t_rhs> for $t_lhs {
             type Output = $crate::IntervalSet<T>;
 
             fn sym_difference(self, rhs: $t_rhs) -> Self::Output {
-                self.ref_union(&rhs).difference(self.intersection(rhs))
+                self.clone()
+                    .union(rhs.clone())
+                    .difference(self.intersection(rhs))
             }
         }
     };
@@ -131,21 +100,6 @@ sym_difference_impl!(Interval<T>, Interval<T>);
 sym_difference_impl!(Interval<T>, IntervalSet<T>);
 sym_difference_impl!(IntervalSet<T>, Interval<T>);
 sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
-
-macro_rules! ref_sym_difference_impl {
-    ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain> $crate::ops::RefSymmetricDifference<$t_rhs> for $t_lhs {
-            fn ref_sym_difference(&self, rhs: &$t_rhs) -> Self::Output {
-                self.ref_union(rhs).difference(self.ref_intersection(rhs))
-            }
-        }
-    };
-}
-
-ref_sym_difference_impl!(Interval<T>, Interval<T>);
-ref_sym_difference_impl!(Interval<T>, IntervalSet<T>);
-ref_sym_difference_impl!(IntervalSet<T>, Interval<T>);
-ref_sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 
 #[cfg(test)]
 mod tests {

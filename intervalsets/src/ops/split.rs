@@ -1,33 +1,11 @@
+pub use intervalsets_core::ops::Split;
+
 use crate::bound::Side;
 use crate::numeric::Domain;
 use crate::ops::Contains;
-use crate::{Bounding, Interval, IntervalSet, MaybeEmpty};
+use crate::{Interval, IntervalSet, MaybeEmpty, SetBounds};
 
-/// Split a Set into two disjoint subsets, fully covering the original.
-///
-/// `at` provides the new bound where the set should be split.
-///
-/// # Example
-///
-/// ```
-/// use intervalsets::prelude::*;
-///
-/// let x = Interval::closed(0, 10);
-/// let (left, right) = x.split(5, Side::Left);
-/// assert_eq!(left, Interval::closed(0, 5));
-/// assert_eq!(right, Interval::closed(6, 10));
-/// ```
-pub trait Split<T> {
-    type Output: Sized;
-
-    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output);
-}
-
-pub trait RefSplit<T>: Split<T> {
-    fn ref_split(&self, at: T, closed: Side) -> (Self::Output, Self::Output);
-}
-
-impl<T: Domain> Split<T> for Interval<T> {
+impl<T: Domain + Clone> Split<T> for Interval<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
@@ -36,13 +14,7 @@ impl<T: Domain> Split<T> for Interval<T> {
     }
 }
 
-impl<T: Domain> RefSplit<T> for Interval<T> {
-    fn ref_split(&self, at: T, closed: Side) -> (Self::Output, Self::Output) {
-        self.clone().split(at, closed)
-    }
-}
-
-impl<T: Domain> Split<T> for IntervalSet<T> {
+impl<T: Domain + Clone> Split<T> for IntervalSet<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
@@ -71,12 +43,6 @@ impl<T: Domain> Split<T> for IntervalSet<T> {
         }
 
         (Self::new_unchecked(left), Self::new_unchecked(right))
-    }
-}
-
-impl<T: Domain> RefSplit<T> for IntervalSet<T> {
-    fn ref_split(&self, at: T, closed: Side) -> (Self::Output, Self::Output) {
-        self.clone().split(at, closed)
     }
 }
 
@@ -115,8 +81,8 @@ mod tests {
     fn test_split_interval_on_bound() {
         let x = Interval::closed(0, 10);
         let (left, right) = x.clone().split(0, Side::Left);
-        assert_eq!(left, (0, 0).into());
-        assert_eq!(right, (1, 10).into());
+        assert_eq!(left, [0, 0].into());
+        assert_eq!(right, [1, 10].into());
 
         let (left, right) = x.clone().split(0, Side::Right);
         assert_eq!(left, Interval::empty());
@@ -124,7 +90,7 @@ mod tests {
 
         let x = Interval::closed(0.0, 10.0);
         let (left, right) = x.clone().split(0.0, Side::Left);
-        assert_eq!(left, (0.0, 0.0).into());
+        assert_eq!(left, [0.0, 0.0].into());
         assert_eq!(right, Interval::open_closed(0.0, 10.0));
 
         let (left, right) = x.clone().split(0.0, Side::Right);
@@ -137,17 +103,17 @@ mod tests {
 
         let (left, right) = x.clone().split(10.0, Side::Right);
         assert_eq!(left, Interval::closed_open(0.0, 10.0));
-        assert_eq!(right, (10.0, 10.0).into());
+        assert_eq!(right, [10.0, 10.0].into());
     }
 
     #[test]
     fn test_split_interval_not_contained() {
         let interval = Interval::closed(50, 100);
-        let (left, right) = interval.ref_split(0, Side::Left);
+        let (left, right) = interval.split(0, Side::Left);
         assert_eq!(left, Interval::empty());
         assert_eq!(right, interval);
 
-        let (left, right) = interval.ref_split(200, Side::Left);
+        let (left, right) = interval.split(200, Side::Left);
         assert_eq!(left, interval);
         assert_eq!(right, Interval::empty());
     }
@@ -178,11 +144,11 @@ mod tests {
         let neg = Interval::closed(-200, -150).union(Interval::closed(-100, -50));
         let pos = Interval::closed(50, 100).union(Interval::closed(150, 200));
         let set = neg.clone().union(pos.clone());
-        let (left, right) = set.ref_split(0, Side::Left);
+        let (left, right) = set.clone().split(0, Side::Left);
         assert_eq!(left, neg);
         assert_eq!(right, pos);
 
-        let (left, right) = set.ref_split(-125, Side::Left);
+        let (left, right) = set.split(-125, Side::Left);
         assert_eq!(left.expect_interval(), Interval::closed(-200, -150));
         assert_eq!(right, pos.union(Interval::closed(-100, -50)));
     }

@@ -1,7 +1,4 @@
 use super::Measurement;
-use crate::numeric::{Domain, Zero};
-use crate::{Interval, IntervalSet};
-
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
 /// The width is defined as the absolute difference between the greatest and
@@ -48,16 +45,15 @@ use crate::{Interval, IntervalSet};
 /// let b = b.difference(Interval::closed(5, 15));
 /// assert_eq!(b.width().finite(), 4);
 /// ```
-pub trait Width {
-    type Output;
-
-    fn width(&self) -> Measurement<Self::Output>;
-}
+use super::Width;
+use crate::numeric::{Domain, Zero};
+use crate::{Interval, IntervalSet};
 
 impl<T, Out> Width for Interval<T>
 where
-    T: Domain + core::ops::Sub<T, Output = Out>,
     Out: Zero,
+    T: Domain,
+    for<'a> &'a T: core::ops::Sub<Output = Out>,
 {
     type Output = Out;
 
@@ -68,7 +64,8 @@ where
 
 impl<T, Out> Width for IntervalSet<T>
 where
-    T: Domain + core::ops::Sub<T, Output = Out>,
+    T: Domain,
+    for<'a> &'a T: core::ops::Sub<Output = Out>,
     Out: Zero + core::ops::Add<Out, Output = Out> + Clone,
 {
     type Output = Out;

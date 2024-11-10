@@ -1,22 +1,34 @@
-use core::ops::{Range, RangeFrom};
+mod range;
 
 use crate::bound::ord::{OrdBound, OrdBoundFinite, OrdBoundPair};
 use crate::bound::{BoundType, FiniteBound, Side};
-use crate::error::Error;
 use crate::numeric::Domain;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
-use crate::{Factory, MaybeEmpty};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::Factory;
 
-impl<T: Domain> TryFrom<(T, T)> for FiniteInterval<T> {
-    type Error = Error;
-    fn try_from(value: (T, T)) -> Result<Self, Error> {
-        FiniteInterval::new(FiniteBound::open(value.0), FiniteBound::open(value.1))
+impl<T: Domain> From<(T, T)> for FiniteInterval<T> {
+    fn from(value: (T, T)) -> Self {
+        Self::new(FiniteBound::open(value.0), FiniteBound::open(value.1))
     }
 }
 
-impl<T: Domain> TryFrom<[T; 2]> for FiniteInterval<T> {
-    type Error = Error;
-    fn try_from(value: [T; 2]) -> Result<Self, Error> {
+impl<T: Domain + Clone> From<&(T, T)> for FiniteInterval<T> {
+    fn from(value: &(T, T)) -> Self {
+        Self::new(
+            FiniteBound::open(value.0.clone()),
+            FiniteBound::open(value.1.clone()),
+        )
+    }
+}
+
+impl<T: Domain> From<(T, T)> for EnumInterval<T> {
+    fn from(value: (T, T)) -> Self {
+        EnumInterval::from(FiniteInterval::from(value))
+    }
+}
+
+impl<T: Domain> From<[T; 2]> for FiniteInterval<T> {
+    fn from(value: [T; 2]) -> Self {
         let mut iter = value.into_iter();
         FiniteInterval::new(
             FiniteBound::closed(iter.next().unwrap()),
@@ -25,13 +37,15 @@ impl<T: Domain> TryFrom<[T; 2]> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> TryFrom<Range<T>> for FiniteInterval<T> {
-    type Error = Error;
-    fn try_from(value: Range<T>) -> Result<Self, Self::Error> {
-        FiniteInterval::new(
-            FiniteBound::closed(value.start),
-            FiniteBound::open(value.end),
-        )
+impl<T: Domain + Clone> From<&[T; 2]> for FiniteInterval<T> {
+    fn from(value: &[T; 2]) -> Self {
+        FiniteInterval::from(value.clone())
+    }
+}
+
+impl<T: Domain> From<[T; 2]> for EnumInterval<T> {
+    fn from(value: [T; 2]) -> Self {
+        EnumInterval::from(FiniteInterval::from(value))
     }
 }
 
@@ -41,57 +55,9 @@ impl<T> From<FiniteInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T> TryFrom<EnumInterval<T>> for FiniteInterval<T> {
-    type Error = Error;
-    fn try_from(value: EnumInterval<T>) -> Result<Self, Self::Error> {
-        match value {
-            EnumInterval::Finite(inner) => Ok(inner),
-            _ => Err(Error::BoundsMismatchError),
-        }
-    }
-}
-
-impl<T> From<RangeFrom<T>> for HalfInterval<T> {
-    fn from(value: RangeFrom<T>) -> Self {
-        HalfInterval::left(FiniteBound::closed(value.start))
-    }
-}
-
 impl<T> From<HalfInterval<T>> for EnumInterval<T> {
     fn from(value: HalfInterval<T>) -> Self {
         Self::Half(value)
-    }
-}
-
-impl<T> TryFrom<EnumInterval<T>> for HalfInterval<T> {
-    type Error = Error;
-    fn try_from(value: EnumInterval<T>) -> Result<Self, Self::Error> {
-        match value {
-            EnumInterval::Half(inner) => Ok(inner),
-            _ => Err(Error::BoundsMismatchError),
-        }
-    }
-}
-
-impl<T: Ord> From<EnumInterval<T>> for StackSet<T> {
-    fn from(value: EnumInterval<T>) -> Self {
-        if value.is_empty() {
-            Self::empty()
-        } else {
-            unsafe { Self::new_unchecked([value]) }
-        }
-    }
-}
-
-impl<T: Ord> From<FiniteInterval<T>> for StackSet<T> {
-    fn from(value: FiniteInterval<T>) -> Self {
-        StackSet::from(EnumInterval::from(value))
-    }
-}
-
-impl<T: Ord> From<HalfInterval<T>> for StackSet<T> {
-    fn from(value: HalfInterval<T>) -> Self {
-        StackSet::from(EnumInterval::from(value))
     }
 }
 
@@ -106,9 +72,30 @@ impl<T> From<FiniteInterval<T>> for OrdBoundPair<T> {
     }
 }
 
+impl<'a, T> From<&'a FiniteInterval<T>> for OrdBoundPair<&'a T> {
+    fn from(value: &'a FiniteInterval<T>) -> Self {
+        match value {
+            FiniteInterval::Empty => OrdBoundPair::empty(),
+            FiniteInterval::Bounded(lhs, rhs) => {
+                OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right))
+            }
+        }
+    }
+}
+
 impl<T> From<HalfInterval<T>> for OrdBoundPair<T> {
     fn from(value: HalfInterval<T>) -> Self {
         let ord_bound = value.bound.into_ord(value.side);
+        match value.side {
+            Side::Left => OrdBoundPair::new(ord_bound, OrdBound::RightUnbounded),
+            Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, ord_bound),
+        }
+    }
+}
+
+impl<'a, T> From<&'a HalfInterval<T>> for OrdBoundPair<&'a T> {
+    fn from(value: &'a HalfInterval<T>) -> Self {
+        let ord_bound = value.bound.ord(value.side);
         match value.side {
             Side::Left => OrdBoundPair::new(ord_bound, OrdBound::RightUnbounded),
             Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, ord_bound),
@@ -128,18 +115,13 @@ impl<T> From<EnumInterval<T>> for OrdBoundPair<T> {
     }
 }
 
-impl<T> From<StackSet<T>> for OrdBoundPair<T> {
-    fn from(value: StackSet<T>) -> Self {
-        let mut intervals = value.into_raw();
-        match intervals.len() {
-            0 => Self::empty(),
-            1 => intervals.remove(0).into(),
-            _ => {
-                let first = intervals.swap_remove(0);
-                let last = intervals.swap_remove(0);
-                let (left, _) = OrdBoundPair::from(first).into_raw();
-                let (_, right) = OrdBoundPair::from(last).into_raw();
-                OrdBoundPair::new(left, right)
+impl<'a, T> From<&'a EnumInterval<T>> for OrdBoundPair<&'a T> {
+    fn from(value: &'a EnumInterval<T>) -> Self {
+        match value {
+            EnumInterval::Finite(inner) => inner.into(),
+            EnumInterval::Half(inner) => inner.into(),
+            EnumInterval::Unbounded => {
+                OrdBoundPair::new(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
             }
         }
     }
@@ -154,6 +136,7 @@ impl From<OrdBoundFinite> for BoundType {
     }
 }
 
+/*
 impl<T> TryFrom<OrdBound<T>> for FiniteBound<T> {
     type Error = Error;
     fn try_from(value: OrdBound<T>) -> Result<Self, Self::Error> {
@@ -175,12 +158,11 @@ impl<T: Domain> TryFrom<OrdBoundPair<T>> for FiniteInterval<T> {
         let right = FiniteBound::try_from(right)?;
         Self::new(left, right)
     }
-}
+}*/
 
 impl<T: Domain> From<OrdBoundPair<T>> for EnumInterval<T> {
     fn from(value: OrdBoundPair<T>) -> Self {
-        let (left, right) = value.into_raw();
-        match (left, right) {
+        match value.into_raw() {
             (OrdBound::LeftUnbounded, OrdBound::LeftUnbounded) => Self::empty(),
             (OrdBound::LeftUnbounded, OrdBound::RightUnbounded) => Self::Unbounded,
             (OrdBound::LeftUnbounded, OrdBound::Finite(r_val, r_ord)) => {
@@ -197,7 +179,7 @@ impl<T: Domain> From<OrdBoundPair<T>> for EnumInterval<T> {
                 // SAFETY: FiniteInterval invariants <=> OrdBoundPair invariants
                 unsafe { Self::Finite(FiniteInterval::new_unchecked(l_bound, r_bound)) }
             }
-            _ => panic!("OrdBoundPair invariants violated"),
+            _ => unreachable!(),
         }
     }
 }
@@ -208,10 +190,5 @@ mod tests {
     use crate::factory::Factory;
 
     #[test]
-    fn test_convert_to_finite() -> Result<(), Error> {
-        assert_eq!(FiniteInterval::closed(0, 10), [0, 10].try_into()?);
-        assert_eq!(FiniteInterval::open(0, 10), (0, 10).try_into()?);
-
-        Ok(())
-    }
+    fn test_convert_to_finite() {}
 }

@@ -12,7 +12,7 @@
 pub mod bound;
 pub mod numeric;
 
-pub mod error;
+//pub mod error;
 pub mod feat;
 pub mod sets;
 pub use sets::EnumInterval;
@@ -24,7 +24,8 @@ pub use factory::Factory;
 
 pub mod measure;
 
-mod default;
+pub mod try_cmp;
+
 mod from;
 
 mod empty;
@@ -34,8 +35,9 @@ pub use empty::MaybeEmpty;
 pub mod prelude {
     pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
     pub use crate::empty::MaybeEmpty;
-    pub use crate::error::Error;
+    //pub use crate::error::Error;
     pub use crate::factory::Factory;
+    pub use crate::measure::{Count, Measurement, Width};
     pub use crate::ops::*;
-    pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
+    pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 }

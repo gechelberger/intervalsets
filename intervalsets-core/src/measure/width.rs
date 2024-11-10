@@ -1,8 +1,8 @@
-use core::ops::{Add, Sub};
+use core::ops::Sub;
 
 use super::Measurement;
 use crate::numeric::{Domain, Zero};
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
@@ -33,8 +33,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 /// assert_eq!(interval.width().finite(), 10);
 ///
 /// let set = Fct::closed(0.0, 10.0)
-///     .union(Fct::closed(5.0, 15.0));
-/// //    .union(EnumInterval::open(100.0, 110.0));
+///     .try_merge(Fct::closed(5.0, 15.0)).unwrap();
 /// assert_eq!(set.width().finite().0, 15.0);
 /// ```
 ///
@@ -44,17 +43,12 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
 /// use ordered_float::NotNan;
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::measure::Width;
-/// use intervalsets_core::factory::IFactory;
 ///
-/// type Fct = IFactory<f32, NotNan<f32>>;
+/// let a = EnumInterval::closed(0.0, 10.0);
+/// assert_eq!(a.width().finite(), 10.0);
 ///
-/// let a = Fct::closed(0.0, 10.0);
-/// let a = a.difference(Fct::closed(5.0, 15.0));
-/// assert_eq!(a.width().finite().into_inner(), 5.0);
-///
-/// let b = EnumInterval::closed(0, 10);
-/// let b = b.difference(EnumInterval::closed(5, 15));
-/// assert_eq!(b.width().finite(), 4);
+/// let b = EnumInterval::open(0, 10);
+/// assert_eq!(b.width().finite(), 8);
 /// ```
 pub trait Width {
     type Output;
@@ -105,21 +99,6 @@ where
             Self::Half(inner) => inner.width(),
             Self::Unbounded => Measurement::Infinite,
         }
-    }
-}
-
-impl<T, Out> Width for StackSet<T>
-where
-    T: Domain,
-    for<'a> &'a T: Sub<Output = Out>,
-    Out: Zero + Add<Out, Output = Out> + Clone,
-{
-    type Output = Out;
-
-    fn width(&self) -> Measurement<Self::Output> {
-        self.iter()
-            .map(|subset| subset.width())
-            .fold(Measurement::Finite(Out::zero()), |accum, item| accum + item)
     }
 }
 

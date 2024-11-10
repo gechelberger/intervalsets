@@ -1,7 +1,7 @@
 use super::{Contains, Split};
-use crate::bound::{FiniteBound, SetBounds, Side};
+use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, StackSet};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBound<T>) {
     match closed {
@@ -22,8 +22,8 @@ impl<T: Domain + Clone> Split<T> for FiniteInterval<T> {
             Self::Bounded(left, right) => {
                 if contains {
                     let (l_max, r_min) = split_bounds_at(at, closed);
-                    let split_left = Self::new(left, l_max).unwrap();
-                    let split_right = Self::new(r_min, right).unwrap();
+                    let split_left = Self::new(left, l_max);
+                    let split_right = Self::new(r_min, right);
                     (split_left, split_right)
                 } else if left.contains(Side::Left, &at) {
                     (Self::Bounded(left, right), Self::Empty)
@@ -44,13 +44,13 @@ impl<T: Domain + Clone> Split<T> for HalfInterval<T> {
             let (l_max, r_min) = split_bounds_at(at, closed);
             match self.side {
                 Side::Left => {
-                    let left = FiniteInterval::new(self.bound, l_max).unwrap();
+                    let left = FiniteInterval::new(self.bound, l_max);
                     let right = Self::new(self.side, r_min);
                     (left.into(), right.into())
                 }
                 Side::Right => {
                     let left = Self::new(self.side, l_max);
-                    let right = FiniteInterval::new(r_min, self.bound).unwrap();
+                    let right = FiniteInterval::new(r_min, self.bound);
                     (left.into(), right.into())
                 }
             }
@@ -84,6 +84,7 @@ impl<T: Domain + Clone> Split<T> for EnumInterval<T> {
     }
 }
 
+/*
 impl<T: Domain + Clone> Split<T> for StackSet<T> {
     type Output = Self;
 
@@ -117,3 +118,4 @@ impl<T: Domain + Clone> Split<T> for StackSet<T> {
         unsafe { (Self::new_unchecked(left), Self::new_unchecked(right)) }
     }
 }
+*/

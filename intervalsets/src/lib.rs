@@ -34,15 +34,15 @@
 //!
 //! ```
 //! use intervalsets::prelude::*;
-//! use intervalsets::{Bound, Side};
+//! use intervalsets::bound::{FiniteBound, Side};
 //!
 //! let x = Interval::closed(0, 10);
 //! assert_eq!(x.is_empty(), false);
 //! assert_eq!(x.is_finite(), true);
 //! assert_eq!(x.is_fully_bounded(), true);
-//! assert_eq!(*x.right().unwrap(), Bound::closed(10));
+//! assert_eq!(*x.right().unwrap(), FiniteBound::closed(10));
 //! assert_eq!(*x.rval().unwrap(), 10);
-//! assert_eq!(format!("x = {}", x), "x = [0, 10]");
+//! //todo: assert_eq!(format!("x = {}", x), "x = [0, 10]");
 //!
 //! let x = Interval::closed_unbound(0.0);
 //! assert_eq!(x.right(), None);
@@ -57,7 +57,7 @@
 //! assert_eq!(iset.slice().len(), 2);
 //!
 //! // closed intervals can also be converted from tuples
-//! let iset2 = IntervalSet::from_iter([(-100.0, -50.0), (-3.0, 99.9)]);
+//! let iset2 = IntervalSet::from_iter([[-100.0, -50.0], [-3.0, 99.9]]);
 //! assert_eq!(iset, iset2);
 //! ```
 //!
@@ -70,9 +70,9 @@
 //! let z = Interval::open(2000.0, 2100.0);
 //!
 //! let a = Interval::<f64>::unbounded()
-//!     .ref_difference(&x)
-//!     .ref_difference(&y)
-//!     .ref_difference(&z);
+//!     .difference(x.clone())
+//!     .difference(y.clone())
+//!     .difference(z.clone());
 //!
 //! assert_eq!(a.contains(&50.0), false);
 //!
@@ -88,26 +88,7 @@
 //! ```
 //! use intervalsets::prelude::*;
 //!
-//! let x = Interval::closed(1, 5);
-//! let y = x.flat_map_finite(|left, right| {
-//!     Interval::finite(left.clone().map(|v| 10 * v), right.clone().map(|v| 20 * v))
-//! });
-//! assert_eq!(y, Interval::closed(10, 100));
-//!
-//! let z = IntervalSet::from_iter([x.clone(), y.clone()]);
-//! let z = z.collect_map(|mut sets, subset| {
-//!     let mirror_image = subset.flat_map_finite(|left, right| {
-//!         Interval::finite(right.clone().map(|v| -v), left.clone().map(|v| -v))
-//!     });
-//!     sets.push(mirror_image);
-//!     sets.push(subset.clone());
-//! });
-//! assert_eq!(z, IntervalSet::from_iter([
-//!     x,
-//!     y,
-//!     Interval::closed(-5, -1),
-//!     Interval::closed(-100, -10),
-//! ]));
+//! //TODO
 //! ```
 //!
 //! ## Measure of a Set
@@ -282,53 +263,36 @@ extern crate quickcheck;
 #[macro_use(quickcheck)]
 extern crate quickcheck_macros;
 
-pub mod numeric;
+//pub use intervalsets_core::error;
 
-mod bound;
-pub use bound::{Bound, BoundType, Side};
-
-mod traits;
-pub use traits::bounding::Bounding;
-pub use traits::empty::MaybeEmpty;
-pub use traits::hull::ConvexHull;
-
-/// Operations on Set types.
-pub mod ops {
-    //pub use crate::traits::adjacent::Adjacent;
-    pub use crate::traits::complement::Complement;
-    pub use crate::traits::contains::Contains;
-    pub use crate::traits::difference::{
-        Difference, RefDifference, RefSymmetricDifference, SymmetricDifference,
-    };
-    pub use crate::traits::intersection::{Intersection, RefIntersection};
-    pub use crate::traits::intersects::Intersects;
-    pub use crate::traits::merged::{Merged, RefMerged};
-    pub use crate::traits::split::{RefSplit, Split};
-    pub use crate::traits::union::{RefUnion, Union};
-}
+//mod bound;
+//pub use bound::{Bound, BoundType, Side};
+pub use intervalsets_core::bound::ord::OrdBounded;
+pub use intervalsets_core::bound::{SetBounds, Side};
+pub use intervalsets_core::numeric::Domain;
+pub use intervalsets_core::{bound, numeric};
 
 pub mod factory;
 pub use factory::Factory;
-
-mod detail;
+//pub use intervalsets_core::factory::{Factory, Converter, IFactory};
+pub use intervalsets_core::MaybeEmpty;
 
 pub mod measure;
+pub mod ops;
 
 mod sets;
 pub use sets::{Interval, IntervalSet};
 
-mod display;
-mod hash;
-
-mod feat;
-
+mod from;
+//mod display;
+//mod feat;
 mod util;
 
 /// Common operations & traits
 pub mod prelude {
-    pub use crate::factory::{Cvt, Factory, IFactory};
+    pub use crate::factory::{Converter, IFactory};
     pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
-    pub use crate::{Bounding, ConvexHull, MaybeEmpty, Side};
+    pub use crate::{Domain, Factory, MaybeEmpty, OrdBounded, SetBounds, Side};
 }

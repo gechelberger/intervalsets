@@ -1,25 +1,8 @@
-use super::bounding::Bounding;
-use super::empty::MaybeEmpty;
+use intervalsets_core::ops::intersection::SetSetIntersection;
+pub use intervalsets_core::ops::Intersection;
+
 use crate::numeric::Domain;
-use crate::util::commutative_op_move_impl;
-use crate::{Bound, Interval, IntervalSet};
-
-/// Defines the intersection of two sets.
-pub trait Intersection<Rhs = Self> {
-    type Output;
-
-    fn intersection(self, rhs: Rhs) -> Self::Output;
-}
-
-pub trait RefIntersection<Rhs = Self>
-where
-    Self: Intersection<Rhs> + Clone,
-    Rhs: Clone,
-{
-    fn ref_intersection(&self, rhs: &Rhs) -> Self::Output {
-        self.clone().intersection(rhs.clone())
-    }
-}
+use crate::{Interval, IntervalSet, MaybeEmpty};
 
 impl<T: Domain> Intersection<Self> for Interval<T> {
     type Output = Self;
@@ -29,119 +12,39 @@ impl<T: Domain> Intersection<Self> for Interval<T> {
     }
 }
 
-impl<T: Domain> RefIntersection<Self> for Interval<T> {
-    fn ref_intersection(&self, rhs: &Self) -> Self::Output {
-        self.0.ref_intersection(&rhs.0).into()
-    }
-}
-
-impl<T: Domain> Intersection<Interval<T>> for IntervalSet<T> {
+impl<T: Domain + Clone> Intersection<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn intersection(self, rhs: Interval<T>) -> Self::Output {
-        if self.is_empty() || rhs.is_empty() {
-            return Self::new_unchecked(vec![]);
-        }
-
         // invariants:
         // intervals remain sorted; remain disjoint; filter out empty results;
         let intervals = self
             .into_iter()
             .map(|iv| iv.intersection(rhs.clone()))
-            .filter(|iv| !iv.is_empty())
-            .collect();
+            .filter(|iv| !iv.is_empty());
 
         Self::new_unchecked(intervals)
     }
 }
-commutative_op_move_impl!(
-    Intersection,
-    intersection,
-    Interval<T>,
-    IntervalSet<T>,
-    IntervalSet<T>
-);
 
-impl<T: Domain> RefIntersection<Interval<T>> for IntervalSet<T> {}
-impl<T: Domain> RefIntersection<IntervalSet<T>> for Interval<T> {}
-impl<T: Domain> RefIntersection<IntervalSet<T>> for IntervalSet<T> {}
+impl<T: Domain + Clone> Intersection<IntervalSet<T>> for Interval<T> {
+    type Output = IntervalSet<T>;
 
-impl<T: Domain> Intersection<Self> for IntervalSet<T> {
+    fn intersection(self, rhs: IntervalSet<T>) -> Self::Output {
+        rhs.intersection(self)
+    }
+}
+
+impl<T: Domain + Clone> Intersection<Self> for IntervalSet<T> {
     type Output = IntervalSet<T>;
 
     fn intersection(self, rhs: Self) -> Self::Output {
-        if self.is_empty() || rhs.is_empty() {
-            return Self::new_unchecked(vec![]);
-        }
-
-        let mut it_a = itertools::put_back(self.iter());
-        let mut it_b = itertools::put_back(rhs.iter());
-
-        let mut intervals: Vec<Interval<T>> = Vec::new();
-
-        loop {
-            match (it_a.next(), it_b.next()) {
-                (_, None) => break,
-                (None, _) => break,
-                (Some(a), Some(b)) => {
-                    let result = a.clone().intersection(b.clone());
-                    if !result.is_empty() {
-                        intervals.push(result);
-
-                        // keep the one with the right most right endpoint
-                        let ra = a.right();
-                        let rb = b.right();
-                        match (ra, rb) {
-                            (None, None) => continue, // both +inf
-                            (Some(_), None) => {
-                                it_b.put_back(b);
-                            } // b = (_, ->)
-                            (None, Some(_)) => {
-                                it_a.put_back(a);
-                            } // a = (_, ->)
-                            (Some(ra), Some(rb)) => {
-                                if ra == rb {
-                                    continue;
-                                }
-
-                                let r_max = Bound::max_right(ra, rb);
-                                if *ra == r_max {
-                                    it_a.put_back(a);
-                                } else {
-                                    it_b.put_back(b);
-                                }
-                            }
-                        }
-                    } else {
-                        // no intersection
-                        // keep the one with the right most left endpoint
-                        match (a.left(), b.left()) {
-                            (None, None) => continue, // both -inf
-                            (Some(_), None) => {
-                                it_a.put_back(a);
-                            }
-                            (None, Some(_)) => {
-                                it_b.put_back(b);
-                            }
-                            (Some(la), Some(lb)) => {
-                                let l_max = Bound::max_left(la, lb);
-                                if *la == l_max {
-                                    it_a.put_back(a);
-                                } else {
-                                    it_b.put_back(b);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Self::new_unchecked(intervals)
+        Self::new_unchecked(
+            SetSetIntersection::new(self.into_iter().map(|x| x.0), rhs.into_iter().map(|x| x.0))
+                .map(Interval::from),
+        )
     }
 }
-
-//op_ref_clone_impl!(Intersection, intersection, IntervalSet<T>, IntervalSet<T>, IntervalSet<T>);
 
 #[cfg(test)]
 mod tests {

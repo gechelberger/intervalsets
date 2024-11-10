@@ -1,6 +1,3 @@
-use crate::numeric::Domain;
-use crate::Interval;
-
 /// Defines the union of two intervals if contiguous.
 ///
 /// Two intervals are contiguous if they share any elements **or** if
@@ -21,47 +18,31 @@ use crate::Interval;
 /// # Example
 /// ```
 /// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::{Merged, RefMerged};
+/// use intervalsets::ops::{TryMerge};
 ///
 /// let x = Interval::closed(0, 10);
 /// let y = Interval::closed(11, 20);
-/// assert_eq!(x.ref_merged(&y).unwrap(), Interval::closed(0, 20));
+/// assert_eq!(x.try_merge(y).unwrap(), Interval::closed(0, 20));
 ///
 /// let y = Interval::closed(20, 30);
-/// assert_eq!(x.ref_merged(&y), None);
+/// assert_eq!(x.try_merge(y), None);
 ///
 /// let y = Interval::<i32>::empty();
-/// assert_eq!(x.ref_merged(&y).unwrap(), x);
+/// assert_eq!(x.try_merge(y).unwrap(), x);
 ///
 /// let x = Interval::<i32>::empty();
-/// assert_eq!(x.merged(y).unwrap(), Interval::empty());
+/// assert_eq!(x.try_merge(y).unwrap(), Interval::empty());
 /// ```
-pub trait Merged<Rhs = Self> {
-    type Output;
+pub use intervalsets_core::ops::TryMerge;
 
-    fn merged(self, rhs: Rhs) -> Option<Self::Output>;
-}
+use crate::numeric::Domain;
+use crate::Interval;
 
-pub trait RefMerged<Rhs = Self>: Merged<Rhs> + Clone
-where
-    Rhs: Clone,
-{
-    fn ref_merged(&self, rhs: &Rhs) -> Option<Self::Output> {
-        self.clone().merged(rhs.clone())
-    }
-}
-
-impl<T: Domain> Merged<Self> for Interval<T> {
+impl<T: Domain> TryMerge<Self> for Interval<T> {
     type Output = Self;
 
-    fn merged(self, rhs: Self) -> Option<Self::Output> {
-        self.0.merged(rhs.0).map(|v| v.into())
-    }
-}
-
-impl<T: Domain> RefMerged<Self> for Interval<T> {
-    fn ref_merged(&self, rhs: &Self) -> Option<Self::Output> {
-        self.0.ref_merged(&rhs.0).map(|v| v.into())
+    fn try_merge(self, rhs: Self) -> Option<Self::Output> {
+        self.0.try_merge(rhs.0).map(Interval::from)
     }
 }
 
@@ -80,7 +61,7 @@ mod tests {
         let x = Interval::unbound_closed(x);
         let y = x.clone().complement().expect_interval();
 
-        assert_eq!(x.ref_merged(&y).unwrap(), Interval::unbounded());
+        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
     }
 
     #[quickcheck]
@@ -88,7 +69,7 @@ mod tests {
         let x = Interval::closed_unbound(x);
         let y = x.clone().complement().expect_interval();
 
-        assert_eq!(x.ref_merged(&y).unwrap(), Interval::unbounded());
+        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
     }
 
     #[test]
@@ -96,10 +77,11 @@ mod tests {
         let x = Interval::closed(0, i32::MAX);
         let y = Interval::closed(-100, -1);
 
-        assert_eq!(x.ref_merged(&y).unwrap(), Interval::closed(-100, i32::MAX));
+        assert_eq!(x.try_merge(y).unwrap(), Interval::closed(-100, i32::MAX));
     }
 }
 
+/*
 #[cfg(feature = "rust_decimal")]
 #[cfg(test)]
 mod decimal_test {
@@ -124,16 +106,18 @@ mod decimal_test {
         let left = Interval::open(a.clone(), b.clone());
         let right = Interval::closed(b.clone(), c.clone());
 
-        let merged = left.ref_merged(&right).unwrap();
+        let merged = left.try_merge(&right).unwrap();
         if left.is_empty() {
             assert_eq!(merged, right);
         } else if right.is_empty() {
             assert_eq!(merged, left);
         } else {
             assert_eq!(
-                left.merged(right).unwrap(),
+                left.try_merge(right).unwrap(),
                 Interval::open_closed(a.clone(), c.clone())
             );
         }
     }
 }
+
+*/

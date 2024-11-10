@@ -1,37 +1,49 @@
 use super::util::commutative_predicate_impl;
 use super::{Contains, Intersects};
-use crate::bound::Side;
+use crate::bound::ord::OrdBounded;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-impl<T: PartialOrd> Intersects<Self> for FiniteInterval<T> {
+pub fn intersects_ord<T: PartialOrd>(lhs: &FiniteInterval<T>, rhs: &FiniteInterval<T>) -> bool {
+    let lhs = lhs.ord_bound_pair();
+    let rhs = rhs.ord_bound_pair();
+    let empty = lhs.is_empty() || rhs.is_empty();
+    let (lhs_min, lhs_max) = lhs.into_raw();
+    let (rhs_min, rhs_max) = rhs.into_raw();
+    lhs_min <= rhs_max && rhs_min <= lhs_max && !empty
+}
+
+impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
+    #[inline]
     fn intersects(&self, rhs: &Self) -> bool {
-        self.ref_map(|l1, r1| {
-            rhs.ref_map(|l2, r2| {
-                l1.contains(Side::Left, r2.value())
-                    && l2.contains(Side::Left, r1.value())
-                    && r1.contains(Side::Right, l1.value())
-                    && r2.contains(Side::Right, l1.value())
-            })
-            .unwrap_or(false)
-        })
-        .unwrap_or(false)
+        let lhs = self.ord_bound_pair();
+        let rhs = rhs.ord_bound_pair();
+        let empty = lhs.is_empty() || rhs.is_empty();
+        let (lhs_min, lhs_max) = lhs.into_raw();
+        let (rhs_min, rhs_max) = rhs.into_raw();
+        lhs_min <= rhs_max && rhs_min <= lhs_max && !empty
     }
 }
 
-impl<T: PartialOrd> Intersects<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
+    #[inline]
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
-        rhs.ref_map(|left, right| self.contains(left.value()) || self.contains(right.value()))
-            .unwrap_or(false)
+        let FiniteInterval::Bounded(left, right) = rhs else {
+            return false;
+        };
+
+        self.contains(left.value()) || self.contains(right.value())
     }
 }
 
-impl<T: PartialOrd> Intersects<Self> for HalfInterval<T> {
+impl<T: PartialOrd> Intersects<&Self> for HalfInterval<T> {
+    #[inline]
     fn intersects(&self, rhs: &Self) -> bool {
         self.contains(rhs.bound.value()) || rhs.contains(self.bound.value())
     }
 }
 
-impl<T: PartialOrd> Intersects<FiniteInterval<T>> for EnumInterval<T> {
+impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for EnumInterval<T> {
+    #[inline]
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.intersects(rhs),
@@ -41,7 +53,8 @@ impl<T: PartialOrd> Intersects<FiniteInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: PartialOrd> Intersects<HalfInterval<T>> for EnumInterval<T> {
+impl<T: PartialOrd> Intersects<&HalfInterval<T>> for EnumInterval<T> {
+    #[inline]
     fn intersects(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => rhs.intersects(lhs),
@@ -51,7 +64,8 @@ impl<T: PartialOrd> Intersects<HalfInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: PartialOrd> Intersects<Self> for EnumInterval<T> {
+impl<T: PartialOrd> Intersects<&Self> for EnumInterval<T> {
+    #[inline]
     fn intersects(&self, rhs: &Self) -> bool {
         match self {
             Self::Finite(lhs) => rhs.intersects(lhs),
