@@ -29,13 +29,14 @@ categories = [
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-
 [dependencies]
-heapless = "0.8.0"
+arbitrary = { version = "1.4.1", default-features = false, optional = true }
 itertools = { version = "0.13.0", default-features = false }
 num-traits = { version = "0.2.19", default-features = false }
-ordered-float = { version = "4.5.0", default-features = false }
+ordered-float = { version = "4.5.0", default-features = false, optional = true }
 rust_decimal = { version = "1.36.0", default-features = false, optional = true }
 
 [features]
 rust_decimal = ["dep:rust_decimal"]
+ordered-float = ["dep:ordered-float"]
+arbitrary = ["dep:arbitrary"]

@@ -1,6 +1,6 @@
 pub use num_traits::Zero;
-use ordered_float::{NotNan, OrderedFloat};
 
+//use ordered_float::{NotNan, OrderedFloat};
 use crate::bound::Side;
 
 /// Defines the data types whose elements make up a Set.
@@ -53,8 +53,8 @@ macro_rules! continuous_domain_impl {
 }
 
 continuous_domain_impl!(f32, f64);
-continuous_domain_impl!(NotNan<f32>, NotNan<f64>);
-continuous_domain_impl!(OrderedFloat<f32>, OrderedFloat<f64>);
+//continuous_domain_impl!(NotNan<f32>, NotNan<f64>);
+//continuous_domain_impl!(OrderedFloat<f32>, OrderedFloat<f64>);
 
 macro_rules! integer_domain_impl {
     ($($t:ty), +) => {

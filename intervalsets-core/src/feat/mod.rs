@@ -1,4 +1,8 @@
 #[cfg(feature = "rust_decimal")]
 pub mod decimal;
 
-// todo: no-std uom
+#[cfg(feature = "arbitrary")]
+pub mod arbitrary;
+
+#[cfg(feature = "ordered-float")]
+pub mod ordfloat;

@@ -1,4 +1,4 @@
-use core::cmp::Ordering;
+use core::cmp::Ordering::{self, *};
 
 use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::{FiniteBound, SetBounds, Side};
@@ -16,10 +16,9 @@ impl<T: Domain> FiniteInterval<T> {
     }
 
     pub fn new_strict(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self> {
-        if lhs.value() <= rhs.value() {
-            Some(Self::new(lhs, rhs))
-        } else {
-            None
+        match lhs.value().partial_cmp(rhs.value())? {
+            Less | Equal => Some(Self::new(lhs, rhs)),
+            Greater => None,
         }
     }
 }
@@ -30,13 +29,10 @@ impl<T: PartialOrd> FiniteInterval<T> {
     /// The user must ensure invariants are satisfied:
     /// 1. discrete bounds are normalized to closed form
     pub unsafe fn new_norm(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        let lval = lhs.value();
-        let rval = rhs.value();
-
-        if lval < rval || (lval == rval && lhs.is_closed() && rhs.is_closed()) {
-            Self::Bounded(lhs, rhs)
-        } else {
-            Self::Empty
+        match lhs.value().partial_cmp(rhs.value()) {
+            Some(Less) => Self::Bounded(lhs, rhs),
+            Some(Equal) if lhs.is_closed() && rhs.is_closed() => Self::Bounded(lhs, rhs),
+            _ => Self::Empty,
         }
     }
 }
