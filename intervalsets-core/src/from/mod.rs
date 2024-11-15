@@ -6,6 +6,12 @@ use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 use crate::Factory;
 
+impl<T> From<()> for FiniteInterval<T> {
+    fn from(_: ()) -> Self {
+        Self::Empty
+    }
+}
+
 impl<T: Domain> From<(T, T)> for FiniteInterval<T> {
     fn from(value: (T, T)) -> Self {
         Self::new(FiniteBound::open(value.0), FiniteBound::open(value.1))
@@ -23,6 +29,12 @@ impl<T: Domain + Clone> From<&(T, T)> for FiniteInterval<T> {
 
 impl<T: Domain> From<(T, T)> for EnumInterval<T> {
     fn from(value: (T, T)) -> Self {
+        EnumInterval::from(FiniteInterval::from(value))
+    }
+}
+
+impl<T> From<()> for EnumInterval<T> {
+    fn from(value: ()) -> Self {
         EnumInterval::from(FiniteInterval::from(value))
     }
 }

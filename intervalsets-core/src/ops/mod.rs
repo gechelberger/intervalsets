@@ -11,6 +11,7 @@ pub mod intersects;
 pub mod hull;
 pub mod intersection;
 pub mod merged;
+pub mod rebound;
 pub mod split;
 
 mod util;

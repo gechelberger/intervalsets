@@ -144,7 +144,7 @@ where
     /// ```
     fn finite(left: FiniteBound<C::To>, right: FiniteBound<C::To>) -> Self::Output;
 
-    /// Returns a ew half bounded interval.
+    /// Returns a new half bounded interval.
     ///
     /// # Example
     /// ```
@@ -156,6 +156,16 @@ where
     /// assert_eq!(z, EnumInterval::Unbounded);
     /// ```
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;
+
+    /// todo: ...
+    fn right_bounded(bound: FiniteBound<C::To>) -> Self::Output {
+        Self::half_bounded(Side::Right, bound)
+    }
+
+    /// todo: ...
+    fn left_bounded(bound: FiniteBound<C::To>) -> Self::Output {
+        Self::half_bounded(Side::Left, bound)
+    }
 
     /// Returns a new unbounded interval.
     ///
