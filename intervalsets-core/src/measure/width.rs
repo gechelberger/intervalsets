@@ -40,7 +40,6 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// # Normalization problem
 ///
 /// ```
-/// use ordered_float::NotNan;
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::measure::Width;
 ///

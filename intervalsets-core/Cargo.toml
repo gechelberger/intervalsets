@@ -32,11 +32,14 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 arbitrary = { version = "1.4.1", default-features = false, optional = true }
 itertools = { version = "0.13.0", default-features = false }
+num-bigint = { version = "0.4.6", optional = true }
 num-traits = { version = "0.2.19", default-features = false }
 ordered-float = { version = "4.5.0", default-features = false, optional = true }
 rust_decimal = { version = "1.36.0", default-features = false, optional = true }
 
 [features]
+std = []
 rust_decimal = ["dep:rust_decimal"]
 ordered-float = ["dep:ordered-float"]
 arbitrary = ["dep:arbitrary"]
+num-bigint = ["std", "dep:num-bigint"]

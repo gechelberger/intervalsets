@@ -48,20 +48,6 @@ impl<T> Converter<T> for Identity {
     }
 }
 
-// impl<T: num_traits::float::FloatCore> Converter<T> for NotNan<T> {
-//     type To = Self;
-//     fn convert(value: T) -> Self::To {
-//         NotNan::new(value).unwrap()
-//     }
-// }
-
-// impl<T: num_traits::float::FloatCore> Converter<T> for OrderedFloat<T> {
-//     type To = Self;
-//     fn convert(value: T) -> Self::To {
-//         OrderedFloat(value)
-//     }
-// }
-
 /// The [`Factory`] trait is intended to provide a common
 /// interface for creating the full spectrum of possible
 /// intervals. [`EnumInterval`] itself is a factory using

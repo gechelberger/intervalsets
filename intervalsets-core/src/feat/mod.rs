@@ -6,3 +6,6 @@ pub mod arbitrary;
 
 #[cfg(feature = "ordered-float")]
 pub mod ordfloat;
+
+#[cfg(feature = "num-bigint")]
+pub mod bigint;
