@@ -283,8 +283,8 @@ pub mod ops;
 mod sets;
 pub use sets::{Interval, IntervalSet};
 
+mod display;
 mod from;
-//mod display;
 //mod feat;
 mod util;
 

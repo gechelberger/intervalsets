@@ -2,92 +2,18 @@ use core::fmt;
 
 use itertools::Itertools;
 
-use crate::bound::BoundType;
-use crate::detail::{BoundCase, Finite, HalfBounded};
-use crate::numeric::Domain;
-use crate::{Bound, Bounding, Interval, IntervalSet, MaybeEmpty, Side};
+use crate::{Interval, IntervalSet, MaybeEmpty};
 
-fn bound_symbol(side: Side, bound_type: BoundType) -> char {
-    match bound_type {
-        BoundType::Open => match side {
-            Side::Left => '(',
-            Side::Right => ')',
-        },
-        BoundType::Closed => match side {
-            Side::Left => '[',
-            Side::Right => ']',
-        },
-    }
-}
-
-fn format_bound<T: fmt::Display>(side: Side, bound: Option<&Bound<T>>) -> String {
-    match bound {
-        None => match side {
-            Side::Left => "(<-".to_string(),
-            Side::Right => "->)".to_string(),
-        },
-        Some(bound) => match side {
-            Side::Left => format!(
-                "{}{}",
-                bound_symbol(side, bound.bound_type()),
-                bound.value()
-            ),
-            Side::Right => format!(
-                "{}{}",
-                bound.value(),
-                bound_symbol(side, bound.bound_type())
-            ),
-        },
-    }
-}
-
-impl<T: fmt::Display + Clone> fmt::Display for Finite<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Empty => write!(f, "{{}}"),
-            Self::FullyBounded(left, right) => {
-                write!(
-                    f,
-                    "{}, {}",
-                    format_bound(Side::Left, Some(left)),
-                    format_bound(Side::Right, Some(right)),
-                )
-            }
-        }
-    }
-}
-
-impl<T: fmt::Display + Domain> fmt::Display for HalfBounded<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{}, {}",
-            format_bound(Side::Left, self.left()),
-            format_bound(Side::Right, self.right())
-        )
-    }
-}
-
-impl<T: fmt::Display + Domain> fmt::Display for BoundCase<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Unbounded => write!(f, "(<-, ->)"),
-            Self::Finite(inner) => inner.fmt(f),
-            Self::Half(inner) => inner.fmt(f),
-        }
-    }
-}
-
-impl<T: fmt::Display + Domain> fmt::Display for Interval<T> {
+impl<T: fmt::Display> fmt::Display for Interval<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.0.fmt(f)
     }
 }
 
-impl<T: fmt::Display + Domain> fmt::Display for IntervalSet<T> {
+impl<T: fmt::Display> fmt::Display for IntervalSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_empty() {
-            Finite::<i32>::Empty.fmt(f)
+            Interval::<i32>::empty().fmt(f)
         } else {
             write!(f, "{{{}}}", self.iter().join(", "))
         }

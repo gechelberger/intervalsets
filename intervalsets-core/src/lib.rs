@@ -26,6 +26,7 @@ pub mod measure;
 
 pub mod try_cmp;
 
+mod display;
 mod from;
 
 mod empty;
