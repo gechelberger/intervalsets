@@ -243,7 +243,7 @@ impl<T> IntervalSet<T> {
 impl<T: Clone + Domain> IntervalSet<T> {
     /// Creates an [`Interval`] that forms a convex hull for this Set.
     ///
-    /// This should be equivalent to using [`ConvexHull`](crate::ConvexHull),
+    /// This should be equivalent to using [`ConvexHull`](crate::ops::ConvexHull),
     /// but much more efficient and convenient.
     ///
     /// > This function call relies on invariants.

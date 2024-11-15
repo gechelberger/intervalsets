@@ -7,7 +7,7 @@
 //!
 //! * The [`Interval`] type is a Set implementation representing a
 //!   contiguous set of values.
-//!     * It is generic over any type that implements the [`Domain`](numeric::Domain) trait
+//!     * It is generic over any type that implements the [`Domain`] trait
 //!       which makes sure elements are comparable and differentiates
 //!       between discrete and continuous data types.
 //!
@@ -163,7 +163,7 @@
 //! `intervalsets` uses a handful of traits to fully define interval and set
 //! behavior.
 //!
-//! * [`Domain`](numeric::Domain)
+//! * [`Domain`]
 //! > The `Domain` trait serves one purpose -- to distinguish between types
 //! > that represent **discrete** vs **continuous** data.
 //! >
@@ -270,7 +270,7 @@ extern crate quickcheck_macros;
 pub use intervalsets_core::bound::ord::OrdBounded;
 pub use intervalsets_core::bound::{SetBounds, Side};
 pub use intervalsets_core::numeric::Domain;
-pub use intervalsets_core::{bound, numeric};
+pub use intervalsets_core::{bound, continuous_domain_impl, default_countable_impl, numeric};
 
 pub mod factory;
 pub use factory::Factory;
