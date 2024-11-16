@@ -27,3 +27,6 @@ pub use merged::TryMerge;
 
 mod difference;
 pub use difference::{Difference, SymDifference};
+
+mod rebound;
+pub use rebound::Rebound;
