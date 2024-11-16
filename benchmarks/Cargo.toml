@@ -7,7 +7,7 @@ edition = "2021"
 arbitrary = "1.4.1"
 criterion = "0.5.1"
 intervalsets = { version = "0.1.0-alpha.2", path = "../intervalsets" }
-intervalsets-core = { version = "0.1.0-alpha.2", path = "../intervalsets-core" }
+intervalsets-core = { version = "0.1.0-alpha.2", path = "../intervalsets-core", features = ["arbitrary"] }
 rand = "0.8.5"
 
 [[bench]]

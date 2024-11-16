@@ -2,6 +2,7 @@
 
 use std::cmp::Ordering;
 
+use arbitrary::Arbitrary;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use intervalsets_core::bound::{FiniteBound, Side};
 use intervalsets_core::ops::*;
@@ -21,6 +22,77 @@ where
         input.push(rng.gen());
     }
     input
+}
+
+pub fn bench_core_contains(c: &mut Criterion) {
+    let ints = random_list::<u64>(100);
+    let floats: Vec<_> = ints.iter().map(|x| *x as f32).collect();
+
+    let mut group = c.benchmark_group("core::contains");
+    group.bench_function("finite-floats", |b| {
+        let finite = FiniteInterval::closed(0.0f32, 1000000.0);
+        b.iter(|| {
+            for x in floats.clone() {
+                black_box(finite.contains(&x));
+            }
+        })
+    });
+
+    group.bench_function("finite-integers", |b| {
+        let finite = FiniteInterval::closed(0, 1000000);
+        b.iter(|| {
+            for x in ints.clone() {
+                black_box(finite.contains(&x));
+            }
+        })
+    });
+
+    let random = random_list::<u8>(8192);
+    let mut u = arbitrary::Unstructured::new(random.as_slice());
+
+    let f_intervals: Vec<_> = (0..100)
+        .map(|_| FiniteInterval::<f32>::arbitrary(&mut u).unwrap())
+        .collect();
+
+    group.bench_function("finite-finite", |b| {
+        let finite = FiniteInterval::closed(0.0, 1000000.0);
+        b.iter(|| {
+            for x in f_intervals.clone() {
+                black_box(finite.contains(&x));
+            }
+        });
+    });
+
+    group.bench_function("enum-finite", |b| {
+        let finite = EnumInterval::closed(0.0, 1000000.0);
+        b.iter(|| {
+            for x in f_intervals.clone() {
+                black_box(finite.contains(&x));
+            }
+        });
+    });
+
+    let e_intervals: Vec<_> = (0..100)
+        .map(|_| EnumInterval::<f32>::arbitrary(&mut u).unwrap())
+        .collect();
+
+    group.bench_function("finite-enum", |b| {
+        let finite = FiniteInterval::closed(0.0, 1000000.0);
+        b.iter(|| {
+            for x in e_intervals.clone() {
+                black_box(finite.contains(&x));
+            }
+        });
+    });
+
+    group.bench_function("enum-enum", |b| {
+        let finite = EnumInterval::closed(0.0, 1000000.0);
+        b.iter(|| {
+            for x in e_intervals.clone() {
+                black_box(finite.contains(&x));
+            }
+        });
+    });
 }
 
 pub fn bench_core_intersects(c: &mut Criterion) {
@@ -333,6 +405,7 @@ pub fn bench_interval_sym_difference(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    bench_core_contains,
     bench_core_intersects,
     bench_core_merged,
     bench_partial_ord_sort,
