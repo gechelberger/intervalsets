@@ -1,29 +1,55 @@
 use super::util::commutative_op_move_impl;
 use super::{Contains, Intersection};
 use crate::bound::ord::OrdBounded;
-use crate::bound::{FiniteBound, Side};
+use crate::bound::FiniteBound;
+use crate::bound::Side::{self, Left, Right};
 use crate::empty::MaybeEmpty;
 use crate::numeric::Domain;
-use crate::sets::*;
+use crate::sets::EnumInterval::{self, Finite, Half, Unbounded};
+use crate::sets::FiniteInterval::{self, Bounded, Empty};
+use crate::sets::HalfInterval;
 
 impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn intersection(self, rhs: Self) -> Self::Output {
-        let Self::Bounded(lhs_min, lhs_max) = self else {
-            return Self::Empty;
+        let Bounded(lhs_min, lhs_max) = self else {
+            return Empty;
         };
 
-        let Self::Bounded(rhs_min, rhs_max) = rhs else {
-            return Self::Empty;
+        let Bounded(rhs_min, rhs_max) = rhs else {
+            return Empty;
         };
 
         // Safety: self and rhs should already be normalized.
         unsafe {
-            Self::new_norm(
-                FiniteBound::take_max(Side::Left, lhs_min, rhs_min),
-                FiniteBound::take_min(Side::Right, lhs_max, rhs_max),
+            FiniteInterval::new_norm(
+                FiniteBound::take_max(Left, lhs_min, rhs_min),
+                FiniteBound::take_min(Right, lhs_max, rhs_max),
+            )
+        }
+    }
+}
+
+impl<T: Domain + Clone> Intersection<Self> for &FiniteInterval<T> {
+    type Output = FiniteInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: Self) -> Self::Output {
+        let Bounded(lhs_min, lhs_max) = self else {
+            return Empty;
+        };
+
+        let Bounded(rhs_min, rhs_max) = rhs else {
+            return Empty;
+        };
+
+        // Safety: self and rhs should already be normalized.
+        unsafe {
+            FiniteInterval::new_norm(
+                FiniteBound::max(Left, lhs_min, rhs_min).clone(),
+                FiniteBound::min(Right, lhs_max, rhs_max).clone(),
             )
         }
     }
@@ -32,10 +58,24 @@ impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
 impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     type Output = Self;
 
-    #[inline]
+    #[inline(always)]
     fn intersection(self, rhs: HalfInterval<T>) -> Self::Output {
-        let Self::Bounded(lhs_min, lhs_max) = self else {
-            return Self::Empty;
+        /*if self.contains(rhs.bound.value()) {
+            let Bounded(lhs_min, lhs_max) = self else {
+                unreachable!();
+            };
+            match rhs.side {
+                Left => unsafe { FiniteInterval::new_norm(rhs.bound, lhs_max) },
+                Right => unsafe { FiniteInterval::new_norm(lhs_min, rhs.bound) },
+            }
+        } else if rhs.contains(&self) {
+            self
+        } else {
+            Empty
+        }*/
+
+        let Bounded(lhs_min, lhs_max) = self else {
+            return Empty;
         };
 
         let n = [&lhs_min, &lhs_max]
@@ -44,28 +84,54 @@ impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
             .count();
 
         if n == 2 {
-            unsafe { Self::new_unchecked(lhs_min, lhs_max) }
+            unsafe { FiniteInterval::new_unchecked(lhs_min, lhs_max) }
         } else if n == 1 {
+            // SAFETY: bounds should already be normalized
             match rhs.side {
-                Side::Left => unsafe {
-                    // SAFETY: bound should already be normalized
-                    Self::new_norm(rhs.bound, lhs_max)
-                },
-                Side::Right => unsafe {
-                    // SAFETY: bound should already be normalized
-                    Self::new_norm(lhs_min, rhs.bound)
-                },
+                Left => unsafe { FiniteInterval::new_norm(rhs.bound, lhs_max) },
+                Right => unsafe { FiniteInterval::new_norm(lhs_min, rhs.bound) },
             }
         } else {
-            Self::Empty
+            Empty
         }
+    }
+}
+
+impl<T: Domain + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
+    type Output = FiniteInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: &HalfInterval<T>) -> Self::Output {
+        if self.contains(rhs.bound.value()) {
+            let Bounded(lhs_min, lhs_max) = self else {
+                unreachable!();
+            };
+
+            match rhs.side {
+                Left => FiniteInterval::new(rhs.bound.clone(), lhs_max.clone()),
+                Right => FiniteInterval::new(lhs_min.clone(), rhs.bound.clone()),
+            }
+        } else if rhs.contains(self) {
+            self.clone()
+        } else {
+            Empty
+        }
+    }
+}
+
+impl<T: Domain + Clone> Intersection<&FiniteInterval<T>> for &HalfInterval<T> {
+    type Output = FiniteInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: &FiniteInterval<T>) -> Self::Output {
+        rhs.intersection(self)
     }
 }
 
 impl<T: Domain> Intersection<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
-    #[inline]
+    #[inline(always)]
     fn intersection(self, rhs: Self) -> Self::Output {
         if self.side == rhs.side {
             if self.contains(rhs.bound.value()) {
@@ -74,6 +140,7 @@ impl<T: Domain> Intersection<Self> for HalfInterval<T> {
                 self.into()
             }
         } else {
+            // SAFETY: bounds are already normalized
             unsafe {
                 match self.side {
                     Side::Left => FiniteInterval::new_norm(self.bound, rhs.bound),
@@ -85,9 +152,34 @@ impl<T: Domain> Intersection<Self> for HalfInterval<T> {
     }
 }
 
+impl<T: Domain + Clone> Intersection<Self> for &HalfInterval<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: Self) -> Self::Output {
+        if self.side == rhs.side {
+            if self.contains(rhs.bound.value()) {
+                rhs.clone().into()
+            } else {
+                self.clone().into()
+            }
+        } else if self.contains(rhs.bound.value()) {
+            let lhs = self.bound.clone();
+            let rhs = rhs.bound.clone();
+            match self.side {
+                Left => unsafe { FiniteInterval::new_norm(lhs, rhs).into() },
+                Right => unsafe { FiniteInterval::new_norm(rhs, lhs).into() },
+            }
+        } else {
+            Empty.into()
+        }
+    }
+}
+
 impl<T: Domain> Intersection<FiniteInterval<T>> for EnumInterval<T> {
     type Output = Self;
 
+    #[inline(always)]
     fn intersection(self, rhs: FiniteInterval<T>) -> Self::Output {
         match self {
             Self::Finite(lhs) => lhs.intersection(rhs).into(),
@@ -97,9 +189,23 @@ impl<T: Domain> Intersection<FiniteInterval<T>> for EnumInterval<T> {
     }
 }
 
+impl<T: Domain + Clone> Intersection<&FiniteInterval<T>> for &EnumInterval<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: &FiniteInterval<T>) -> Self::Output {
+        match self {
+            Finite(lhs) => lhs.intersection(rhs).into(),
+            Half(lhs) => lhs.intersection(rhs).into(),
+            Unbounded => rhs.clone().into(),
+        }
+    }
+}
+
 impl<T: Domain> Intersection<HalfInterval<T>> for EnumInterval<T> {
     type Output = Self;
 
+    #[inline(always)]
     fn intersection(self, rhs: HalfInterval<T>) -> Self::Output {
         match self {
             Self::Finite(lhs) => lhs.intersection(rhs).into(),
@@ -109,15 +215,60 @@ impl<T: Domain> Intersection<HalfInterval<T>> for EnumInterval<T> {
     }
 }
 
+impl<T: Domain + Clone> Intersection<&HalfInterval<T>> for &EnumInterval<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: &HalfInterval<T>) -> Self::Output {
+        match self {
+            Finite(lhs) => lhs.intersection(rhs).into(),
+            Half(lhs) => lhs.intersection(rhs),
+            Unbounded => rhs.clone().into(),
+        }
+    }
+}
+
 impl<T: Domain> Intersection<Self> for EnumInterval<T> {
     type Output = Self;
 
+    #[inline(always)]
     fn intersection(self, rhs: Self) -> Self::Output {
         match self {
             Self::Finite(lhs) => rhs.intersection(lhs),
             Self::Half(lhs) => rhs.intersection(lhs),
             Self::Unbounded => rhs,
         }
+    }
+}
+
+impl<T: Domain + Clone> Intersection for &EnumInterval<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: Self) -> Self::Output {
+        match self {
+            Finite(lhs) => lhs.intersection(rhs),
+            Half(lhs) => lhs.intersection(rhs),
+            Unbounded => rhs.clone(),
+        }
+    }
+}
+
+impl<T: Domain + Clone> Intersection<&EnumInterval<T>> for &FiniteInterval<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: &EnumInterval<T>) -> Self::Output {
+        rhs.intersection(self)
+    }
+}
+
+impl<T: Domain + Clone> Intersection<&EnumInterval<T>> for &HalfInterval<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline(always)]
+    fn intersection(self, rhs: &EnumInterval<T>) -> Self::Output {
+        rhs.intersection(self)
     }
 }
 
@@ -209,8 +360,7 @@ where
         let a = self.a.next()?;
         let b = self.b.next()?;
 
-        let ab = a.clone().intersection(b.clone());
-        //let ab = a.ref_intersection(&b);
+        let ab = (&a).intersection(&b);
         if !ab.is_empty() {
             // since `a` and `b` intersect, we want to look at the right hand
             // bounds to decide which one (or both) to discard.
@@ -253,6 +403,71 @@ mod tests {
         assert_eq!(
             FiniteInterval::closed(0, 100).intersection(FiniteInterval::Empty),
             FiniteInterval::Empty
+        );
+    }
+
+    #[test]
+    fn test_finite_half() {
+        let x = FiniteInterval::closed(0, 100);
+        let y = HalfInterval::left(FiniteBound::closed(50));
+        let expected = FiniteInterval::closed(50, 100);
+        assert_eq!((&x).intersection(&y), expected);
+        assert_eq!(x.intersection(y), expected);
+
+        let x = FiniteInterval::closed(0.0, 100.0);
+        let y = HalfInterval::right(FiniteBound::open(0.0));
+        let expected = FiniteInterval::empty();
+        assert_eq!((&x).intersection(&y), expected);
+        assert_eq!(x.intersection(y), expected);
+
+        let x = FiniteInterval::closed(0.0, 100.0);
+        let y = HalfInterval::right(FiniteBound::closed(0.0));
+        let expected = FiniteInterval::closed(0.0, 0.0);
+        assert_eq!((&x).intersection(&y), expected);
+        assert_eq!(x.intersection(y), expected);
+    }
+
+    #[test]
+    fn test_half_half() {
+        let x = HalfInterval::left(FiniteBound::open(0.0));
+        let y = HalfInterval::right(FiniteBound::open(100.0));
+        let expected = EnumInterval::open(0.0, 100.0);
+        assert_eq!((&x).intersection(&y), expected);
+        assert_eq!(x.intersection(y), expected);
+
+        let x = HalfInterval::left(FiniteBound::open(0.0));
+        let y = HalfInterval::right(FiniteBound::open(0.0));
+        let expected = EnumInterval::empty();
+        assert_eq!((&x).intersection(&y), expected);
+        assert_eq!(x.intersection(y), expected);
+
+        let x = HalfInterval::left(FiniteBound::closed(0.0));
+        let y = HalfInterval::left(FiniteBound::closed(100.0));
+        let expected = EnumInterval::from(y.clone());
+        assert_eq!((&x).intersection(&y), expected);
+        assert_eq!(x.intersection(y), expected);
+    }
+
+    fn check_enum_enum<T>(expect: EnumInterval<T>, a: EnumInterval<T>, b: EnumInterval<T>)
+    where
+        T: PartialEq + Domain + Clone + core::fmt::Debug,
+    {
+        assert_eq!(expect, (&a).intersection(&b));
+        assert_eq!(expect, a.intersection(b));
+    }
+
+    #[test]
+    fn test_enum_enum() {
+        check_enum_enum(
+            EnumInterval::empty(),
+            EnumInterval::closed(0, 10),
+            EnumInterval::closed(20, 30),
+        );
+
+        check_enum_enum(
+            EnumInterval::open(5.0, 10.0),
+            EnumInterval::open(0.0, 10.0),
+            EnumInterval::open(5.0, 15.0),
         );
     }
 }

@@ -6,7 +6,7 @@ use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use intervalsets_core::bound::{FiniteBound, Side};
 use intervalsets_core::ops::*;
 use intervalsets_core::sets::{FiniteInterval, HalfInterval};
-use intervalsets_core::{EnumInterval, Factory as _};
+use intervalsets_core::{EnumInterval, Factory, Factory as _};
 use rand::distributions::Standard;
 use rand::prelude::Distribution;
 use rand::Rng;
@@ -140,6 +140,54 @@ pub fn bench_core_intersection(c: &mut Criterion) {
             let ex = black_box(ex.clone());
             let ez = black_box(ez.clone());
             ex.intersection(ez);
+        })
+    });
+
+    let ia = HalfInterval::left(FiniteBound::closed(0.0));
+    let ib = FiniteInterval::closed(-10.0, 10.0);
+    let ic = FiniteInterval::closed(10.0, 20.0);
+    let id = FiniteInterval::closed(-20.0, -10.0);
+
+    group.bench_function("half-in-finite-by-val", |b| {
+        b.iter(|| {
+            let ia = black_box(ia.clone());
+            let ib = black_box(ib.clone());
+            let _ = black_box(ia.intersection(ib));
+        })
+    });
+    group.bench_function("half-in-finite-by-ref", |b| {
+        b.iter(|| {
+            let ia = black_box(ia.clone());
+            let ib = black_box(ib.clone());
+            let _ = black_box((&ia).intersection(&ib));
+        })
+    });
+    group.bench_function("half-contains-finite-by-val", |b| {
+        b.iter(|| {
+            let ia = black_box(ia.clone());
+            let ic = black_box(ic.clone());
+            let _ = black_box(ia.intersection(ic));
+        })
+    });
+    group.bench_function("half-contains-finite-by-ref", |b| {
+        b.iter(|| {
+            let ia = black_box(ia.clone());
+            let ic = black_box(ic.clone());
+            let _ = black_box((&ia).intersection(&ic));
+        })
+    });
+    group.bench_function("half-disjoint-finite-by-val", |b| {
+        b.iter(|| {
+            let ia = black_box(ia.clone());
+            let id = black_box(id.clone());
+            let _ = black_box(ia.intersection(id));
+        })
+    });
+    group.bench_function("half-disjoint-finite-by-ref", |b| {
+        b.iter(|| {
+            let ia = black_box(ia.clone());
+            let id = black_box(id.clone());
+            let _ = black_box((&ia).intersection(&id));
         })
     });
 }

@@ -10,7 +10,7 @@ macro_rules! commutative_op_move_impl {
         impl<T: $crate::numeric::Domain> $tt<$t_rhs> for $t_lhs {
             type Output = $t_out;
 
-            #[inline]
+            #[inline(always)]
             fn $fn(self, rhs: $t_rhs) -> Self::Output {
                 rhs.$fn(self)
             }

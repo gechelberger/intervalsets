@@ -156,20 +156,22 @@ impl<T> FiniteBound<T> {
 
     /// Returns `true` if this bound's `BoundType` is `Open`.
     pub fn is_open(&self) -> bool {
-        matches!(self.0, BoundType::Open)
+        self.0 == BoundType::Open
     }
 
     /// Returns `true` if this bound's `BoundType` is `Closed`
     pub fn is_closed(&self) -> bool {
-        matches!(self.0, BoundType::Closed)
+        self.0 == BoundType::Closed
     }
 
     /// Return the `BoundType` of this `Bound`.
+    #[inline(always)]
     pub fn bound_type(&self) -> BoundType {
         self.0
     }
 
     /// Returns a reference to this bound's limit value.
+    #[inline(always)]
     pub fn value(&self) -> &T {
         &self.1
     }
