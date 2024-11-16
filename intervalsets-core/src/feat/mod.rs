@@ -9,3 +9,6 @@ pub mod ordfloat;
 
 #[cfg(feature = "num-bigint")]
 pub mod bigint;
+
+#[cfg(feature = "bigdecimal")]
+pub mod bigdecimal;

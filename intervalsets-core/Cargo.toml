@@ -6,7 +6,7 @@ edition = "2021"
 rust-version = "1.65.0"
 readme = "README.md"
 description = """
-intervalsets-core provides no-std compatible intervals and set operations.
+intervalsets-core provides no-std, no-alloc compatible intervals and set operations.
 """
 repository = "https://github.com/gechelberger/intervalsets"
 documentation = "https://docs.rs/intervalsets-core"
@@ -31,6 +31,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 arbitrary = { version = "1.4.1", default-features = false, optional = true }
+bigdecimal = { version = "0.4.6", optional = true }
 itertools = { version = "0.13.0", default-features = false }
 num-bigint = { version = "0.4.6", optional = true }
 num-traits = { version = "0.2.19", default-features = false }
@@ -43,3 +44,4 @@ rust_decimal = ["dep:rust_decimal"]
 ordered-float = ["dep:ordered-float"]
 arbitrary = ["dep:arbitrary"]
 num-bigint = ["std", "dep:num-bigint"]
+bigdecimal = ["std", "dep:bigdecimal"]
