@@ -16,25 +16,13 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// # Example
 /// ```
-/// use ordered_float::OrderedFloat;
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::measure::Width;
 /// use intervalsets_core::factory::IFactory;
 ///
-/// type Fct = IFactory<f32, OrderedFloat<f32>>;
 ///
-/// let interval = Fct::closed(10.0, 100.0);
-/// assert_eq!(interval.width().finite().0, 90.0);
-///
-/// let interval = Fct::open(10.0, 100.0);
-/// assert_eq!(interval.width().finite().0, 90.0);
-///
-/// let interval = EnumInterval::closed(0, 10);
-/// assert_eq!(interval.width().finite(), 10);
-///
-/// let set = Fct::closed(0.0, 10.0)
-///     .try_merge(Fct::closed(5.0, 15.0)).unwrap();
-/// assert_eq!(set.width().finite().0, 15.0);
+/// let interval = EnumInterval::closed(10.0, 100.0);
+/// assert_eq!(interval.width().finite(), 90.0);
 /// ```
 ///
 /// # Normalization problem

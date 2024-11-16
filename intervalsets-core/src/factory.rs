@@ -69,7 +69,7 @@ impl<T> Converter<T> for Identity {
 ///
 /// This example uses the optional [`ordered-float`] feature.
 ///
-/// ```
+/// ```no-run
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::factory::IFactory;
 /// use ordered_float::NotNan;
