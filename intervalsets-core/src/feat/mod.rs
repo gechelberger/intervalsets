@@ -1,14 +1,17 @@
 #[cfg(feature = "rust_decimal")]
-pub mod decimal;
+mod decimal;
 
 #[cfg(feature = "arbitrary")]
-pub mod arbitrary;
+mod arbitrary;
 
 #[cfg(feature = "ordered-float")]
-pub mod ordfloat;
+mod ordfloat;
 
 #[cfg(feature = "num-bigint")]
-pub mod bigint;
+mod bigint;
 
 #[cfg(feature = "bigdecimal")]
-pub mod bigdecimal;
+mod bigdecimal;
+
+#[cfg(feature = "serde")]
+mod serde;

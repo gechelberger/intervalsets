@@ -4,7 +4,9 @@ use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::{FiniteBound, SetBounds, Side};
 use crate::numeric::Domain;
 
+/// todo
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum FiniteInterval<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
@@ -82,7 +84,9 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     // }
 }
 
+/// todo...
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct HalfInterval<T> {
     pub side: Side,
     pub bound: FiniteBound<T>,
@@ -144,7 +148,9 @@ impl<T> SetBounds<T> for HalfInterval<T> {
     // }
 }
 
+/// todo...
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
     Half(HalfInterval<T>),

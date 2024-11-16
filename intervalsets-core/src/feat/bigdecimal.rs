@@ -15,9 +15,7 @@ mod tests {
     #[test]
     fn test_big_decimal() -> Result<(), bigdecimal::ParseBigDecimalError> {
         let x = EnumInterval::closed(BigDecimal::from_str("0.0")?, BigDecimal::from_str("10.0")?);
-
         assert_eq!(x.width().finite(), BigDecimal::from_str("10")?);
-
         Ok(())
     }
 }

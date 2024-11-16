@@ -32,6 +32,7 @@ pub trait SetBounds<T> {
 
 /// Side( Left | Right ) on the number line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Side {
     Left,
     Right,
@@ -53,10 +54,11 @@ impl Side {
     }
 }
 
-/// The BoundType determines the inclusivity of the limit element in a set.
+/// The BoundType determines the inclusivity of the constraining element in a set.
 ///
 /// `Closed` bounds include the limit value in the `Set`, `Open` bounds do not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BoundType {
     Closed,
     Open,
@@ -75,7 +77,13 @@ impl BoundType {
 ///
 /// An Open(limit) does not include limit as an element of the set,
 /// while a Closed(limit) does.
+///
+/// # Note
+///
+/// No ordering implementation is provided because the correct order is
+/// a function of this bound **and** which side of the interval it constrains.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FiniteBound<T>(BoundType, T);
 
 impl<T> FiniteBound<T> {
@@ -232,6 +240,7 @@ pub mod ord {
     }
 
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub enum OrdBound<T> {
         LeftUnbounded,
         Finite(T, OrdBoundFinite),
@@ -310,6 +319,7 @@ pub mod ord {
     }
 
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub enum OrdBoundFinite {
         RightOpen,
         Closed,
@@ -326,6 +336,7 @@ pub mod ord {
     }
 
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     pub struct OrdBoundPair<T>(OrdBound<T>, OrdBound<T>);
 
     impl<T: PartialEq> OrdBoundPair<T> {

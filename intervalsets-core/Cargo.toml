@@ -37,6 +37,7 @@ num-bigint = { version = "0.4.6", optional = true }
 num-traits = { version = "0.2.19", default-features = false }
 ordered-float = { version = "4.5.0", default-features = false, optional = true }
 rust_decimal = { version = "1.36.0", default-features = false, optional = true }
+serde = { version = "1.0.215", default-features = false, features = ["derive"], optional = true }
 
 [features]
 std = []
@@ -45,3 +46,8 @@ ordered-float = ["dep:ordered-float"]
 arbitrary = ["dep:arbitrary"]
 num-bigint = ["std", "dep:num-bigint"]
 bigdecimal = ["std", "dep:bigdecimal"]
+serde = ["dep:serde"]
+
+[dev-dependencies]
+serde-brief = "0.1.1"
+serde_json = "1.0.132"
