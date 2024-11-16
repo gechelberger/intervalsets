@@ -34,11 +34,15 @@ pub use empty::MaybeEmpty;
 
 #[allow(unused_imports)]
 pub mod prelude {
+    #[cfg(feature = "rkyv")]
+    pub use crate::bound::{ArchivedBoundType, ArchivedFiniteBound, ArchivedSide};
     pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
     pub use crate::empty::MaybeEmpty;
     //pub use crate::error::Error;
     pub use crate::factory::Factory;
     pub use crate::measure::{Count, Measurement, Width};
     pub use crate::ops::*;
+    #[cfg(feature = "rkyv")]
+    pub use crate::sets::{ArchivedEnumInterval, ArchivedFiniteInterval, ArchivedHalfInterval};
     pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 }

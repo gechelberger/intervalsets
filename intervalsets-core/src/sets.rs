@@ -7,6 +7,10 @@ use crate::numeric::Domain;
 /// todo
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub enum FiniteInterval<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
@@ -87,6 +91,10 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
 /// todo...
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct HalfInterval<T> {
     pub side: Side,
     pub bound: FiniteBound<T>,
@@ -151,6 +159,10 @@ impl<T> SetBounds<T> for HalfInterval<T> {
 /// todo...
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
     Half(HalfInterval<T>),

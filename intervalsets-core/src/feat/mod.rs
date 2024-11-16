@@ -15,3 +15,6 @@ mod bigdecimal;
 
 #[cfg(feature = "serde")]
 mod serde;
+
+#[cfg(feature = "rkyv")]
+mod rkyv;
