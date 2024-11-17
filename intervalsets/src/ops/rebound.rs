@@ -1,4 +1,4 @@
-pub use intervalsets_core::ops::rebound::Rebound;
+pub use intervalsets_core::ops::Rebound;
 
 use crate::bound::FiniteBound;
 use crate::numeric::Domain;

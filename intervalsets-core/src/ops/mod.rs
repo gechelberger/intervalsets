@@ -1,18 +1,18 @@
 //! todo...
 
-use adjacent::Adjacent;
-
 use crate::MaybeEmpty;
 
-pub mod adjacent;
-pub mod contains;
-pub mod intersects;
+mod adjacent;
+pub use adjacent::Adjacent;
+mod contains;
+mod intersects;
 
-pub mod hull;
-pub mod intersection;
-pub mod merged;
-pub mod rebound;
-pub mod split;
+pub mod hull; // todo: ord impls
+pub mod intersection; // todo: SetSetIntersection
+pub mod merged; // todo: MergeSorted
+mod rebound;
+pub use rebound::Rebound;
+mod split;
 
 mod util;
 

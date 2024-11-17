@@ -5,14 +5,34 @@ use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// The [`Converter`] trait provides a mechanism to wrap
-/// or coerse a convenient type into one that meets
-/// the requirements for sets.
+/// or coerse a type into one that is compatible with interval bounds. This is
+/// particularly useful when working with 3rd party crates with unsupported types.
 ///
-/// Examples
+/// # Structure
+///
+/// ```text
+/// type UserDefinedFactory = IFactory<X, C<From = X>>;
+/// X: the type users will invoke factory methods with
+/// C: the type which implements Converter
+///     - C can implement converter for multiple From types
+///     - X must be one of those implementations
+/// C<X>::To: the underlying storage type for intervals created by the factory.
+/// ```
+///
+/// # Note
+///
+/// The type that this trait is implemented on is somewhat arbitrary and can
+/// therefore be confusing. It is structured as it is to provide flexibility in
+/// satisfying the [orphan rule](https://github.com/Ixrec/rust-orphan-rules).
+/// This allows users to easily create a converter for foreign types.
+///
+/// # Examples
 ///
 /// ```
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::factory::{IFactory, Converter};
+///
+/// // Local type converter
 ///
 /// #[derive(Copy, Clone)]
 /// struct Timestamp{
@@ -31,6 +51,24 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// type Fct = IFactory<Timestamp, u64>;
 /// let x = Fct::closed(a, b);
+///
+/// // Foreign types
+///
+/// struct CharCvt;
+///
+/// // char and u32 are not local so we can't implement Converter on either one.
+/// impl Converter<char> for CharCvt {
+///     type To = u32;
+///     fn convert(value: char) -> Self::To {
+///         value as u32
+///     }
+/// }
+///
+/// type Fct2 = IFactory<char, CharCvt>;
+/// let x = Fct2::closed('a', 'z');
+/// assert!(x.contains(&CharCvt::convert('c')));
+/// assert!(!x.contains(&CharCvt::convert('C')));
+/// assert!(!x.contains(&CharCvt::convert('0')));
 /// ```
 pub trait Converter<From> {
     type To;

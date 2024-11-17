@@ -1,4 +1,4 @@
-pub use intervalsets_core::ops::adjacent::Adjacent;
+pub use intervalsets_core::ops::Adjacent;
 
 use crate::numeric::Domain;
 use crate::sets::Interval;

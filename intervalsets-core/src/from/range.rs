@@ -73,3 +73,32 @@ impl<T: Domain> From<RangeToInclusive<T>> for EnumInterval<T> {
         Self::from(HalfInterval::from(value))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use core::fmt::Debug;
+
+    use super::*;
+    use crate::Factory;
+
+    #[test]
+    fn test_from_range() {
+        fn eq<T: PartialEq + Debug>(a: EnumInterval<T>, b: EnumInterval<T>) {
+            assert_eq!(a, b);
+        }
+
+        eq((0..10).into(), EnumInterval::closed_open(0, 10));
+        eq((0.0..10.0).into(), EnumInterval::closed_open(0.0, 10.0));
+        eq((0..=10).into(), EnumInterval::closed(0, 10));
+        eq((0.0..=10.0).into(), EnumInterval::closed(0.0, 10.0));
+
+        eq((0..).into(), EnumInterval::closed_unbound(0));
+        eq((0.0..).into(), EnumInterval::closed_unbound(0.0));
+        eq((..0).into(), EnumInterval::unbound_open(0));
+        eq((..0.0).into(), EnumInterval::unbound_open(0.0));
+        eq((..=0).into(), EnumInterval::unbound_closed(0));
+        eq((..=0.0).into(), EnumInterval::unbound_closed(0.0));
+
+        eq((..).into(), EnumInterval::<i32>::Unbounded);
+    }
+}
