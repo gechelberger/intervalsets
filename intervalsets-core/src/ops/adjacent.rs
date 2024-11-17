@@ -23,12 +23,14 @@ pub trait Adjacent<Rhs = Self> {
     fn is_adjacent_to(&self, rhs: Rhs) -> bool;
 }
 
+#[inline(always)]
 fn are_continuous_adjacent<T: PartialEq>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bool {
     // not sure how to deal with the rounding issues of floats
     right.value() == left.value() && (right.is_closed() || left.is_closed())
 }
 
 /// <---][---->
+#[inline(always)]
 fn are_adjacent<T: Domain>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bool {
     let right_up = right.value().try_adjacent(Side::Right);
     let left_down = left.value().try_adjacent(Side::Left);
@@ -54,6 +56,7 @@ impl<T: Domain> Adjacent<&FiniteBound<T>> for FiniteInterval<T> {
 }
 
 impl<T: Domain> Adjacent<&Self> for FiniteInterval<T> {
+    #[inline(always)]
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
         let Bounded(lhs_min, lhs_max) = self else {
             return false;
@@ -77,6 +80,7 @@ impl<T: Domain> Adjacent<&FiniteBound<T>> for HalfInterval<T> {
 }
 
 impl<T: Domain> Adjacent<&Self> for HalfInterval<T> {
+    #[inline(always)]
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
         match (self.side, rhs.side) {
             (Side::Left, Side::Right) => are_adjacent(&rhs.bound, &self.bound),

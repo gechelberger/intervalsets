@@ -26,7 +26,7 @@ pub(crate) use commutative_op_move_impl;
 macro_rules! commutative_predicate_impl {
     ($tt:ident, $fn:ident, $t_lhs:ty, $t_rhs:ty) => {
         impl<T: $crate::numeric::Domain> $tt<&$t_rhs> for $t_lhs {
-            #[inline]
+            #[inline(always)]
             fn $fn(&self, rhs: &$t_rhs) -> bool {
                 rhs.$fn(self)
             }

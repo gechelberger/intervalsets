@@ -293,6 +293,30 @@ pub fn bench_core_merged(c: &mut Criterion) {
             x.try_merge(a);
         })
     });
+
+    group.bench_function("enum-enum-overlapped", |b| {
+        b.iter(|| {
+            let x = black_box(EnumInterval::from(x.clone()));
+            let y = black_box(EnumInterval::from(y.clone()));
+            x.try_merge(y)
+        });
+    });
+
+    group.bench_function("enum-enum-disjoint", |b| {
+        b.iter(|| {
+            let x = black_box(EnumInterval::from(x.clone()));
+            let z = black_box(EnumInterval::from(z.clone()));
+            x.try_merge(z);
+        })
+    });
+
+    group.bench_function("enum-enum-adjacent", |b| {
+        b.iter(|| {
+            let x = black_box(EnumInterval::from(x.clone()));
+            let a = black_box(EnumInterval::from(a.clone()));
+            x.try_merge(a);
+        })
+    });
 }
 
 pub fn bench_core_split(c: &mut Criterion) {

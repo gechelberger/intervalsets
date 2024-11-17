@@ -43,6 +43,7 @@ pub enum Side {
 }
 
 impl Side {
+    #[inline(always)]
     pub fn flip(self) -> Self {
         match self {
             Self::Left => Self::Right,
@@ -50,6 +51,7 @@ impl Side {
         }
     }
 
+    #[inline(always)]
     pub fn select<T>(self, left: T, right: T) -> T {
         match self {
             Self::Left => left,
@@ -150,16 +152,19 @@ impl<T> FiniteBound<T> {
     }
 
     /// Return a new `Bound` keeps limit, flips `BoundType`. `self` is consumed.
+    #[inline(always)]
     pub fn flip(self) -> Self {
         Self(self.0.flip(), self.1)
     }
 
     /// Returns `true` if this bound's `BoundType` is `Open`.
+    #[inline(always)]
     pub fn is_open(&self) -> bool {
         self.0 == BoundType::Open
     }
 
     /// Returns `true` if this bound's `BoundType` is `Closed`
+    #[inline(always)]
     pub fn is_closed(&self) -> bool {
         self.0 == BoundType::Closed
     }
