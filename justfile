@@ -67,3 +67,14 @@ clean:
 # run the micro benchmarks
 bench pattern="":
     cargo criterion {{pattern}}
+
+# run the core micro benchmarks
+bench-core pattern="":
+    cargo criterion --bench intervalsets_core {{pattern}}
+
+bench-main pattern="":
+    cargo criterion --bench intervalsets {{pattern}}
+
+ci: docs test check-msrv 
+    cargo criterion --no-run
+    @echo "CI checks complete"
