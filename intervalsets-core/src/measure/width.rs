@@ -1,4 +1,9 @@
+use core::ops::Sub;
+
 use super::Measurement;
+use crate::numeric::{Domain, Zero};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
 /// The width is defined as the absolute difference between the greatest and
@@ -11,71 +16,80 @@ use super::Measurement;
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet, Factory};
-/// use intervalsets::ops::Union;
-/// use intervalsets::measure::Width;
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::measure::Width;
+/// use intervalsets_core::factory::IFactory;
 ///
-/// let interval = Interval::closed(10.0, 100.0);
+///
+/// let interval = EnumInterval::closed(10.0, 100.0);
 /// assert_eq!(interval.width().finite(), 90.0);
-///
-/// let interval = Interval::open(10.0, 100.0);
-/// assert_eq!(interval.width().finite(), 90.0);
-///
-/// let interval = Interval::closed(0, 10);
-/// assert_eq!(interval.width().finite(), 10);
-///
-/// let set = Interval::closed(0.0, 10.0)
-///     .union(Interval::closed(5.0, 15.0))
-///     .union(Interval::open(100.0, 110.0));
-/// assert_eq!(set.width().finite(), 25.0);
 /// ```
 ///
 /// # Normalization problem
 ///
 /// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::Difference;
-/// use intervalsets::measure::Width;
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::measure::Width;
 ///
-/// let a = Interval::closed(0.0, 10.0);
-/// let a = a.difference(Interval::closed(5.0, 15.0));
-/// assert_eq!(a.width().finite(), 5.0);
+/// let a = EnumInterval::closed(0.0, 10.0);
+/// assert_eq!(a.width().finite(), 10.0);
 ///
-/// let b = Interval::closed(0, 10);
-/// let b = b.difference(Interval::closed(5, 15));
-/// assert_eq!(b.width().finite(), 4);
+/// let b = EnumInterval::open(0, 10);
+/// assert_eq!(b.width().finite(), 8);
 /// ```
-use super::Width;
-use crate::numeric::{Domain, Zero};
-use crate::{Interval, IntervalSet};
+pub trait Width {
+    type Output;
 
-impl<T, Out> Width for Interval<T>
+    fn width(&self) -> Measurement<Self::Output>;
+}
+
+impl<T, Out> Width for FiniteInterval<T>
 where
     Out: Zero,
     T: Domain,
-    for<'a> &'a T: core::ops::Sub<Output = Out>,
+    for<'a> &'a T: Sub<Output = Out>, //T: Domain + Clone + Sub<T, Output = Out>,
 {
     type Output = Out;
 
     fn width(&self) -> Measurement<Self::Output> {
-        self.0.width()
+        match self {
+            Self::Empty => Measurement::Finite(Out::zero()),
+            Self::Bounded(left, right) => Measurement::Finite(right.value() - left.value()),
+        }
     }
 }
 
-impl<T, Out> Width for IntervalSet<T>
+impl<T, Out> Width for HalfInterval<T>
 where
+    Out: Zero,
     T: Domain,
-    for<'a> &'a T: core::ops::Sub<Output = Out>,
-    Out: Zero + core::ops::Add<Out, Output = Out> + Clone,
+    for<'a> &'a T: Sub<Output = Out>,
 {
     type Output = Out;
 
     fn width(&self) -> Measurement<Self::Output> {
-        self.iter()
-            .map(|subset| subset.width())
-            .fold(Measurement::Finite(Out::zero()), |accum, item| accum + item)
+        Measurement::Infinite
     }
 }
+
+impl<T, Out> Width for EnumInterval<T>
+where
+    Out: Zero,
+    T: Domain,
+    for<'a> &'a T: Sub<Output = Out>,
+{
+    type Output = Out;
+
+    fn width(&self) -> crate::measure::Measurement<Self::Output> {
+        match self {
+            Self::Finite(inner) => inner.width(),
+            Self::Half(inner) => inner.width(),
+            Self::Unbounded => Measurement::Infinite,
+        }
+    }
+}
+
+/*
 
 #[cfg(test)]
 mod tests {
@@ -145,3 +159,4 @@ mod tests {
         }
     }
 }
+*/

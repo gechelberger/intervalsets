@@ -4,10 +4,16 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+arbitrary = "1.4.1"
 criterion = "0.5.1"
 intervalsets = { version = "0.1.0-alpha.2", path = "../intervalsets" }
-intervalsets-core = { version = "0.1.0", path = "../intervalsets-core" }
+intervalsets-core = { version = "0.1.0-alpha.2", path = "../intervalsets-core", features = ["arbitrary"] }
+rand = "0.8.5"
 
 [[bench]]
 name = "intervalsets"
+harness = false
+
+[[bench]]
+name = "intervalsets_core"
 harness = false

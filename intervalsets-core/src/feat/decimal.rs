@@ -11,7 +11,7 @@ mod test {
 
     #[test]
     fn test_decimal_interval() {
-        let interval = Interval::open(Decimal::new(202, 2), Decimal::new(100, 1));
+        let interval = EnumInterval::open(Decimal::new(202, 2), Decimal::new(100, 1));
 
         assert!(interval.contains(&Decimal::new(5, 0)));
         assert!(!interval.contains(&Decimal::new(10, 0)));

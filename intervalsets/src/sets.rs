@@ -1,10 +1,10 @@
-use crate::bound::Bound;
-use crate::detail::{BoundCase, Finite};
-use crate::numeric::Domain;
-use crate::ops::{Intersects, Merged};
-use crate::{Bounding, MaybeEmpty, Side};
+use intervalsets_core::sets::{EnumInterval, FiniteInterval};
 
-use crate::factory::Factory;
+use crate::bound::ord::{OrdBoundPair, OrdBounded};
+use crate::bound::{FiniteBound, SetBounds, Side};
+use crate::numeric::Domain;
+use crate::ops::Intersects;
+use crate::MaybeEmpty;
 
 /// A Set representation of a contiguous interval on N, Z, or R.
 ///
@@ -20,10 +20,14 @@ use crate::factory::Factory;
 /// use intervalsets::prelude::*;
 /// let x = Interval::closed(0, 10);
 /// ```
-#[derive(Debug, Clone, PartialEq)]
-pub struct Interval<T: Domain>(pub(crate) BoundCase<T>);
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Interval<T>(pub(crate) EnumInterval<T>);
 
-impl<T: Domain> Interval<T> {
+impl<T> Interval<T> {
+    pub const fn empty() -> Self {
+        Self(EnumInterval::empty())
+    }
+
     /// Returns `true` if the interval is either fully bounded or empty.
     ///
     /// # Example
@@ -37,7 +41,7 @@ impl<T: Domain> Interval<T> {
     /// assert_eq!(Interval::<i32>::unbounded().is_finite(), false);
     /// ```
     pub fn is_finite(&self) -> bool {
-        matches!(self.0, BoundCase::Finite(_))
+        matches!(self.0, EnumInterval::Finite(_))
     }
 
     /// Returns `true` if the interval approaches infinity on either side.
@@ -68,10 +72,7 @@ impl<T: Domain> Interval<T> {
     /// assert_eq!(Interval::<i32>::unbounded().is_fully_bounded(), false);
     /// ```
     pub fn is_fully_bounded(&self) -> bool {
-        match &self.0 {
-            BoundCase::Finite(inner) => matches!(inner, Finite::FullyBounded(_, _)),
-            _ => false,
-        }
+        matches!(self.0, EnumInterval::Finite(FiniteInterval::Bounded(_, _)))
     }
 
     /// Return `true` if the interval is unbounded on exactly one side.
@@ -85,7 +86,7 @@ impl<T: Domain> Interval<T> {
     ///
     /// ```
     pub fn is_half_bounded(&self) -> bool {
-        matches!(&self.0, BoundCase::Half(_))
+        matches!(&self.0, EnumInterval::Half(_))
     }
 
     /// Returns `true` if the interval is unbounded on the expected side.
@@ -103,8 +104,8 @@ impl<T: Domain> Interval<T> {
     /// assert_eq!(x.is_half_bounded_on(Side::Left), true);
     /// ```
     pub fn is_half_bounded_on(&self, side: Side) -> bool {
-        match &self.0 {
-            BoundCase::Half(inner) => inner.bound(side).is_some(),
+        match self.0 {
+            EnumInterval::Half(ref inner) => inner.side == side,
             _ => false,
         }
     }
@@ -114,190 +115,42 @@ impl<T: Domain> Interval<T> {
     /// # Example
     /// ```
     /// use intervalsets::{Interval, Factory};
-    /// use intervalsets::ops::Merged;
+    /// use intervalsets::ops::TryMerge;
     ///
     /// let x = Interval::unbound_closed(10)
-    ///             .merged(Interval::closed_unbound(-10))
+    ///             .try_merge(Interval::closed_unbound(-10))
     ///             .unwrap();
     ///
     /// assert_eq!(x.is_unbounded(), true);
     /// ```
     pub fn is_unbounded(&self) -> bool {
-        matches!(&self.0, BoundCase::Unbounded)
-    }
-
-    /// Map the bounds of this interval to a new one or else `Empty`.
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::prelude::*;
-    /// use intervalsets::{Bound, Side};
-    /// use intervalsets::numeric::Domain;
-    ///
-    /// fn shift<T: Domain>(interval: Interval<T>, amount: T) -> Interval<T>
-    /// where
-    ///     T: Domain + core::ops::Add<T, Output=T>
-    /// {
-    ///     let shift_bound = |bound: &Bound<T>| {
-    ///         bound.clone().map(|v| v + amount.clone())
-    ///     };
-    ///
-    ///     interval.flat_map(|left, right| {
-    ///         match (left, right) {
-    ///             (None, None) => Interval::unbounded(),
-    ///             (None, Some(right)) => {
-    ///                 Interval::half_bounded(Side::Right, shift_bound(right))
-    ///             },
-    ///             (Some(left), None) => {
-    ///                 Interval::half_bounded(Side::Left, shift_bound(left))
-    ///             },
-    ///             (Some(left), Some(right)) => {
-    ///                 Interval::finite(shift_bound(left), shift_bound(right))
-    ///             }
-    ///         }
-    ///     })
-    /// }
-    ///
-    /// assert_eq!(shift(Interval::empty(), 10), Interval::empty());
-    /// assert_eq!(shift(Interval::closed(0, 10), 10), Interval::closed(10, 20));
-    /// assert_eq!(shift(Interval::unbound_closed(0), 10), Interval::unbound_closed(10));
-    /// assert_eq!(shift(Interval::closed_unbound(0), 10), Interval::closed_unbound(10));
-    /// ```
-    pub fn flat_map<F>(&self, func: F) -> Self
-    where
-        F: FnOnce(Option<&Bound<T>>, Option<&Bound<T>>) -> Self,
-    {
-        self.map_or_else(Self::empty, func)
-    }
-
-    /// Map the bounds of this interval or return default if `Empty`.
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::prelude::*;
-    ///
-    /// fn is_finite(interval: Interval<i32>) -> bool {
-    ///     interval.map_or(true, |left, right| {
-    ///         matches!((left, right), (Some(_), Some(_)))
-    ///     })
-    /// }
-    ///
-    /// assert_eq!(is_finite(Interval::empty()), true);
-    /// assert_eq!(is_finite(Interval::closed(0, 10)), true);
-    /// assert_eq!(is_finite(Interval::unbound_closed(0)), false);
-    /// assert_eq!(is_finite(Interval::closed_unbound(0)), false);
-    /// assert_eq!(is_finite(Interval::unbounded()), false);
-    /// ```
-    pub fn map_or<F, U>(&self, default: U, func: F) -> U
-    where
-        F: FnOnce(Option<&Bound<T>>, Option<&Bound<T>>) -> U,
-    {
-        if self.is_empty() {
-            return default;
-        }
-        func(self.left(), self.right())
-    }
-
-    /// Map the bounds of this interval or result of default fn if `Empty`.
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::prelude::*;
-    /// use intervalsets::Side;
-    ///
-    /// fn my_complement(interval: &Interval<i32>) -> Interval<i32> {
-    ///     interval.map_or_else(Interval::unbounded, |left, right| {
-    ///         match (left, right) {
-    ///             (None, None) => Interval::empty(),
-    ///             (None, Some(right)) => Interval::half_bounded(Side::Left, right.clone().flip()),
-    ///             (Some(left), None) => Interval::half_bounded(Side::Right, left.clone().flip()),
-    ///             (Some(left), Some(right)) => panic!("... elided ...")
-    ///         }
-    ///     })
-    /// }
-    ///
-    /// let x = Interval::closed_unbound(0);
-    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
-    ///
-    /// let x = Interval::unbound_closed(0);
-    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
-    ///
-    /// let x = Interval::empty();
-    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
-    ///
-    /// let x = Interval::unbounded();
-    /// assert_eq!(my_complement(&x), x.complement().expect_interval());
-    /// ```
-    pub fn map_or_else<F, D, U>(&self, default: D, func: F) -> U
-    where
-        D: FnOnce() -> U,
-        F: FnOnce(Option<&Bound<T>>, Option<&Bound<T>>) -> U,
-    {
-        if self.is_empty() {
-            default()
-        } else {
-            func(self.left(), self.right())
-        }
-    }
-
-    /// Map bounds to a new Interval if and only if fully bounded else `Empty`.
-    ///
-    /// # Panics
-    ///
-    /// This method panics if called on an unbounded interval.
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::prelude::*;
-    ///
-    /// fn shift(interval: Interval<i32>, amount: i32) -> Interval<i32> {
-    ///     interval.flat_map_finite(|left, right| {
-    ///         Interval::finite(
-    ///             left.clone().map(|v| v + amount), right.clone().map(|v| v + amount)
-    ///         )
-    ///     })
-    /// }
-    /// assert_eq!(shift(Interval::empty(), 10), Interval::empty());
-    /// assert_eq!(shift(Interval::closed(0, 10), 10), Interval::closed(10, 20));
-    /// ```
-    /// ```should_panic
-    /// use intervalsets::prelude::*;
-    ///
-    /// fn shift(interval: Interval<i32>, amount: i32) -> Interval<i32> {
-    ///     interval.flat_map_finite(|left, right| Interval::empty())
-    /// }
-    ///
-    /// // any of these should panic:
-    /// assert_eq!(shift(Interval::unbound_closed(0), 10), Interval::empty());
-    /// assert_eq!(shift(Interval::closed_unbound(0), 10), Interval::empty());
-    /// assert_eq!(shift(Interval::unbounded(), 10), Interval::empty());
-    /// ```
-    pub fn flat_map_finite<F>(&self, func: F) -> Self
-    where
-        F: FnOnce(&Bound<T>, &Bound<T>) -> Self,
-    {
-        match &self.0 {
-            BoundCase::Finite(inner) => inner.ref_map_or_else(Self::empty, func),
-            _ => panic!("Expected finite interval"),
-        }
+        matches!(self.0, EnumInterval::Unbounded)
     }
 }
 
-impl<T: Domain + Eq> Eq for Interval<T> {}
-
-impl<T: Domain + PartialOrd> PartialOrd for Interval<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.0.partial_cmp(&other.0)
+impl<T: Domain> Default for Interval<T> {
+    fn default() -> Self {
+        Interval::empty()
     }
 }
 
-impl<T: Domain + Ord> Ord for Interval<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.0.cmp(&other.0)
+impl<T> SetBounds<T> for Interval<T> {
+    fn bound(&self, side: Side) -> Option<&FiniteBound<T>> {
+        self.0.bound(side)
     }
 }
 
-//impl<T: Domain + Copy> Copy for Interval<T> {}
+impl<T> MaybeEmpty for Interval<T> {
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<T> OrdBounded<T> for Interval<T> {
+    fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
+        OrdBoundPair::from(self)
+    }
+}
 
 /// A Set in N, Z, or R consisting of disjoint contiguous intervals.
 ///
@@ -313,69 +166,46 @@ impl<T: Domain + Ord> Ord for Interval<T> {
 /// * All stored intervals are disjoint subsets of T.
 ///     * Stored intervals *should* not be adjacent.
 ///         * This can only be assured for `T: Eq + Ord`
-#[derive(Debug, Clone, PartialEq)]
-pub struct IntervalSet<T: Domain> {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct IntervalSet<T> {
     intervals: Vec<Interval<T>>,
 }
 
 impl<T: Domain> IntervalSet<T> {
-    /// Create a new empty IntervalSet
-    pub fn empty() -> Self {
-        Self { intervals: vec![] }
-    }
-
     /// Create a new Set of intervals and enforce invariants.
     pub fn new<I>(intervals: I) -> Self
     where
         I: IntoIterator<Item = Interval<T>>,
     {
-        let mut intervals = intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
+        let mut intervals: Vec<_> = intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
 
         if Self::satisfies_invariants(&intervals) {
             // includes empty case
             return Self::new_unchecked(intervals);
         }
 
-        // most of the time intervals should already by sorted
-        intervals.sort_by(|a, b| {
+        // re
+        intervals.sort_unstable_by(|a, b| {
             a.partial_cmp(b)
                 .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
         });
 
-        Self::merge_sorted(intervals)
+        Self::new_unchecked(
+            intervalsets_core::ops::merged::MergeSorted::new(intervals.into_iter().map(|x| x.0))
+                .map(Interval::from),
+        )
     }
+}
 
-    /// Merge overlapping intervals assuming all other invariants are
-    /// already satisfied.
-    pub(crate) fn merge_sorted<I>(intervals: I) -> Self
-    where
-        I: IntoIterator<Item = Interval<T>>,
-    {
-        let mut it = intervals.into_iter();
-        let mut current = match it.next() {
-            None => return Self::empty(),
-            Some(head) => head,
-        };
-
-        let mut merged_sets: Vec<Interval<T>> = Vec::new();
-        for rhs in it {
-            match current.clone().merged(rhs.clone()) {
-                Some(merged) => {
-                    current = merged;
-                }
-                None => {
-                    merged_sets.push(current);
-                    current = rhs;
-                }
-            }
-        }
-        merged_sets.push(current);
-        Self {
-            intervals: merged_sets,
-        }
+impl<T> IntervalSet<T> {
+    /// Create a new empty IntervalSet
+    pub fn empty() -> Self {
+        Self { intervals: vec![] }
     }
+}
 
-    pub fn satisfies_invariants(intervals: &Vec<Interval<T>>) -> bool {
+impl<T: PartialOrd> IntervalSet<T> {
+    pub fn satisfies_invariants(intervals: &[Interval<T>]) -> bool {
         let mut current = &Interval::empty();
         for interval in intervals {
             if interval.is_empty() || current > interval || current.intersects(interval) {
@@ -389,7 +219,9 @@ impl<T: Domain> IntervalSet<T> {
 
         true
     }
+}
 
+impl<T> IntervalSet<T> {
     /// Creates a new IntervalSet without checking invariants.
     ///
     /// The invariants check and enforcement step can be expensive, O(nlog(n)),
@@ -398,13 +230,20 @@ impl<T: Domain> IntervalSet<T> {
     /// directly.
     ///
     /// Behavior is **undefined** if invariants are violated!
-    pub fn new_unchecked(intervals: Vec<Interval<T>>) -> Self {
-        Self { intervals }
+    pub fn new_unchecked<I>(intervals: I) -> Self
+    where
+        I: IntoIterator<Item = Interval<T>>,
+    {
+        Self {
+            intervals: Vec::from_iter(intervals),
+        }
     }
+}
 
+impl<T: Clone + Domain> IntervalSet<T> {
     /// Creates an [`Interval`] that forms a convex hull for this Set.
     ///
-    /// This should be equivalent to using [`ConvexHull`](crate::ConvexHull),
+    /// This should be equivalent to using [`ConvexHull`](crate::ops::ConvexHull),
     /// but much more efficient and convenient.
     ///
     /// > This function call relies on invariants.
@@ -424,16 +263,22 @@ impl<T: Domain> IntervalSet<T> {
     /// ```
     ///
     pub fn convex_hull(&self) -> Interval<T> {
-        if self.is_empty() {
-            return Interval::<T>::empty();
+        match self.intervals.len() {
+            0 => Interval::empty(),
+            1 => self.intervals.first().unwrap().clone(),
+            _ => {
+                let first = self.intervals.first().unwrap();
+                let last = self.intervals.last().unwrap();
+                let (min, _) = first.ord_bound_pair().into_raw();
+                let (_, max) = last.ord_bound_pair().into_raw();
+                let hull = OrdBoundPair::new(min.cloned(), max.cloned());
+                hull.into()
+            }
         }
-
-        let first = self.intervals.first().unwrap();
-        let last = self.intervals.last().unwrap();
-
-        Interval::finite(first.left().unwrap().clone(), last.right().unwrap().clone())
     }
+}
 
+impl<T> IntervalSet<T> {
     /// Take the only [`Interval`] in this Set. `self` is consumed.
     ///
     /// This is useful for operations that *could* return
@@ -498,93 +343,6 @@ impl<T: Domain> IntervalSet<T> {
     pub fn into_raw(self) -> Vec<Interval<T>> {
         self.intervals
     }
-
-    /// Returns a new IntervalSet mapped from this Set's subsets.
-    ///
-    /// The mapping function is given a mutable vector in which to
-    /// collect as many or as few new intervals as desired regardless
-    /// of the intermediate types in question.
-    ///
-    /// # Example
-    /// ```
-    /// use intervalsets::prelude::*;
-    ///
-    /// let x = Interval::closed(0, 10)
-    ///     .union(Interval::closed(20, 40))
-    ///     .union(Interval::closed(50, 100));
-    ///
-    /// let mapped = x.collect_map(|mut collect, subset| {
-    ///     if subset.count().finite() > 30 {
-    ///         collect.push(subset.clone())
-    ///     }
-    /// });
-    ///
-    /// assert_eq!(mapped, IntervalSet::from(Interval::closed(50, 100)));
-    ///
-    /// let mask = Interval::closed(5, 25);
-    /// let mapped = x.collect_map(|mut collect, subset| {
-    ///     collect.push(mask.ref_intersection(subset));
-    /// });
-    /// assert_eq!(mapped, IntervalSet::from_iter([
-    ///     Interval::closed(5, 10),
-    ///     Interval::closed(20, 25)
-    /// ]));
-    ///
-    /// let mask_set = IntervalSet::from_iter([
-    ///     Interval::closed(20, 30),
-    ///     Interval::closed(50, 60),
-    /// ]);
-    /// let mapped = x.collect_map(|mut collect, subset| {
-    ///     for interval in subset.ref_difference(&mask_set) {
-    ///         collect.push(interval)
-    ///     }
-    /// });
-    /// assert_eq!(mapped, IntervalSet::from_iter([
-    ///     Interval::closed(0, 10),
-    ///     Interval::closed(31, 40),
-    ///     Interval::closed(61, 100),
-    /// ]));
-    /// ```
-    pub fn collect_map<F>(&self, func: F) -> Self
-    where
-        F: Fn(&mut Vec<Interval<T>>, &Interval<T>),
-    {
-        let mut accum: Vec<Interval<T>> = Vec::new();
-        for subset in self.intervals.iter() {
-            func(&mut accum, subset);
-        }
-
-        Self::new(accum)
-    }
-
-    /// Returns a new IntervalSet mapped from this Set`s subsets.
-    ///
-    /// ```
-    /// use intervalsets::prelude::*;
-    ///
-    /// let x = Interval::closed(0, 10)
-    ///     .union(Interval::closed(20, 40))
-    ///     .union(Interval::closed(50, 100));
-    ///
-    /// let mapped = x.flat_map(|subset| {
-    ///     if subset.count().finite() > 30 {
-    ///         subset.clone().into()
-    ///     } else {
-    ///         Interval::empty().into()
-    ///     }
-    /// });
-    ///
-    /// assert_eq!(mapped, IntervalSet::from(Interval::closed(50, 100)));
-    /// ```
-    pub fn flat_map<F>(&self, func: F) -> Self
-    where
-        F: Fn(&Interval<T>) -> Self,
-    {
-        self.collect_map(|accum, interval| {
-            let mut result = func(interval);
-            accum.append(&mut result.intervals)
-        })
-    }
 }
 
 impl<T, I> FromIterator<I> for IntervalSet<T>
@@ -606,17 +364,15 @@ impl<T: Domain> IntoIterator for IntervalSet<T> {
     }
 }
 
-impl<T: Domain + Eq> Eq for IntervalSet<T> {}
-
-impl<T: Domain + PartialOrd> PartialOrd for IntervalSet<T> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.intervals.partial_cmp(&other.intervals)
+impl<T> OrdBounded<T> for IntervalSet<T> {
+    fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
+        OrdBoundPair::<&T>::from(self)
     }
 }
 
-impl<T: Domain + Ord> Ord for IntervalSet<T> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.intervals.cmp(&other.intervals)
+impl<T> MaybeEmpty for IntervalSet<T> {
+    fn is_empty(&self) -> bool {
+        self.intervals.len() == 0
     }
 }
 
@@ -626,6 +382,7 @@ mod tests {
 
     use super::*;
     use crate::ops::{Complement, Difference};
+    use crate::Factory;
 
     #[test]
     fn test_interval_normalization() {
@@ -680,14 +437,96 @@ mod tests {
         // (<-, ->) < (0, ->)
         assert_lt(Interval::unbounded(), Interval::open_unbound(0.0));
 
-        // Empty Set should not compare
-        assert_eq!(
-            Interval::<u8>::empty() <= Interval::<u8>::unbounded(),
-            false
-        );
+        // Empty Set < everything else
+        assert_eq!(Interval::<u8>::empty() < Interval::<u8>::unbounded(), true);
         assert_eq!(
             Interval::<u8>::empty() >= Interval::<u8>::unbounded(),
             false
         );
     }
+
+    use core::hash::{Hash, Hasher};
+
+    use siphasher::sip::SipHasher13;
+
+    use super::*;
+
+    fn do_hash<T: Hash>(item: T) -> u64 {
+        let key: &[u8; 16] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];
+        let mut hasher = SipHasher13::new_with_key(key);
+        item.hash(&mut hasher);
+        hasher.finish()
+    }
+
+    pub(super) fn check_hash<T: Hash + PartialEq>(a: &T, b: &T) {
+        if a == b {
+            assert_eq!(do_hash(a), do_hash(b));
+        } else {
+            // hash collissions are allowed, but highly unlikely
+            assert_ne!(do_hash(a), do_hash(b));
+        }
+    }
+
+    #[test]
+    fn test_hash_stable_interval() {
+        check_hash(&Interval::<i8>::empty(), &Interval::<i8>::empty());
+        check_hash(&Interval::<i8>::unbounded(), &Interval::<i8>::unbounded());
+        check_hash(
+            &Interval::<i8>::closed(0, 10),
+            &Interval::<i8>::closed(0, 10),
+        );
+
+        // f32 & f64 are not Hash
+        //check_hash(
+        //    &Interval::<f64>::open(0.0, 10.0),
+        //    &Interval::<f64>::open(0.0, 10.0),
+        //)
+    }
+
+    #[test]
+    fn test_hash_stable_set() {
+        check_hash(&IntervalSet::<i8>::empty(), &Interval::<i8>::empty().into());
+    }
+
+    #[quickcheck]
+    fn check_hash_interval_set(a: i8, b: i8) {
+        let set = IntervalSet::from_iter([Interval::closed(-50, 50)]);
+
+        let other: IntervalSet<_> = Interval::closed(a, b).into();
+        check_hash(&set, &other);
+    }
+
+    #[quickcheck]
+    fn check_hash_stable_interval(a: i8, b: i8) {
+        let interval = Interval::closed(-50, 50);
+        check_hash(&interval, &Interval::closed(a, b));
+    }
 }
+
+/*
+#[cfg(feature = "rust_decimal")]
+#[cfg(test)]
+mod decimal_tests {
+    use rust_decimal::Decimal;
+
+    use super::*;
+    use crate::Factory;
+
+    #[quickcheck]
+    fn check_hash_decimal_interval(a: f32, b: f32) {
+        let a = Decimal::from_f32_retain(a);
+        let b = Decimal::from_f32_retain(b);
+        if a.is_none() || b.is_none() {
+            return;
+        }
+        let a = a.unwrap();
+        let b = b.unwrap();
+
+        let interval = Interval::open(a, b);
+        super::tests::check_hash(&interval, &Interval::open(a, b));
+        super::tests::check_hash(&interval, &Interval::closed(a, b));
+        super::tests::check_hash(&interval, &Interval::open_closed(a, b));
+        super::tests::check_hash(&interval, &Interval::closed_open(a, b));
+    }
+}
+*/

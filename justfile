@@ -1,6 +1,6 @@
-# obviously requires just to already be installed
+# cargo install just
 
-MSRV := "1.74.0"
+MSRV := "1.81.0"
 
 # just run the tests
 default: test
@@ -40,7 +40,7 @@ alias d := docs
 
 # build the docs
 docs:
-    cargo doc --all-features
+    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo doc --all-features --no-deps
 
 # launch a file server for docs
 serve-docs port="8080": docs
@@ -67,3 +67,14 @@ clean:
 # run the micro benchmarks
 bench pattern="":
     cargo criterion {{pattern}}
+
+# run the core micro benchmarks
+bench-core pattern="":
+    cargo criterion --bench intervalsets_core {{pattern}}
+
+bench-main pattern="":
+    cargo criterion --bench intervalsets {{pattern}}
+
+ci: docs test check-msrv 
+    cargo criterion --no-run
+    @echo "CI checks complete"

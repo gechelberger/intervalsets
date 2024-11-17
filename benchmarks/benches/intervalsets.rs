@@ -1,7 +1,12 @@
+//#![feature(sort_floats)]
+
+use std::cmp::Ordering;
+
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use intervalsets::prelude::*;
-
-// use lib::euler1; // function to profile
+use rand::distributions::Standard;
+use rand::prelude::Distribution;
+use rand::Rng;
 
 pub fn bench_interval_intersection(c: &mut Criterion) {
     c.bench_function("interval-intersection", |b| {
@@ -16,7 +21,7 @@ pub fn bench_interval_intersection(c: &mut Criterion) {
 
 pub fn bench_interval_union(c: &mut Criterion) {
     c.bench_function("interval-union-adjacent", |b| {
-        let expected = IntervalSet::from((0, 20));
+        let expected = IntervalSet::from([0, 20]);
         b.iter(|| {
             let (a, b, c, d) = black_box((0, 10, 11, 20));
             let lhs = Interval::closed(a, b);
