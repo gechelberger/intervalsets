@@ -191,7 +191,7 @@ impl<T: Domain> IntervalSet<T> {
         });
 
         Self::new_unchecked(
-            intervalsets_core::ops::merged::MergeSorted::new(intervals.into_iter().map(|x| x.0))
+            intervalsets_core::ops::MergeSorted::new(intervals.into_iter().map(|x| x.0))
                 .map(Interval::from),
         )
     }

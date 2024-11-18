@@ -1,8 +1,13 @@
 use crate::bound::ord::OrdBoundPair;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
+/// Test a `Set` for emptiness.
 pub trait MaybeEmpty {
     fn is_empty(&self) -> bool;
+
+    fn is_inhabited(&self) -> bool {
+        !self.is_empty()
+    }
 }
 
 impl<T> MaybeEmpty for FiniteInterval<T> {

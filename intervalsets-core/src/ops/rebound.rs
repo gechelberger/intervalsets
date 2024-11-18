@@ -3,6 +3,15 @@ use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 use crate::Factory;
 
+/// Create a new interval, replacing a bound.
+///
+/// # Examples
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let x = FiniteInterval::closed(0, 10);
+/// assert_eq!(x.with_left_closed(5), [5, 10].into());
+/// ```
 pub trait Rebound<T>: Sized {
     type Output;
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output;

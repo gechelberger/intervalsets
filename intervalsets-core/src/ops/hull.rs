@@ -1,4 +1,3 @@
-use super::ConvexHull;
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, Side};
 use crate::empty::MaybeEmpty;
@@ -6,6 +5,34 @@ use crate::factory::Factory;
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval};
 use crate::try_cmp::{TryMax, TryMin};
+
+/// Create the smallest interval which fully contains every provided item.
+///
+/// # Example
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// // from points on the number line
+/// let hull = FiniteInterval::convex_hull([5, 3, -120, 44, 100, -100]);
+/// assert_eq!(hull, FiniteInterval::closed(-120, 100));
+///
+/// let items = vec![5, 3, -120, 44, 100, -100];
+/// let hull = FiniteInterval::convex_hull(&items);
+/// assert_eq!(hull, FiniteInterval::closed(-120, 100));
+///
+/// // from intervals
+/// let intervals = [
+///     EnumInterval::open(30, 50),
+///     EnumInterval::closed(20, 40),
+///     EnumInterval::closed(1000, 2000),
+///     EnumInterval::unbound_open(0),
+/// ];
+/// let hull = EnumInterval::convex_hull(intervals);
+/// assert_eq!(hull, EnumInterval::unbound_closed(2000));
+/// ```
+pub trait ConvexHull<T> {
+    fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self;
+}
 
 macro_rules! convex_hull_t_impl {
     ($($t:ident), +) => {

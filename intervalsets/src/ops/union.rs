@@ -1,4 +1,4 @@
-use intervalsets_core::ops::merged::MergeSorted;
+use intervalsets_core::ops::MergeSorted;
 use intervalsets_core::sets::{FiniteInterval, HalfInterval};
 use intervalsets_core::{EnumInterval, MaybeEmpty};
 use FiniteInterval::Bounded;

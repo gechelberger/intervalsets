@@ -2,10 +2,86 @@ use super::adjacent::Adjacent;
 use crate::bound::{FiniteBound, Side};
 use crate::empty::MaybeEmpty;
 use crate::numeric::Domain;
-use crate::ops::{Contains, Intersects, TryMerge};
+use crate::ops::{Contains, Intersects};
 use crate::sets::EnumInterval::{self, *};
 use crate::sets::FiniteInterval::{self, Bounded};
 use crate::sets::HalfInterval;
+
+/// Test whether two sets are mergable.
+///
+/// # Examples
+///
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let x = FiniteInterval::closed(0, 10);
+/// let y = FiniteInterval::closed(11, 20);
+/// assert_eq!(mergeable(&x, &y), true);
+///
+/// let x = FiniteInterval::closed(0.0, 10.0);
+/// let y = FiniteInterval::closed(11.0, 20.0);
+/// assert_eq!(mergeable(&x, &y), false);
+/// ```
+#[inline]
+pub fn mergeable<'a, A, B>(a: &'a A, b: &'a B) -> bool
+where
+    A: MaybeEmpty + Intersects<&'a B> + Adjacent<&'a B>,
+    B: MaybeEmpty,
+{
+    a.intersects(b) || a.is_adjacent_to(b) || a.is_empty() || b.is_empty()
+}
+
+/// The union of two intervals if and only if connected else `None``.
+///
+/// Two intervals are connected if they share any elements (ie. [`Intersects`])
+/// **or** if they are [`Adjacent`] such that no other elements exist between them.
+/// The empty set is considered adjacent and connect to all other sets since
+/// no elements exist between the two.
+///
+/// ```text
+/// {x | x ∈ A ∨ x ∈ B } ⇔ {x} is an interval
+/// ```
+///
+/// # Note
+///
+/// > Types subject to rounding errors (floats) may have unexpected results.
+/// > When testing adjacency PartialEq is used directly. Handling
+/// > edge cases is left to the end user. A fixed precision decimal
+/// > type may be preferred in some cases.
+///
+/// # Examples
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let x = FiniteInterval::closed(0.0, 0.3);
+/// let y = FiniteInterval::closed(0.1 + 0.2, 1.0);
+///
+/// assert_eq!(x.try_merge(y), None);
+/// ```
+///
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let x = FiniteInterval::closed(0, 10);
+///
+/// let y = FiniteInterval::closed(11, 20);
+/// assert_eq!(x.try_merge(y).unwrap(), FiniteInterval::closed(0, 20));
+///
+/// let y = FiniteInterval::closed(20, 30);
+/// assert_eq!(x.try_merge(y), None);
+///
+/// let y = FiniteInterval::<i32>::empty();
+/// assert_eq!(x.try_merge(y).unwrap(), x);
+/// assert_eq!(y.try_merge(x).unwrap(), x);
+///
+/// let x = FiniteInterval::<i32>::empty();
+/// assert_eq!(x.try_merge(y).unwrap(), FiniteInterval::empty());
+/// ```
+pub trait TryMerge<Rhs = Self> {
+    type Output;
+
+    fn try_merge(self, rhs: Rhs) -> Option<Self::Output>;
+}
 
 impl<T: Domain> TryMerge<Self> for FiniteInterval<T> {
     type Output = Self;

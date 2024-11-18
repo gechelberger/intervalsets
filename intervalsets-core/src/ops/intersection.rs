@@ -1,5 +1,5 @@
 use super::util::commutative_op_move_impl;
-use super::{Contains, Intersection};
+use super::Contains;
 use crate::bound::ord::OrdBounded;
 use crate::bound::FiniteBound;
 use crate::bound::Side::{self, Left, Right};
@@ -8,6 +8,29 @@ use crate::numeric::Domain;
 use crate::sets::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::sets::FiniteInterval::{self, Bounded, Empty};
 use crate::sets::HalfInterval;
+
+/// The intersection of two sets.
+///
+/// ```text
+/// {x | x ∈ A ∧ x ∈ B }
+/// ```
+///
+/// # Examples
+///
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let x = FiniteInterval::closed(0, 10);
+/// let y = FiniteInterval::closed(5, 15);
+/// assert_eq!(x.intersection(y), FiniteInterval::closed(5, 10));
+///
+/// let y = FiniteInterval::closed(20, 30);
+/// assert!(x.intersection(y).is_empty());
+/// ```
+pub trait Intersection<Rhs = Self> {
+    type Output;
+    fn intersection(self, rhs: Rhs) -> Self::Output;
+}
 
 impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
     type Output = Self;
@@ -304,7 +327,7 @@ commutative_op_move_impl!(
 ///
 /// ```
 /// use intervalsets_core::prelude::*;
-/// use intervalsets_core::ops::intersection::SetSetIntersection;
+/// use intervalsets_core::ops::SetSetIntersection;
 /// let a = [
 ///     EnumInterval::closed(0, 25),
 ///     EnumInterval::closed(75, 100)

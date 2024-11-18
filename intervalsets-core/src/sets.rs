@@ -1,8 +1,20 @@
 use core::cmp::Ordering::{self, *};
+use core::fmt;
 
 use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::{FiniteBound, SetBounds, Side};
 use crate::numeric::Domain;
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct InvertedBoundsError;
+
+impl fmt::Display for InvertedBoundsError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "expected lhs <= rhs")
+    }
+}
+
+impl core::error::Error for InvertedBoundsError {}
 
 /// todo
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

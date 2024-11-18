@@ -1,5 +1,5 @@
-use intervalsets_core::ops::hull::{convex_hull_into_ord_bound_impl, convex_hull_ord_bounded_impl};
 pub use intervalsets_core::ops::ConvexHull;
+use intervalsets_core::ops::{convex_hull_into_ord_bound_impl, convex_hull_ord_bounded_impl};
 use intervalsets_core::EnumInterval;
 
 use crate::numeric::Domain;
