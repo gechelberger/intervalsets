@@ -60,7 +60,8 @@ check-msrv:
 check-no-std:
     cargo hack check --package intervalsets-core --each-feature \
         --exclude-features std,num-bigint,bigdecimal,arbitrary \
-        --target thumbv6m-none-eabi
+        --target thumbv6m-none-eabi \
+        --verbose
 
 alias t := test
 
