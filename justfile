@@ -58,7 +58,9 @@ check-msrv:
 
 # build against a no-std target
 check-no-std:
-    cargo hack check --each-feature --exclude-features std,num-bigint,bigdecimal --target thumbv6m-none-eabi
+    cargo hack check --package intervalsets-core --each-feature \
+        --exclude-features std,num-bigint,bigdecimal,arbitrary \
+        --target thumbv6m-none-eabi
 
 alias t := test
 
@@ -85,6 +87,6 @@ bench-core pattern="":
 bench-main pattern="":
     cargo criterion --bench intervalsets {{pattern}}
 
-ci: docs test check-msrv 
+ci: docs test check-msrv check-no-std
     cargo criterion --no-run
     @echo "CI checks complete"

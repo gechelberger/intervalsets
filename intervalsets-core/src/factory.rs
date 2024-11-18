@@ -98,7 +98,7 @@ impl<T: Domain> Converter<T> for Identity {
 /// The [`Factory`] trait is intended to provide a common
 /// interface for creating the full spectrum of possible
 /// intervals. [`EnumInterval`] itself is a factory using
-/// the [`Identity`] converter. Use [`IFactory`] to supply
+/// the [`Identity`] converter. Use [`EIFactory`] to supply
 /// a custom converter.
 ///
 /// Sometimes it is preferable for the underlying storage
