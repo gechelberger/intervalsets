@@ -7,7 +7,7 @@ use crate::sets::{EnumInterval, FiniteInterval};
 use crate::try_cmp::{TryMax, TryMin};
 
 /// Tries to create the smallest interval which fully contains every provided item.
-/// 
+///
 /// The set of input elements must have a valid total ordering or `None` will be returned.
 /// This is distinct from `Some(empty)` if no elements are provided.
 ///
@@ -127,8 +127,8 @@ impl<T: Domain + Clone> ConvexHull<FiniteInterval<T>> for FiniteInterval<T> {
     }
 }
 
-/// Try to create a hull from elements that can be converted into OrdBoundPair<T>.
-/// 
+/// Try to create a hull from elements that can be converted into `OrdBoundPair<T>`.
+///
 /// Returns `None` if input elements violate ordering requirements.
 pub fn convex_hull_into_ord_bound_impl<T, B, I>(iter: I) -> Option<EnumInterval<T>>
 where
@@ -163,15 +163,15 @@ where
         }
 
         let (l_candidate, r_candidate) = pair.into_raw();
-        left = left.partial_min(l_candidate)?;
-        right = right.partial_max(r_candidate)?;
+        left = left.try_min(l_candidate)?;
+        right = right.try_max(r_candidate)?;
     }
 
     Some(OrdBoundPair::new(left, right).into())
 }
 
-/// Try to create a hull from OrdBounded<T> elements.
-/// 
+/// Try to create a hull from `OrdBounded<T>` elements.
+///
 /// Returns `None` if input elements violate ordering requirements.
 pub fn convex_hull_ord_bounded_impl<'a, T, B, I>(iter: I) -> Option<EnumInterval<T>>
 where
@@ -206,8 +206,8 @@ where
         }
 
         let (l_candidate, r_candidate) = pair.into_raw();
-        left = left.partial_min(l_candidate)?;
-        right = right.partial_max(r_candidate)?;
+        left = left.try_min(l_candidate)?;
+        right = right.try_max(r_candidate)?;
     }
 
     let left = left.cloned();

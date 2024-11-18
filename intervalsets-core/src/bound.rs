@@ -1,7 +1,7 @@
-use crate::numeric::Domain;
+//! Bounds partitioning elements inside and outside a `Set`.
+//!
 
-//type Extremum<T> = Option<FiniteBound<T>>;
-//type Envelope<T> = (Extremum<T>, Extremum<T>);
+use crate::numeric::Domain;
 
 /// todo...
 pub trait SetBounds<T> {
@@ -248,9 +248,8 @@ impl<T: Domain> FiniteBound<T> {
     }
 }
 
+/// Helpers that define a total order for `Set` bounds.
 pub mod ord {
-    use core::cmp::Ordering;
-
     use super::{BoundType, FiniteBound};
 
     /// todo...
@@ -258,6 +257,13 @@ pub mod ord {
         fn ord_bound_pair(&self) -> OrdBoundPair<&T>;
     }
 
+    /// A type that defines a total order for all possible bounds.
+    ///
+    /// ```text
+    /// In relation to finite bounds:
+    /// L(None) < R(Open(x)) < R(Closed(x)) <= L(Closed(x)) < L(Open(x)) < R(None)
+    /// LeftUnbound < RightOpen(x) < Closed(x) < LeftOpen(x) < RightUnbound
+    /// ```
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[cfg_attr(
@@ -281,24 +287,6 @@ pub mod ord {
 
         pub fn right_open(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::RightOpen)
-        }
-    }
-
-    impl<T: PartialOrd> OrdBound<T> {
-        pub fn partial_min(self, rhs: Self) -> Option<Self> {
-            match self.partial_cmp(&rhs)? {
-                Ordering::Less => Some(self),
-                Ordering::Greater => Some(rhs),
-                Ordering::Equal => Some(self),
-            }
-        }
-
-        pub fn partial_max(self, rhs: Self) -> Option<Self> {
-            match self.partial_cmp(&rhs)? {
-                Ordering::Less => Some(rhs),
-                Ordering::Greater => Some(self),
-                Ordering::Equal => Some(self),
-            }
         }
     }
 
@@ -341,6 +329,9 @@ pub mod ord {
         }
     }
 
+    /// Ordered exclusivity cases for finite bounds.
+    ///
+    /// For a given finite value x, RightOpen(x) < Closed(x) < LeftOpen(x).
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[cfg_attr(
@@ -362,6 +353,9 @@ pub mod ord {
         }
     }
 
+    /// An ordered pair of bounds where left <= right.
+    ///
+    /// The empty set is represented by (-inf, -inf).
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[cfg_attr(
@@ -405,6 +399,7 @@ mod test {
     use ord::OrdBound;
 
     use super::*;
+    use crate::try_cmp::{TryMax, TryMin};
 
     #[test]
     fn test_bound_min_max() {
@@ -471,22 +466,22 @@ mod test {
         let f1 = 100.0;
 
         assert_eq!(
-            OrdBound::closed(f0).partial_min(OrdBound::closed(f1)),
+            OrdBound::closed(f0).try_min(OrdBound::closed(f1)),
             Some(OrdBound::closed(f0))
         );
 
         assert_eq!(
-            OrdBound::closed(&f0).partial_min(OrdBound::closed(&f1)),
+            OrdBound::closed(&f0).try_min(OrdBound::closed(&f1)),
             Some(OrdBound::closed(&f0))
         );
 
         assert_eq!(
-            OrdBound::LeftUnbounded.partial_max(OrdBound::closed(f1)),
+            OrdBound::LeftUnbounded.try_max(OrdBound::closed(f1)),
             Some(OrdBound::closed(f1))
         );
 
         assert_eq!(
-            OrdBound::LeftUnbounded.partial_max(OrdBound::closed(&f1)),
+            OrdBound::LeftUnbounded.try_max(OrdBound::closed(&f1)),
             Some(OrdBound::closed(&f1))
         )
     }

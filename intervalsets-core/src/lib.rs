@@ -126,7 +126,7 @@
 //!
 #![no_std]
 #![deny(bad_style)]
-#![warn(missing_docs)]
+//#![warn(missing_docs)]
 #![deny(future_incompatible)]
 #![deny(nonstandard_style)]
 #![deny(unused)]

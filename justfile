@@ -46,7 +46,11 @@ alias d := docs
 
 # build the docs
 docs:
-    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo doc --all-features --no-deps
+    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo doc \
+        --workspace \
+        --all-features \
+        --no-deps \
+        --exclude benchmarks
 
 # launch a file server for docs
 serve-docs port="8080": docs
