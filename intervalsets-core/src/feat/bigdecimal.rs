@@ -1,7 +1,6 @@
 use bigdecimal::BigDecimal;
 
 use crate::continuous_domain_impl;
-use crate::numeric::Domain;
 
 continuous_domain_impl!(BigDecimal);
 

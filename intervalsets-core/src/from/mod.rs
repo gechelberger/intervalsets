@@ -195,12 +195,3 @@ impl<T: Domain> From<OrdBoundPair<T>> for EnumInterval<T> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::factory::Factory;
-
-    #[test]
-    fn test_convert_to_finite() {}
-}

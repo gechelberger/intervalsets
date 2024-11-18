@@ -378,7 +378,9 @@ impl<T> MaybeEmpty for IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
-    //use core::hash::Hash;
+    use core::hash::{Hash, Hasher};
+
+    use siphasher::sip::SipHasher13;
 
     use super::*;
     use crate::ops::{Complement, Difference};
@@ -444,12 +446,6 @@ mod tests {
             false
         );
     }
-
-    use core::hash::{Hash, Hasher};
-
-    use siphasher::sip::SipHasher13;
-
-    use super::*;
 
     fn do_hash<T: Hash>(item: T) -> u64 {
         let key: &[u8; 16] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];

@@ -12,6 +12,9 @@ setup:
     # update rustup
     rustup self update
 
+    # install a no-std target
+    rustup target add thumbv6m-none-eabi
+
     # update the default channel
     rustup update
 
@@ -29,6 +32,9 @@ setup:
 
     # debug macros
     cargo install cargo-expand --locked
+
+    # check features
+    cargo install cargo-hack --locked
 
     # checks commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
     cargo install commitlint-rs --locked
@@ -49,6 +55,10 @@ serve-docs port="8080": docs
 # run the test suite against the msrv
 check-msrv:
     cargo +{{MSRV}} test --all-features
+
+# build against a no-std target
+check-no-std:
+    cargo hack check --each-feature --exclude-features std,num-bigint,bigdecimal --target thumbv6m-none-eabi
 
 alias t := test
 

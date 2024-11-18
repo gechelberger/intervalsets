@@ -1,14 +1,17 @@
+#[allow(unused)]
 use serde::{Deserialize, Serialize};
 
+#[allow(unused)]
 use crate::bound::ord::{OrdBound, OrdBoundFinite, OrdBoundPair};
+#[allow(unused)]
 use crate::bound::{BoundType, FiniteBound, Side};
+#[allow(unused)]
 use crate::sets::EnumInterval;
+#[allow(unused)]
 use crate::Factory;
 
 #[cfg(test)]
 mod brief {
-    extern crate std;
-
     use super::*;
 
     fn round_trip<X>(item: X) -> bool
@@ -18,14 +21,6 @@ mod brief {
     {
         let mut buffer = [0u8; 128];
         let encoded = serde_brief::to_slice(&item, &mut buffer).unwrap();
-
-        std::println!(
-            "brief: {} vs {}: {:?}",
-            encoded.len(),
-            std::mem::size_of::<X>(),
-            item
-        );
-
         let decoded = serde_brief::from_slice(&encoded).unwrap();
         item == decoded
     }
@@ -63,21 +58,12 @@ mod brief {
 
 #[cfg(test)]
 mod json {
-    extern crate std;
     use super::*;
 
     fn round_trip<X: PartialEq + Serialize + for<'a> Deserialize<'a> + core::fmt::Debug>(
         item: X,
     ) -> bool {
         let encoded = serde_json::to_string(&item).unwrap();
-
-        std::println!(
-            "json: {} vs {}: {:?}",
-            encoded.len(),
-            std::mem::size_of::<X>(),
-            item
-        );
-
         let decoded = serde_json::from_str(&encoded).unwrap();
         item == decoded
     }
@@ -115,21 +101,12 @@ mod json {
 
 #[cfg(test)]
 mod rmp {
-    extern crate std;
     use super::*;
 
     fn round_trip<X: PartialEq + Serialize + for<'a> Deserialize<'a> + core::fmt::Debug>(
         item: X,
     ) -> bool {
         let encoded = rmp_serde::encode::to_vec(&item).unwrap();
-
-        std::println!(
-            "rmp: {} vs {}: {:?}",
-            encoded.len(),
-            std::mem::size_of::<X>(),
-            item
-        );
-
         let decoded = rmp_serde::decode::from_slice(&encoded).unwrap();
         item == decoded
     }

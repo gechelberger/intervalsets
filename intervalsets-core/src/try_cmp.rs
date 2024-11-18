@@ -10,11 +10,13 @@ use core::cmp::Ordering::*;
 
 /// Return the min item *iff* self and rhs are ordered.
 pub trait TryMin: Sized {
+    #[allow(missing_docs)]
     fn try_min(self, rhs: Self) -> Option<Self>;
 }
 
 /// Return the max item *iff* self and rhs are ordered.
 pub trait TryMax: Sized {
+    #[allow(missing_docs)]
     fn try_max(self, rhs: Self) -> Option<Self>;
 }
 

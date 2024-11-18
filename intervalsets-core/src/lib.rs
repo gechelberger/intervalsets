@@ -125,11 +125,11 @@
 //! * [Adapt unsupported data types with factory converters](factory::Converter)
 //!
 #![no_std]
-//#![deny(bad_style)]
+#![deny(bad_style)]
 //#![deny(missing_docs)]
-//#![deny(future_incompatible)]
-//#![deny(nonstandard_style)]
-//#![deny(unused)]
+#![deny(future_incompatible)]
+#![deny(nonstandard_style)]
+#![deny(unused)]
 
 pub mod bound;
 pub mod numeric;
@@ -154,6 +154,7 @@ mod from;
 mod empty;
 pub use empty::MaybeEmpty;
 
+/// commonly used imports
 #[allow(unused_imports)]
 pub mod prelude {
     #[cfg(feature = "rkyv")]

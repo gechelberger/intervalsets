@@ -2,7 +2,7 @@
 mod tests {
     use rkyv::rancor::Error;
 
-    use crate::bound::ord::{ArchivedOrdBoundPair, OrdBoundPair};
+    use crate::bound::ord::OrdBoundPair;
     use crate::prelude::*;
 
     fn check_interval_round_trip(item: EnumInterval<f32>) {

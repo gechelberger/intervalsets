@@ -3,8 +3,10 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Test a `Set` for emptiness.
 pub trait MaybeEmpty {
+    /// Is self the empty set
     fn is_empty(&self) -> bool;
 
+    /// Does this set contain at least one element
     fn is_inhabited(&self) -> bool {
         !self.is_empty()
     }

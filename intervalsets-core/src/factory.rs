@@ -1,4 +1,10 @@
-//use ordered_float::{NotNan, OrderedFloat};
+//! Factories for intervals.
+//!
+//! [`Factory`] types are not intended to be constructed. Rather, they provide
+//! associated functions to build intervals of an associated type and may
+//! coerce the input types for convenience using a generic [`Converter`].
+//!
+//!
 
 use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
@@ -30,7 +36,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// ```
 /// use intervalsets_core::prelude::*;
-/// use intervalsets_core::factory::{IFactory, Converter};
+/// use intervalsets_core::factory::{EIFactory, Converter};
 ///
 /// // Local type converter
 ///
@@ -49,7 +55,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///     }
 /// }
 ///
-/// type Fct = IFactory<Timestamp, u64>;
+/// type Fct = EIFactory<Timestamp, u64>;
 /// let x = Fct::closed(a, b);
 ///
 /// // Foreign types
@@ -64,21 +70,24 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///     }
 /// }
 ///
-/// type Fct2 = IFactory<char, CharCvt>;
+/// type Fct2 = EIFactory<char, CharCvt>;
 /// let x = Fct2::closed('a', 'z');
-/// assert!(x.contains(&CharCvt::convert('c')));
-/// assert!(!x.contains(&CharCvt::convert('C')));
-/// assert!(!x.contains(&CharCvt::convert('0')));
+/// assert_eq!(x.contains(&CharCvt::convert('c')), true);
+/// assert_eq!(x.contains(&CharCvt::convert('C')), false);
+/// assert_eq!(x.contains(&CharCvt::convert('0')), false);
 /// ```
 pub trait Converter<From> {
-    type To;
+    /// The underlying storage type.
+    type To: Domain;
+
+    #[allow(missing_docs)]
     fn convert(value: From) -> Self::To;
 }
 
 /// [`Identity`] is the default [`Converter`] implementation and is a NOOP.
 pub struct Identity;
 
-impl<T> Converter<T> for Identity {
+impl<T: Domain> Converter<T> for Identity {
     type To = T;
 
     fn convert(value: T) -> Self::To {
@@ -129,6 +138,7 @@ where
     C: Converter<T>,
     C::To: Domain,
 {
+    /// The type of items constructed by this factory.
     type Output;
 
     /// Returns a new Empty Set
@@ -330,9 +340,12 @@ where
     }
 }
 
-pub struct IFactory<T, C = Identity>(core::marker::PhantomData<(T, C)>);
+/// A factory type for EnumIntervals.
+///
+/// Use this factory instead of EnumInterval if a custom [`Converter`] is needed.
+pub struct EIFactory<T, C = Identity>(core::marker::PhantomData<(T, C)>);
 
-impl<T, C> Factory<T, C> for IFactory<T, C>
+impl<T, C> Factory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
     C::To: Domain,
@@ -382,7 +395,7 @@ mod tests {
 
     #[test]
     fn test_interval_factory() {
-        let a = IFactory::<u32, Identity>::closed(0, 10);
+        let a = EIFactory::<u32, Identity>::closed(0, 10);
         let b = EnumInterval::<u32>::closed(0, 10);
         assert_eq!(a, b);
     }

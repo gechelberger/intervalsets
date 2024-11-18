@@ -29,6 +29,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(x.is_adjacent_to(&y), true);
 /// ```
 pub trait Adjacent<Rhs = Self> {
+    #[allow(missing_docs)]
     fn is_adjacent_to(&self, rhs: Rhs) -> bool;
 }
 
