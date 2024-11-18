@@ -21,13 +21,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@nightly
+    - name: Install nightly toolchain with nostd target
+      uses: dtolnay/rust-toolchain@nightly
       with:
         targets: thumbv6m-none-eabi
-    - uses: bruxisma/setup-cargo-hack@v1.0.2
-    - uses: extractions/setup-just@v2
+    - name: Install cargo hack
+      uses: baptiste0928/cargo-install@v3
       with:
-        just-version: '1.36.0'
+        crate: cargo-hack
+        version: '^0.6'
+    - name: install just
+      uses: baptiste0928/cargo-install@v3
+      with:
+        crate: just
+        version: '^1'
     - run: just check-no-std
 
   msrv-check:
