@@ -78,8 +78,10 @@ where
 /// assert_eq!(x.try_merge(y).unwrap(), FiniteInterval::empty());
 /// ```
 pub trait TryMerge<Rhs = Self> {
+    /// The type of interval to return when mergeable.
     type Output;
 
+    /// Tries to merge two intervals into a single interval.
     fn try_merge(self, rhs: Rhs) -> Option<Self::Output>;
 }
 
@@ -381,6 +383,9 @@ where
     T: Domain,
     I: Iterator<Item = EnumInterval<T>>,
 {
+    /// Creates a new MergeSorted Iterator
+    /// 
+    /// If the input is not sorted, behavior is undefined.
     pub fn new<U>(sorted: U) -> Self
     where
         U: IntoIterator<Item = EnumInterval<T>, IntoIter = I>,

@@ -18,8 +18,10 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(right, FiniteInterval::closed(6, 10));
 /// ```
 pub trait Split<T> {
+    /// The type of `Set` to create when split.
     type Output;
 
+    /// Creates two disjoint subsets with elements partitioned by `at`.
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output);
 }
 

@@ -259,7 +259,7 @@ impl<T: Clone + Domain> IntervalSet<T> {
     /// assert_eq!(set.convex_hull(), Interval::closed(0, 110));
     ///
     /// // ConvexHull trait equivalent
-    /// assert_eq!(Interval::convex_hull([set]), Interval::closed(0, 110));
+    /// assert_eq!(Interval::convex_hull([set]).unwrap(), Interval::closed(0, 110));
     /// ```
     ///
     pub fn convex_hull(&self) -> Interval<T> {

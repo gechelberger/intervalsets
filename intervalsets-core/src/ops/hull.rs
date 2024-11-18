@@ -6,18 +6,21 @@ use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval};
 use crate::try_cmp::{TryMax, TryMin};
 
-/// Create the smallest interval which fully contains every provided item.
+/// Tries to create the smallest interval which fully contains every provided item.
+/// 
+/// The set of input elements must have a valid total ordering or `None` will be returned.
+/// This is distinct from `Some(empty)` if no elements are provided.
 ///
 /// # Example
 /// ```
 /// use intervalsets_core::prelude::*;
 ///
 /// // from points on the number line
-/// let hull = FiniteInterval::convex_hull([5, 3, -120, 44, 100, -100]);
+/// let hull = FiniteInterval::convex_hull([5, 3, -120, 44, 100, -100]).unwrap();
 /// assert_eq!(hull, FiniteInterval::closed(-120, 100));
 ///
 /// let items = vec![5, 3, -120, 44, 100, -100];
-/// let hull = FiniteInterval::convex_hull(&items);
+/// let hull = FiniteInterval::convex_hull(&items).unwrap();
 /// assert_eq!(hull, FiniteInterval::closed(-120, 100));
 ///
 /// // from intervals
@@ -27,11 +30,12 @@ use crate::try_cmp::{TryMax, TryMin};
 ///     EnumInterval::closed(1000, 2000),
 ///     EnumInterval::unbound_open(0),
 /// ];
-/// let hull = EnumInterval::convex_hull(intervals);
+/// let hull = EnumInterval::convex_hull(intervals).unwrap();
 /// assert_eq!(hull, EnumInterval::unbound_closed(2000));
 /// ```
-pub trait ConvexHull<T> {
-    fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self;
+pub trait ConvexHull<T>: Sized {
+    /// Creates a convex hull of this `Set`
+    fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Option<Self>;
 }
 
 macro_rules! convex_hull_t_impl {
@@ -39,21 +43,21 @@ macro_rules! convex_hull_t_impl {
         $(
             impl<T: Domain + Clone + TryMin + TryMax> ConvexHull<T> for $t<T> {
 
-                fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Self {
+                fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Option<Self> {
                     let mut iter = iter.into_iter();
 
                     let (mut left, mut right) = match iter.next() {
-                        None => return Self::empty(),
+                        None => return Some(Self::empty()),
                         Some(item) => (item.clone(), item),
                     };
 
                     // todo: un-unwrap()
                     for candidate in iter {
-                        left = T::try_min(left, candidate.clone()).unwrap();
-                        right = T::try_max(right, candidate).unwrap();
+                        left = T::try_min(left, candidate.clone())?;
+                        right = T::try_max(right, candidate)?;
                     }
 
-                    Self::closed(left, right)
+                    Some(Self::closed(left, right))
                 }
             }
         )+
@@ -66,19 +70,19 @@ macro_rules! convex_hull_ref_t_impl {
     ($($t:ident), +) => {
         $(
             impl<'a, T: Domain + Clone + TryMin + TryMax> ConvexHull<&'a T> for $t<T> {
-                fn convex_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Self {
+                fn convex_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Option<Self> {
                     let mut iter = iter.into_iter();
                     let (mut left, mut right) = match iter.next() {
-                        None => return Self::empty(),
+                        None => return Some(Self::empty()),
                         Some(item) => (item.clone(), item.clone())
                     };
 
                     for candidate in iter {
-                        left = T::try_min(left, candidate.clone()).unwrap();
-                        right = T::try_max(right, candidate.clone()).unwrap();
+                        left = T::try_min(left, candidate.clone())?;
+                        right = T::try_max(right, candidate.clone())?;
                     }
 
-                    Self::closed(left, right)
+                    Some(Self::closed(left, right))
                 }
             }
         )+
@@ -88,12 +92,12 @@ macro_rules! convex_hull_ref_t_impl {
 convex_hull_ref_t_impl!(FiniteInterval, EnumInterval);
 
 impl<T: Domain + Clone> ConvexHull<FiniteInterval<T>> for FiniteInterval<T> {
-    fn convex_hull<U: IntoIterator<Item = FiniteInterval<T>>>(iter: U) -> Self {
+    fn convex_hull<U: IntoIterator<Item = FiniteInterval<T>>>(iter: U) -> Option<Self> {
         let mut iter = iter.into_iter();
 
         let (mut left, mut right) = loop {
             match iter.next() {
-                None => return Self::empty(),
+                None => return Some(Self::empty()),
                 Some(finite) => {
                     if finite.is_empty() {
                         continue;
@@ -112,15 +116,20 @@ impl<T: Domain + Clone> ConvexHull<FiniteInterval<T>> for FiniteInterval<T> {
             let (c_left, c_right) = candidate
                 .into_raw()
                 .expect("Hull subset should not be empty");
+
+            // todo: partial order checks...
             left = FiniteBound::take_min(Side::Left, left, c_left);
             right = FiniteBound::take_max(Side::Right, right, c_right);
         }
 
         // SAFETY: hull should satisfy invariants (left <= right)
-        unsafe { Self::new_unchecked(left, right) }
+        unsafe { Some(Self::new_unchecked(left, right)) }
     }
 }
 
+/// Try to create a hull from elements that can be converted into OrdBoundPair<T>.
+/// 
+/// Returns `None` if input elements violate ordering requirements.
 pub fn convex_hull_into_ord_bound_impl<T, B, I>(iter: I) -> Option<EnumInterval<T>>
 where
     T: Domain,
@@ -161,6 +170,9 @@ where
     Some(OrdBoundPair::new(left, right).into())
 }
 
+/// Try to create a hull from OrdBounded<T> elements.
+/// 
+/// Returns `None` if input elements violate ordering requirements.
 pub fn convex_hull_ord_bounded_impl<'a, T, B, I>(iter: I) -> Option<EnumInterval<T>>
 where
     T: Domain + Clone,
@@ -204,13 +216,13 @@ where
 }
 
 impl<T: Domain + Ord> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
-    fn convex_hull<U: IntoIterator<Item = FiniteInterval<T>>>(iter: U) -> Self {
-        convex_hull_into_ord_bound_impl(iter).unwrap()
+    fn convex_hull<U: IntoIterator<Item = FiniteInterval<T>>>(iter: U) -> Option<Self> {
+        convex_hull_into_ord_bound_impl(iter)
     }
 }
 
 impl<T: Domain + Ord> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
-    fn convex_hull<U: IntoIterator<Item = EnumInterval<T>>>(iter: U) -> Self {
-        convex_hull_into_ord_bound_impl(iter).unwrap()
+    fn convex_hull<U: IntoIterator<Item = EnumInterval<T>>>(iter: U) -> Option<Self> {
+        convex_hull_into_ord_bound_impl(iter)
     }
 }

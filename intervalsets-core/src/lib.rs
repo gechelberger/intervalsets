@@ -75,7 +75,7 @@
 //! let rebound_right = a.with_right_closed(3);
 //! assert_eq!(rebound_right, EnumInterval::closed(0, 3));
 //!
-//! let hull = EnumInterval::convex_hull([10, 8, 0, 6, 4, 2]);
+//! let hull = EnumInterval::convex_hull([10, 8, 0, 6, 4, 2]).unwrap();
 //! assert_eq!(hull, a);
 //!
 //! let empty = a.intersection(EnumInterval::closed(20, 30));
@@ -126,7 +126,7 @@
 //!
 #![no_std]
 #![deny(bad_style)]
-//#![deny(missing_docs)]
+#![warn(missing_docs)]
 #![deny(future_incompatible)]
 #![deny(nonstandard_style)]
 #![deny(unused)]

@@ -13,35 +13,46 @@ use crate::Factory;
 /// assert_eq!(x.with_left_closed(5), [5, 10].into());
 /// ```
 pub trait Rebound<T>: Sized {
+    /// The concrete type of `Set`` to create when replacing bounds.
     type Output;
+
+    /// Creates a `Set`, replacing the left/lower bound.
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output;
+
+    /// Creates a `Set`, replacing the right/upper bound.
     fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output;
 
+    /// Creates a `Set` with a new finite left/lower bound.
     #[inline]
     fn with_left_finite(self, bound: FiniteBound<T>) -> Self::Output {
         self.with_left(Some(bound))
     }
 
+    /// Creates a `Set` with a new finite right/upper bound.
     #[inline]
     fn with_right_finite(self, bound: FiniteBound<T>) -> Self::Output {
         self.with_right(Some(bound))
     }
 
+    /// Creates a `Set` with a new closed left/lower bound.
     #[inline]
     fn with_left_closed(self, bound: T) -> Self::Output {
         self.with_left_finite(FiniteBound::closed(bound))
     }
 
+    /// Creates a `Set` with a new closed right/upper bound.
     #[inline]
     fn with_right_closed(self, bound: T) -> Self::Output {
         self.with_right_finite(FiniteBound::closed(bound))
     }
 
+    /// Creates a `Set` with a new open left/lower bound.
     #[inline]
     fn with_left_open(self, bound: T) -> Self::Output {
         self.with_left_finite(FiniteBound::open(bound))
     }
 
+    /// Creates a `Set` with a new open right/upper bound.
     #[inline]
     fn with_right_open(self, bound: T) -> Self::Output {
         self.with_right_finite(FiniteBound::open(bound))
