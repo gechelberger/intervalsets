@@ -1,9 +1,7 @@
 use core::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
-use num_traits::Zero;
-
 use crate::bound::FiniteBound;
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T: Domain> From<Range<T>> for FiniteInterval<T> {
