@@ -8,7 +8,7 @@ use crate::bound::{BoundType, FiniteBound, Side};
 #[allow(unused)]
 use crate::sets::EnumInterval;
 #[allow(unused)]
-use crate::Factory;
+use crate::factory::{UnboundedFactory, FiniteFactory, HalfBoundedFactory, EmptyFactory};
 
 #[cfg(test)]
 mod brief {

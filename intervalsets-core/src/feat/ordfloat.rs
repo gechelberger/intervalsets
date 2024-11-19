@@ -33,8 +33,8 @@ impl<T: FloatCore + Domain> Converter<T> for OrderedFloat<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::EIFactory;
-    use crate::{EnumInterval, Factory};
+    use crate::factory::{EIFactory, FiniteFactory};
+    use crate::EnumInterval;
 
     #[test]
     fn test_not_nan_converter() {

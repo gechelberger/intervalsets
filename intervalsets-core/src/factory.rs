@@ -7,8 +7,16 @@
 //!
 
 use crate::bound::{FiniteBound, Side};
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
+/// Can be used instead of the prelude to pull in all factory traits.
+pub mod traits {
+    pub use super::EmptyFactory;
+    pub use super::FiniteFactory;
+    pub use super::HalfBoundedFactory;
+    pub use super::UnboundedFactory;
+}
 
 /// Convert an arbitrary type to one supported by [`Factory`].
 ///
@@ -82,7 +90,7 @@ pub trait Converter<From> {
     /// The underlying storage type.
     type To: Domain;
 
-    #[allow(missing_docs)]
+    /// Creates a new value of the associated type.
     fn convert(value: From) -> Self::To;
 }
 
@@ -97,54 +105,21 @@ impl<T: Domain> Converter<T> for Identity {
     }
 }
 
-/// Factory functions for an associated type.
-///
-/// The [`Factory`] trait is intended to provide a common
-/// interface for creating the full spectrum of possible
-/// intervals. [`EnumInterval`] itself is a factory using
-/// the [`Identity`] converter. Use [`EIFactory`] to supply
-/// a custom converter.
-///
-/// Sometimes it is preferable for the underlying storage
-/// to be a wrapper or NewType. [`Converter`] provides a mechanism
-/// to do so with less boiler plate.
-///
-/// # Examples
-/// ```
-/// use intervalsets_core::prelude::*;
-/// type Fct = EnumInterval<u32>;
-/// let x = Fct::closed(0, 10);
-/// let y = Fct::closed(5, 15);
-/// assert_eq!(x.intersection(y), Fct::closed(5, 10))
-/// ```
-///
-/// This example uses the optional [`ordered-float`] feature.
-///
-/// ```no_compile
-/// use intervalsets_core::prelude::*;
-/// use intervalsets_core::factory::IFactory;
-/// use ordered_float::NotNan;
-///
-/// // explicit
-/// let x = EnumInterval::open(
-///     NotNan::<f32>::new(0.0).unwrap(),
-///     NotNan::<f32>::new(10.0).unwrap()
-/// );
-///
-/// // factory with converter
-/// type Fct = IFactory<f32, NotNan<f32>>;
-/// let y = Fct::open(0.0, 10.0);
-///
-/// assert_eq!(x, y);
-/// ```
-pub trait Factory<T, C = Identity>
+/// todo
+pub trait ConvertingFactory<T, C = Identity>
 where
     C: Converter<T>,
     C::To: Domain,
 {
-    /// The type of items constructed by this factory.
     type Output;
+}
 
+/// todo
+pub trait EmptyFactory<T, C>: ConvertingFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
     /// Returns a new Empty Set
     ///
     /// {} = {x | x not in T }
@@ -158,12 +133,23 @@ where
     /// assert_eq!(x.contains(&10), false);
     /// ```
     fn empty() -> Self::Output;
+}
 
-    /// Returns a new finite interval.
+pub trait FiniteFactory<T, C>: ConvertingFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    /// Creates a new finite interval of the factory's associated type.
     ///
     /// If there are no elements that satisfy both left and right bounds
     /// then an `Empty` interval is returned. Otherwise the result will
     /// be fully bounded.
+    ///
+    /// # Panics
+    ///
+    /// lhs and rhs must form an ordered pair such that lhs <= rhs. If they are
+    /// not comparable then this routine should panic.
     ///
     /// # Example
     ///
@@ -180,48 +166,18 @@ where
     /// let x = EnumInterval::open(10, 10);
     /// assert_eq!(x, EnumInterval::empty());
     /// ```
-    fn finite(left: FiniteBound<C::To>, right: FiniteBound<C::To>) -> Self::Output;
-
-    /// Returns a new half bounded interval.
     ///
-    /// # Example
-    /// ```
+    /// ```should_panic
     /// use intervalsets_core::prelude::*;
     ///
-    /// let x = EnumInterval::unbound_open(0);
-    /// let y = EnumInterval::half_bounded(Side::Left, x.right().unwrap().clone().flip());
-    /// let z = x.try_merge(y).unwrap();
-    /// assert_eq!(z, EnumInterval::Unbounded);
+    /// let x = EnumInterval::closed(f32::NAN, 0.0);
     /// ```
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;
+    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output;
 
-    /// todo: ...
-    fn right_bounded(bound: FiniteBound<C::To>) -> Self::Output {
-        Self::half_bounded(Side::Right, bound)
-    }
-
-    /// todo: ...
-    fn left_bounded(bound: FiniteBound<C::To>) -> Self::Output {
-        Self::half_bounded(Side::Left, bound)
-    }
-
-    /// Returns a new unbounded interval.
+    /// Creates a new finite interval if invariants are satifsied, otherwise `None`.
     ///
-    /// An unbounded interval contains every element in T,
-    /// as well as every set of T except the `Empty` set.
-    ///
-    /// (<-, ->) = { x in T }
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use intervalsets_core::prelude::*;
-    ///
-    /// let x = EnumInterval::<f32>::unbounded();
-    /// assert_eq!(x.contains(&10.0), true);
-    /// assert_eq!(x.contains(&EnumInterval::empty()), false);
-    /// ```
-    fn unbounded() -> Self::Output;
+    /// todo...
+    fn strict_finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Option<Self::Output>;
 
     /// Returns a new closed finite interval or Empty
     ///
@@ -242,6 +198,13 @@ where
         Self::finite(
             FiniteBound::closed(C::convert(left)),
             FiniteBound::closed(C::convert(right)),
+        )
+    }
+
+    fn strict_closed(lhs: T, rhs: T) -> Option<Self::Output> {
+        Self::strict_finite(
+            FiniteBound::closed(C::convert(lhs)),
+            FiniteBound::closed(C::convert(rhs)),
         )
     }
 
@@ -292,7 +255,14 @@ where
         )
     }
 
-    /// Returns a new left open finite interval or Empty
+    fn strict_open(lhs: T, rhs: T) -> Option<Self::Output> {
+        Self::strict_finite(
+            FiniteBound::open(C::convert(lhs)),
+            FiniteBound::open(C::convert(rhs)),
+        )
+    }
+
+    /// Creates a left open finite interval or Empty
     ///
     ///  (a, b] = { x in T | a < x <= b }
     fn open_closed(left: T, right: T) -> Self::Output {
@@ -302,7 +272,14 @@ where
         )
     }
 
-    /// Returns a new right open finite interval or Empty
+    fn strict_open_closed(lhs: T, rhs: T) -> Option<Self::Output> {
+        Self::strict_finite(
+            FiniteBound::open(C::convert(lhs)),
+            FiniteBound::closed(C::convert(rhs)),
+        )
+    }
+
+    /// Creates a right open finite interval or Empty
     ///
     ///  [a, b) = { x in T | a <= x < b }
     fn closed_open(left: T, right: T) -> Self::Output {
@@ -312,11 +289,63 @@ where
         )
     }
 
+    fn strict_closed_open(lhs: T, rhs: T) -> Option<Self::Output> {
+        Self::strict_finite(
+            FiniteBound::closed(C::convert(lhs)),
+            FiniteBound::open(C::convert(rhs))
+        )
+    }
+}
+
+pub trait HalfBoundedFactory<T, C>: ConvertingFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain + Zero,
+{
+    /// Returns a new half bounded interval.
+    ///
+    /// # Example
+    /// ```
+    /// use intervalsets_core::prelude::*;
+    ///
+    /// let x = EnumInterval::unbound_open(0);
+    /// let y = EnumInterval::half_bounded(Side::Left, x.right().unwrap().clone().flip());
+    /// let z = x.try_merge(y).unwrap();
+    /// assert_eq!(z, EnumInterval::Unbounded);
+    /// ```
+    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;
+
+    /// Creates a new half bounded interval if invariants are satisfied else `None`.
+    ///
+    /// todo...
+    fn strict_half_bounded(side: Side, bound: FiniteBound<C::To>) -> Option<Self::Output>;
+
+    fn right_bounded(bound: FiniteBound<C::To>) -> Self::Output {
+        Self::half_bounded(Side::Right, bound)
+    }
+
+    fn left_bounded(bound: FiniteBound<C::To>) -> Self::Output {
+        Self::half_bounded(Side::Left, bound)
+    }
+
+    fn strict_left_bounded(bound: FiniteBound<C::To>) -> Option<Self::Output> {
+        Self::strict_half_bounded(Side::Left, bound)
+    }
+
+    fn strict_right_bounded(bound: FiniteBound<C::To>) -> Option<Self::Output>
+    {
+        Self::strict_half_bounded(Side::Right, bound)
+    }
+
     /// Returns a new open, right-unbound interval
     ///
     ///  (a, ->) = { x in T | a < x }
     fn open_unbound(left: T) -> Self::Output {
-        Self::half_bounded(Side::Left, FiniteBound::open(C::convert(left)))
+        Self::left_bounded(FiniteBound::open(C::convert(left)))
+    }
+
+    fn strict_open_unbound(lhs: T) -> Option<Self::Output> {
+        Self::strict_left_bounded(FiniteBound::open(C::convert(lhs)))
     }
 
     /// Returns a new closed, right-unbound interval
@@ -326,11 +355,19 @@ where
         Self::half_bounded(Side::Left, FiniteBound::closed(C::convert(left)))
     }
 
+    fn strict_closed_unbound(lhs: T) -> Option<Self::Output> {
+        Self::strict_left_bounded(FiniteBound::closed(C::convert(lhs)))
+    }
+
     /// Returns a new open, left-unbound interval
     ///
     /// (a, ->) = { x in T | a < x }
     fn unbound_open(right: T) -> Self::Output {
         Self::half_bounded(Side::Right, FiniteBound::open(C::convert(right)))
+    }
+
+    fn strict_unbound_open(rhs: T) -> Option<Self::Output> {
+        Self::strict_right_bounded(FiniteBound::open(C::convert(rhs)))
     }
 
     /// Returns a new closed, left-unbound interval
@@ -339,28 +376,143 @@ where
     fn unbound_closed(right: T) -> Self::Output {
         Self::half_bounded(Side::Right, FiniteBound::closed(C::convert(right)))
     }
+
+    fn strict_unbound_closed(rhs: T) -> Option<Self::Output> {
+        Self::strict_right_bounded(FiniteBound::closed(C::convert(rhs)))
+    }
 }
 
-impl<T> Factory<T, Identity> for FiniteInterval<T>
+/// Factory functions for an associated type.
+///
+/// The [`Factory`] trait is intended to provide a common
+/// interface for creating the full spectrum of possible
+/// intervals. [`EnumInterval`] itself is a factory using
+/// the [`Identity`] converter. Use [`EIFactory`] to supply
+/// a custom converter.
+///
+/// Sometimes it is preferable for the underlying storage
+/// to be a wrapper or NewType. [`Converter`] provides a mechanism
+/// to do so with less boiler plate.
+///
+/// # Examples
+/// ```
+/// use intervalsets_core::prelude::*;
+/// type Fct = EnumInterval<u32>;
+/// let x = Fct::closed(0, 10);
+/// let y = Fct::closed(5, 15);
+/// assert_eq!(x.intersection(y), Fct::closed(5, 10))
+/// ```
+///
+/// This example uses the optional [`ordered-float`] feature.
+///
+/// ```no_compile
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::factory::IFactory;
+/// use ordered_float::NotNan;
+///
+/// // explicit
+/// let x = EnumInterval::open(
+///     NotNan::<f32>::new(0.0).unwrap(),
+///     NotNan::<f32>::new(10.0).unwrap()
+/// );
+///
+/// // factory with converter
+/// type Fct = IFactory<f32, NotNan<f32>>;
+/// let y = Fct::open(0.0, 10.0);
+///
+/// assert_eq!(x, y);
+/// ```
+pub trait UnboundedFactory<T, C = Identity>: ConvertingFactory<T, C>
 where
-    T: Domain,
+    C: Converter<T>,
+    C::To: Domain,
 {
-    type Output = Self;
+    /// Returns a new unbounded interval.
+    ///
+    /// An unbounded interval contains every element in T,
+    /// as well as every set of T except the `Empty` set.
+    ///
+    /// (<-, ->) = { x in T }
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets_core::prelude::*;
+    ///
+    /// let x = EnumInterval::<f32>::unbounded();
+    /// assert_eq!(x.contains(&10.0), true);
+    /// assert_eq!(x.contains(&EnumInterval::empty()), false);
+    /// ```
+    fn unbounded() -> Self::Output;
+}
 
+impl<T: Domain> ConvertingFactory<T, Identity> for FiniteInterval<T> {
+    type Output = Self;
+}
+
+impl<T: Domain> EmptyFactory<T, Identity> for FiniteInterval<T> {
     fn empty() -> Self::Output {
         Self::empty()
     }
+}
 
-    fn finite(left: FiniteBound<T>, right: FiniteBound<T>) -> Self::Output {
-        Self::new(left, right)
+impl<T: Domain> FiniteFactory<T, Identity> for FiniteInterval<T> {
+    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
+        Self::new(lhs, rhs)
     }
 
-    fn half_bounded(_: Side, _: FiniteBound<T>) -> Self::Output {
-        panic!("todo")
+    fn strict_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self::Output> {
+        Self::new_strict(lhs, rhs)
+    }
+}
+
+impl<T: Domain> ConvertingFactory<T, Identity> for HalfInterval<T> {
+    type Output = Self;
+}
+
+impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
+    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
+        Self::new(side, bound)
     }
 
+    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Option<Self::Output> {
+        Self::new_strict(side, bound)
+    }
+}
+
+impl<T: Domain> ConvertingFactory<T, Identity> for EnumInterval<T> {
+    type Output = Self;
+}
+
+impl<T: Domain> EmptyFactory<T, Identity> for EnumInterval<T> {
+    fn empty() -> Self::Output {
+        Self::empty()
+    }
+}
+
+impl<T: Domain> FiniteFactory<T, Identity> for EnumInterval<T> {
+    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
+        FiniteInterval::finite(lhs, rhs).into()
+    }
+
+    fn strict_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self::Output> {
+        FiniteInterval::strict_finite(lhs, rhs).map(Self::Output::from)
+    }
+}
+
+impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
+    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
+        HalfInterval::new(side, bound).into()
+    }
+
+    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Option<Self::Output> {
+        HalfInterval::new_strict(side, bound).map(Self::Output::from)
+    }
+}
+
+impl<T: Domain> UnboundedFactory<T, Identity> for EnumInterval<T> {
     fn unbounded() -> Self::Output {
-        panic!("todo")
+        EnumInterval::Unbounded
     }
 }
 
@@ -369,45 +521,57 @@ where
 /// Use this factory instead of EnumInterval if a custom [`Converter`] is needed.
 pub struct EIFactory<T, C = Identity>(core::marker::PhantomData<(T, C)>);
 
-impl<T, C> Factory<T, C> for EIFactory<T, C>
+impl<T, C> ConvertingFactory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
     C::To: Domain,
 {
     type Output = EnumInterval<C::To>;
+}
 
+impl<T, C> EmptyFactory<T, C> for EIFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
     fn empty() -> Self::Output {
-        FiniteInterval::Empty.into()
+        EnumInterval::empty()
+    }
+}
+
+impl<T, C> FiniteFactory<T, C> for EIFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
+        FiniteInterval::new(lhs, rhs).into()
     }
 
-    fn finite(left: FiniteBound<C::To>, right: FiniteBound<C::To>) -> Self::Output {
-        FiniteInterval::new(left, right).into()
+    fn strict_finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Option<Self::Output> {
+        FiniteInterval::new_strict(lhs, rhs).map(EnumInterval::from)
     }
+}
 
+impl<T, C> HalfBoundedFactory<T, C> for EIFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain + Zero,
+{
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
         HalfInterval::new(side, bound).into()
     }
 
-    fn unbounded() -> Self::Output {
-        EnumInterval::Unbounded
+    fn strict_half_bounded(side: Side, bound: FiniteBound<C::To>) -> Option<Self::Output> {
+        HalfInterval::new_strict(side, bound).map(EnumInterval::from)
     }
 }
 
-impl<T: Domain> Factory<T, Identity> for EnumInterval<T> {
-    type Output = Self;
-
-    fn empty() -> Self::Output {
-        FiniteInterval::Empty.into()
-    }
-
-    fn finite(left: FiniteBound<T>, right: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::new(left, right).into()
-    }
-
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        HalfInterval::new(side, bound).into()
-    }
-
+impl<T, C> UnboundedFactory<T, C> for EIFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
     fn unbounded() -> Self::Output {
         EnumInterval::Unbounded
     }

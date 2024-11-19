@@ -1,7 +1,9 @@
+use num_traits::Zero;
+
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, Side};
 use crate::empty::MaybeEmpty;
-use crate::factory::Factory;
+use crate::factory::FiniteFactory;
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval};
 use crate::try_cmp::{TryMax, TryMin};
@@ -132,7 +134,7 @@ impl<T: Domain + Clone> ConvexHull<FiniteInterval<T>> for FiniteInterval<T> {
 /// Returns `None` if input elements violate ordering requirements.
 pub fn convex_hull_into_ord_bound_impl<T, B, I>(iter: I) -> Option<EnumInterval<T>>
 where
-    T: Domain,
+    T: Domain + Zero,
     B: Into<OrdBoundPair<T>>,
     I: IntoIterator<Item = B>,
 {
@@ -175,7 +177,7 @@ where
 /// Returns `None` if input elements violate ordering requirements.
 pub fn convex_hull_ord_bounded_impl<'a, T, B, I>(iter: I) -> Option<EnumInterval<T>>
 where
-    T: Domain + Clone,
+    T: Domain + Clone + Zero,
     B: 'a + OrdBounded<T>,
     I: IntoIterator<Item = &'a B>,
 {
@@ -215,13 +217,13 @@ where
     Some(OrdBoundPair::new(left, right).into())
 }
 
-impl<T: Domain + Ord> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
+impl<T: Domain + Ord + Zero> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
     fn convex_hull<U: IntoIterator<Item = FiniteInterval<T>>>(iter: U) -> Option<Self> {
         convex_hull_into_ord_bound_impl(iter)
     }
 }
 
-impl<T: Domain + Ord> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
+impl<T: Domain + Ord + Zero> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
     fn convex_hull<U: IntoIterator<Item = EnumInterval<T>>>(iter: U) -> Option<Self> {
         convex_hull_into_ord_bound_impl(iter)
     }

@@ -31,7 +31,7 @@ default_countable_impl!(BigUint);
 mod tests {
     use num_bigint::ToBigInt;
 
-    use crate::factory::Factory;
+    use crate::factory::FiniteFactory;
     use crate::measure::Width;
     use crate::EnumInterval;
 

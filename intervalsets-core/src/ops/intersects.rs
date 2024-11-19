@@ -12,9 +12,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// # Examples
 ///
 /// ```
-/// use intervalsets_core::Factory;
-/// use intervalsets_core::EnumInterval;
-/// use intervalsets_core::ops::Intersects;
+/// use intervalsets_core::prelude::*;
 ///
 /// let x = EnumInterval::closed(10, 20);
 /// let y = EnumInterval::closed_unbound(15);

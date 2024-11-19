@@ -93,7 +93,7 @@ mod tests {
     extern crate std;
 
     use super::*;
-    use crate::Factory;
+    use crate::factory::{UnboundedFactory, FiniteFactory, HalfBoundedFactory};
 
     #[test]
     fn test_display_finite() {

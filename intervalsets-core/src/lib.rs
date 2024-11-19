@@ -164,16 +164,22 @@
 //! ```
 //! use intervalsets_core::prelude::*;
 //!
-//! // bounds violation + silent failure
+//! // bounds violation -> silent failure
 //! let x = FiniteInterval::open(1.0, 0.0);
 //! assert_eq!(x, FiniteInterval::empty());
 //!
-//! // ordering violation + silent failure
-//! let x = FiniteInterval::open(f32::NAN, 0.0);
-//! assert_eq!(x, FiniteInterval::empty());
+//! // ordering violation -> panic
+//! // should be infallible for properly implemented [`Ord`] types.
+//! let result = std::panic::catch_unwind(|| {
+//!     FiniteInterval::open(f32::NAN, 0.0);
+//! });
+//! assert!(result.is_err());
 //!
-//! //let x = FiniteInterval::strict_open(f32::NAN, 0.0);
-//! //assert_eq!(x, None);
+//! let x = FiniteInterval::strict_open(f32::NAN, 0.0);
+//! assert_eq!(x, None);
+//!
+//! let x = FiniteInterval::strict_open(1.0, 0.0);
+//! assert_eq!(x, None);
 //! ```
 //!
 //! Silent failures can make it difficult to isolate logic errors as they are
@@ -237,7 +243,6 @@ pub use sets::{EnumInterval, FiniteInterval, HalfInterval};
 pub mod ops;
 
 pub mod factory;
-pub use factory::Factory;
 
 pub mod measure;
 
@@ -257,7 +262,7 @@ pub mod prelude {
     pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
     pub use crate::empty::MaybeEmpty;
     //pub use crate::error::Error;
-    pub use crate::factory::Factory;
+    pub use crate::factory::traits::*;
     pub use crate::measure::{Count, Measurement, Width};
     pub use crate::ops::*;
     #[cfg(feature = "rkyv")]
