@@ -21,10 +21,12 @@ pub use count::{Count, Countable};
 mod width;
 pub use width::Width;
 
-/// The result of applying a Measure to an Interval/Set.
+/// The result of applying a Measure to a `Set`.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
 pub enum Measurement<T> {
+    #[allow(missing_docs)]
     Finite(T),
+    #[allow(missing_docs)]
     Infinite,
 }
 

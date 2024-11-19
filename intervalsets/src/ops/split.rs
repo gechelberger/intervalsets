@@ -25,7 +25,7 @@ impl<T: Domain + Clone> Split<T> for IntervalSet<T> {
         let mut left = Vec::<Interval<T>>::new();
         let mut right = Vec::<Interval<T>>::new();
 
-        // faster than a binary search for small (typical) N.
+        // iter is faster than a binary search for small (typical) N.
         for subset in self.into_iter() {
             if subset.contains(&at) {
                 let (ileft, iright) = subset.split(at.clone(), closed);

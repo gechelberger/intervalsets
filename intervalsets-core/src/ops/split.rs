@@ -1,7 +1,29 @@
-use super::{Contains, Split};
+use super::Contains;
 use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
+/// Split a Set into two disjoint subsets, fully covering the original.
+///
+/// `at` provides the new bounds where the set should be split.
+///
+/// # Example
+///
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let x = FiniteInterval::closed(0, 10);
+/// let (left, right) = x.split(5, Side::Left);
+/// assert_eq!(left, FiniteInterval::closed(0, 5));
+/// assert_eq!(right, FiniteInterval::closed(6, 10));
+/// ```
+pub trait Split<T> {
+    /// The type of `Set` to create when split.
+    type Output;
+
+    /// Creates two disjoint subsets with elements partitioned by `at`.
+    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output);
+}
 
 fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBound<T>) {
     match closed {

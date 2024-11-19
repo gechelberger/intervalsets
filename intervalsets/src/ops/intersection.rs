@@ -1,5 +1,5 @@
-use intervalsets_core::ops::intersection::SetSetIntersection;
 pub use intervalsets_core::ops::Intersection;
+use intervalsets_core::ops::SetSetIntersection;
 
 use crate::numeric::Domain;
 use crate::{Interval, IntervalSet, MaybeEmpty};

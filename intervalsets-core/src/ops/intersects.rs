@@ -1,7 +1,37 @@
 use super::util::commutative_predicate_impl;
-use super::{Contains, Intersects};
+use super::Contains;
 use crate::bound::ord::{OrdBound, OrdBounded};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
+/// Test if two sets intersect.
+///
+/// ```text
+/// ∃x | x ∈ A ∧ x ∈ B
+/// ```
+///
+/// # Examples
+///
+/// ```
+/// use intervalsets_core::Factory;
+/// use intervalsets_core::EnumInterval;
+/// use intervalsets_core::ops::Intersects;
+///
+/// let x = EnumInterval::closed(10, 20);
+/// let y = EnumInterval::closed_unbound(15);
+/// assert_eq!(x.intersects(&y), true);
+///
+/// let y = EnumInterval::empty();
+/// assert_eq!(x.intersects(&y), false);
+/// ```
+pub trait Intersects<T> {
+    /// Tests if two sets share any elements.
+    fn intersects(&self, rhs: T) -> bool;
+
+    /// Tests if two sets share no elements.
+    fn is_disjoint_from(&self, rhs: T) -> bool {
+        !self.intersects(rhs)
+    }
+}
 
 impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
     #[inline(always)]

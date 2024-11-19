@@ -50,7 +50,7 @@
 //! assert_eq!(x.is_half_bounded_on(Side::Left), true);
 //!
 //! let x = Interval::closed(-100.0, -50.0);
-//! let y = Interval::convex_hull([5.0, 10.0, 23.0, -3.0, 22.0, 9.0, 99.9]);
+//! let y = Interval::convex_hull([5.0, 10.0, 23.0, -3.0, 22.0, 9.0, 99.9]).unwrap();
 //! assert_eq!(y, Interval::closed(-3.0, 99.9));
 //!
 //! let iset = IntervalSet::from_iter([x, y]);
@@ -169,7 +169,7 @@ mod util;
 
 /// Common operations & traits
 pub mod prelude {
-    pub use crate::factory::{Converter, IFactory};
+    pub use crate::factory::{Converter, EIFactory};
     pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};

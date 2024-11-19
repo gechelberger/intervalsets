@@ -75,7 +75,7 @@
 //! let rebound_right = a.with_right_closed(3);
 //! assert_eq!(rebound_right, EnumInterval::closed(0, 3));
 //!
-//! let hull = EnumInterval::convex_hull([10, 8, 0, 6, 4, 2]);
+//! let hull = EnumInterval::convex_hull([10, 8, 0, 6, 4, 2]).unwrap();
 //! assert_eq!(hull, a);
 //!
 //! let empty = a.intersection(EnumInterval::closed(20, 30));
@@ -85,10 +85,6 @@
 //! assert_eq!(left, EnumInterval::closed(0, 5));
 //! assert_eq!(right, EnumInterval::closed(6, 10));
 //!
-//! let (left, right) = a.split(5, Side::Right);
-//! assert_eq!(left, EnumInterval::closed(0, 4));
-//! assert_eq!(right, EnumInterval::closed(5, 10));
-//!
 //! let width: Measurement<_> = a.width();
 //! assert_eq!(width.finite(), 10);
 //!
@@ -96,6 +92,93 @@
 //! assert_eq!(count.finite(), 11);
 //!
 //! assert_eq!(format!("{}", a), "[0, 10]");
+//!
+//! // intervals have a total order as long as T: Ord:
+//! let a = EnumInterval::empty();
+//! let b = EnumInterval::unbound_closed(10);
+//! let c = EnumInterval::closed(0, 10);
+//! let d = EnumInterval::closed_unbound(0);
+//! assert!(a < b && b < c && c < d);
+//! ```
+//!
+//! # Foot guns
+//!
+//! ## Normalization & Type Conversions
+//!
+//! Discrete types are always normalized to closed form so that there is only
+//! a single valid bit-pattern for each possible `Set`.
+//!
+//! Most of the time this is transparent to the user, but it is a potential
+//! source of error, especially when converting types.
+//!
+//! ```
+//! use intervalsets_core::prelude::*;
+//!
+//! let discrete = EnumInterval::open(0, 10);
+//! assert_eq!(discrete.lval(), Some(&1));
+//! assert_eq!(discrete.rval(), Some(&9));
+//! assert_eq!(discrete, (0, 10).into());
+//! assert_eq!(discrete, [1, 9].into());
+//! ```
+//!
+//! ## Floating Point Types
+//!
+//! Making [`Ord`] a trait bound for most of this crate's APIs would
+//! elimenate a whole class of errors, and is tempting, but floats come with a
+//! whole host of complexities regardless.
+//!
+//! * `NAN` is not part of the default ordering, though there is a `total_cmp`
+//!     available now.
+//! * rounding errors can cause issues with testing values near a set bound.
+//! * `FiniteBound(f32::INFINITY)` and `FiniteBound(f32::NEG_INFINITY)`are both
+//!     valid syntax, though all manner of headache semantically speaking.
+//!
+//! Sometimes, floats are still the right tool for the job, and it is left to the
+//! user to choose the right approach for the given problem. Fixed precision
+//! decimal types like `rust_decimal` do side step some pitfalls.
+//!
+//! ## Fallibility
+//!
+//! * todo: ordering invariants/violations
+//! * todo: bounds violations
+//! * todo: "silent" failures
+//! * todo: strict apis
+//!     * FiniteInterval::new_strict
+//!     * ConvexHull
+//!     * TryMerge (rename StrictUnion?)
+//!     * todo: strict factory + break up factory trait into smaller ones.
+//!     * todo: StrictIntersection? StrictSplit? StrictRebound?
+//!
+//! ```
+//! use intervalsets_core::prelude::*;
+//!
+//! // bounds violation + silent failure
+//! let x = FiniteInterval::open(1.0, 0.0);
+//! assert_eq!(x, FiniteInterval::empty());
+//!
+//! // ordering violation + silent failure
+//! let x = FiniteInterval::open(f32::NAN, 0.0);
+//! assert_eq!(x, FiniteInterval::empty());
+//!
+//! //let x = FiniteInterval::strict_open(f32::NAN, 0.0);
+//! //assert_eq!(x, None);
+//! ```
+//!
+//! Silent failures can make it difficult to isolate logic errors as they are
+//! able to propogate further from their source before detection.
+//!
+//! ```
+//! use intervalsets_core::prelude::*;
+//! let interval = EnumInterval::closed(0, 10);
+//!
+//! let oops = interval
+//!     .with_left_closed(20) // empty here (bounds violation + silent failure)
+//!     .with_right(None);
+//! assert_ne!(oops, EnumInterval::closed_unbound(20));
+//! assert_eq!(oops, EnumInterval::empty());
+//!
+//! let fixed = interval.with_right(None).with_left_closed(20);
+//! assert_eq!(fixed, EnumInterval::closed_unbound(20));
 //! ```
 //!
 //! # Features
@@ -117,19 +200,19 @@
 //! * num-bigint: arbitrary sized integers
 //!
 //! ## serialization
-//! * serde: implement `Serialize`, `Deserialize`
-//! * rkyv: implement `Archive`, `Serialize`, `Deserialize`
+//! * serde: implement [`Serialize`](serde::Serialize), [`Deserialize`](serde::Deserialize).
+//! * rkyv: implement [`Archive`](rkyv::Archive), [`Serialize`](rkyv::Serialize), [`Deserialize`](rkyv::Deserialize).
 //!
 //! # Diving Deeper
 //! * [Implement custom storage data types](numeric)
 //! * [Adapt unsupported data types with factory converters](factory::Converter)
 //!
 #![no_std]
-//#![deny(bad_style)]
-//#![deny(missing_docs)]
-//#![deny(future_incompatible)]
-//#![deny(nonstandard_style)]
-//#![deny(unused)]
+#![deny(bad_style)]
+//#![warn(missing_docs)]
+#![deny(future_incompatible)]
+#![deny(nonstandard_style)]
+#![deny(unused)]
 
 pub mod bound;
 pub mod numeric;
@@ -154,6 +237,7 @@ mod from;
 mod empty;
 pub use empty::MaybeEmpty;
 
+/// commonly used imports
 #[allow(unused_imports)]
 pub mod prelude {
     #[cfg(feature = "rkyv")]

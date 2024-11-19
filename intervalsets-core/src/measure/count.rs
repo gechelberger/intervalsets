@@ -174,10 +174,11 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Factory;
 
     #[test]
     fn test_count() {
-        //let x: Interval<i64> = Interval::closed(0.0, 10.0);
-        //assert_eq!(x.count().finite(), 11);
+        let x = EnumInterval::closed(0, 10);
+        assert_eq!(x.count().finite(), 11);
     }
 }

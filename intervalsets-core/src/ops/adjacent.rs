@@ -5,21 +5,31 @@ use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-/// Defines whether two sets are contiguous.
+/// Test if two sets are adjacent.
 ///
-/// Given two Sets A and B which are both
-/// Subsets of T:
+/// Sets are adjacent if they are connected but do not intersect. For sets to be
+/// connected no elements may exist in the universal set (or data type set)
+/// between the two subsets. The empty set is considered adjacent and connect to
+/// any other set since no elements exist between the two.
 ///
-/// > A and B are adjacent if their extrema
-/// > have no elements in T between them.
+/// # Examples
 ///
-/// # Example
+/// ```
+/// use intervalsets_core::prelude::*;
 ///
-/// > [1, 5] is adjacent to [6, 10]
+/// let x = FiniteInterval::closed(1, 5);
+/// let y = FiniteInterval::closed(6, 10);
+/// assert_eq!(x.is_adjacent_to(&y), true);
 ///
-/// > [1.0, 5.0] is not adjacent to [6.0, 10.0]
+/// let x = FiniteInterval::closed(0.0, 5.0);
+/// let y = FiniteInterval::closed(6.0, 10.0);
+/// assert_eq!(x.is_adjacent_to(&y), false);
 ///
+/// let y = FiniteInterval::open(5.0, 10.0);
+/// assert_eq!(x.is_adjacent_to(&y), true);
+/// ```
 pub trait Adjacent<Rhs = Self> {
+    #[allow(missing_docs)]
     fn is_adjacent_to(&self, rhs: Rhs) -> bool;
 }
 
@@ -27,6 +37,10 @@ pub trait Adjacent<Rhs = Self> {
 fn are_continuous_adjacent<T: PartialEq>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bool {
     // not sure how to deal with the rounding issues of floats
     right.value() == left.value() && (right.is_closed() || left.is_closed())
+
+    // closed_open or open_closed
+    // if closed = 1, open = 0 don't branch =>
+    //     left.bound_type() as u32 + right.bound_type() as u32 == 1
 }
 
 /// <---][---->

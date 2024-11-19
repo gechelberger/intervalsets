@@ -1,19 +1,29 @@
+use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
-use crate::continuous_domain_impl;
 use crate::factory::Converter;
+use crate::numeric::Domain;
 
-continuous_domain_impl!(NotNan<f32>, NotNan<f64>);
-continuous_domain_impl!(OrderedFloat<f32>, OrderedFloat<f64>);
+impl<T: FloatCore + Domain> Domain for NotNan<T> {
+    fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
+        None
+    }
+}
 
-impl<T: num_traits::float::FloatCore> Converter<T> for NotNan<T> {
+impl<T: FloatCore + Domain> Domain for OrderedFloat<T> {
+    fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
+        None
+    }
+}
+
+impl<T: FloatCore + Domain> Converter<T> for NotNan<T> {
     type To = Self;
     fn convert(value: T) -> Self::To {
         NotNan::new(value).unwrap()
     }
 }
 
-impl<T: num_traits::float::FloatCore> Converter<T> for OrderedFloat<T> {
+impl<T: FloatCore + Domain> Converter<T> for OrderedFloat<T> {
     type To = Self;
     fn convert(value: T) -> Self::To {
         OrderedFloat(value)
@@ -23,12 +33,12 @@ impl<T: num_traits::float::FloatCore> Converter<T> for OrderedFloat<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::IFactory;
+    use crate::factory::EIFactory;
     use crate::{EnumInterval, Factory};
 
     #[test]
     fn test_not_nan_converter() {
-        type F = IFactory<f32, NotNan<f32>>;
+        type F = EIFactory<f32, NotNan<f32>>;
 
         let x = F::closed(0.0, 10.0);
 
@@ -40,7 +50,7 @@ mod tests {
 
     #[test]
     fn test_ord_float_converter() {
-        type F = IFactory<f32, OrderedFloat<f32>>;
+        type F = EIFactory<f32, OrderedFloat<f32>>;
 
         let x = F::closed(0.0, 10.0);
         assert_eq!(

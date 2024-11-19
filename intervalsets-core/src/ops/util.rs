@@ -17,7 +17,7 @@ macro_rules! commutative_op_move_impl {
         }
     };
 }
-pub(crate) use commutative_op_move_impl;
+pub(super) use commutative_op_move_impl;
 
 /// Generic impl of a commutative predicate trait, reversing lhs and rhs.
 ///
@@ -33,4 +33,4 @@ macro_rules! commutative_predicate_impl {
         }
     };
 }
-pub(crate) use commutative_predicate_impl;
+pub(super) use commutative_predicate_impl;

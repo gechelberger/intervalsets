@@ -1,4 +1,4 @@
-pub use intervalsets_core::factory::{Converter, Factory, IFactory, Identity};
+pub use intervalsets_core::factory::{Converter, EIFactory, Factory, Identity};
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 use crate::bound::FiniteBound;
@@ -77,7 +77,7 @@ mod tests {
 
     #[test]
     fn test_interval_factory() {
-        let a: Interval<_> = IFactory::<u32, Identity>::closed(0, 10).into();
+        let a: Interval<_> = EIFactory::<u32, Identity>::closed(0, 10).into();
         let b = Interval::<u32>::closed(0, 10);
         assert_eq!(a, b);
     }

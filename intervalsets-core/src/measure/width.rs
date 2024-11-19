@@ -17,8 +17,6 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// # Example
 /// ```
 /// use intervalsets_core::prelude::*;
-/// use intervalsets_core::measure::Width;
-/// use intervalsets_core::factory::IFactory;
 ///
 ///
 /// let interval = EnumInterval::closed(10.0, 100.0);
@@ -29,7 +27,6 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// ```
 /// use intervalsets_core::prelude::*;
-/// use intervalsets_core::measure::Width;
 ///
 /// let a = EnumInterval::closed(0.0, 10.0);
 /// assert_eq!(a.width().finite(), 10.0);
@@ -38,8 +35,10 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(b.width().finite(), 8);
 /// ```
 pub trait Width {
+    #[allow(missing_docs)]
     type Output;
 
+    #[allow(missing_docs)]
     fn width(&self) -> Measurement<Self::Output>;
 }
 

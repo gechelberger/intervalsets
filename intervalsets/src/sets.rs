@@ -191,7 +191,7 @@ impl<T: Domain> IntervalSet<T> {
         });
 
         Self::new_unchecked(
-            intervalsets_core::ops::merged::MergeSorted::new(intervals.into_iter().map(|x| x.0))
+            intervalsets_core::ops::MergeSorted::new(intervals.into_iter().map(|x| x.0))
                 .map(Interval::from),
         )
     }
@@ -259,7 +259,7 @@ impl<T: Clone + Domain> IntervalSet<T> {
     /// assert_eq!(set.convex_hull(), Interval::closed(0, 110));
     ///
     /// // ConvexHull trait equivalent
-    /// assert_eq!(Interval::convex_hull([set]), Interval::closed(0, 110));
+    /// assert_eq!(Interval::convex_hull([set]).unwrap(), Interval::closed(0, 110));
     /// ```
     ///
     pub fn convex_hull(&self) -> Interval<T> {
@@ -378,7 +378,9 @@ impl<T> MaybeEmpty for IntervalSet<T> {
 
 #[cfg(test)]
 mod tests {
-    //use core::hash::Hash;
+    use core::hash::{Hash, Hasher};
+
+    use siphasher::sip::SipHasher13;
 
     use super::*;
     use crate::ops::{Complement, Difference};
@@ -444,12 +446,6 @@ mod tests {
             false
         );
     }
-
-    use core::hash::{Hash, Hasher};
-
-    use siphasher::sip::SipHasher13;
-
-    use super::*;
 
     fn do_hash<T: Hash>(item: T) -> u64 {
         let key: &[u8; 16] = &[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16];

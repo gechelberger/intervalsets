@@ -1,29 +1,44 @@
+//! Bounds partition elements inside and outside of a `Set`.
+//!
+//! A finite `Set` bound requires three pieces of information:
+//! * The finite limiting value
+//! * The [`BoundType`]: whether the limit itself is an element of the `Set`
+//! * Which [`Side`] of the bound contains elements of the `Set`.
+//!
+//! A [`FiniteBound`] encapsulates the first two pieces of information. The last
+//! is encapsulated on a case by case basis depending on the kind of set.
+//!
+//! All `Set` types should implement the [`SetBounds`], and
+//! [`OrdBounded`](ord::OrdBounded) traits.
+
 use crate::numeric::Domain;
 
-//type Extremum<T> = Option<FiniteBound<T>>;
-//type Envelope<T> = (Extremum<T>, Extremum<T>);
-
-/// todo...
+/// An interface to query the left and right bounds of a set.
 pub trait SetBounds<T> {
+    /// Return a reference to the left or right bound if it is finite.
     fn bound(&self, side: Side) -> Option<&FiniteBound<T>>;
 
     //fn into_bounds(self) -> Option<Envelope<T>>;
 
+    /// Return a reference to the left bound if it is finite.
     #[inline]
     fn left(&self) -> Option<&FiniteBound<T>> {
         self.bound(Side::Left)
     }
 
+    /// Return a reference to the right bound if it is finite.
     #[inline]
     fn right(&self) -> Option<&FiniteBound<T>> {
         self.bound(Side::Right)
     }
 
+    /// Return a reference to the left bound value if it is finite.
     #[inline]
     fn lval(&self) -> Option<&T> {
         self.left().map(|x| x.value())
     }
 
+    /// Return a reference to the right bound value if it is finite.
     #[inline]
     fn rval(&self) -> Option<&T> {
         self.right().map(|x| x.value())
@@ -38,11 +53,14 @@ pub trait SetBounds<T> {
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 pub enum Side {
+    /// Generally the lower bound
     Left,
+    /// Generally the upper bound
     Right,
 }
 
 impl Side {
+    /// Flip left => right, right => left
     #[inline(always)]
     pub fn flip(self) -> Self {
         match self {
@@ -51,6 +69,7 @@ impl Side {
         }
     }
 
+    /// Return the left or right arg depending on the value of self.
     #[inline(always)]
     pub fn select<T>(self, left: T, right: T) -> T {
         match self {
@@ -58,11 +77,18 @@ impl Side {
             Self::Right => right,
         }
     }
+
+    /// Invoke the left or right arg for the value of self and return the result.
+    #[inline(always)]
+    pub fn fn_select<T>(self, left: impl FnOnce() -> T, right: impl FnOnce() -> T) -> T {
+        match self {
+            Self::Left => left(),
+            Self::Right => right(),
+        }
+    }
 }
 
 /// The BoundType determines the inclusivity of the constraining element in a set.
-///
-/// `Closed` bounds include the limit value in the `Set`, `Open` bounds do not.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
@@ -70,11 +96,14 @@ impl Side {
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 pub enum BoundType {
+    /// A Closed BoundType includes the limit element in the `Set`.
     Closed,
+    /// An Open BoundType excludes the limit element from the `Set`.
     Open,
 }
 
 impl BoundType {
+    /// Flips the bound type Open => Closed, Closed => Open
     pub fn flip(self) -> Self {
         match self {
             Self::Closed => Self::Open,
@@ -101,6 +130,7 @@ impl BoundType {
 pub struct FiniteBound<T>(BoundType, T);
 
 impl<T> FiniteBound<T> {
+    /// Creates a new [`FiniteBound`]
     pub fn new(bound_type: BoundType, limit: T) -> Self {
         Self(bound_type, limit)
     }
@@ -115,10 +145,12 @@ impl<T> FiniteBound<T> {
         Self(BoundType::Open, limit)
     }
 
+    /// Unpack a [`FiniteBound`] into ([`BoundType`], `T`)
     pub fn into_raw(self) -> (BoundType, T) {
         (self.0, self.1)
     }
 
+    /// Creates an `OrdBound<&T>`
     pub fn ord(&self, side: Side) -> ord::OrdBound<&T> {
         match self.bound_type() {
             BoundType::Closed => ord::OrdBound::Finite(self.value(), ord::OrdBoundFinite::Closed),
@@ -126,6 +158,7 @@ impl<T> FiniteBound<T> {
         }
     }
 
+    /// Turns self into an `OrdBound<T>`
     pub fn into_ord(self, side: Side) -> ord::OrdBound<T> {
         let (bound_type, value) = self.into_raw();
         match bound_type {
@@ -188,6 +221,7 @@ impl<T> FiniteBound<T> {
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
+    /// Consume a and b, returning the minimum bound.
     pub fn take_min(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
         if a.contains(side, b.value()) {
             side.select(a, b)
@@ -196,6 +230,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         }
     }
 
+    /// Consume a and b, returning the maximum bound.
     pub fn take_max(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
         if a.contains(side, b.value()) {
             side.select(b, a)
@@ -204,6 +239,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         }
     }
 
+    /// Return a reference to the minimum bound.
     pub fn min<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
         if a.contains(side, b.value()) {
             side.select(a, b)
@@ -212,6 +248,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         }
     }
 
+    /// Return a reference to the maximum bound.
     pub fn max<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
         if a.contains(side, b.value()) {
             side.select(b, a)
@@ -222,6 +259,7 @@ impl<T: PartialOrd> FiniteBound<T> {
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
+    /// Test if this partitions an element to be contained by the `Set`.
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.0 {
@@ -237,6 +275,7 @@ impl<T: PartialOrd> FiniteBound<T> {
 }
 
 impl<T: Domain> FiniteBound<T> {
+    /// For discrete types, normalize to closed form.
     pub fn normalized(self, side: Side) -> Self {
         match self.0 {
             BoundType::Open => match self.value().try_adjacent(side.flip()) {
@@ -248,9 +287,8 @@ impl<T: Domain> FiniteBound<T> {
     }
 }
 
+/// Helpers that define a total order for `Set` bounds.
 pub mod ord {
-    use core::cmp::Ordering;
-
     use super::{BoundType, FiniteBound};
 
     /// todo...
@@ -258,6 +296,13 @@ pub mod ord {
         fn ord_bound_pair(&self) -> OrdBoundPair<&T>;
     }
 
+    /// A type that defines a total order for all possible bounds.
+    ///
+    /// ```text
+    /// In relation to finite bounds:
+    /// L(None) < R(Open(x)) < R(Closed(x)) <= L(Closed(x)) < L(Open(x)) < R(None)
+    /// LeftUnbound < RightOpen(x) < Closed(x) < LeftOpen(x) < RightUnbound
+    /// ```
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[cfg_attr(
@@ -281,24 +326,6 @@ pub mod ord {
 
         pub fn right_open(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::RightOpen)
-        }
-    }
-
-    impl<T: PartialOrd> OrdBound<T> {
-        pub fn partial_min(self, rhs: Self) -> Option<Self> {
-            match self.partial_cmp(&rhs)? {
-                Ordering::Less => Some(self),
-                Ordering::Greater => Some(rhs),
-                Ordering::Equal => Some(self),
-            }
-        }
-
-        pub fn partial_max(self, rhs: Self) -> Option<Self> {
-            match self.partial_cmp(&rhs)? {
-                Ordering::Less => Some(rhs),
-                Ordering::Greater => Some(self),
-                Ordering::Equal => Some(self),
-            }
         }
     }
 
@@ -341,6 +368,9 @@ pub mod ord {
         }
     }
 
+    /// Ordered exclusivity cases for finite bounds.
+    ///
+    /// For a given finite value x, RightOpen(x) < Closed(x) < LeftOpen(x).
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[cfg_attr(
@@ -362,6 +392,9 @@ pub mod ord {
         }
     }
 
+    /// An ordered pair of bounds where left <= right.
+    ///
+    /// The empty set is represented by (-inf, -inf).
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
     #[cfg_attr(
@@ -405,6 +438,7 @@ mod test {
     use ord::OrdBound;
 
     use super::*;
+    use crate::try_cmp::{TryMax, TryMin};
 
     #[test]
     fn test_bound_min_max() {
@@ -471,22 +505,22 @@ mod test {
         let f1 = 100.0;
 
         assert_eq!(
-            OrdBound::closed(f0).partial_min(OrdBound::closed(f1)),
+            OrdBound::closed(f0).try_min(OrdBound::closed(f1)),
             Some(OrdBound::closed(f0))
         );
 
         assert_eq!(
-            OrdBound::closed(&f0).partial_min(OrdBound::closed(&f1)),
+            OrdBound::closed(&f0).try_min(OrdBound::closed(&f1)),
             Some(OrdBound::closed(&f0))
         );
 
         assert_eq!(
-            OrdBound::LeftUnbounded.partial_max(OrdBound::closed(f1)),
+            OrdBound::LeftUnbounded.try_max(OrdBound::closed(f1)),
             Some(OrdBound::closed(f1))
         );
 
         assert_eq!(
-            OrdBound::LeftUnbounded.partial_max(OrdBound::closed(&f1)),
+            OrdBound::LeftUnbounded.try_max(OrdBound::closed(&f1)),
             Some(OrdBound::closed(&f1))
         )
     }
