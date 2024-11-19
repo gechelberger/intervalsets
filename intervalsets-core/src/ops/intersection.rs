@@ -420,7 +420,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Factory;
+    use crate::factory::FiniteFactory;
 
     #[test]
     fn test_finite_finite() {

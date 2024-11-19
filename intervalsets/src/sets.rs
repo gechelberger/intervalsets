@@ -6,15 +6,14 @@ use crate::numeric::Domain;
 use crate::ops::Intersects;
 use crate::MaybeEmpty;
 
-/// A Set representation of a contiguous interval on N, Z, or R.
+/// A Set representation of a contiguous interval in N, Z, or R.
 ///
 /// Discrete types (integers) are normalized to closed form.
 ///
 /// Most operations are supported through
 /// [trait implementations](#trait-implementations).
 ///
-/// Creation is managed through the [`Factory`](crate::factory::Factory)
-/// trait.
+/// See [`factory`](crate::factory) for helpers.
 ///
 /// ```
 /// use intervalsets::prelude::*;
@@ -32,7 +31,7 @@ impl<T> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Factory};
+    /// use intervalsets::prelude::*;
     ///
     /// assert_eq!(Interval::<i32>::empty().is_finite(), true);
     /// assert_eq!(Interval::closed(0, 10).is_finite(), true);
@@ -48,7 +47,7 @@ impl<T> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Factory};
+    /// use intervalsets::prelude::*;
     ///
     /// assert_eq!(Interval::<i32>::empty().is_infinite(), false);
     /// assert_eq!(Interval::<i32>::closed(0, 10).is_infinite(), false);
@@ -64,7 +63,7 @@ impl<T> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Factory};
+    /// use intervalsets::prelude::*;
     ///
     /// assert_eq!(Interval::closed(0, 10).is_fully_bounded(), true);
     ///
@@ -79,7 +78,7 @@ impl<T> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Factory};
+    /// use intervalsets::prelude::*;
     ///
     /// assert_eq!(Interval::closed_unbound(10).is_half_bounded(), true);
     /// assert_eq!(Interval::<i32>::unbounded().is_half_bounded(), false);
@@ -93,7 +92,7 @@ impl<T> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Side, Factory};
+    /// use intervalsets::prelude::*;
     ///
     /// let x = Interval::unbound_open(10);
     /// assert_eq!(x.is_half_bounded_on(Side::Right), true);
@@ -114,8 +113,7 @@ impl<T> Interval<T> {
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Factory};
-    /// use intervalsets::ops::TryMerge;
+    /// use intervalsets::prelude::*;
     ///
     /// let x = Interval::unbound_closed(10)
     ///             .try_merge(Interval::closed_unbound(-10))
@@ -383,8 +381,8 @@ mod tests {
     use siphasher::sip::SipHasher13;
 
     use super::*;
+    use crate::factory::traits::*;
     use crate::ops::{Complement, Difference};
-    use crate::Factory;
 
     #[test]
     fn test_interval_normalization() {

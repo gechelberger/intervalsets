@@ -6,9 +6,9 @@ use crate::bound::ord::{OrdBound, OrdBoundFinite, OrdBoundPair};
 #[allow(unused)]
 use crate::bound::{BoundType, FiniteBound, Side};
 #[allow(unused)]
-use crate::sets::EnumInterval;
+use crate::factory::{EmptyFactory, FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 #[allow(unused)]
-use crate::Factory;
+use crate::sets::EnumInterval;
 
 #[cfg(test)]
 mod brief {

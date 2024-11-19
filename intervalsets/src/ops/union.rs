@@ -1,17 +1,19 @@
 use intervalsets_core::ops::MergeSorted;
 use intervalsets_core::sets::{FiniteInterval, HalfInterval};
 use intervalsets_core::{EnumInterval, MaybeEmpty};
+use num_traits::Zero;
 use FiniteInterval::Bounded;
 
 use crate::bound::{FiniteBound, Side};
+use crate::factory::UnboundedFactory;
 use crate::numeric::Domain;
 use crate::ops::{Adjacent, Contains, Intersects};
 use crate::util::commutative_op_move_impl;
-use crate::{Factory, Interval, IntervalSet};
+use crate::{Interval, IntervalSet};
 
 fn merge_sorted_intervals<T, I>(iter: I) -> impl Iterator<Item = Interval<T>>
 where
-    T: Domain,
+    T: Domain + Zero,
     I: IntoIterator<Item = Interval<T>>,
 {
     MergeSorted::new(iter.into_iter().map(|x| x.0)).map(Interval::from)
@@ -118,7 +120,11 @@ mod icore {
 
     macro_rules! delegate_enum_impl {
         ($t:ty) => {
-            impl<T: Domain> Union<$t> for EnumInterval<T> {
+            impl<T> Union<$t> for EnumInterval<T>
+            where
+                T: $crate::numeric::Domain,
+                T: $crate::numeric::Zero,
+            {
                 type Output = IntervalSet<T>;
 
                 fn union(self, rhs: $t) -> Self::Output {
@@ -151,7 +157,7 @@ mod icore {
     );
 }
 
-impl<T: Domain> Union<Self> for Interval<T> {
+impl<T: Domain + Zero> Union<Self> for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn union(self, rhs: Self) -> Self::Output {
@@ -159,7 +165,7 @@ impl<T: Domain> Union<Self> for Interval<T> {
     }
 }
 
-impl<T: Domain> Union<Self> for IntervalSet<T> {
+impl<T: Domain + Zero> Union<Self> for IntervalSet<T> {
     type Output = Self;
 
     fn union(self, rhs: Self) -> Self::Output {
@@ -167,7 +173,7 @@ impl<T: Domain> Union<Self> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain> Union<Interval<T>> for IntervalSet<T> {
+impl<T: Domain + Zero> Union<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(self, rhs: Interval<T>) -> Self::Output {
@@ -183,7 +189,7 @@ commutative_op_move_impl!(Union, union, Interval<T>, IntervalSet<T>, IntervalSet
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Factory;
+    use crate::factory::traits::*;
 
     #[test]
     fn test_finite_union_empty() {

@@ -43,7 +43,7 @@
 //!
 //! # Getting Started
 //!
-//! **Intervals** are generally constructed via the [`Factory`] trait which is
+//! **Intervals** are generally constructed via the a [`factory`]` trait which are
 //! implemented for each base interval type. Manipulation is provided via
 //! [set operations](ops).
 //!
@@ -101,15 +101,27 @@
 //! assert!(a < b && b < c && c < d);
 //! ```
 //!
+//! # Invariants
+//!
+//! For an interval or set to be valid it must satisfy certain invariants.
+//! These are validated on construction and panic if violated (or return an
+//! error from the strict api).
+//!
+//! 1. Discrete types are always normalized to closed form so that there is only
+//!     a single valid bit-pattern for each possible `Set`.
+//! 2. lhs <= rhs. All non-empty sets have a left and right hand side, though
+//!     they may be implicit and/or unbounded.
+//! 3. A FiniteBound's limit value must be a member of some set S ⊆ T where
+//!     T is the set of the underlying data-type which may be partially ordered,
+//!     but S has a strict total order. (S is a chain)
+//!
 //! # Foot guns
 //!
-//! ## Normalization & Type Conversions
+//! ## Normalized Conversions
 //!
-//! Discrete types are always normalized to closed form so that there is only
-//! a single valid bit-pattern for each possible `Set`.
-//!
-//! Most of the time this is transparent to the user, but it is a potential
-//! source of error, especially when converting types.
+//! Most of the time normalization is transparent to the user, but it is a
+//! potential source of error, particularly when converting types that have
+//! implicit open bounds.
 //!
 //! ```
 //! use intervalsets_core::prelude::*;
@@ -124,7 +136,7 @@
 //! ## Floating Point Types
 //!
 //! Making [`Ord`] a trait bound for most of this crate's APIs would
-//! elimenate a whole class of errors, and is tempting, but floats come with a
+//! elimenate a whole class of errors (invariant #3), but floats come with a
 //! whole host of complexities regardless.
 //!
 //! * `NAN` is not part of the default ordering, though there is a `total_cmp`
@@ -139,9 +151,9 @@
 //!
 //! ## Fallibility
 //!
+//! * todo: "silent" failures
 //! * todo: ordering invariants/violations
 //! * todo: bounds violations
-//! * todo: "silent" failures
 //! * todo: strict apis
 //!     * FiniteInterval::new_strict
 //!     * ConvexHull
@@ -152,16 +164,22 @@
 //! ```
 //! use intervalsets_core::prelude::*;
 //!
-//! // bounds violation + silent failure
+//! // bounds violation -> silent failure
 //! let x = FiniteInterval::open(1.0, 0.0);
 //! assert_eq!(x, FiniteInterval::empty());
 //!
-//! // ordering violation + silent failure
-//! let x = FiniteInterval::open(f32::NAN, 0.0);
-//! assert_eq!(x, FiniteInterval::empty());
+//! // ordering violation -> panic
+//! // should be infallible for properly implemented [`Ord`] types.
+//! let result = std::panic::catch_unwind(|| {
+//!     FiniteInterval::open(f32::NAN, 0.0);
+//! });
+//! assert!(result.is_err());
 //!
-//! //let x = FiniteInterval::strict_open(f32::NAN, 0.0);
-//! //assert_eq!(x, None);
+//! let x = FiniteInterval::strict_open(f32::NAN, 0.0);
+//! assert_eq!(x, None);
+//!
+//! let x = FiniteInterval::strict_open(1.0, 0.0);
+//! assert_eq!(x, None);
 //! ```
 //!
 //! Silent failures can make it difficult to isolate logic errors as they are
@@ -225,7 +243,6 @@ pub use sets::{EnumInterval, FiniteInterval, HalfInterval};
 pub mod ops;
 
 pub mod factory;
-pub use factory::Factory;
 
 pub mod measure;
 
@@ -245,7 +262,7 @@ pub mod prelude {
     pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
     pub use crate::empty::MaybeEmpty;
     //pub use crate::error::Error;
-    pub use crate::factory::Factory;
+    pub use crate::factory::traits::*;
     pub use crate::measure::{Count, Measurement, Width};
     pub use crate::ops::*;
     #[cfg(feature = "rkyv")]

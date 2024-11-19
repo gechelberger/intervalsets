@@ -3,7 +3,7 @@ use arbitrary::{Arbitrary, Result};
 use crate::bound::BoundType::{self, *};
 use crate::bound::FiniteBound;
 use crate::bound::Side::{self, *};
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl Arbitrary<'_> for Side {
@@ -44,7 +44,7 @@ impl<'a, T: Domain + Arbitrary<'a>> Arbitrary<'a> for FiniteInterval<T> {
     }
 }
 
-impl<'a, T: Domain + Arbitrary<'a>> Arbitrary<'a> for HalfInterval<T> {
+impl<'a, T: Domain + Zero + Arbitrary<'a>> Arbitrary<'a> for HalfInterval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
         let interval = HalfInterval::new(Side::arbitrary(u)?, FiniteBound::arbitrary(u)?);
 
@@ -52,7 +52,7 @@ impl<'a, T: Domain + Arbitrary<'a>> Arbitrary<'a> for HalfInterval<T> {
     }
 }
 
-impl<'a, T: Domain + Arbitrary<'a>> Arbitrary<'a> for EnumInterval<T> {
+impl<'a, T: Domain + Zero + Arbitrary<'a>> Arbitrary<'a> for EnumInterval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
         let interval = match u.choose_index(3).unwrap() {
             0 => Self::Finite(FiniteInterval::arbitrary(u)?),

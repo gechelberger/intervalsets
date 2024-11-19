@@ -23,8 +23,8 @@ impl<T: fmt::Display> fmt::Display for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
     use crate::ops::Union;
-    use crate::Factory;
 
     #[test]
     fn test_display_finite() {

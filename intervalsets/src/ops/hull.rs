@@ -2,7 +2,7 @@ pub use intervalsets_core::ops::ConvexHull;
 use intervalsets_core::ops::{convex_hull_into_ord_bound_impl, convex_hull_ord_bounded_impl};
 use intervalsets_core::EnumInterval;
 
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::{Interval, IntervalSet};
 
 impl<T: Domain + Clone> ConvexHull<T> for Interval<T> {
@@ -17,13 +17,12 @@ impl<'a, T: Domain + Clone> ConvexHull<&'a T> for Interval<T> {
     }
 }
 
-impl<T: Domain + Clone> ConvexHull<Interval<T>> for Interval<T> {
+impl<T: Domain + Clone + Zero> ConvexHull<Interval<T>> for Interval<T> {
     /// Create a new interval that covers a set of intervals
     ///
     /// # Example
     /// ```
-    /// use intervalsets::{Interval, Factory};
-    /// use intervalsets::ops::ConvexHull;
+    /// use intervalsets::prelude::*;
     ///
     /// let iv = Interval::convex_hull(vec![
     ///     Interval::closed(100.0, 200.0),
@@ -37,13 +36,13 @@ impl<T: Domain + Clone> ConvexHull<Interval<T>> for Interval<T> {
     }
 }
 
-impl<'a, T: Domain + Clone> ConvexHull<&'a Interval<T>> for Interval<T> {
+impl<'a, T: Domain + Clone + Zero> ConvexHull<&'a Interval<T>> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = &'a Interval<T>>>(iter: U) -> Option<Self> {
         convex_hull_ord_bounded_impl(iter).map(Interval::from)
     }
 }
 
-impl<T: Domain + Clone> ConvexHull<IntervalSet<T>> for Interval<T> {
+impl<T: Domain + Clone + Zero> ConvexHull<IntervalSet<T>> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = IntervalSet<T>>>(iter: U) -> Option<Self> {
         convex_hull_into_ord_bound_impl(iter).map(Interval::from)
     }
@@ -58,8 +57,8 @@ impl<'a, T: Domain + Clone> ConvexHull<&'a IntervalSet<T>> for Interval<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::factory::traits::*;
     use crate::ops::Union;
-    use crate::Factory;
 
     #[test]
     fn test_hull_of_points_empty() {

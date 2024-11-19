@@ -152,8 +152,7 @@ pub use intervalsets_core::numeric::Domain;
 pub use intervalsets_core::{bound, continuous_domain_impl, default_countable_impl, numeric};
 
 pub mod factory;
-pub use factory::Factory;
-//pub use intervalsets_core::factory::{Factory, Converter, IFactory};
+
 pub use intervalsets_core::MaybeEmpty;
 
 pub mod measure;
@@ -169,9 +168,11 @@ mod util;
 
 /// Common operations & traits
 pub mod prelude {
+    pub use intervalsets_core::factory::traits::*;
+
     pub use crate::factory::{Converter, EIFactory};
     pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
-    pub use crate::{Domain, Factory, MaybeEmpty, OrdBounded, SetBounds, Side};
+    pub use crate::{Domain, MaybeEmpty, OrdBounded, SetBounds, Side};
 }

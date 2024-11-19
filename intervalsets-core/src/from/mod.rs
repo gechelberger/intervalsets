@@ -4,7 +4,6 @@ use crate::bound::ord::{OrdBound, OrdBoundFinite, OrdBoundPair};
 use crate::bound::{BoundType, FiniteBound, Side};
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
-use crate::Factory;
 
 impl<T> From<()> for FiniteInterval<T> {
     fn from(_: ()) -> Self {
@@ -179,11 +178,13 @@ impl<T: Domain> From<OrdBoundPair<T>> for EnumInterval<T> {
             (OrdBound::LeftUnbounded, OrdBound::RightUnbounded) => Self::Unbounded,
             (OrdBound::LeftUnbounded, OrdBound::Finite(r_val, r_ord)) => {
                 let r_bound = FiniteBound::new(r_ord.into(), r_val);
-                Self::half_bounded(Side::Right, r_bound)
+                // SAFETY: Interval invariants <=> OrdBoundPair invariants
+                unsafe { Self::Half(HalfInterval::new_unchecked(Side::Right, r_bound)) }
             }
             (OrdBound::Finite(l_val, l_ord), OrdBound::RightUnbounded) => {
                 let l_bound = FiniteBound::new(l_ord.into(), l_val);
-                Self::half_bounded(Side::Left, l_bound)
+                // SAFETY: Interval invariants <=> OrdBoundPair invariants
+                unsafe { Self::Half(HalfInterval::new_unchecked(Side::Left, l_bound)) }
             }
             (OrdBound::Finite(l_val, l_ord), OrdBound::Finite(r_val, r_ord)) => {
                 let l_bound = FiniteBound::new(l_ord.into(), l_val);

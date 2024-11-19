@@ -167,7 +167,7 @@ impl<T: PartialOrd> Contains<&Self> for EnumInterval<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Factory;
+    use crate::factory::*;
 
     #[test]
     fn test_open_contains_self() {

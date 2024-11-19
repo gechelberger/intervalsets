@@ -1,73 +1,88 @@
-pub use intervalsets_core::factory::{Converter, EIFactory, Factory, Identity};
+pub use intervalsets_core::factory::{
+    traits, Converter, ConvertingFactory, EIFactory, EmptyFactory, FiniteFactory,
+    HalfBoundedFactory, Identity, UnboundedFactory,
+};
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 use crate::bound::FiniteBound;
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::{Interval, IntervalSet, Side};
 
-impl<T: Domain> Factory<T, Identity> for Interval<T> {
-    type Output = Interval<T>;
+impl<T: Domain> ConvertingFactory<T, Identity> for Interval<T> {
+    type Output = Self;
+}
 
+impl<T: Domain> EmptyFactory<T, Identity> for Interval<T> {
     fn empty() -> Self::Output {
         FiniteInterval::Empty.into()
     }
+}
 
-    fn finite(left: FiniteBound<T>, right: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::new(left, right).into()
+impl<T: Domain> FiniteFactory<T, Identity> for Interval<T> {
+    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
+        FiniteInterval::new(lhs, rhs).into()
     }
 
+    fn strict_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self::Output> {
+        FiniteInterval::new_strict(lhs, rhs).map(Interval::from)
+    }
+}
+
+impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for Interval<T> {
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
         HalfInterval::new(side, bound).into()
     }
 
+    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Option<Self::Output>
+    where
+        T: num_traits::Zero,
+    {
+        HalfInterval::new_strict(side, bound).map(Interval::from)
+    }
+}
+
+impl<T: Domain> UnboundedFactory<T, Identity> for Interval<T> {
     fn unbounded() -> Self::Output {
         EnumInterval::Unbounded.into()
     }
 }
 
-pub struct SFactory<T, C>(std::marker::PhantomData<(T, C)>);
+impl<T: Domain> ConvertingFactory<T, Identity> for IntervalSet<T> {
+    type Output = Self;
+}
 
-impl<T, C> Factory<T, C> for SFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Domain,
-{
-    type Output = IntervalSet<C::To>;
-
+impl<T: Domain> EmptyFactory<T, Identity> for IntervalSet<T> {
     fn empty() -> Self::Output {
-        Self::Output::empty()
-    }
-
-    fn finite(left: FiniteBound<C::To>, right: FiniteBound<C::To>) -> Self::Output {
-        Interval::finite(left, right).into()
-    }
-
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
-        Interval::half_bounded(side, bound).into()
-    }
-
-    fn unbounded() -> Self::Output {
-        Interval::unbounded().into()
+        IntervalSet::empty()
     }
 }
 
-impl<T: Domain> Factory<T, Identity> for IntervalSet<T> {
-    type Output = IntervalSet<T>;
-
-    fn empty() -> Self::Output {
-        Interval::empty().into()
+impl<T: Domain> FiniteFactory<T, Identity> for IntervalSet<T> {
+    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
+        FiniteInterval::new(lhs, rhs).into()
     }
 
-    fn finite(left: FiniteBound<T>, right: FiniteBound<T>) -> Self::Output {
-        Interval::finite(left, right).into()
+    fn strict_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self::Output> {
+        FiniteInterval::new_strict(lhs, rhs).map(IntervalSet::from)
     }
+}
 
+impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for IntervalSet<T> {
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        Interval::half_bounded(side, bound).into()
+        HalfInterval::new(side, bound).into()
     }
 
+    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Option<Self::Output>
+    where
+        T: num_traits::Zero,
+    {
+        HalfInterval::new_strict(side, bound).map(IntervalSet::from)
+    }
+}
+
+impl<T: Domain> UnboundedFactory<T, Identity> for IntervalSet<T> {
     fn unbounded() -> Self::Output {
-        Interval::unbounded().into()
+        EnumInterval::Unbounded.into()
     }
 }
 

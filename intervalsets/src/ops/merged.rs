@@ -17,8 +17,7 @@
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::{TryMerge};
+/// use intervalsets::prelude::*;
 ///
 /// let x = Interval::closed(0, 10);
 /// let y = Interval::closed(11, 20);
@@ -35,10 +34,10 @@
 /// ```
 pub use intervalsets_core::ops::TryMerge;
 
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::Interval;
 
-impl<T: Domain> TryMerge<Self> for Interval<T> {
+impl<T: Domain + Zero> TryMerge<Self> for Interval<T> {
     type Output = Self;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
@@ -49,8 +48,8 @@ impl<T: Domain> TryMerge<Self> for Interval<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::factory::traits::*;
     use crate::ops::Complement;
-    use crate::Factory;
 
     #[quickcheck]
     fn check_merge_half_complements_f32(x: f32) {

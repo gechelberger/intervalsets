@@ -3,7 +3,7 @@ use core::fmt;
 
 use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::{FiniteBound, SetBounds, Side};
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct InvertedBoundsError;
@@ -42,15 +42,26 @@ impl<T: Domain> FiniteInterval<T> {
 }
 
 impl<T: PartialOrd> FiniteInterval<T> {
+    /// todo...
+    ///
+    /// # Safety
+    ///
+    /// todo...
+    pub unsafe fn new_norm(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+        Self::strict_new_norm(lhs, rhs).unwrap()
+    }
+
     /// # Safety
     ///
     /// The user must ensure invariants are satisfied:
     /// 1. discrete bounds are normalized to closed form
-    pub unsafe fn new_norm(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        match lhs.value().partial_cmp(rhs.value()) {
-            Some(Less) => Self::Bounded(lhs, rhs),
-            Some(Equal) if lhs.is_closed() && rhs.is_closed() => Self::Bounded(lhs, rhs),
-            _ => Self::Empty,
+    ///
+    #[inline]
+    pub unsafe fn strict_new_norm(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self> {
+        match lhs.value().partial_cmp(rhs.value())? {
+            Less => Some(Self::Bounded(lhs, rhs)),
+            Equal if lhs.is_closed() && rhs.is_closed() => Some(Self::Bounded(lhs, rhs)),
+            _ => Some(Self::Empty),
         }
     }
 }
@@ -112,12 +123,28 @@ pub struct HalfInterval<T> {
     pub bound: FiniteBound<T>,
 }
 
-impl<T: Domain> HalfInterval<T> {
+impl<T> HalfInterval<T> {
+    /// Creates a new half interval without checking invariants.
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring that `bound` is comparable. This
+    /// is assumed if the bound is taken from an existing set.
+    pub unsafe fn new_unchecked(side: Side, bound: FiniteBound<T>) -> Self {
+        Self { side, bound }
+    }
+}
+
+impl<T: Domain + Zero> HalfInterval<T> {
     pub fn new(side: Side, bound: FiniteBound<T>) -> Self {
-        Self {
-            side,
-            bound: bound.normalized(side),
-        }
+        Self::new_strict(side, bound).expect("Bound should have been comparable")
+    }
+
+    pub fn new_strict(side: Side, bound: FiniteBound<T>) -> Option<Self> {
+        // make sure bound is comparable
+        let _ = T::zero().partial_cmp(bound.value())?;
+        let bound = bound.normalized(side);
+        Some(Self { side, bound })
     }
 
     pub fn left(bound: FiniteBound<T>) -> Self {
@@ -254,7 +281,7 @@ impl_interval_cmp!(FiniteInterval, HalfInterval, EnumInterval);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Factory;
+    use crate::factory::FiniteFactory;
 
     #[test]
     fn test_set_bounds_trait() {

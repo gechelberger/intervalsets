@@ -1,7 +1,7 @@
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, Side};
 use crate::empty::MaybeEmpty;
-use crate::factory::Factory;
+use crate::factory::FiniteFactory;
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval};
 use crate::try_cmp::{TryMax, TryMin};

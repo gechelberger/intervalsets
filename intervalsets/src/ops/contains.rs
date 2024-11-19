@@ -42,7 +42,7 @@ impl<T: Domain> Contains<&Self> for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Factory;
+    use crate::factory::traits::*;
 
     #[quickcheck]
     fn check_empty_contains_integer(x: i8) {
@@ -102,6 +102,10 @@ mod tests {
 
     #[quickcheck]
     fn check_finite_contains_finite_float(a: f32, b: f32) {
+        if a.is_nan() || b.is_nan() {
+            return;
+        }
+
         let interval = Interval::open(-100.0, 100.0);
         let candidate = Interval::open(a, b);
 
