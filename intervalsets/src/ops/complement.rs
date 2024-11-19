@@ -1,9 +1,10 @@
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-use crate::bound::Side;
+use crate::bound::Side::*;
+use crate::factory::UnboundedFactory;
 use crate::numeric::Domain;
 use crate::ops::Intersection;
-use crate::{Factory, Interval, IntervalSet};
+use crate::{Interval, IntervalSet};
 
 /// Defines the complement of a Set.
 ///
@@ -23,10 +24,14 @@ impl<T: Domain> Complement for FiniteInterval<T> {
     fn complement(self) -> Self::Output {
         match self {
             Self::Empty => IntervalSet::new_unchecked(vec![Interval::unbounded()]),
-            Self::Bounded(lhs, rhs) => IntervalSet::new_unchecked(vec![
-                Interval::half_bounded(Side::Right, lhs.flip()),
-                Interval::half_bounded(Side::Left, rhs.flip()),
-            ]),
+            Self::Bounded(lhs, rhs) => unsafe {
+                // SAFETY: Assuming FiniteInterval invariants are satisfied, then lhs <= rhs and
+                // new half intervals are properly sorted; bounds are comparable; manually renormalized.
+                IntervalSet::new_unchecked(vec![
+                    HalfInterval::new_unchecked(Right, lhs.flip().normalized(Right)).into(),
+                    HalfInterval::new_unchecked(Left, rhs.flip().normalized(Left)).into(),
+                ])
+            },
         }
     }
 }
@@ -35,7 +40,9 @@ impl<T: Domain> Complement for HalfInterval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
-        HalfInterval::new(self.side.flip(), self.bound.flip()).into()
+        let side = self.side.flip();
+        // Safety: Assume bound satisfies invariants; manually re-normalize after flip;
+        unsafe { HalfInterval::new_unchecked(side, self.bound.flip().normalized(side)).into() }
     }
 }
 
@@ -72,6 +79,7 @@ impl<T: Domain + Clone> Complement for IntervalSet<T> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::factory::{FiniteFactory, HalfBoundedFactory};
     use crate::ops::{Contains, Union};
 
     #[quickcheck]

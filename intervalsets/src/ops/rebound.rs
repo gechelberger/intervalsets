@@ -1,10 +1,10 @@
 pub use intervalsets_core::ops::Rebound;
 
 use crate::bound::FiniteBound;
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::sets::Interval;
 
-impl<T: Domain> Rebound<T> for Interval<T> {
+impl<T: Domain + Zero> Rebound<T> for Interval<T> {
     type Output = Self;
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
@@ -19,7 +19,7 @@ impl<T: Domain> Rebound<T> for Interval<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Factory;
+    use crate::factory::traits::*;
 
     #[test]
     fn test_interval_rebound() {

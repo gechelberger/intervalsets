@@ -43,7 +43,7 @@
 //!
 //! # Getting Started
 //!
-//! **Intervals** are generally constructed via the [`Factory`] trait which is
+//! **Intervals** are generally constructed via the a [`factory`]` trait which are
 //! implemented for each base interval type. Manipulation is provided via
 //! [set operations](ops).
 //!

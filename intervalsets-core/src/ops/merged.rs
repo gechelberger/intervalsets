@@ -246,16 +246,12 @@ impl<T: Domain + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
             Some(self.clone())
         } else if n == 1 {
             let bound = self.side.select(rhs_min, rhs_max).clone();
-            unsafe {
-                Some(HalfInterval::new_unchecked(self.side, bound))
-            }
+            unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
         } else {
             let maybe_adj = self.side.select(rhs_max, rhs_min);
             if self.is_adjacent_to(maybe_adj) {
                 let bound = self.side.select(rhs_min, rhs_max).clone();
-                unsafe {
-                    Some(HalfInterval::new_unchecked(self.side, bound))
-                }
+                unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
             } else {
                 None
             }

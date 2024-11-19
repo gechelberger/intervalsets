@@ -1,7 +1,7 @@
 use num_traits::Zero;
 
 use crate::bound::{FiniteBound, Side};
-use crate::factory::{UnboundedFactory, FiniteFactory, HalfBoundedFactory};
+use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 

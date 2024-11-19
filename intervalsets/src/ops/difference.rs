@@ -6,7 +6,7 @@ use crate::{Interval, IntervalSet};
 /// ```text
 /// Let A ⊆ T, B ⊆ T:
 ///
-/// { x | x ∈ A && x ∉ B }
+/// { x | x ∈ A ∧ x ∉ B }
 /// ```
 ///
 /// Difference is not commutative.
@@ -14,8 +14,7 @@ use crate::{Interval, IntervalSet};
 /// # Example
 ///
 /// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::{Difference, Union};
+/// use intervalsets::prelude::*;
 ///
 /// let a = Interval::closed(0.0, 100.0);
 /// let b = Interval::closed(50.0, 150.0);
@@ -36,7 +35,12 @@ pub trait Difference<Rhs = Self> {
 
 macro_rules! difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain + Clone> $crate::ops::Difference<$t_rhs> for $t_lhs {
+        impl<T> $crate::ops::Difference<$t_rhs> for $t_lhs
+        where
+            T: $crate::numeric::Domain,
+            T: $crate::numeric::Zero,
+            T: Clone,
+        {
             type Output = $crate::IntervalSet<T>;
 
             fn difference(self, rhs: $t_rhs) -> Self::Output {
@@ -63,8 +67,7 @@ difference_impl!(IntervalSet<T>, IntervalSet<T>);
 ///
 /// Example:
 /// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::{SymDifference, Union};
+/// use intervalsets::prelude::*;
 ///
 /// let a = Interval::closed(0.0, 10.0);
 /// let b = Interval::closed(5.0, 15.0);
@@ -82,7 +85,12 @@ pub trait SymDifference<Rhs = Self> {
 
 macro_rules! sym_difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T: $crate::numeric::Domain + Clone> $crate::ops::SymDifference<$t_rhs> for $t_lhs {
+        impl<T> $crate::ops::SymDifference<$t_rhs> for $t_lhs
+        where
+            T: $crate::numeric::Domain,
+            T: $crate::numeric::Zero,
+            T: Clone,
+        {
             type Output = $crate::IntervalSet<T>;
 
             fn sym_difference(self, rhs: $t_rhs) -> Self::Output {
@@ -104,8 +112,8 @@ sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::factory::traits::*;
     use crate::ops::Union;
-    use crate::Factory;
 
     #[test]
     fn test_finite_difference() {

@@ -1,10 +1,44 @@
 //! Factories for intervals.
 //!
-//! [`Factory`] types are not intended to be constructed. Rather, they provide
+//! Factory types are not intended to be constructed. Rather, they provide
 //! associated functions to build intervals of an associated type and may
 //! coerce the input types for convenience using a generic [`Converter`].
 //!
+//! The Factory traits are intended to provide a common
+//! interface for creating the full spectrum of possible
+//! intervals. [`EnumInterval`] itself is a factory using
+//! the [`Identity`] converter. Use [`EIFactory`] to supply
+//! a custom converter.
 //!
+//! Sometimes it is preferable for the underlying storage
+//! to be a wrapper or NewType. [`Converter`] provides a mechanism
+//! to do so with less boiler plate.
+//!
+//! # Examples
+//! ```
+//! use intervalsets_core::prelude::*;
+//! let x = EnumInterval::<u32>::closed(0, 10);
+//! let y = EnumInterval::<u32>::closed(5, 15);
+//! assert_eq!(x.intersection(y), EnumInterval::closed(5, 10));
+//! ```
+//!
+//! ```
+//! use intervalsets_core::prelude::*;
+//! use intervalsets_core::factory::EIFactory;
+//! use ordered_float::NotNan;
+//!
+//! // explicit
+//! let x = EnumInterval::open(
+//!     NotNan::<f32>::new(0.0).unwrap(),
+//!     NotNan::<f32>::new(10.0).unwrap()
+//! );
+//!
+//! // factory with converter
+//! type Fct = EIFactory<f32, NotNan<f32>>;
+//! let y = Fct::open(0.0, 10.0);
+//!
+//! assert_eq!(x, y);
+//! ```
 
 use crate::bound::{FiniteBound, Side};
 use crate::numeric::{Domain, Zero};
@@ -12,13 +46,10 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Can be used instead of the prelude to pull in all factory traits.
 pub mod traits {
-    pub use super::EmptyFactory;
-    pub use super::FiniteFactory;
-    pub use super::HalfBoundedFactory;
-    pub use super::UnboundedFactory;
+    pub use super::{EmptyFactory, FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 }
 
-/// Convert an arbitrary type to one supported by [`Factory`].
+/// Convert an arbitrary type to one implemnting [`Domain`].
 ///
 /// The [`Converter`] trait provides a mechanism to wrap
 /// or coerse a type into one that is compatible with interval bounds. This is
@@ -292,7 +323,7 @@ where
     fn strict_closed_open(lhs: T, rhs: T) -> Option<Self::Output> {
         Self::strict_finite(
             FiniteBound::closed(C::convert(lhs)),
-            FiniteBound::open(C::convert(rhs))
+            FiniteBound::open(C::convert(rhs)),
         )
     }
 }
@@ -332,8 +363,7 @@ where
         Self::strict_half_bounded(Side::Left, bound)
     }
 
-    fn strict_right_bounded(bound: FiniteBound<C::To>) -> Option<Self::Output>
-    {
+    fn strict_right_bounded(bound: FiniteBound<C::To>) -> Option<Self::Output> {
         Self::strict_half_bounded(Side::Right, bound)
     }
 
@@ -382,46 +412,6 @@ where
     }
 }
 
-/// Factory functions for an associated type.
-///
-/// The [`Factory`] trait is intended to provide a common
-/// interface for creating the full spectrum of possible
-/// intervals. [`EnumInterval`] itself is a factory using
-/// the [`Identity`] converter. Use [`EIFactory`] to supply
-/// a custom converter.
-///
-/// Sometimes it is preferable for the underlying storage
-/// to be a wrapper or NewType. [`Converter`] provides a mechanism
-/// to do so with less boiler plate.
-///
-/// # Examples
-/// ```
-/// use intervalsets_core::prelude::*;
-/// type Fct = EnumInterval<u32>;
-/// let x = Fct::closed(0, 10);
-/// let y = Fct::closed(5, 15);
-/// assert_eq!(x.intersection(y), Fct::closed(5, 10))
-/// ```
-///
-/// This example uses the optional [`ordered-float`] feature.
-///
-/// ```no_compile
-/// use intervalsets_core::prelude::*;
-/// use intervalsets_core::factory::IFactory;
-/// use ordered_float::NotNan;
-///
-/// // explicit
-/// let x = EnumInterval::open(
-///     NotNan::<f32>::new(0.0).unwrap(),
-///     NotNan::<f32>::new(10.0).unwrap()
-/// );
-///
-/// // factory with converter
-/// type Fct = IFactory<f32, NotNan<f32>>;
-/// let y = Fct::open(0.0, 10.0);
-///
-/// assert_eq!(x, y);
-/// ```
 pub trait UnboundedFactory<T, C = Identity>: ConvertingFactory<T, C>
 where
     C: Converter<T>,

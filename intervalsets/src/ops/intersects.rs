@@ -30,7 +30,7 @@ impl<T: Domain> Intersects<&Self> for IntervalSet<T> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::Factory;
+    use crate::factory::traits::*;
 
     #[test]
     fn test_finite_intersects() {

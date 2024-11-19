@@ -125,9 +125,9 @@ pub struct HalfInterval<T> {
 
 impl<T> HalfInterval<T> {
     /// Creates a new half interval without checking invariants.
-    /// 
+    ///
     /// # Safety
-    /// 
+    ///
     /// The user is responsible for ensuring that `bound` is comparable. This
     /// is assumed if the bound is taken from an existing set.
     pub unsafe fn new_unchecked(side: Side, bound: FiniteBound<T>) -> Self {

@@ -1,11 +1,11 @@
 pub use intervalsets_core::ops::Split;
 
 use crate::bound::Side;
-use crate::numeric::Domain;
+use crate::numeric::{Domain, Zero};
 use crate::ops::Contains;
 use crate::{Interval, IntervalSet, MaybeEmpty, SetBounds};
 
-impl<T: Domain + Clone> Split<T> for Interval<T> {
+impl<T: Domain + Clone + Zero> Split<T> for Interval<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
@@ -14,7 +14,7 @@ impl<T: Domain + Clone> Split<T> for Interval<T> {
     }
 }
 
-impl<T: Domain + Clone> Split<T> for IntervalSet<T> {
+impl<T: Domain + Clone + Zero> Split<T> for IntervalSet<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
@@ -49,8 +49,8 @@ impl<T: Domain + Clone> Split<T> for IntervalSet<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::factory::traits::*;
     use crate::ops::Union;
-    use crate::Factory;
 
     #[test]
     fn test_split_interval_empty() {

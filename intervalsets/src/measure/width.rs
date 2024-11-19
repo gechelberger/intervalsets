@@ -11,9 +11,7 @@ use super::Measurement;
 ///
 /// # Example
 /// ```
-/// use intervalsets::{Interval, IntervalSet, Factory};
-/// use intervalsets::ops::Union;
-/// use intervalsets::measure::Width;
+/// use intervalsets::prelude::*;
 ///
 /// let interval = Interval::closed(10.0, 100.0);
 /// assert_eq!(interval.width().finite(), 90.0);
@@ -33,9 +31,7 @@ use super::Measurement;
 /// # Normalization problem
 ///
 /// ```
-/// use intervalsets::{Interval, Factory};
-/// use intervalsets::ops::Difference;
-/// use intervalsets::measure::Width;
+/// use intervalsets::prelude::*;
 ///
 /// let a = Interval::closed(0.0, 10.0);
 /// let a = a.difference(Interval::closed(5.0, 15.0));
@@ -82,8 +78,8 @@ mod tests {
     use approx::relative_eq;
 
     use super::*;
+    use crate::factory::FiniteFactory;
     use crate::ops::Intersects;
-    use crate::Factory;
 
     #[quickcheck]
     fn check_finite_width(a: f32, b: f32) {
