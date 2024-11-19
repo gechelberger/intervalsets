@@ -96,10 +96,10 @@ impl Side {
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 pub enum BoundType {
-    /// A Closed BoundType includes the limit element in the `Set`.
-    Closed,
     /// An Open BoundType excludes the limit element from the `Set`.
-    Open,
+    Open = 0,
+    /// A Closed BoundType includes the limit element in the `Set`.
+    Closed = 1,
 }
 
 impl BoundType {
@@ -108,6 +108,13 @@ impl BoundType {
         match self {
             Self::Closed => Self::Open,
             Self::Open => Self::Closed,
+        }
+    }
+
+    pub fn combine(self, rhs: Self) -> Self {
+        match (self, rhs) {
+            (Self::Closed, Self::Closed) => Self::Closed,
+            _ => Self::Open,
         }
     }
 }
@@ -131,17 +138,17 @@ pub struct FiniteBound<T>(BoundType, T);
 
 impl<T> FiniteBound<T> {
     /// Creates a new [`FiniteBound`]
-    pub fn new(bound_type: BoundType, limit: T) -> Self {
+    pub const fn new(bound_type: BoundType, limit: T) -> Self {
         Self(bound_type, limit)
     }
 
-    /// Returns a new closed `Bound` constrained at `limit`.
-    pub fn closed(limit: T) -> Self {
+    /// Creates a new closed `FiniteBound` constrained at `limit`.
+    pub const fn closed(limit: T) -> Self {
         Self(BoundType::Closed, limit)
     }
 
-    /// Returns a new open `Bound` constrained at `limit`.
-    pub fn open(limit: T) -> Self {
+    /// Creates a new open `Bound` constrained at `limit`.
+    pub const fn open(limit: T) -> Self {
         Self(BoundType::Open, limit)
     }
 
@@ -287,6 +294,90 @@ impl<T: Domain> FiniteBound<T> {
     }
 }
 
+mod math {
+    use core::ops::{Add, Mul};
+
+    use num_traits::{ConstOne, ConstZero, One, Zero};
+
+    use super::{BoundType, FiniteBound};
+
+    impl<T: Add> Add for FiniteBound<T> {
+        type Output = FiniteBound<<T as Add>::Output>;
+
+        fn add(self, rhs: Self) -> Self::Output {
+            FiniteBound::new(self.0.combine(rhs.0), self.1 + rhs.1)
+        }
+    }
+
+    impl<T: Mul> Mul for FiniteBound<T> {
+        type Output = FiniteBound<<T as Mul>::Output>;
+
+        fn mul(self, rhs: Self) -> Self::Output {
+            FiniteBound::new(self.0.combine(rhs.0), self.1 * rhs.1)
+        }
+    }
+
+    impl<T: Zero> Zero for FiniteBound<T> {
+        fn zero() -> Self {
+            FiniteBound::closed(T::zero())
+        }
+
+        fn is_zero(&self) -> bool {
+            self.0 == BoundType::Closed && self.1.is_zero()
+        }
+    }
+
+    impl<T: One + PartialEq> One for FiniteBound<T> {
+        fn one() -> Self {
+            FiniteBound::closed(T::one())
+        }
+    }
+
+    impl<T: ConstZero> ConstZero for FiniteBound<T> {
+        const ZERO: Self = FiniteBound::closed(T::ZERO);
+    }
+
+    impl<T: ConstOne + PartialEq> ConstOne for FiniteBound<T> {
+        const ONE: Self = FiniteBound::closed(T::ONE);
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[test]
+        fn test_const_zero_one() {
+            const X: FiniteBound<i32> = FiniteBound::ONE;
+            const Y: FiniteBound<i32> = FiniteBound::ZERO;
+            assert_eq!(X + Y, FiniteBound::ONE);
+        }
+
+        #[test]
+        fn test_add() {
+            let c10 = FiniteBound::closed(10);
+            let c20 = FiniteBound::closed(20);
+            let o10 = FiniteBound::open(10);
+            let o20 = FiniteBound::open(20);
+            assert_eq!(c10 + c10, c20);
+            assert_eq!(c10 + o10, o20);
+            assert_eq!(o10 + c10, o20);
+            assert_eq!(o10 + o10, o20);
+        }
+
+        #[test]
+        fn test_mul() {
+            let c10 = FiniteBound::closed(10);
+            let c100 = FiniteBound::closed(100);
+            let o10 = FiniteBound::open(10);
+            let o100 = FiniteBound::open(100);
+            assert_eq!(c10 * c10, c100);
+            assert_eq!(c10 * o10, o100);
+            assert_eq!(o10 * c10, o100);
+            assert_eq!(o10 * o10, o100);
+        }
+    }
+}
+
 /// Helpers that define a total order for `Set` bounds.
 pub mod ord {
     use super::{BoundType, FiniteBound};
@@ -316,15 +407,15 @@ pub mod ord {
     }
 
     impl<T> OrdBound<T> {
-        pub fn left_open(limit: T) -> Self {
+        pub const fn left_open(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::LeftOpen)
         }
 
-        pub fn closed(limit: T) -> Self {
+        pub const fn closed(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::Closed)
         }
 
-        pub fn right_open(limit: T) -> Self {
+        pub const fn right_open(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::RightOpen)
         }
     }
