@@ -10,6 +10,8 @@ use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
+/// Convert an arbitrary type to one supported by [`Factory`].
+///
 /// The [`Converter`] trait provides a mechanism to wrap
 /// or coerse a type into one that is compatible with interval bounds. This is
 /// particularly useful when working with 3rd party crates with unsupported types.
@@ -95,6 +97,8 @@ impl<T: Domain> Converter<T> for Identity {
     }
 }
 
+/// Factory functions for an associated type.
+///
 /// The [`Factory`] trait is intended to provide a common
 /// interface for creating the full spectrum of possible
 /// intervals. [`EnumInterval`] itself is a factory using

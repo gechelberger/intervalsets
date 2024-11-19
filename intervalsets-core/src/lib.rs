@@ -92,6 +92,13 @@
 //! assert_eq!(count.finite(), 11);
 //!
 //! assert_eq!(format!("{}", a), "[0, 10]");
+//!
+//! // intervals have a total order as long as T: Ord:
+//! let a = EnumInterval::empty();
+//! let b = EnumInterval::unbound_closed(10);
+//! let c = EnumInterval::closed(0, 10);
+//! let d = EnumInterval::closed_unbound(0);
+//! assert!(a < b && b < c && c < d);
 //! ```
 //!
 //! # Foot guns
@@ -114,23 +121,54 @@
 //! assert_eq!(discrete, [1, 9].into());
 //! ```
 //!
+//! ## Floating Point Types
+//!
+//! Making [`Ord`] a trait bound for most of this crate's APIs would
+//! elimenate a whole class of errors, and is tempting, but floats come with a
+//! whole host of complexities regardless.
+//!
+//! * `NAN` is not part of the default ordering, though there is a `total_cmp`
+//!     available now.
+//! * rounding errors can cause issues with testing values near a set bound.
+//! * `FiniteBound(f32::INFINITY)` and `FiniteBound(f32::NEG_INFINITY)`are both
+//!     valid syntax, though all manner of headache semantically speaking.
+//!
+//! Sometimes, floats are still the right tool for the job, and it is left to the
+//! user to choose the right approach for the given problem. Fixed precision
+//! decimal types like `rust_decimal` do side step some pitfalls.
+//!
 //! ## Fallibility
 //!
-//! The default api of intervalsets is to follow mathematical definitions and
-//! conventions as rigorously as possible where the type system and performance
-//! allows. Infallible operations are provided wherever possible. Any panic
-//! is a [bug in the library](todo: file an issue) or due to an invariant
-//! violation introduced by an unsafe api function. This can make it more
-//! difficult to isolate logic errors as they are able to propogate further from
-//! their source. `Strict` apis are also provided (or planned) that may help
-//! in that regard.
+//! * todo: ordering invariants/violations
+//! * todo: bounds violations
+//! * todo: "silent" failures
+//! * todo: strict apis
+//!     * FiniteInterval::new_strict
+//!     * ConvexHull
+//!     * TryMerge (rename StrictUnion?)
+//!     * todo: strict factory + break up factory trait into smaller ones.
+//!     * todo: StrictIntersection? StrictSplit? StrictRebound?
+//!
+//! ```
+//! use intervalsets_core::prelude::*;
+//!
+//! // ordering violation + silent failure
+//! let x = FiniteInterval::open(f32::NAN, 0.0);
+//! assert_eq!(x, FiniteInterval::empty());
+//!
+//! //let x = FiniteInterval::strict_open(f32::NAN, 0.0);
+//! //assert_eq!(x, None);
+//! ```
+//!
+//! Silent failures can make it difficult to isolate logic errors as they are
+//! able to propogate further from their source before detection.
 //!
 //! ```
 //! use intervalsets_core::prelude::*;
 //! let interval = EnumInterval::closed(0, 10);
 //!
 //! let oops = interval
-//!     .with_left_closed(20) // empty here
+//!     .with_left_closed(20) // empty here (bounds violation + silent failure)
 //!     .with_right(None);
 //! assert_ne!(oops, EnumInterval::closed_unbound(20));
 //! assert_eq!(oops, EnumInterval::empty());
@@ -158,8 +196,8 @@
 //! * num-bigint: arbitrary sized integers
 //!
 //! ## serialization
-//! * serde: implement `Serialize`, `Deserialize`
-//! * rkyv: implement `Archive`, `Serialize`, `Deserialize`
+//! * serde: implement [`Serialize`](serde::Serialize), [`Deserialize`](serde::Deserialize).
+//! * rkyv: implement [`Archive`](rkyv::Archive), [`Serialize`](rkyv::Serialize), [`Deserialize`](rkyv::Deserialize).
 //!
 //! # Diving Deeper
 //! * [Implement custom storage data types](numeric)

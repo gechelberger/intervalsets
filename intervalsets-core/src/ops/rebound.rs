@@ -64,7 +64,7 @@ impl<T: Domain> Rebound<T> for FiniteInterval<T> {
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
         let Self::Bounded(_, rhs) = self else {
-            return EnumInterval::empty();
+            return EnumInterval::Finite(self); // empty
         };
 
         match bound {
@@ -75,7 +75,7 @@ impl<T: Domain> Rebound<T> for FiniteInterval<T> {
 
     fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
         let Self::Bounded(lhs, _) = self else {
-            return EnumInterval::empty();
+            return EnumInterval::Finite(self); // empty
         };
 
         match bound {

@@ -1,4 +1,4 @@
-//! todo...
+//! traits for set operations.
 
 mod adjacent;
 pub use adjacent::Adjacent;
