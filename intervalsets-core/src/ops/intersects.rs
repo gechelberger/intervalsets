@@ -24,8 +24,10 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(x.intersects(&y), false);
 /// ```
 pub trait Intersects<T> {
+    /// Tests if two sets share any elements.
     fn intersects(&self, rhs: T) -> bool;
 
+    /// Tests if two sets share no elements.
     fn is_disjoint_from(&self, rhs: T) -> bool {
         !self.intersects(rhs)
     }

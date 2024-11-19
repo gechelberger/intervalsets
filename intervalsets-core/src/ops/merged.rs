@@ -384,7 +384,7 @@ where
     I: Iterator<Item = EnumInterval<T>>,
 {
     /// Creates a new MergeSorted Iterator
-    /// 
+    ///
     /// If the input is not sorted, behavior is undefined.
     pub fn new<U>(sorted: U) -> Self
     where

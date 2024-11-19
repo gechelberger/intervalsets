@@ -127,7 +127,8 @@ mod tests {
             Interval::empty(),
             Interval::closed_unbound(500.0),
             Interval::empty(),
-        ]).unwrap();
+        ])
+        .unwrap();
         assert_eq!(iv, Interval::open_unbound(0.0));
     }
 

@@ -85,10 +85,6 @@
 //! assert_eq!(left, EnumInterval::closed(0, 5));
 //! assert_eq!(right, EnumInterval::closed(6, 10));
 //!
-//! let (left, right) = a.split(5, Side::Right);
-//! assert_eq!(left, EnumInterval::closed(0, 4));
-//! assert_eq!(right, EnumInterval::closed(5, 10));
-//!
 //! let width: Measurement<_> = a.width();
 //! assert_eq!(width.finite(), 10);
 //!
@@ -96,6 +92,51 @@
 //! assert_eq!(count.finite(), 11);
 //!
 //! assert_eq!(format!("{}", a), "[0, 10]");
+//! ```
+//!
+//! # Foot guns
+//!
+//! ## Normalization & Type Conversions
+//!
+//! Discrete types are always normalized to closed form so that there is only
+//! a single valid bit-pattern for each possible `Set`.
+//!
+//! Most of the time this is transparent to the user, but it is a potential
+//! source of error, especially when converting types.
+//!
+//! ```
+//! use intervalsets_core::prelude::*;
+//!
+//! let discrete = EnumInterval::open(0, 10);
+//! assert_eq!(discrete.lval(), Some(&1));
+//! assert_eq!(discrete.rval(), Some(&9));
+//! assert_eq!(discrete, (0, 10).into());
+//! assert_eq!(discrete, [1, 9].into());
+//! ```
+//!
+//! ## Fallibility
+//!
+//! The default api of intervalsets is to follow mathematical definitions and
+//! conventions as rigorously as possible where the type system and performance
+//! allows. Infallible operations are provided wherever possible. Any panic
+//! is a [bug in the library](todo: file an issue) or due to an invariant
+//! violation introduced by an unsafe api function. This can make it more
+//! difficult to isolate logic errors as they are able to propogate further from
+//! their source. `Strict` apis are also provided (or planned) that may help
+//! in that regard.
+//!
+//! ```
+//! use intervalsets_core::prelude::*;
+//! let interval = EnumInterval::closed(0, 10);
+//!
+//! let oops = interval
+//!     .with_left_closed(20) // empty here
+//!     .with_right(None);
+//! assert_ne!(oops, EnumInterval::closed_unbound(20));
+//! assert_eq!(oops, EnumInterval::empty());
+//!
+//! let fixed = interval.with_right(None).with_left_closed(20);
+//! assert_eq!(fixed, EnumInterval::closed_unbound(20));
 //! ```
 //!
 //! # Features

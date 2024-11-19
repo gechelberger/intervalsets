@@ -7,6 +7,8 @@
 //! even if the type as a whole does not, and fails
 //! gracefully if elements outside of that totally
 //! ordered subset are used.
+//!
+//! These traits should be infallible for types implementing [`Ord`].
 
 use core::cmp::Ordering::*;
 

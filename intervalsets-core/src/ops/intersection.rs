@@ -30,7 +30,7 @@ use crate::sets::HalfInterval;
 pub trait Intersection<Rhs = Self> {
     /// The type of `Set` to create.
     type Output;
-    
+
     /// Creates a new `Set` intersection of A and B.
     fn intersection(self, rhs: Rhs) -> Self::Output;
 }
@@ -363,7 +363,7 @@ where
     I2: Iterator<Item = EnumInterval<T>>,
 {
     /// Creates a new SetSetIntersection Iterator
-    /// 
+    ///
     /// If the standard `Set` invariants are not satisfied, behavior is undefined.
     pub fn new<U1, U2>(a: U1, b: U2) -> Self
     where
