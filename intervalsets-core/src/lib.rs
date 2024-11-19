@@ -152,6 +152,10 @@
 //! ```
 //! use intervalsets_core::prelude::*;
 //!
+//! // bounds violation + silent failure
+//! let x = FiniteInterval::open(1.0, 0.0);
+//! assert_eq!(x, FiniteInterval::empty());
+//!
 //! // ordering violation + silent failure
 //! let x = FiniteInterval::open(f32::NAN, 0.0);
 //! assert_eq!(x, FiniteInterval::empty());

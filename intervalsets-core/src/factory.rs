@@ -245,6 +245,26 @@ where
         )
     }
 
+    /// Creates a new singleton finite interval
+    ///
+    /// [a, a] = { x | x == a }
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets_core::prelude::*;
+    ///
+    /// let x = EnumInterval::singleton(10);
+    /// assert_eq!(x.contains(&10), true);
+    /// assert_eq!(x.intersects(&FiniteInterval::closed(0, 20)), true);
+    /// ```
+    fn singleton(value: T) -> Self::Output
+    where
+        T: Clone,
+    {
+        Self::closed(value.clone(), value)
+    }
+
     /// Returns a new open finite interval or Empty
     ///
     /// For discrete data types T, open bounds are **normalized** to closed form.
