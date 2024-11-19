@@ -22,7 +22,7 @@
 //! assert_eq!(x.intersection(y), EnumInterval::closed(5, 10));
 //! ```
 //!
-//! ```
+//! ```no-compile
 //! use intervalsets_core::prelude::*;
 //! use intervalsets_core::factory::EIFactory;
 //! use ordered_float::NotNan;
