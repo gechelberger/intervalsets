@@ -47,6 +47,7 @@ impl<T: PartialOrd> FiniteInterval<T> {
     /// # Safety
     ///
     /// todo...
+    #[inline]
     pub unsafe fn new_norm(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
         Self::strict_new_norm(lhs, rhs).unwrap()
     }
