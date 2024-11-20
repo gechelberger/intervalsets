@@ -444,7 +444,7 @@ pub mod ord {
     }
 
     impl<T: Clone> OrdBound<&T> {
-        /// Create an owned OrdBound<T> from an OrdBound<&T> view.
+        /// Create an owned `OrdBound<T>` from an `OrdBound<&T>` view.
         pub fn cloned(self) -> OrdBound<T> {
             match self {
                 Finite(value, order) => Finite(value.clone(), order),
