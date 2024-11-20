@@ -28,8 +28,7 @@ impl<T> MaybeEmpty for EnumInterval<T> {
     fn is_empty(&self) -> bool {
         match self {
             Self::Finite(inner) => inner.is_empty(),
-            Self::Half(_) => false,
-            Self::Unbounded => false,
+            Self::Half(_) | Self::Unbounded => false,
         }
     }
 }

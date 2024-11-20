@@ -1,8 +1,8 @@
-//! Fallible min/max for PartialOrd types.
+//! Fallible min/max for `PartialOrd` types.
 //!
-//! TryMin and TryMax provide fallible min/max
-//! operations for types that implement PartialOrd
-//! but not Ord. This allows users to work with
+//! `TryMin` and `TryMax` provide fallible min/max
+//! operations for types that implement `PartialOrd`
+//! but not `Ord`. This allows users to work with
 //! subsets of a type that do have a **total order**
 //! even if the type as a whole does not, and fails
 //! gracefully if elements outside of that totally
