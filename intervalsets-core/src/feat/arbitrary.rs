@@ -38,7 +38,9 @@ impl<'a, T: Arbitrary<'a>> Arbitrary<'a> for FiniteBound<T> {
 
 impl<'a, T: Domain + Arbitrary<'a>> Arbitrary<'a> for FiniteInterval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
-        let interval = FiniteInterval::new(FiniteBound::arbitrary(u)?, FiniteBound::arbitrary(u)?);
+        let interval =
+            FiniteInterval::new_strict(FiniteBound::arbitrary(u)?, FiniteBound::arbitrary(u)?)
+                .unwrap_or(Self::empty());
 
         Ok(interval)
     }

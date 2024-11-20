@@ -134,8 +134,8 @@ impl<T: Domain + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
             };
 
             match rhs.side {
-                Left => FiniteInterval::new(rhs.bound.clone(), lhs_max.clone()),
-                Right => FiniteInterval::new(lhs_min.clone(), rhs.bound.clone()),
+                Left => unsafe { FiniteInterval::new_norm(rhs.bound.clone(), lhs_max.clone()) },
+                Right => unsafe { FiniteInterval::new_norm(lhs_min.clone(), rhs.bound.clone()) },
             }
         } else if rhs.contains(self) {
             self.clone()
