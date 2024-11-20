@@ -585,4 +585,15 @@ mod tests {
         let b = EnumInterval::<u32>::closed(0, 10);
         assert_eq!(a, b);
     }
+
+    #[test]
+    fn test_strict_factory() {
+        assert_eq!(EnumInterval::strict_singleton(f32::NAN), None);
+        assert_eq!(EnumInterval::strict_open(10.0, 0.0), None);
+        assert_eq!(EnumInterval::strict_unbound_open(f32::NAN), None);
+        assert_eq!(
+            EnumInterval::strict_closed_unbound(0.0),
+            Some(EnumInterval::closed_unbound(0.0))
+        );
+    }
 }
