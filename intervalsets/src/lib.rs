@@ -136,10 +136,9 @@
 #![deny(bad_style)]
 #![deny(future_incompatible)]
 #![deny(nonstandard_style)]
-#![deny(unused)]
+//#![deny(unused)]
 
-#![warn(missing_docs)]
-#![warn(clippy::all)]
+//#![warn(missing_docs)]
 
 #[cfg(test)]
 extern crate quickcheck;

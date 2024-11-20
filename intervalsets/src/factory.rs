@@ -86,6 +86,122 @@ impl<T: Domain> UnboundedFactory<T, Identity> for IntervalSet<T> {
     }
 }
 
+pub struct IFactory<T, C>(std::marker::PhantomData<(T, C)>);
+
+impl<T, C> ConvertingFactory<T, C> for IFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    type Output = Interval<C::To>;
+}
+
+impl<T, C> EmptyFactory<T, C> for IFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    fn empty() -> Self::Output {
+        Interval::empty()
+    }
+}
+
+impl<T, C> FiniteFactory<T, C> for IFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
+        Interval::from(EIFactory::<T, C>::finite(lhs, rhs))
+    }
+
+    fn strict_finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Option<Self::Output> {
+        EIFactory::<T, C>::strict_finite(lhs, rhs).map(Interval::from)
+    }
+}
+
+impl<T, C> HalfBoundedFactory<T, C> for IFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain + Zero,
+{
+    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
+        Interval::from(EIFactory::<T, C>::half_bounded(side, bound))
+    }
+
+    fn strict_half_bounded(side: Side, bound: FiniteBound<C::To>) -> Option<Self::Output> {
+        EIFactory::<T, C>::strict_half_bounded(side, bound).map(Interval::from)
+    }
+}
+
+impl<T, C> UnboundedFactory<T, C> for IFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    fn unbounded() -> Self::Output {
+        Interval::unbounded()
+    }
+}
+
+pub struct ISFactory<T, C>(std::marker::PhantomData<(T, C)>);
+
+impl<T, C> ConvertingFactory<T, C> for ISFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    type Output = IntervalSet<C::To>;
+}
+
+impl<T, C> EmptyFactory<T, C> for ISFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    fn empty() -> Self::Output {
+        IntervalSet::empty()
+    }
+}
+
+impl<T, C> FiniteFactory<T, C> for ISFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
+        IFactory::<T, C>::finite(lhs, rhs).into()
+    }
+
+    fn strict_finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Option<Self::Output> {
+        IFactory::<T, C>::strict_finite(lhs, rhs).map(IntervalSet::from)
+    }
+}
+
+impl<T, C> HalfBoundedFactory<T, C> for ISFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain + Zero,
+{
+    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
+        IFactory::<T, C>::half_bounded(side, bound).into()
+    }
+
+    fn strict_half_bounded(side: Side, bound: FiniteBound<C::To>) -> Option<Self::Output> {
+        IFactory::<T, C>::strict_half_bounded(side, bound).map(IntervalSet::from)
+    }
+}
+
+impl<T, C> UnboundedFactory<T, C> for ISFactory<T, C>
+where
+    C: Converter<T>,
+    C::To: Domain,
+{
+    fn unbounded() -> Self::Output {
+        IntervalSet::unbounded()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
