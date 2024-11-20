@@ -56,6 +56,36 @@ impl<T: PartialOrd> Contains<&T> for EnumInterval<T> {
     }
 }
 
+impl<T: PartialOrd> Contains<OrdBound<&T>> for FiniteInterval<T> {
+    #[inline(always)]
+    fn contains(&self, rhs: OrdBound<&T>) -> bool {
+        let (lhs_min, lhs_max) = self.ord_bound_pair().into_raw();
+        lhs_min <= rhs && rhs <= lhs_max && lhs_max != OrdBound::LeftUnbounded // lhs empty
+    }
+}
+
+impl<T: PartialOrd> Contains<OrdBound<&T>> for HalfInterval<T> {
+    #[inline(always)]
+    fn contains(&self, rhs: OrdBound<&T>) -> bool {
+        let lhs = self.bound.ord(self.side);
+        match self.side {
+            Side::Left => lhs <= rhs,
+            Side::Right => rhs <= lhs,
+        }
+    }
+}
+
+impl<T: PartialOrd> Contains<OrdBound<&T>> for EnumInterval<T> {
+    #[inline(always)]
+    fn contains(&self, rhs: OrdBound<&T>) -> bool {
+        match self {
+            Self::Finite(lhs) => lhs.contains(rhs),
+            Self::Half(lhs) => lhs.contains(rhs),
+            Self::Unbounded => true,
+        }
+    }
+}
+
 impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {

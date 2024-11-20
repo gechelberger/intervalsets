@@ -118,4 +118,36 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn regression_test_a() {
+        let a = EnumInterval::Half(HalfInterval {
+            side: Side::Right,
+            bound: FiniteBound::closed(-0.0),
+        });
+
+        let b = EnumInterval::Finite(FiniteInterval::Bounded(
+            FiniteBound::open(-0.0),
+            FiniteBound::closed(44411.26),
+        ));
+
+        let intersection = a.intersection(b);
+        let merge = a.try_merge(b);
+
+        if a.intersects(&b) {
+            assert!(intersection.is_inhabited());
+            assert!(merge.is_some());
+        } else {
+            assert!(intersection.is_empty());
+            if a.is_adjacent_to(&b) {
+                assert!(merge.is_some());
+            } else {
+                if a.is_empty() || b.is_empty() {
+                    assert!(merge.is_some());
+                } else {
+                    assert!(merge.is_none());
+                }
+            }
+        }
+    }
 }

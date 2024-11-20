@@ -63,7 +63,8 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
             return false;
         };
 
-        self.contains(left.value()) || self.contains(right.value())
+        self.contains(left.ord(crate::bound::Side::Left))
+            || self.contains(right.ord(crate::bound::Side::Right))
     }
 }
 
