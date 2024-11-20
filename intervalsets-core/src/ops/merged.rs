@@ -423,3 +423,72 @@ where
         Some(current)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::factory::traits::*;
+
+    #[test]
+    fn test_finite_finite() {
+        let a = EnumInterval::closed(0, 10);
+        let b = EnumInterval::closed(5, 15);
+        let c = EnumInterval::closed(20, 30);
+
+        let expected = Some(EnumInterval::closed(0, 15));
+        assert_eq!((&a).try_merge(&b), expected);
+        assert_eq!(a.try_merge(b), expected);
+
+        let expected = None;
+        assert_eq!((&a).try_merge(&c), expected);
+        assert_eq!(a.try_merge(c), expected);
+
+        let empty = EnumInterval::empty();
+
+        assert_eq!((&a).try_merge(&empty), Some(a));
+        assert_eq!(a.try_merge(empty), Some(a));
+
+        assert_eq!((&empty).try_merge(&a), Some(a));
+        assert_eq!(empty.try_merge(a), Some(a));
+    }
+
+    #[test]
+    fn test_half_half() {
+        let a = EnumInterval::unbound_closed(-10);
+        let b = EnumInterval::closed_unbound(10);
+
+        assert_eq!((&a).try_merge(&b), None);
+        assert_eq!(a.try_merge(b), None);
+
+        let c = EnumInterval::unbound_closed(20);
+        let expected = Some(EnumInterval::unbounded());
+        assert_eq!((&b).try_merge(&c), expected);
+        assert_eq!(b.try_merge(c), expected);
+
+        assert_eq!((&a).try_merge(&c), Some(c));
+        assert_eq!(a.try_merge(c), Some(c));
+    }
+
+    #[test]
+    fn test_finite_half() {
+        let a = EnumInterval::closed(0, 10);
+
+        let b = EnumInterval::unbound_closed(5);
+        let expected = Some(EnumInterval::unbound_closed(10));
+        assert_eq!((&a).try_merge(&b), expected);
+        assert_eq!(a.try_merge(b), expected);
+
+        let b = EnumInterval::closed_unbound(5);
+        let expected = Some(EnumInterval::closed_unbound(0));
+        assert_eq!((&a).try_merge(&b), expected);
+        assert_eq!(a.try_merge(b), expected);
+
+        let b = EnumInterval::closed_unbound(0);
+        assert_eq!((&a).try_merge(&b), Some(b));
+        assert_eq!(a.try_merge(b), Some(b));
+
+        let b = EnumInterval::closed_unbound(15);
+        assert_eq!((&a).try_merge(&b), None);
+        assert_eq!(a.try_merge(b), None);
+    }
+}
