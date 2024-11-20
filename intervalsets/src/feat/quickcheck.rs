@@ -18,6 +18,7 @@ impl<T: Domain + Clone + Arbitrary + Zero> Arbitrary for IntervalSet<T> {
                 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,
             ])
             .unwrap();
+
         let mut iset = IntervalSet::<T>::empty();
         for i in 0..n {
             let interval = Interval::<T>::arbitrary(g);
@@ -58,5 +59,10 @@ mod tests {
     #[quickcheck]
     fn check_qc_interval_set(iset: IntervalSet<f32>) {
         assert_eq!(iset.clone().complement().complement(), iset);
+    }
+
+    #[quickcheck]
+    fn check_interval_set_invariants(iset: IntervalSet<f32>) {
+        assert!(IntervalSet::satisfies_invariants(iset.slice()));
     }
 }

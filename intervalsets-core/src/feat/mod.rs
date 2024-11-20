@@ -21,3 +21,6 @@ mod rkyv;
 
 #[cfg(feature = "quickcheck")]
 mod quickcheck;
+
+#[cfg(feature = "fixed")]
+mod fixed;
