@@ -230,9 +230,8 @@
 #![deny(nonstandard_style)]
 #![deny(unused)]
 
-#![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::cargo)]
+//#![warn(clippy::pedantic)]
+//#![warn(clippy::cargo)]
 //#![warn(missing_docs)]
 
 pub mod bound;
