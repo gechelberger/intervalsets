@@ -16,7 +16,9 @@ where
     T: Domain + Zero,
     I: IntoIterator<Item = Interval<T>>,
 {
-    MergeSorted::new(iter.into_iter().map(|x| x.0)).map(Interval::from)
+    MergeSorted::new(iter.into_iter().map(|x| x.0))
+        .filter(|x| x.is_inhabited())
+        .map(Interval::from)
 }
 
 fn ordered_pair<T: PartialOrd>(a: Interval<T>, b: Interval<T>) -> [Interval<T>; 2] {
