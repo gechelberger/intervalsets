@@ -1,12 +1,7 @@
-use rust_decimal::Decimal;
-
-use crate::continuous_domain_impl;
-
-continuous_domain_impl!(Decimal);
-
 #[cfg(test)]
 mod test {
-    use super::*;
+    use rust_decimal::Decimal;
+
     use crate::prelude::*;
 
     #[test]

@@ -1,48 +1,11 @@
-use ordered_float::{FloatCore, NotNan, OrderedFloat};
-
-use crate::factory::Cvt;
-use crate::numeric::Domain;
-
-impl<T: Clone + PartialOrd> Domain for NotNan<T> {
-    fn try_adjacent(&self, side: crate::Side) -> Option<Self> {
-        None
-    }
-}
-
-impl<T: FloatCore> Domain for OrderedFloat<T> {
-    fn try_adjacent(&self, side: crate::Side) -> Option<Self> {
-        None
-    }
-}
-
-impl<T> Cvt<T> for NotNan<T>
-where
-    T: FloatCore,
-{
-    type To = Self;
-
-    fn convert_to(value: T) -> Self::To {
-        Self::new(value).expect("Value should not be NaN")
-    }
-}
-
-impl<T> Cvt<T> for OrderedFloat<T>
-where
-    T: FloatCore,
-{
-    type To = Self;
-
-    fn convert_to(value: T) -> Self::To {
-        Self(value)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::factory::{Factory, IFactory};
+
+    use ordered_float::{NotNan, OrderedFloat};
+
+    use crate::factory::{FiniteFactory, IFactory};
     use crate::ops::Intersection;
-    use crate::{Bounding, Interval};
+    use crate::{Interval, SetBounds};
 
     #[test]
     fn test_not_nan() {
@@ -68,7 +31,7 @@ mod tests {
 
     #[test]
     fn test_float_not_nan_cvt() {
-        type A = IFactory<f32, ordered_float::NotNan<f32>>;
+        type A = IFactory<f32, NotNan<f32>>;
         let x = A::closed(0.0, 5.0);
 
         assert_eq!(x.left().unwrap().value(), &NotNan::<f32>::new(0.0).unwrap());
