@@ -1,4 +1,5 @@
 mod range;
+mod try_from;
 
 use crate::bound::ord::{OrdBound, OrdBoundFinite, OrdBoundPair};
 use crate::bound::{BoundType, FiniteBound, Side};
