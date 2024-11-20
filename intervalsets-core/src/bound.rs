@@ -382,8 +382,9 @@ mod math {
 pub mod ord {
     use super::{BoundType, FiniteBound};
 
-    /// todo...
+    /// Any type with left and right bounds, following the standard total order.
     pub trait OrdBounded<T> {
+        /// Create an ordered bound pair view of a set's bounds.
         fn ord_bound_pair(&self) -> OrdBoundPair<&T>;
     }
 
@@ -400,6 +401,7 @@ pub mod ord {
         feature = "rkyv",
         derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
     )]
+    #[allow(missing_docs)]
     pub enum OrdBound<T> {
         LeftUnbounded,
         Finite(T, OrdBoundFinite),
@@ -407,20 +409,24 @@ pub mod ord {
     }
 
     impl<T> OrdBound<T> {
+        /// Create a finite left open OrdBound
         pub const fn left_open(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::LeftOpen)
         }
 
+        /// Create a finite closed OrdBound
         pub const fn closed(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::Closed)
         }
 
+        /// Create a finite right open OrdBound
         pub const fn right_open(limit: T) -> Self {
             Self::Finite(limit, OrdBoundFinite::RightOpen)
         }
     }
 
     impl<'a, T> OrdBound<&'a T> {
+        /// Create a left OrdBound view of a &FiniteBound.
         pub fn left(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
                 BoundType::Closed => Self::Finite(bound.value(), Closed),
@@ -428,6 +434,7 @@ pub mod ord {
             }
         }
 
+        /// Create a right OrdBound view of a &FiniteBound.
         pub fn right(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
                 BoundType::Closed => Self::Finite(bound.value(), Closed),
@@ -437,6 +444,7 @@ pub mod ord {
     }
 
     impl<T: Clone> OrdBound<&T> {
+        /// Create an owned OrdBound<T> from an OrdBound<&T> view.
         pub fn cloned(self) -> OrdBound<T> {
             match self {
                 Finite(value, order) => Finite(value.clone(), order),
@@ -468,6 +476,7 @@ pub mod ord {
         feature = "rkyv",
         derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
     )]
+    #[allow(missing_docs)]
     pub enum OrdBoundFinite {
         RightOpen,
         Closed,
@@ -478,6 +487,7 @@ pub mod ord {
     use OrdBoundFinite::*;
 
     impl OrdBoundFinite {
+        /// Create the correctly sided open ord bound type.
         pub fn open(side: super::Side) -> Self {
             side.select(LeftOpen, RightOpen)
         }
@@ -495,16 +505,19 @@ pub mod ord {
     pub struct OrdBoundPair<T>(OrdBound<T>, OrdBound<T>);
 
     impl<T: PartialEq> OrdBoundPair<T> {
+        /// Test if this is the empty set.
         pub fn is_empty(&self) -> bool {
-            *self == Self(LeftUnbounded, LeftUnbounded)
+            *self == Self::empty()
         }
     }
 
     impl<T> OrdBoundPair<T> {
-        pub fn empty() -> Self {
+        /// Create a new empty set.
+        pub const fn empty() -> Self {
             Self(LeftUnbounded, LeftUnbounded)
         }
 
+        /// Creates a new totally ordered bound pair.
         pub fn new(left: OrdBound<T>, right: OrdBound<T>) -> Self {
             match (left, right) {
                 // use (LU, LU) to represent EMPTY and make it the lowest element
@@ -519,6 +532,7 @@ pub mod ord {
             }
         }
 
+        /// Decompose into the pair of OrdBounds
         pub fn into_raw(self) -> (OrdBound<T>, OrdBound<T>) {
             (self.0, self.1)
         }

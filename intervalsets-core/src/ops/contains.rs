@@ -17,12 +17,13 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// use intervalsets_core::prelude::*;
 ///
 /// let x = FiniteInterval::open(0.0, 10.0);
-/// //assert_eq!(x.contains(&5.0), true);
-/// //assert_eq!(x.contains(&10.0), false);
+/// assert_eq!(x.contains(&5.0), true);
+/// assert_eq!(x.contains(&10.0), false);
 /// assert_eq!(x.contains(&FiniteInterval::open(0.0, 10.0)), true);
 /// assert_eq!(x.contains(&FiniteInterval::closed(0.0, 10.0)), false);
 /// ```
 pub trait Contains<T> {
+    /// Test if rhs is fully contained.
     fn contains(&self, rhs: T) -> bool;
 }
 

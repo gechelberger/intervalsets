@@ -195,13 +195,13 @@ impl<T> SetBounds<T> for HalfInterval<T> {
     // }
 }
 
-/// todo...
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
+#[allow(missing_docs)]
 pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
     Half(HalfInterval<T>),
@@ -209,6 +209,7 @@ pub enum EnumInterval<T> {
 }
 
 impl<T> EnumInterval<T> {
+    /// Creates a new empty EnumInterval.
     pub const fn empty() -> Self {
         Self::Finite(FiniteInterval::Empty)
     }

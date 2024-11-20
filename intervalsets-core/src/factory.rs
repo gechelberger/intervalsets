@@ -136,12 +136,13 @@ impl<T: Domain> Converter<T> for Identity {
     }
 }
 
-/// todo
+/// Enforces a single production type for a factory.
 pub trait ConvertingFactory<T, C = Identity>
 where
     C: Converter<T>,
     C::To: Domain,
 {
+    /// The type that this factory produces
     type Output;
 }
 
@@ -257,6 +258,13 @@ where
         T: Clone,
     {
         Self::closed(value.clone(), value)
+    }
+
+    fn strict_singleton(value: T) -> Option<Self::Output>
+    where
+        T: Clone,
+    {
+        Self::strict_closed(value.clone(), value)
     }
 
     /// Returns a new open finite interval or Empty
