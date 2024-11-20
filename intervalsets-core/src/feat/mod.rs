@@ -18,3 +18,6 @@ mod serde;
 
 #[cfg(feature = "rkyv")]
 mod rkyv;
+
+#[cfg(feature = "quickcheck")]
+mod quickcheck;

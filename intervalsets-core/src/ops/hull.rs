@@ -215,13 +215,13 @@ where
     Some(OrdBoundPair::new(left, right).into())
 }
 
-impl<T: Domain + Ord> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
+impl<T: Domain + PartialOrd> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
     fn convex_hull<U: IntoIterator<Item = FiniteInterval<T>>>(iter: U) -> Option<Self> {
         convex_hull_into_ord_bound_impl(iter)
     }
 }
 
-impl<T: Domain + Ord> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
+impl<T: Domain + PartialOrd> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
     fn convex_hull<U: IntoIterator<Item = EnumInterval<T>>>(iter: U) -> Option<Self> {
         convex_hull_into_ord_bound_impl(iter)
     }

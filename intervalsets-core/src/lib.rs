@@ -205,10 +205,9 @@
 //!
 //! ## testing
 //!
-//! * arbitrary: implement the [`Arbitrary`](arbitrary::Arbitrary) trait
-//! * todo:
-//!     * quickcheck?
-//!     * proptest?
+//! * arbitrary: implement the [`Arbitrary`](::arbitrary::Arbitrary) trait
+//! * quickcheck: implement tho [`Arbitrary`](::quickcheck::Arbitrary) trait
+//!     * todo: proptest
 //!
 //! ## storage
 //!
