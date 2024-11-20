@@ -1,3 +1,4 @@
+/*
 #[cfg(feature = "rust_decimal")]
 pub mod decimal;
 
@@ -9,3 +10,7 @@ pub mod uom;
 
 #[cfg(feature = "ordered-float")]
 pub mod float;
+*/
+
+#[cfg(feature = "quickcheck")]
+mod quickcheck;

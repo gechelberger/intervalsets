@@ -63,7 +63,7 @@ check-msrv:
 # build against a no-std target
 check-no-std:
     cargo hack check --package intervalsets-core --each-feature \
-        --exclude-features std,num-bigint,bigdecimal,arbitrary \
+        --exclude-features std,num-bigint,bigdecimal,arbitrary,quickcheck \
         --target thumbv6m-none-eabi \
         --verbose
 

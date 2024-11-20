@@ -162,8 +162,8 @@ mod sets;
 pub use sets::{Interval, IntervalSet};
 
 mod display;
+mod feat;
 mod from;
-//mod feat;
 mod util;
 
 /// Common operations & traits
