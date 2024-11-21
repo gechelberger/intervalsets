@@ -37,7 +37,9 @@ serde = { version = "1.0.215", optional = true, features = ["derive"] }
 
 [dev-dependencies]
 approx = "0.5.1"
+bigdecimal = "0.4.6"
 fixed = "1.28.0"
+num-bigint = "0.4.6"
 ordered-float = "4.5.0"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
@@ -48,9 +50,10 @@ siphasher = "1.0.1"
 [features]
 ordered-float = [ "intervalsets-core/ordered-float"]
 rust_decimal = [ "intervalsets-core/rust_decimal"]
+bigdecimal = ["intervalsets-core/bigdecimal"]
 fixed = ["intervalsets-core/fixed"]
+num-bigint = ["intervalsets-core/num-bigint"]
 quickcheck = ["dep:quickcheck", "intervalsets-core/quickcheck"]
 arbitrary = ["dep:arbitrary", "intervalsets-core/arbitrary"]
 serde = ["dep:serde", "intervalsets-core/serde"]
 rkyv = ["dep:rkyv", "intervalsets-core/rkyv"]
-
