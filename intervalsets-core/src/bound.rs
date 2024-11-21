@@ -237,37 +237,69 @@ impl<T> FiniteBound<T> {
 impl<T: PartialOrd> FiniteBound<T> {
     /// Consume a and b, returning the minimum bound.
     pub fn take_min(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
-        if a.contains(side, b.value()) {
-            side.select(a, b)
+        Self::strict_take_min(side, a, b).unwrap()
+    }
+
+    pub fn strict_take_min(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> Result<FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, &b)? {
+            Ok(side.select(a, b))
         } else {
-            side.select(b, a)
+            Ok(side.select(b, a))
         }
     }
 
     /// Consume a and b, returning the maximum bound.
     pub fn take_max(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
-        if a.contains(side, b.value()) {
-            side.select(b, a)
+        Self::strict_take_max(side, a, b).unwrap()
+    }
+
+    pub fn strict_take_max(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> Result<FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, &b)? {
+            Ok(side.select(b, a))
         } else {
-            side.select(a, b)
+            Ok(side.select(a, b))
         }
     }
 
     /// Return a reference to the minimum bound.
     pub fn min<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
-        if a.contains(side, b.value()) {
-            side.select(a, b)
+        Self::strict_min(side, a, b).unwrap()
+    }
+
+    pub fn strict_min<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, b)? {
+            Ok(side.select(a, b))
         } else {
-            side.select(b, a)
+            Ok(side.select(b, a))
         }
     }
 
     /// Return a reference to the maximum bound.
     pub fn max<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
-        if a.contains(side, b.value()) {
-            side.select(b, a)
+        Self::strict_max(side, a, b).unwrap()
+    }
+
+    pub fn strict_max<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, b)? {
+            Ok(side.select(b, a))
         } else {
-            side.select(a, b)
+            Ok(side.select(a, b))
         }
     }
 }
