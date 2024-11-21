@@ -27,21 +27,30 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
+arbitrary = { version = "1.4.1", optional = true }
 intervalsets-core = { version = "0.1.0-alpha.2", path = "../intervalsets-core" }
 itertools = "0.13.0"
 num-traits = "0.2.19"
 quickcheck = { version = "1.0.3", optional = true }
+rkyv = { version = "0.8.8", optional = true }
+serde = { version = "1.0.215", optional = true, features = ["derive"] }
 
 [dev-dependencies]
 approx = "0.5.1"
+fixed = "1.28.0"
 ordered-float = "4.5.0"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
+rand = "0.8.5"
 rust_decimal = "1.36.0"
 siphasher = "1.0.1"
 
 [features]
-quickcheck = ["dep:quickcheck", "intervalsets-core/quickcheck"]
 ordered-float = [ "intervalsets-core/ordered-float"]
 rust_decimal = [ "intervalsets-core/rust_decimal"]
+fixed = ["intervalsets-core/fixed"]
+quickcheck = ["dep:quickcheck", "intervalsets-core/quickcheck"]
+arbitrary = ["dep:arbitrary", "intervalsets-core/arbitrary"]
+serde = ["dep:serde", "intervalsets-core/serde"]
+rkyv = ["dep:rkyv", "intervalsets-core/rkyv"]
 

@@ -125,6 +125,6 @@ mod tests {
         let y = HalfInterval::unbound_open(0.0);
         assert!(y.intersects(&y));
 
-        assert!(!x.intersects(&y));
+        assert!(x.is_disjoint_from(&y));
     }
 }

@@ -1,3 +1,6 @@
+#[cfg(feature = "arbitrary")]
+pub mod arbitrary;
+
 #[cfg(feature = "rust_decimal")]
 pub mod decimal;
 

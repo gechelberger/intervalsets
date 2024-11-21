@@ -48,19 +48,24 @@ impl<'a, T: Domain + Arbitrary<'a>> Arbitrary<'a> for FiniteInterval<T> {
 
 impl<'a, T: Domain + Zero + Arbitrary<'a>> Arbitrary<'a> for HalfInterval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
-        let interval = HalfInterval::new(Side::arbitrary(u)?, FiniteBound::arbitrary(u)?);
+        let interval = HalfInterval::new_strict(Side::arbitrary(u)?, FiniteBound::arbitrary(u)?);
 
-        Ok(interval)
+        match interval {
+            Some(inner) => Ok(inner),
+            None => Self::arbitrary(u),
+        }
     }
 }
 
 impl<'a, T: Domain + Zero + Arbitrary<'a>> Arbitrary<'a> for EnumInterval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
-        let interval = match u.choose_index(3).unwrap() {
-            0 => Self::Finite(FiniteInterval::arbitrary(u)?),
-            1 => Self::Half(HalfInterval::arbitrary(u)?),
-            2 => Self::Unbounded,
-            _ => unreachable!(),
+        let n = usize::arbitrary(u)? % 100;
+        let interval = if n < 75 {
+            Self::Finite(FiniteInterval::arbitrary(u)?)
+        } else if n < 95 {
+            Self::Half(HalfInterval::arbitrary(u)?)
+        } else {
+            Self::Unbounded
         };
 
         Ok(interval)
