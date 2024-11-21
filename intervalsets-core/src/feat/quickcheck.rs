@@ -99,6 +99,10 @@ mod tests {
 
     #[quickcheck]
     fn check_qc_two_intervals(a: EnumInterval<f32>, b: EnumInterval<f32>) {
+        check_intersect_and_merge(a, b)
+    }
+
+    fn check_intersect_and_merge(a: EnumInterval<f32>, b: EnumInterval<f32>) {
         let intersection = a.intersection(b);
         let merge = a.try_merge(b);
 
@@ -131,23 +135,6 @@ mod tests {
             FiniteBound::closed(44411.26),
         ));
 
-        let intersection = a.intersection(b);
-        let merge = a.try_merge(b);
-
-        if a.intersects(&b) {
-            assert!(intersection.is_inhabited());
-            assert!(merge.is_some());
-        } else {
-            assert!(intersection.is_empty());
-            if a.is_adjacent_to(&b) {
-                assert!(merge.is_some());
-            } else {
-                if a.is_empty() || b.is_empty() {
-                    assert!(merge.is_some());
-                } else {
-                    assert!(merge.is_none());
-                }
-            }
-        }
+        check_intersect_and_merge(a, b);
     }
 }
