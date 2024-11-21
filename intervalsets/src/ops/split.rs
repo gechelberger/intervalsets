@@ -55,7 +55,7 @@ mod tests {
     #[test]
     fn test_split_interval_empty() {
         let interval = Interval::<i32>::empty();
-        let (left, right) = Interval::<i32>::empty().split(0, Side::Left);
+        let (left, right) = interval.split(0, Side::Left);
         assert_eq!(left, Interval::empty());
         assert_eq!(right, Interval::empty());
     }
