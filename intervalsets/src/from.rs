@@ -1,4 +1,5 @@
 use intervalsets_core::bound::ord::OrdBoundPair;
+use intervalsets_core::error::InvariantError;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 use crate::numeric::Domain;
@@ -32,7 +33,7 @@ macro_rules! interval_w_zero_delegate_from_impl {
 
 interval_delegate_from_impl!(FiniteInterval<T>);
 interval_delegate_from_impl!(HalfInterval<T>);
-interval_delegate_from_impl!(OrdBoundPair<T>);
+//interval_delegate_from_impl!(OrdBoundPair<T>);
 interval_delegate_from_impl!((T, T));
 interval_delegate_from_impl!([T; 2]);
 interval_delegate_from_impl!(core::ops::Range<T>);
@@ -41,6 +42,15 @@ interval_w_zero_delegate_from_impl!(core::ops::RangeFrom<T>);
 interval_w_zero_delegate_from_impl!(core::ops::RangeTo<T>);
 interval_w_zero_delegate_from_impl!(core::ops::RangeToInclusive<T>);
 interval_delegate_from_impl!(core::ops::RangeFull);
+
+impl<T: Domain> TryFrom<OrdBoundPair<T>> for Interval<T> {
+    type Error = InvariantError;
+
+    fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
+        let success = EnumInterval::<T>::try_from(value)?;
+        Ok(Interval::from(success))
+    }
+}
 
 /*impl<T: Clone> From<&Interval<T>> for OrdBoundPair<T> {
     fn from(value: &Interval<T>) -> Self {
@@ -81,7 +91,7 @@ macro_rules! interval_set_w_zero_delegate_from_impl {
 interval_set_delegate_from_impl!(FiniteInterval<T>);
 interval_set_delegate_from_impl!(HalfInterval<T>);
 interval_set_delegate_from_impl!(EnumInterval<T>);
-interval_set_delegate_from_impl!(OrdBoundPair<T>);
+//interval_set_delegate_from_impl!(OrdBoundPair<T>);
 interval_set_delegate_from_impl!((T, T));
 interval_set_delegate_from_impl!([T; 2]);
 interval_set_delegate_from_impl!(core::ops::Range<T>);
@@ -90,6 +100,15 @@ interval_set_w_zero_delegate_from_impl!(core::ops::RangeFrom<T>);
 interval_set_w_zero_delegate_from_impl!(core::ops::RangeTo<T>);
 interval_set_w_zero_delegate_from_impl!(core::ops::RangeToInclusive<T>);
 interval_set_delegate_from_impl!(core::ops::RangeFull);
+
+impl<T: Domain> TryFrom<OrdBoundPair<T>> for IntervalSet<T> {
+    type Error = InvariantError;
+
+    fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
+        let success = Interval::<T>::try_from(value)?;
+        Ok(IntervalSet::from(success))
+    }
+}
 
 impl<T> From<Interval<T>> for OrdBoundPair<T> {
     fn from(value: Interval<T>) -> Self {

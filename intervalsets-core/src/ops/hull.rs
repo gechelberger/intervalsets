@@ -167,7 +167,7 @@ where
         right = right.try_max(r_candidate).ok()?;
     }
 
-    Some(OrdBoundPair::new(left, right).into())
+    OrdBoundPair::new(left, right).try_into().ok()
 }
 
 /// Try to create a hull from `OrdBounded<T>` elements.
@@ -212,7 +212,7 @@ where
 
     let left = left.cloned();
     let right = right.cloned();
-    Some(OrdBoundPair::new(left, right).into())
+    OrdBoundPair::new(left, right).try_into().ok()
 }
 
 impl<T: Domain + PartialOrd> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {

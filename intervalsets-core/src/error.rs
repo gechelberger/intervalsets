@@ -1,7 +1,5 @@
-
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, ::thiserror::Error)]
 pub enum Error {
-
     #[error(transparent)]
     TotalOrderError(#[from] TotalOrderError),
 
@@ -13,8 +11,7 @@ pub enum Error {
 }
 
 /// Failed comparison of `PartialOrd` values.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[derive(::thiserror::Error)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("failed comparison of unordered values: {msg}")]
 pub struct TotalOrderError {
     msg: &'static str,
@@ -28,8 +25,7 @@ impl TotalOrderError {
 }
 
 /// A type invariant has been violated.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[derive(thiserror::Error)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("invariant violated: {msg}")]
 pub struct InvariantError {
     msg: &'static str,
@@ -42,11 +38,10 @@ impl InvariantError {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[derive(thiserror::Error)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("bounds violation error: {msg}")]
 pub struct BoundsViolationError {
-    msg: &'static str
+    msg: &'static str,
 }
 
 impl BoundsViolationError {

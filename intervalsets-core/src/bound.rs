@@ -11,6 +11,9 @@
 //! All `Set` types should implement the [`SetBounds`], and
 //! [`OrdBounded`](ord::OrdBounded) traits.
 
+use core::cmp::Ordering::{Equal, Greater, Less};
+
+use crate::error::TotalOrderError;
 use crate::numeric::Domain;
 
 /// An interface to query the left and right bounds of a set.
@@ -62,7 +65,7 @@ pub enum Side {
 impl Side {
     /// Flip left => right, right => left
     #[inline(always)]
-    pub fn flip(self) -> Self {
+    pub const fn flip(self) -> Self {
         match self {
             Self::Left => Self::Right,
             Self::Right => Self::Left,
@@ -75,15 +78,6 @@ impl Side {
         match self {
             Self::Left => left,
             Self::Right => right,
-        }
-    }
-
-    /// Invoke the left or right arg for the value of self and return the result.
-    #[inline(always)]
-    pub fn fn_select<T>(self, left: impl FnOnce() -> T, right: impl FnOnce() -> T) -> T {
-        match self {
-            Self::Left => left(),
-            Self::Right => right(),
         }
     }
 }
@@ -157,21 +151,34 @@ impl<T> FiniteBound<T> {
         (self.0, self.1)
     }
 
-    /// Creates an `OrdBound<&T>`
-    pub fn ord(&self, side: Side) -> ord::OrdBound<&T> {
+    pub fn as_ref(&self) -> FiniteBound<&T> {
+        FiniteBound::new(self.0, &self.1)
+    }
+
+    pub fn finite_ord(&self, side: Side) -> ord::FiniteOrdBound<&T> {
         match self.bound_type() {
-            BoundType::Closed => ord::OrdBound::Finite(self.value(), ord::OrdBoundFinite::Closed),
-            BoundType::Open => ord::OrdBound::Finite(self.value(), ord::OrdBoundFinite::open(side)),
+            BoundType::Closed => ord::FiniteOrdBound::closed(self.value()),
+            BoundType::Open => ord::FiniteOrdBound::open(side, self.value()),
         }
     }
 
-    /// Turns self into an `OrdBound<T>`
-    pub fn into_ord(self, side: Side) -> ord::OrdBound<T> {
+    /// Creates an `OrdBound<&T>`
+    pub fn ord(&self, side: Side) -> ord::OrdBound<&T> {
+        ord::OrdBound::Finite(self.finite_ord(side))
+    }
+
+    /// Converts self into a `FiniteOrdBound<T>`
+    pub fn into_finite_ord(self, side: Side) -> ord::FiniteOrdBound<T> {
         let (bound_type, value) = self.into_raw();
         match bound_type {
-            BoundType::Closed => ord::OrdBound::Finite(value, ord::OrdBoundFinite::Closed),
-            BoundType::Open => ord::OrdBound::Finite(value, ord::OrdBoundFinite::open(side)),
+            BoundType::Closed => ord::FiniteOrdBound::closed(value),
+            BoundType::Open => ord::FiniteOrdBound::open(side, value),
         }
+    }
+
+    /// Converts self into an `OrdBound<T>`
+    pub fn into_ord(self, side: Side) -> ord::OrdBound<T> {
+        ord::OrdBound::Finite(self.into_finite_ord(side))
     }
 
     /// Returns a new `Bound`, keeps BoundType, new limit; `self` is consumed.
@@ -278,6 +285,41 @@ impl<T: PartialOrd> FiniteBound<T> {
                 BoundType::Closed => value <= self.value(),
             },
         }
+    }
+
+    pub fn strict_contains(&self, side: Side, test: &T) -> Result<bool, TotalOrderError> {
+        let lhs = self.finite_ord(side);
+        let rhs = ord::FiniteOrdBound::closed(test);
+        let order = lhs
+            .partial_cmp(&rhs)
+            .ok_or(TotalOrderError::new("FiniteBound::strict_contains"))?;
+
+        Ok(order == Equal || order == side.select(Less, Greater))
+    }
+
+    pub fn contains_bound(&self, side: Side, test: &FiniteBound<T>) -> bool {
+        let lhs = self.finite_ord(side);
+        let rhs = test.finite_ord(side);
+        match side {
+            Side::Left => lhs <= rhs,
+            Side::Right => rhs <= lhs,
+        }
+    }
+
+    pub fn strict_contains_bound(
+        &self,
+        side: Side,
+        test: &FiniteBound<T>,
+    ) -> Result<bool, TotalOrderError> {
+        let lhs = self.finite_ord(side);
+        let rhs = test.finite_ord(side);
+        let order = match side {
+            Side::Left => lhs.partial_cmp(&rhs),
+            Side::Right => rhs.partial_cmp(&lhs),
+        }
+        .ok_or(TotalOrderError::new("FiniteBound::strict_contains_bound"))?;
+
+        Ok(order == Less || order == Equal)
     }
 }
 
@@ -404,24 +446,28 @@ pub mod ord {
     #[allow(missing_docs)]
     pub enum OrdBound<T> {
         LeftUnbounded,
-        Finite(T, OrdBoundFinite),
+        Finite(FiniteOrdBound<T>),
         RightUnbounded,
     }
 
     impl<T> OrdBound<T> {
+        pub const fn new_finite(limit: T, kind: FiniteOrdBoundKind) -> Self {
+            Self::Finite(FiniteOrdBound::new(limit, kind))
+        }
+
         /// Create a finite left open OrdBound
         pub const fn left_open(limit: T) -> Self {
-            Self::Finite(limit, OrdBoundFinite::LeftOpen)
+            Self::new_finite(limit, FiniteOrdBoundKind::LeftOpen)
         }
 
         /// Create a finite closed OrdBound
         pub const fn closed(limit: T) -> Self {
-            Self::Finite(limit, OrdBoundFinite::Closed)
+            Self::new_finite(limit, FiniteOrdBoundKind::Closed)
         }
 
         /// Create a finite right open OrdBound
         pub const fn right_open(limit: T) -> Self {
-            Self::Finite(limit, OrdBoundFinite::RightOpen)
+            Self::new_finite(limit, FiniteOrdBoundKind::RightOpen)
         }
     }
 
@@ -429,16 +475,16 @@ pub mod ord {
         /// Create a left OrdBound view of a &FiniteBound.
         pub fn left(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
-                BoundType::Closed => Self::Finite(bound.value(), Closed),
-                BoundType::Open => Self::Finite(bound.value(), LeftOpen),
+                BoundType::Closed => Self::new_finite(bound.value(), Closed),
+                BoundType::Open => Self::new_finite(bound.value(), LeftOpen),
             }
         }
 
         /// Create a right OrdBound view of a &FiniteBound.
         pub fn right(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
-                BoundType::Closed => Self::Finite(bound.value(), Closed),
-                BoundType::Open => Self::Finite(bound.value(), RightOpen),
+                BoundType::Closed => Self::new_finite(bound.value(), Closed),
+                BoundType::Open => Self::new_finite(bound.value(), RightOpen),
             }
         }
     }
@@ -447,14 +493,14 @@ pub mod ord {
         /// Create an owned `OrdBound<T>` from an `OrdBound<&T>` view.
         pub fn cloned(self) -> OrdBound<T> {
             match self {
-                Finite(value, order) => Finite(value.clone(), order),
+                Finite(inner) => Finite(inner.cloned()),
                 LeftUnbounded => LeftUnbounded,
                 RightUnbounded => RightUnbounded,
             }
         }
     }
 
-    impl<T> OrdBound<T> {
+    /*impl<T> OrdBound<T> {
         pub fn map<F, U>(self, func: F) -> OrdBound<U>
         where
             F: FnOnce(T) -> U,
@@ -465,7 +511,7 @@ pub mod ord {
                 RightUnbounded => RightUnbounded,
             }
         }
-    }
+    }*/
 
     /// Ordered exclusivity cases for finite bounds.
     ///
@@ -477,19 +523,57 @@ pub mod ord {
         derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
     )]
     #[allow(missing_docs)]
-    pub enum OrdBoundFinite {
+    pub enum FiniteOrdBoundKind {
         RightOpen,
         Closed,
         LeftOpen,
     }
 
+    use FiniteOrdBoundKind::*;
     use OrdBound::*;
-    use OrdBoundFinite::*;
 
-    impl OrdBoundFinite {
+    impl FiniteOrdBoundKind {
         /// Create the correctly sided open ord bound type.
         pub fn open(side: super::Side) -> Self {
             side.select(LeftOpen, RightOpen)
+        }
+    }
+
+    /// Finite bound with a total ordering
+    #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(
+        feature = "rkyv",
+        derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+    )]
+    pub struct FiniteOrdBound<T>(pub T, pub FiniteOrdBoundKind);
+
+    impl<T> FiniteOrdBound<T> {
+        #[inline(always)]
+        pub const fn new(limit: T, kind: FiniteOrdBoundKind) -> Self {
+            Self(limit, kind)
+        }
+
+        #[inline(always)]
+        pub const fn closed(limit: T) -> Self {
+            Self::new(limit, FiniteOrdBoundKind::Closed)
+        }
+
+        #[inline(always)]
+        pub const fn open(side: super::Side, limit: T) -> Self {
+            Self::new(
+                limit,
+                match side {
+                    super::Side::Left => LeftOpen,
+                    super::Side::Right => RightOpen,
+                },
+            )
+        }
+    }
+
+    impl<T: Clone> FiniteOrdBound<&T> {
+        pub fn cloned(&self) -> FiniteOrdBound<T> {
+            FiniteOrdBound::new(self.0.clone(), self.1)
         }
     }
 
@@ -524,9 +608,9 @@ pub mod ord {
                 (LeftUnbounded, LeftUnbounded) => Self::empty(),
                 (left, right) => {
                     debug_assert!(!matches!(&left, RightUnbounded));
-                    debug_assert!(!matches!(&left, Finite(_, RightOpen)));
                     debug_assert!(!matches!(&right, LeftUnbounded));
-                    debug_assert!(!matches!(&right, Finite(_, LeftOpen)));
+                    debug_assert!(!matches!(&left, Finite(FiniteOrdBound(_, RightOpen))));
+                    debug_assert!(!matches!(&right, Finite(FiniteOrdBound(_, LeftOpen))));
                     Self(left, right)
                 }
             }
