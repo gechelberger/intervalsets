@@ -226,10 +226,13 @@
 //!
 #![no_std]
 #![deny(bad_style)]
-//#![warn(missing_docs)]
 #![deny(future_incompatible)]
 #![deny(nonstandard_style)]
 #![deny(unused)]
+
+//#![warn(clippy::pedantic)]
+//#![warn(clippy::cargo)]
+//#![warn(missing_docs)]
 
 pub mod bound;
 pub mod numeric;

@@ -176,9 +176,7 @@ impl<T> Measurement<T> {
             Self::Infinite => return Self::Infinite,
         };
 
-        func(&lhs, &rhs)
-            .map(|v| Self::Finite(v))
-            .unwrap_or(Self::Infinite)
+        func(&lhs, &rhs).map_or(Self::Infinite, Self::Finite)
     }
 }
 

@@ -133,8 +133,12 @@
 //! * chrono
 //! * uom
 //!
+#![deny(bad_style)]
+#![deny(future_incompatible)]
+#![deny(nonstandard_style)]
+//#![deny(unused)]
 
-#![allow(unused_variables)] // for now
+//#![warn(missing_docs)]
 
 #[cfg(test)]
 extern crate quickcheck;

@@ -99,6 +99,10 @@ mod tests {
 
     #[quickcheck]
     fn check_qc_two_intervals(a: EnumInterval<f32>, b: EnumInterval<f32>) {
+        check_intersect_and_merge(a, b)
+    }
+
+    fn check_intersect_and_merge(a: EnumInterval<f32>, b: EnumInterval<f32>) {
         let intersection = a.intersection(b);
         let merge = a.try_merge(b);
 
@@ -117,5 +121,20 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn regression_test_a() {
+        let a = EnumInterval::Half(HalfInterval {
+            side: Side::Right,
+            bound: FiniteBound::closed(-0.0),
+        });
+
+        let b = EnumInterval::Finite(FiniteInterval::Bounded(
+            FiniteBound::open(-0.0),
+            FiniteBound::closed(44411.26),
+        ));
+
+        check_intersect_and_merge(a, b);
     }
 }

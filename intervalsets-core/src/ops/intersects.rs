@@ -63,14 +63,15 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
             return false;
         };
 
-        self.contains(left.value()) || self.contains(right.value())
+        self.contains(left.ord(crate::bound::Side::Left))
+            || self.contains(right.ord(crate::bound::Side::Right))
     }
 }
 
 impl<T: PartialOrd> Intersects<&Self> for HalfInterval<T> {
     #[inline(always)]
     fn intersects(&self, rhs: &Self) -> bool {
-        self.contains(rhs.bound.value()) || rhs.contains(self.bound.value())
+        self.contains(rhs.bound.ord(rhs.side)) || rhs.contains(self.bound.ord(self.side))
     }
 }
 
@@ -110,3 +111,20 @@ impl<T: PartialOrd> Intersects<&Self> for EnumInterval<T> {
 commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, HalfInterval<T>);
 commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, EnumInterval<T>);
 commutative_predicate_impl!(Intersects, intersects, HalfInterval<T>, EnumInterval<T>);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::prelude::*;
+
+    #[test]
+    fn test_open_intersects_self() {
+        let x = FiniteInterval::open(0.0, 10.0);
+        assert!(x.intersects(&x));
+
+        let y = HalfInterval::unbound_open(0.0);
+        assert!(y.intersects(&y));
+
+        assert!(x.is_disjoint_from(&y));
+    }
+}

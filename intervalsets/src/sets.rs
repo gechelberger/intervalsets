@@ -20,6 +20,11 @@ use crate::MaybeEmpty;
 /// let x = Interval::closed(0, 10);
 /// ```
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct Interval<T>(pub(crate) EnumInterval<T>);
 
 impl<T> Interval<T> {
@@ -165,6 +170,11 @@ impl<T> OrdBounded<T> for Interval<T> {
 ///     * Stored intervals *should* not be adjacent.
 ///         * This can only be assured for `T: Eq + Ord`
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
 pub struct IntervalSet<T> {
     intervals: Vec<Interval<T>>,
 }

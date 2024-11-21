@@ -29,9 +29,29 @@ fn ordered_pair<T: PartialOrd>(a: Interval<T>, b: Interval<T>) -> [Interval<T>; 
     }
 }
 
+/// The (possibly disjoint) union of A and B.
+///
+/// ```text
+/// { x | x ∈ A ∨ x ∈ B }
+/// ```
+///
+/// # Examples
+///
+/// ```
+/// use intervalsets::prelude::*;
+///
+/// let x = Interval::closed(0, 10);
+/// let y = Interval::closed(5, 15);
+/// assert_eq!(x.union(y).expect_interval(), Interval::closed(0, 15));
+///
+/// let y = Interval::closed(20, 30);
+/// assert_eq!(x.union(y), IntervalSet::new([x, y]));
+/// ```
 pub trait Union<Rhs = Self> {
+    /// The type created by this operation.
     type Output;
 
+    /// Creates a set with every element of self and rhs.
     fn union(self, rhs: Rhs) -> Self::Output;
 }
 

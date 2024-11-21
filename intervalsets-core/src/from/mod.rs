@@ -7,7 +7,7 @@ use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T> From<()> for FiniteInterval<T> {
-    fn from(_: ()) -> Self {
+    fn from((): ()) -> Self {
         Self::Empty
     }
 }

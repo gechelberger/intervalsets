@@ -4,6 +4,24 @@ use intervalsets_core::ops::SetSetIntersection;
 use crate::numeric::Domain;
 use crate::{Interval, IntervalSet, MaybeEmpty};
 
+/// The intersection of two sets.
+///
+/// ```text
+/// {x | x ∈ A ∧ x ∈ B }
+/// ```
+///
+/// # Examples
+///
+/// ```
+/// use intervalsets::prelude::*;
+///
+/// let x = Interval::closed(0, 10);
+/// let y = Interval::closed(5, 15);
+/// assert_eq!(x.intersection(y), Interval::closed(5, 10));
+///
+/// let y = Interval::closed(20, 30);
+/// assert!(x.intersection(y).is_empty());
+/// ```
 impl<T: Domain> Intersection<Self> for Interval<T> {
     type Output = Self;
 
