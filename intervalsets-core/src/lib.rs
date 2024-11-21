@@ -237,7 +237,8 @@
 pub mod bound;
 pub mod numeric;
 
-//pub mod error;
+pub mod error;
+
 mod feat;
 pub mod sets;
 pub use sets::{EnumInterval, FiniteInterval, HalfInterval};

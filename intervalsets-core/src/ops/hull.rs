@@ -53,8 +53,8 @@ macro_rules! convex_hull_t_impl {
 
                     // todo: un-unwrap()
                     for candidate in iter {
-                        left = T::try_min(left, candidate.clone())?;
-                        right = T::try_max(right, candidate)?;
+                        left = T::try_min(left, candidate.clone()).ok()?;
+                        right = T::try_max(right, candidate).ok()?;
                     }
 
                     Some(Self::closed(left, right))
@@ -78,8 +78,8 @@ macro_rules! convex_hull_ref_t_impl {
                     };
 
                     for candidate in iter {
-                        left = T::try_min(left, candidate.clone())?;
-                        right = T::try_max(right, candidate.clone())?;
+                        left = T::try_min(left, candidate.clone()).ok()?;
+                        right = T::try_max(right, candidate.clone()).ok()?;
                     }
 
                     Some(Self::closed(left, right))
@@ -163,8 +163,8 @@ where
         }
 
         let (l_candidate, r_candidate) = pair.into_raw();
-        left = left.try_min(l_candidate)?;
-        right = right.try_max(r_candidate)?;
+        left = left.try_min(l_candidate).ok()?;
+        right = right.try_max(r_candidate).ok()?;
     }
 
     Some(OrdBoundPair::new(left, right).into())
@@ -206,8 +206,8 @@ where
         }
 
         let (l_candidate, r_candidate) = pair.into_raw();
-        left = left.try_min(l_candidate)?;
-        right = right.try_max(r_candidate)?;
+        left = left.try_min(l_candidate).ok()?;
+        right = right.try_max(r_candidate).ok()?;
     }
 
     let left = left.cloned();

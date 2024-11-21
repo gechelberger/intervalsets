@@ -12,32 +12,52 @@
 
 use core::cmp::Ordering::*;
 
+use crate::error::TotalOrderError;
+
 /// Return the min item *iff* self and rhs are ordered.
 pub trait TryMin: Sized {
     #[allow(missing_docs)]
-    fn try_min(self, rhs: Self) -> Option<Self>;
+    fn try_min(self, rhs: Self) -> Result<Self, TotalOrderError>;
 }
 
 /// Return the max item *iff* self and rhs are ordered.
 pub trait TryMax: Sized {
     #[allow(missing_docs)]
-    fn try_max(self, rhs: Self) -> Option<Self>;
+    fn try_max(self, rhs: Self) -> Result<Self, TotalOrderError>;
 }
 
 impl<T: PartialOrd> TryMin for T {
-    fn try_min(self, rhs: Self) -> Option<Self> {
-        match self.partial_cmp(&rhs)? {
-            Less | Equal => Some(self),
-            Greater => Some(rhs),
+    fn try_min(self, rhs: Self) -> Result<Self, TotalOrderError> {
+        let order = self
+            .partial_cmp(&rhs)
+            .ok_or(TotalOrderError::new("TryMin"))?;
+
+        match order {
+            Less | Equal => Ok(self),
+            Greater => Ok(rhs),
         }
     }
 }
 
 impl<T: PartialOrd> TryMax for T {
-    fn try_max(self, rhs: Self) -> Option<Self> {
-        match self.partial_cmp(&rhs)? {
-            Greater | Equal => Some(self),
-            Less => Some(rhs),
+    fn try_max(self, rhs: Self) -> Result<Self, TotalOrderError> {
+        let order = self
+            .partial_cmp(&rhs)
+            .ok_or_else(|| TotalOrderError::new("TryMax"))?;
+        match order {
+            Greater | Equal => Ok(self),
+            Less => Ok(rhs),
         }
+    }
+}
+
+pub fn try_ord_pair<A: PartialOrd>(lhs: A, rhs: A) -> Result<[A; 2], TotalOrderError> {
+    let order = lhs
+        .partial_cmp(&rhs)
+        .ok_or(TotalOrderError::new("try_ord_pair"))?;
+
+    match order {
+        Less | Equal => Ok([lhs, rhs]),
+        Greater => Ok([rhs, lhs]),
     }
 }

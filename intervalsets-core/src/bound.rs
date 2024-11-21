@@ -611,22 +611,22 @@ mod test {
 
         assert_eq!(
             OrdBound::closed(f0).try_min(OrdBound::closed(f1)),
-            Some(OrdBound::closed(f0))
+            Ok(OrdBound::closed(f0))
         );
 
         assert_eq!(
             OrdBound::closed(&f0).try_min(OrdBound::closed(&f1)),
-            Some(OrdBound::closed(&f0))
+            Ok(OrdBound::closed(&f0))
         );
 
         assert_eq!(
             OrdBound::LeftUnbounded.try_max(OrdBound::closed(f1)),
-            Some(OrdBound::closed(f1))
+            Ok(OrdBound::closed(f1))
         );
 
         assert_eq!(
             OrdBound::LeftUnbounded.try_max(OrdBound::closed(&f1)),
-            Some(OrdBound::closed(&f1))
+            Ok(OrdBound::closed(&f1))
         )
     }
 }
