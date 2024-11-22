@@ -51,8 +51,8 @@ impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
         // Safety: self and rhs should already be normalized.
         unsafe {
             FiniteInterval::new_norm(
-                FiniteBound::take_max(Left, lhs_min, rhs_min),
-                FiniteBound::take_min(Right, lhs_max, rhs_max),
+                FiniteBound::take_max_unchecked(Left, lhs_min, rhs_min),
+                FiniteBound::take_min_unchecked(Right, lhs_max, rhs_max),
             )
         }
     }
@@ -74,8 +74,8 @@ impl<T: Domain + Clone> Intersection<Self> for &FiniteInterval<T> {
         // Safety: self and rhs should already be normalized.
         unsafe {
             FiniteInterval::new_norm(
-                FiniteBound::max(Left, lhs_min, rhs_min).clone(),
-                FiniteBound::min(Right, lhs_max, rhs_max).clone(),
+                FiniteBound::max_unchecked(Left, lhs_min, rhs_min).clone(),
+                FiniteBound::min_unchecked(Right, lhs_max, rhs_max).clone(),
             )
         }
     }

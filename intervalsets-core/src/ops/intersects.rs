@@ -1,6 +1,7 @@
 use super::util::commutative_predicate_impl;
 use super::Contains;
-use crate::bound::ord::{OrdBound, OrdBounded};
+//use crate::bound::ord::{OrdBound, OrdBounded};
+use crate::bound::Side;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Test if two sets intersect.
@@ -34,7 +35,7 @@ pub trait Intersects<T> {
 impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
     #[inline(always)]
     fn intersects(&self, rhs: &Self) -> bool {
-        /*let Self::Bounded(lhs_min, lhs_max) = self else {
+        let Self::Bounded(lhs_min, lhs_max) = self else {
             return false;
         };
 
@@ -42,17 +43,20 @@ impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
             return false;
         };
 
-        lhs_min.contains(Side::Left, rhs_max.value())
-            && rhs_min.contains(Side::Left, lhs_max.value())
-            && rhs_max.contains(Side::Right, lhs_min.value())
-            && lhs_max.contains(Side::Right, rhs_min.value())*/
+        unsafe {
+            lhs_min.contains_bound_unchecked(Side::Left, rhs_max)
+                && rhs_min.contains_bound_unchecked(Side::Left, lhs_max)
+        }
 
+        /*
+        // this is definitely correct
         let (lhs_min, lhs_max) = self.ord_bound_pair().into_raw();
         let (rhs_min, rhs_max) = rhs.ord_bound_pair().into_raw();
         lhs_max != OrdBound::LeftUnbounded
             && rhs_max != OrdBound::LeftUnbounded
             && lhs_min <= rhs_max
             && rhs_min <= lhs_max
+        */
     }
 }
 
@@ -63,15 +67,16 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
             return false;
         };
 
-        self.contains(left.ord(crate::bound::Side::Left))
-            || self.contains(right.ord(crate::bound::Side::Right))
+        self.contains(left.finite_ord(crate::bound::Side::Left))
+            || self.contains(right.finite_ord(crate::bound::Side::Right))
     }
 }
 
 impl<T: PartialOrd> Intersects<&Self> for HalfInterval<T> {
     #[inline(always)]
     fn intersects(&self, rhs: &Self) -> bool {
-        self.contains(rhs.bound.ord(rhs.side)) || rhs.contains(self.bound.ord(self.side))
+        self.contains(rhs.bound.finite_ord(rhs.side))
+            || rhs.contains(self.bound.finite_ord(self.side))
     }
 }
 

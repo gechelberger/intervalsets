@@ -117,9 +117,11 @@ impl<T: Domain + Clone> ConvexHull<FiniteInterval<T>> for FiniteInterval<T> {
                 .into_raw()
                 .expect("Hull subset should not be empty");
 
-            // todo: partial order checks...
-            left = FiniteBound::take_min(Side::Left, left, c_left);
-            right = FiniteBound::take_max(Side::Right, right, c_right);
+            // SAFETY: if input intervals satisfy invariants then this is safe.
+            unsafe {
+                left = FiniteBound::take_min_unchecked(Side::Left, left, c_left);
+                right = FiniteBound::take_max_unchecked(Side::Right, right, c_right);
+            }
         }
 
         // SAFETY: hull should satisfy invariants (left <= right)

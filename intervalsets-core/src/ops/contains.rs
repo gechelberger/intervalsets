@@ -1,6 +1,6 @@
 use FiniteInterval::Bounded;
 
-use crate::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
+use crate::bound::ord::{FiniteOrdBound, OrdBound, OrdBoundPair};
 use crate::bound::Side;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -34,14 +34,15 @@ impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
             return false;
         };
 
-        lhs_min.contains(Side::Left, rhs) && lhs_max.contains(Side::Right, rhs)
+        lhs_min.strict_contains(Side::Left, rhs).unwrap_or(false)
+            && lhs_max.strict_contains(Side::Right, rhs).unwrap_or(false)
     }
 }
 
 impl<T: PartialOrd> Contains<&T> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {
-        self.bound.contains(self.side, rhs)
+        self.bound.strict_contains(self.side, rhs).unwrap_or(false)
     }
 }
 
@@ -56,6 +57,42 @@ impl<T: PartialOrd> Contains<&T> for EnumInterval<T> {
     }
 }
 
+impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for FiniteInterval<T> {
+    #[inline(always)]
+    fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
+        let Bounded(lhs_min, lhs_max) = self else {
+            return false;
+        };
+
+        let lhs_min = lhs_min.finite_ord(Side::Left);
+        let lhs_max = lhs_max.finite_ord(Side::Right);
+        lhs_min <= rhs && rhs <= lhs_max
+    }
+}
+
+impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for HalfInterval<T> {
+    #[inline(always)]
+    fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
+        let lhs = self.bound.finite_ord(self.side);
+        match self.side {
+            Side::Left => lhs <= rhs,
+            Side::Right => rhs <= lhs,
+        }
+    }
+}
+
+impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for EnumInterval<T> {
+    #[inline(always)]
+    fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
+        match self {
+            Self::Finite(lhs) => lhs.contains(rhs),
+            Self::Half(lhs) => lhs.contains(rhs),
+            Self::Unbounded => true,
+        }
+    }
+}
+
+/*
 impl<T: PartialOrd> Contains<OrdBound<&T>> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: OrdBound<&T>) -> bool {
@@ -84,7 +121,7 @@ impl<T: PartialOrd> Contains<OrdBound<&T>> for EnumInterval<T> {
             Self::Unbounded => true,
         }
     }
-}
+}*/
 
 impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
     #[inline(always)]
@@ -95,6 +132,7 @@ impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
     }
 }
 
+/*
 #[inline(always)]
 fn ord_bound_pair_contains<T: PartialOrd>(lhs: OrdBoundPair<T>, rhs: OrdBoundPair<T>) -> bool {
     let (lhs_min, lhs_max) = lhs.into_raw();
@@ -104,12 +142,27 @@ fn ord_bound_pair_contains<T: PartialOrd>(lhs: OrdBoundPair<T>, rhs: OrdBoundPai
         && rhs_max <= lhs_max
         && lhs_max != OrdBound::LeftUnbounded
         && rhs_max != OrdBound::LeftUnbounded
-}
+}*/
 
 impl<T: PartialOrd> Contains<&Self> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &Self) -> bool {
-        ord_bound_pair_contains(self.ord_bound_pair(), rhs.ord_bound_pair())
+        let Bounded(lhs_min, lhs_max) = self else {
+            return false;
+        };
+
+        let Bounded(rhs_min, rhs_max) = rhs else {
+            return false;
+        };
+
+        // SAFETY: lhs_min <= lhs_max && rhs_min <= rhs_max so all are comparable.
+        unsafe {
+            lhs_min.contains_bound_unchecked(Side::Left, rhs_min)
+                && lhs_max.contains_bound_unchecked(Side::Right, rhs_max)
+        }
+
+        //lhs_min.finite_ord(Side::Left) <= rhs_min.finite_ord(Side::Left)
+        //    && rhs_max.finite_ord(Side::Right) <= lhs_max.finite_ord(Side::Right)
     }
 }
 
@@ -134,16 +187,25 @@ impl<T: PartialOrd> Contains<&EnumInterval<T>> for FiniteInterval<T> {
 impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
-        ord_bound_pair_contains(self.ord_bound_pair(), rhs.ord_bound_pair())
+        let Bounded(rhs_min, rhs_max) = rhs else {
+            return false;
+        };
+
+        self.contains(rhs_min.finite_ord(Side::Left))
+            && self.contains(rhs_max.finite_ord(Side::Right))
     }
 }
 
 impl<T: PartialOrd> Contains<&Self> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &Self) -> bool {
-        // left to possibly short circuit before the more expensive checks
-        self.side == rhs.side
-            && ord_bound_pair_contains(self.ord_bound_pair(), rhs.ord_bound_pair())
+        self.side == rhs.side && self.contains(rhs.bound.finite_ord(rhs.side))
+
+        // SAFETY: invariants already satisfied
+        // unsafe {
+        //     self.side == rhs.side
+        //         && self.bound.contains_bound_unchecked(self.side, &rhs.bound)
+        // }
     }
 }
 

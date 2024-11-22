@@ -24,6 +24,10 @@ pub trait Split<T> {
     type Output;
 
     /// Creates two disjoint subsets with elements partitioned by `at`.
+    ///
+    /// # Panics
+    ///
+    /// Can panic if `at` is not comparable.
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output);
 }
 
@@ -49,7 +53,7 @@ impl<T: Domain + Clone> Split<T> for FiniteInterval<T> {
                     let split_left = Self::new(left, l_max);
                     let split_right = Self::new(r_min, right);
                     (split_left, split_right)
-                } else if left.contains(Side::Left, &at) {
+                } else if left.strict_contains(Side::Left, &at).unwrap() {
                     (Self::Bounded(left, right), Self::Empty)
                 } else {
                     (Self::Empty, Self::Bounded(left, right))

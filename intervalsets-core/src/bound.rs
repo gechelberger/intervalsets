@@ -239,12 +239,19 @@ impl<T> FiniteBound<T> {
 impl<T: PartialOrd> FiniteBound<T> {
     /// Consume a and b, returning the minimum bound.
     ///
-    /// # Panics
+    /// # Safety
     ///
-    /// Panics if a and b are not comparable.
-    //#[deprecated(since="0.1.0-alpha.2")]
-    pub fn take_min(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
-        Self::strict_take_min(side, a, b).unwrap()
+    /// The user is responsible for ensuring both bounds are comparable.
+    pub unsafe fn take_min_unchecked(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> FiniteBound<T> {
+        if a.contains_bound_unchecked(side, &b) {
+            side.select(a, b)
+        } else {
+            side.select(b, a)
+        }
     }
 
     /// Consume a and b, returning the min bound or Err if not comparable.
@@ -262,12 +269,19 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Consume a and b, returning the maximum bound.
     ///
-    /// # Panics
+    /// # Safety
     ///
-    /// Panics if `a` and `b` are not comparable.
-    //#[deprecated(since="0.1.0-alpha.2")]
-    pub fn take_max(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
-        Self::strict_take_max(side, a, b).unwrap()
+    /// The user is responsible for ensuring that both bounds are comparable.
+    pub unsafe fn take_max_unchecked(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> FiniteBound<T> {
+        if a.contains_bound_unchecked(side, &b) {
+            side.select(b, a)
+        } else {
+            side.select(a, b)
+        }
     }
 
     /// Consumes a and b, returning the max bound or Err if not comparable.
@@ -285,12 +299,19 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Return a reference to the minimum bound.
     ///
-    /// # Panics
+    /// # Safety
     ///
-    /// panics if `a`` and `b` are not comparable.
-    //#[deprecated(since="0.1.0-alpha.2")]
-    pub fn min<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
-        Self::strict_min(side, a, b).unwrap()
+    /// The user is responsible for ensuring bounds are comparable.
+    pub unsafe fn min_unchecked<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> &'a FiniteBound<T> {
+        if a.contains_bound_unchecked(side, b) {
+            side.select(a, b)
+        } else {
+            side.select(b, a)
+        }
     }
 
     /// Return a ref to the min bound or Err if not comparable.
@@ -308,10 +329,19 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Return a reference to the maximum bound.
     ///
-    /// # Panics
-    //#[deprecated(since="0.1.0-alpha.2")]
-    pub fn max<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
-        Self::strict_max(side, a, b).unwrap()
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring both bounds are comparable.
+    pub unsafe fn max_unchecked<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> &'a FiniteBound<T> {
+        if a.contains_bound_unchecked(side, b) {
+            side.select(b, a)
+        } else {
+            side.select(a, b)
+        }
     }
 
     /// Return a reference to the max bound or Err if not comparable.
@@ -331,8 +361,10 @@ impl<T: PartialOrd> FiniteBound<T> {
 impl<T: PartialOrd> FiniteBound<T> {
     /// Test if this partitions an element to be contained by the `Set`.
     ///
-    /// todo: unsafe fn contains_unchecked(...)
-    pub fn contains(&self, side: Side, value: &T) -> bool {
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring bound and value are comparable.
+    pub unsafe fn contains_unchecked(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.0 {
                 BoundType::Open => self.value() < value,
@@ -358,8 +390,10 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Test if self "sees" a bound from a `Side`.
     ///
-    /// todo: unsafe fn contains_bound_unchecked(...)
-    pub fn contains_bound(&self, side: Side, test: &FiniteBound<T>) -> bool {
+    /// # Safety
+    ///
+    /// The user is responsible for making sure that both bounds are comparable.
+    pub unsafe fn contains_bound_unchecked(&self, side: Side, test: &FiniteBound<T>) -> bool {
         let lhs = self.finite_ord(side);
         let rhs = test.finite_ord(side);
         match side {
@@ -698,61 +732,79 @@ mod test {
 
     #[test]
     fn test_bound_min_max() {
-        assert_eq!(
-            FiniteBound::min(
-                Side::Left,
-                &FiniteBound::closed(0),
+        unsafe {
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
+                &FiniteBound::closed(0)
+            );
+
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::closed(0)
+            );
+
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
                 &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(0)
-        );
+            );
 
-        assert_eq!(
-            FiniteBound::min(Side::Left, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::closed(0)
-        );
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::open(0)
+            );
 
-        assert_eq!(
-            FiniteBound::max(
-                Side::Left,
-                &FiniteBound::closed(0),
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
+                &FiniteBound::closed(0)
+            );
+
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::open(0)
+            );
+
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
                 &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(10)
-        );
+            );
 
-        assert_eq!(
-            FiniteBound::max(Side::Left, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::open(0)
-        );
-
-        assert_eq!(
-            FiniteBound::min(
-                Side::Right,
-                &FiniteBound::closed(0),
-                &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(0)
-        );
-
-        assert_eq!(
-            FiniteBound::min(Side::Right, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::open(0)
-        );
-
-        assert_eq!(
-            FiniteBound::max(
-                Side::Right,
-                &FiniteBound::closed(0),
-                &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(10)
-        );
-
-        assert_eq!(
-            FiniteBound::max(Side::Right, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::closed(0)
-        )
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::closed(0)
+            )
+        }
     }
 
     #[test]
