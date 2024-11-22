@@ -151,10 +151,12 @@ impl<T> FiniteBound<T> {
         (self.0, self.1)
     }
 
+    /// Converts `&FiniteBound<T>` to `FiniteBound<&T>`.
     pub fn as_ref(&self) -> FiniteBound<&T> {
         FiniteBound::new(self.0, &self.1)
     }
 
+    /// Creates a `FiniteOrdBound<&T>` view of this `FiniteBound<T>`.
     pub fn finite_ord(&self, side: Side) -> ord::FiniteOrdBound<&T> {
         match self.bound_type() {
             BoundType::Closed => ord::FiniteOrdBound::closed(self.value()),
@@ -236,10 +238,16 @@ impl<T> FiniteBound<T> {
 
 impl<T: PartialOrd> FiniteBound<T> {
     /// Consume a and b, returning the minimum bound.
+    ///
+    /// # Panics
+    ///
+    /// Panics if a and b are not comparable.
+    //#[deprecated(since="0.1.0-alpha.2")]
     pub fn take_min(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
         Self::strict_take_min(side, a, b).unwrap()
     }
 
+    /// Consume a and b, returning the min bound or Err if not comparable.
     pub fn strict_take_min(
         side: Side,
         a: FiniteBound<T>,
@@ -253,10 +261,16 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Consume a and b, returning the maximum bound.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `a` and `b` are not comparable.
+    //#[deprecated(since="0.1.0-alpha.2")]
     pub fn take_max(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
         Self::strict_take_max(side, a, b).unwrap()
     }
 
+    /// Consumes a and b, returning the max bound or Err if not comparable.
     pub fn strict_take_max(
         side: Side,
         a: FiniteBound<T>,
@@ -270,10 +284,16 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Return a reference to the minimum bound.
+    ///
+    /// # Panics
+    ///
+    /// panics if `a`` and `b` are not comparable.
+    //#[deprecated(since="0.1.0-alpha.2")]
     pub fn min<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
         Self::strict_min(side, a, b).unwrap()
     }
 
+    /// Return a ref to the min bound or Err if not comparable.
     pub fn strict_min<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
@@ -287,10 +307,14 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Return a reference to the maximum bound.
+    ///
+    /// # Panics
+    //#[deprecated(since="0.1.0-alpha.2")]
     pub fn max<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
         Self::strict_max(side, a, b).unwrap()
     }
 
+    /// Return a reference to the max bound or Err if not comparable.
     pub fn strict_max<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
@@ -306,6 +330,8 @@ impl<T: PartialOrd> FiniteBound<T> {
 
 impl<T: PartialOrd> FiniteBound<T> {
     /// Test if this partitions an element to be contained by the `Set`.
+    ///
+    /// todo: unsafe fn contains_unchecked(...)
     pub fn contains(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.0 {
@@ -319,6 +345,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         }
     }
 
+    /// Test if self "sees" an element from a `Side` or Err if not comparable.
     pub fn strict_contains(&self, side: Side, test: &T) -> Result<bool, TotalOrderError> {
         let lhs = self.finite_ord(side);
         let rhs = ord::FiniteOrdBound::closed(test);
@@ -329,6 +356,9 @@ impl<T: PartialOrd> FiniteBound<T> {
         Ok(order == Equal || order == side.select(Less, Greater))
     }
 
+    /// Test if self "sees" a bound from a `Side`.
+    ///
+    /// todo: unsafe fn contains_bound_unchecked(...)
     pub fn contains_bound(&self, side: Side, test: &FiniteBound<T>) -> bool {
         let lhs = self.finite_ord(side);
         let rhs = test.finite_ord(side);
@@ -338,6 +368,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         }
     }
 
+    /// Test if self "sees" a bound from a `Side` or Err if not comparable.
     pub fn strict_contains_bound(
         &self,
         side: Side,
@@ -481,28 +512,29 @@ pub mod ord {
     }
 
     impl<T> OrdBound<T> {
+        /// Creates a new finite `OldBound<T>`.
         pub const fn new_finite(limit: T, kind: FiniteOrdBoundKind) -> Self {
             Self::Finite(FiniteOrdBound::new(limit, kind))
         }
 
-        /// Create a finite left open OrdBound
+        /// Create a finite left open `OrdBound<T>`.
         pub const fn left_open(limit: T) -> Self {
             Self::new_finite(limit, FiniteOrdBoundKind::LeftOpen)
         }
 
-        /// Create a finite closed OrdBound
+        /// Create a finite closed `OrdBound<T>`.
         pub const fn closed(limit: T) -> Self {
             Self::new_finite(limit, FiniteOrdBoundKind::Closed)
         }
 
-        /// Create a finite right open OrdBound
+        /// Create a finite right open `OrdBound<T>`.
         pub const fn right_open(limit: T) -> Self {
             Self::new_finite(limit, FiniteOrdBoundKind::RightOpen)
         }
     }
 
     impl<'a, T> OrdBound<&'a T> {
-        /// Create a left OrdBound view of a &FiniteBound.
+        /// Create a left `OrdBound<T>` view of a `&FiniteBound<T>`.
         pub fn left(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
                 BoundType::Closed => Self::new_finite(bound.value(), Closed),
@@ -510,7 +542,7 @@ pub mod ord {
             }
         }
 
-        /// Create a right OrdBound view of a &FiniteBound.
+        /// Create a right `OrdBound<T>` view of a `&FiniteBound<T>`.
         pub fn right(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
                 BoundType::Closed => Self::new_finite(bound.value(), Closed),
@@ -579,16 +611,19 @@ pub mod ord {
     pub struct FiniteOrdBound<T>(pub T, pub FiniteOrdBoundKind);
 
     impl<T> FiniteOrdBound<T> {
+        /// Creates a new `FiniteOrdBound<T>`.
         #[inline(always)]
         pub const fn new(limit: T, kind: FiniteOrdBoundKind) -> Self {
             Self(limit, kind)
         }
 
+        /// Creates a new closed `FiniteOrdBound<T>`.
         #[inline(always)]
         pub const fn closed(limit: T) -> Self {
             Self::new(limit, FiniteOrdBoundKind::Closed)
         }
 
+        /// Creates a new left or right open `FiniteOrdBound<T>`
         #[inline(always)]
         pub const fn open(side: super::Side, limit: T) -> Self {
             Self::new(
@@ -602,6 +637,7 @@ pub mod ord {
     }
 
     impl<T: Clone> FiniteOrdBound<&T> {
+        /// Converts `FiniteOrdBound<&T>` to `FiniteOrdBound<T>`.
         pub fn cloned(&self) -> FiniteOrdBound<T> {
             FiniteOrdBound::new(self.0.clone(), self.1)
         }
