@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize};
 
 #[allow(unused)]
-use crate::bound::ord::{OrdBound, OrdBoundFinite, OrdBoundPair};
+use crate::bound::ord::{FiniteOrdBound, FiniteOrdBoundKind, OrdBound, OrdBoundPair};
 #[allow(unused)]
 use crate::bound::{BoundType, FiniteBound, Side};
 #[allow(unused)]

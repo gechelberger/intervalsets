@@ -75,8 +75,8 @@ mod icore {
                 // is normalized and min(left, right) <= max(left, right)
                 let merged = unsafe {
                     FiniteInterval::new_unchecked(
-                        FiniteBound::take_min(Side::Left, lhs_min, rhs_min),
-                        FiniteBound::take_max(Side::Right, lhs_max, rhs_max),
+                        FiniteBound::take_min_unchecked(Side::Left, lhs_min, rhs_min),
+                        FiniteBound::take_max_unchecked(Side::Right, lhs_max, rhs_max),
                     )
                 };
 

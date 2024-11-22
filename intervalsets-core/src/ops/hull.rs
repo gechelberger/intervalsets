@@ -117,9 +117,11 @@ impl<T: Domain + Clone> ConvexHull<FiniteInterval<T>> for FiniteInterval<T> {
                 .into_raw()
                 .expect("Hull subset should not be empty");
 
-            // todo: partial order checks...
-            left = FiniteBound::take_min(Side::Left, left, c_left);
-            right = FiniteBound::take_max(Side::Right, right, c_right);
+            // SAFETY: if input intervals satisfy invariants then this is safe.
+            unsafe {
+                left = FiniteBound::take_min_unchecked(Side::Left, left, c_left);
+                right = FiniteBound::take_max_unchecked(Side::Right, right, c_right);
+            }
         }
 
         // SAFETY: hull should satisfy invariants (left <= right)
@@ -167,7 +169,7 @@ where
         right = right.try_max(r_candidate).ok()?;
     }
 
-    Some(OrdBoundPair::new(left, right).into())
+    OrdBoundPair::new(left, right).try_into().ok()
 }
 
 /// Try to create a hull from `OrdBounded<T>` elements.
@@ -212,7 +214,7 @@ where
 
     let left = left.cloned();
     let right = right.cloned();
-    Some(OrdBoundPair::new(left, right).into())
+    OrdBoundPair::new(left, right).try_into().ok()
 }
 
 impl<T: Domain + PartialOrd> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {

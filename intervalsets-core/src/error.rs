@@ -1,8 +1,18 @@
-use core::error::Error;
-use core::fmt;
+#[derive(Debug, ::thiserror::Error)]
+pub enum Error {
+    #[error(transparent)]
+    TotalOrderError(#[from] TotalOrderError),
+
+    #[error(transparent)]
+    InvariantError(#[from] InvariantError),
+
+    #[error(transparent)]
+    BoundsViolationError(#[from] BoundsViolationError),
+}
 
 /// Failed comparison of `PartialOrd` values.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
+#[error("failed comparison of unordered values: {msg}")]
 pub struct TotalOrderError {
     msg: &'static str,
 }
@@ -14,10 +24,29 @@ impl TotalOrderError {
     }
 }
 
-impl fmt::Display for TotalOrderError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "TotalOrderError: {}.", self.msg)
+/// A type invariant has been violated.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
+#[error("invariant violated: {msg}")]
+pub struct InvariantError {
+    msg: &'static str,
+}
+
+impl InvariantError {
+    /// Creates a new `InvariantError` with a static message.
+    pub const fn new(msg: &'static str) -> Self {
+        Self { msg }
     }
 }
 
-impl Error for TotalOrderError {}
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
+#[error("bounds violation error: {msg}")]
+pub struct BoundsViolationError {
+    msg: &'static str,
+}
+
+impl BoundsViolationError {
+    /// Create a new `BoundViolationError` with a static message.
+    pub const fn new(msg: &'static str) -> Self {
+        Self { msg }
+    }
+}

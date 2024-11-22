@@ -1,8 +1,9 @@
+mod ord;
 mod range;
 mod try_from;
 
-use crate::bound::ord::{OrdBound, OrdBoundFinite, OrdBoundPair};
-use crate::bound::{BoundType, FiniteBound, Side};
+use crate::bound::ord::{OrdBound, OrdBoundPair};
+use crate::bound::{FiniteBound, Side};
 use crate::numeric::Domain;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -139,15 +140,6 @@ impl<'a, T> From<&'a EnumInterval<T>> for OrdBoundPair<&'a T> {
     }
 }
 
-impl From<OrdBoundFinite> for BoundType {
-    fn from(value: OrdBoundFinite) -> Self {
-        match value {
-            OrdBoundFinite::Closed => BoundType::Closed,
-            _ => BoundType::Open,
-        }
-    }
-}
-
 /*
 impl<T> TryFrom<OrdBound<T>> for FiniteBound<T> {
     type Error = Error;
@@ -171,29 +163,3 @@ impl<T: Domain> TryFrom<OrdBoundPair<T>> for FiniteInterval<T> {
         Self::new(left, right)
     }
 }*/
-
-impl<T: Domain> From<OrdBoundPair<T>> for EnumInterval<T> {
-    fn from(value: OrdBoundPair<T>) -> Self {
-        match value.into_raw() {
-            (OrdBound::LeftUnbounded, OrdBound::LeftUnbounded) => Self::empty(),
-            (OrdBound::LeftUnbounded, OrdBound::RightUnbounded) => Self::Unbounded,
-            (OrdBound::LeftUnbounded, OrdBound::Finite(r_val, r_ord)) => {
-                let r_bound = FiniteBound::new(r_ord.into(), r_val);
-                // SAFETY: Interval invariants <=> OrdBoundPair invariants
-                unsafe { Self::Half(HalfInterval::new_unchecked(Side::Right, r_bound)) }
-            }
-            (OrdBound::Finite(l_val, l_ord), OrdBound::RightUnbounded) => {
-                let l_bound = FiniteBound::new(l_ord.into(), l_val);
-                // SAFETY: Interval invariants <=> OrdBoundPair invariants
-                unsafe { Self::Half(HalfInterval::new_unchecked(Side::Left, l_bound)) }
-            }
-            (OrdBound::Finite(l_val, l_ord), OrdBound::Finite(r_val, r_ord)) => {
-                let l_bound = FiniteBound::new(l_ord.into(), l_val);
-                let r_bound = FiniteBound::new(r_ord.into(), r_val);
-                // SAFETY: FiniteInterval invariants <=> OrdBoundPair invariants
-                unsafe { Self::Finite(FiniteInterval::new_unchecked(l_bound, r_bound)) }
-            }
-            _ => unreachable!(),
-        }
-    }
-}

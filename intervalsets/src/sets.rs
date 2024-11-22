@@ -280,7 +280,7 @@ impl<T: Clone + Domain> IntervalSet<T> {
                 let (min, _) = first.ord_bound_pair().into_raw();
                 let (_, max) = last.ord_bound_pair().into_raw();
                 let hull = OrdBoundPair::new(min.cloned(), max.cloned());
-                hull.into()
+                hull.try_into().expect("intervalset invariants violated")
             }
         }
     }

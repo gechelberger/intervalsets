@@ -11,6 +11,9 @@
 //! All `Set` types should implement the [`SetBounds`], and
 //! [`OrdBounded`](ord::OrdBounded) traits.
 
+use core::cmp::Ordering::{Equal, Greater, Less};
+
+use crate::error::TotalOrderError;
 use crate::numeric::Domain;
 
 /// An interface to query the left and right bounds of a set.
@@ -62,7 +65,7 @@ pub enum Side {
 impl Side {
     /// Flip left => right, right => left
     #[inline(always)]
-    pub fn flip(self) -> Self {
+    pub const fn flip(self) -> Self {
         match self {
             Self::Left => Self::Right,
             Self::Right => Self::Left,
@@ -75,15 +78,6 @@ impl Side {
         match self {
             Self::Left => left,
             Self::Right => right,
-        }
-    }
-
-    /// Invoke the left or right arg for the value of self and return the result.
-    #[inline(always)]
-    pub fn fn_select<T>(self, left: impl FnOnce() -> T, right: impl FnOnce() -> T) -> T {
-        match self {
-            Self::Left => left(),
-            Self::Right => right(),
         }
     }
 }
@@ -157,21 +151,36 @@ impl<T> FiniteBound<T> {
         (self.0, self.1)
     }
 
-    /// Creates an `OrdBound<&T>`
-    pub fn ord(&self, side: Side) -> ord::OrdBound<&T> {
+    /// Converts `&FiniteBound<T>` to `FiniteBound<&T>`.
+    pub fn as_ref(&self) -> FiniteBound<&T> {
+        FiniteBound::new(self.0, &self.1)
+    }
+
+    /// Creates a `FiniteOrdBound<&T>` view of this `FiniteBound<T>`.
+    pub fn finite_ord(&self, side: Side) -> ord::FiniteOrdBound<&T> {
         match self.bound_type() {
-            BoundType::Closed => ord::OrdBound::Finite(self.value(), ord::OrdBoundFinite::Closed),
-            BoundType::Open => ord::OrdBound::Finite(self.value(), ord::OrdBoundFinite::open(side)),
+            BoundType::Closed => ord::FiniteOrdBound::closed(self.value()),
+            BoundType::Open => ord::FiniteOrdBound::open(side, self.value()),
         }
     }
 
-    /// Turns self into an `OrdBound<T>`
-    pub fn into_ord(self, side: Side) -> ord::OrdBound<T> {
+    /// Creates an `OrdBound<&T>`
+    pub fn ord(&self, side: Side) -> ord::OrdBound<&T> {
+        ord::OrdBound::Finite(self.finite_ord(side))
+    }
+
+    /// Converts self into a `FiniteOrdBound<T>`
+    pub fn into_finite_ord(self, side: Side) -> ord::FiniteOrdBound<T> {
         let (bound_type, value) = self.into_raw();
         match bound_type {
-            BoundType::Closed => ord::OrdBound::Finite(value, ord::OrdBoundFinite::Closed),
-            BoundType::Open => ord::OrdBound::Finite(value, ord::OrdBoundFinite::open(side)),
+            BoundType::Closed => ord::FiniteOrdBound::closed(value),
+            BoundType::Open => ord::FiniteOrdBound::open(side, value),
         }
+    }
+
+    /// Converts self into an `OrdBound<T>`
+    pub fn into_ord(self, side: Side) -> ord::OrdBound<T> {
+        ord::OrdBound::Finite(self.into_finite_ord(side))
     }
 
     /// Returns a new `Bound`, keeps BoundType, new limit; `self` is consumed.
@@ -229,45 +238,133 @@ impl<T> FiniteBound<T> {
 
 impl<T: PartialOrd> FiniteBound<T> {
     /// Consume a and b, returning the minimum bound.
-    pub fn take_min(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
-        if a.contains(side, b.value()) {
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring both bounds are comparable.
+    pub unsafe fn take_min_unchecked(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> FiniteBound<T> {
+        if a.contains_bound_unchecked(side, &b) {
             side.select(a, b)
         } else {
             side.select(b, a)
+        }
+    }
+
+    /// Consume a and b, returning the min bound or Err if not comparable.
+    pub fn strict_take_min(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> Result<FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, &b)? {
+            Ok(side.select(a, b))
+        } else {
+            Ok(side.select(b, a))
         }
     }
 
     /// Consume a and b, returning the maximum bound.
-    pub fn take_max(side: Side, a: FiniteBound<T>, b: FiniteBound<T>) -> FiniteBound<T> {
-        if a.contains(side, b.value()) {
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring that both bounds are comparable.
+    pub unsafe fn take_max_unchecked(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> FiniteBound<T> {
+        if a.contains_bound_unchecked(side, &b) {
             side.select(b, a)
         } else {
             side.select(a, b)
+        }
+    }
+
+    /// Consumes a and b, returning the max bound or Err if not comparable.
+    pub fn strict_take_max(
+        side: Side,
+        a: FiniteBound<T>,
+        b: FiniteBound<T>,
+    ) -> Result<FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, &b)? {
+            Ok(side.select(b, a))
+        } else {
+            Ok(side.select(a, b))
         }
     }
 
     /// Return a reference to the minimum bound.
-    pub fn min<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
-        if a.contains(side, b.value()) {
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring bounds are comparable.
+    pub unsafe fn min_unchecked<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> &'a FiniteBound<T> {
+        if a.contains_bound_unchecked(side, b) {
             side.select(a, b)
         } else {
             side.select(b, a)
         }
     }
 
+    /// Return a ref to the min bound or Err if not comparable.
+    pub fn strict_min<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, b)? {
+            Ok(side.select(a, b))
+        } else {
+            Ok(side.select(b, a))
+        }
+    }
+
     /// Return a reference to the maximum bound.
-    pub fn max<'a>(side: Side, a: &'a FiniteBound<T>, b: &'a FiniteBound<T>) -> &'a FiniteBound<T> {
-        if a.contains(side, b.value()) {
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring both bounds are comparable.
+    pub unsafe fn max_unchecked<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> &'a FiniteBound<T> {
+        if a.contains_bound_unchecked(side, b) {
             side.select(b, a)
         } else {
             side.select(a, b)
+        }
+    }
+
+    /// Return a reference to the max bound or Err if not comparable.
+    pub fn strict_max<'a>(
+        side: Side,
+        a: &'a FiniteBound<T>,
+        b: &'a FiniteBound<T>,
+    ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
+        if a.strict_contains_bound(side, b)? {
+            Ok(side.select(b, a))
+        } else {
+            Ok(side.select(a, b))
         }
     }
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
     /// Test if this partitions an element to be contained by the `Set`.
-    pub fn contains(&self, side: Side, value: &T) -> bool {
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring bound and value are comparable.
+    pub unsafe fn contains_unchecked(&self, side: Side, value: &T) -> bool {
         match side {
             Side::Left => match self.0 {
                 BoundType::Open => self.value() < value,
@@ -278,6 +375,46 @@ impl<T: PartialOrd> FiniteBound<T> {
                 BoundType::Closed => value <= self.value(),
             },
         }
+    }
+
+    /// Test if self "sees" an element from a `Side` or Err if not comparable.
+    pub fn strict_contains(&self, side: Side, test: &T) -> Result<bool, TotalOrderError> {
+        let lhs = self.finite_ord(side);
+        let rhs = ord::FiniteOrdBound::closed(test);
+        let order = lhs
+            .partial_cmp(&rhs)
+            .ok_or(TotalOrderError::new("FiniteBound::strict_contains"))?;
+
+        Ok(order == Equal || order == side.select(Less, Greater))
+    }
+
+    /// Test if self "sees" a bound from a `Side`.
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for making sure that both bounds are comparable.
+    pub unsafe fn contains_bound_unchecked(&self, side: Side, test: &FiniteBound<T>) -> bool {
+        let lhs = self.finite_ord(side);
+        let rhs = test.finite_ord(side);
+        match side {
+            Side::Left => lhs <= rhs,
+            Side::Right => rhs <= lhs,
+        }
+    }
+
+    /// Test if self "sees" a bound from a `Side` or Err if not comparable.
+    pub fn strict_contains_bound(
+        &self,
+        side: Side,
+        test: &FiniteBound<T>,
+    ) -> Result<bool, TotalOrderError> {
+        let lhs = self.finite_ord(side);
+        let rhs = test.finite_ord(side);
+        let order = lhs
+            .partial_cmp(&rhs)
+            .ok_or(TotalOrderError::new("FiniteBound::strict_contains_bound"))?;
+
+        Ok(order == Equal || order == side.select(Less, Greater))
     }
 }
 
@@ -404,41 +541,46 @@ pub mod ord {
     #[allow(missing_docs)]
     pub enum OrdBound<T> {
         LeftUnbounded,
-        Finite(T, OrdBoundFinite),
+        Finite(FiniteOrdBound<T>),
         RightUnbounded,
     }
 
     impl<T> OrdBound<T> {
-        /// Create a finite left open OrdBound
+        /// Creates a new finite `OldBound<T>`.
+        pub const fn new_finite(limit: T, kind: FiniteOrdBoundKind) -> Self {
+            Self::Finite(FiniteOrdBound::new(limit, kind))
+        }
+
+        /// Create a finite left open `OrdBound<T>`.
         pub const fn left_open(limit: T) -> Self {
-            Self::Finite(limit, OrdBoundFinite::LeftOpen)
+            Self::new_finite(limit, FiniteOrdBoundKind::LeftOpen)
         }
 
-        /// Create a finite closed OrdBound
+        /// Create a finite closed `OrdBound<T>`.
         pub const fn closed(limit: T) -> Self {
-            Self::Finite(limit, OrdBoundFinite::Closed)
+            Self::new_finite(limit, FiniteOrdBoundKind::Closed)
         }
 
-        /// Create a finite right open OrdBound
+        /// Create a finite right open `OrdBound<T>`.
         pub const fn right_open(limit: T) -> Self {
-            Self::Finite(limit, OrdBoundFinite::RightOpen)
+            Self::new_finite(limit, FiniteOrdBoundKind::RightOpen)
         }
     }
 
     impl<'a, T> OrdBound<&'a T> {
-        /// Create a left OrdBound view of a &FiniteBound.
+        /// Create a left `OrdBound<T>` view of a `&FiniteBound<T>`.
         pub fn left(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
-                BoundType::Closed => Self::Finite(bound.value(), Closed),
-                BoundType::Open => Self::Finite(bound.value(), LeftOpen),
+                BoundType::Closed => Self::new_finite(bound.value(), Closed),
+                BoundType::Open => Self::new_finite(bound.value(), LeftOpen),
             }
         }
 
-        /// Create a right OrdBound view of a &FiniteBound.
+        /// Create a right `OrdBound<T>` view of a `&FiniteBound<T>`.
         pub fn right(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
-                BoundType::Closed => Self::Finite(bound.value(), Closed),
-                BoundType::Open => Self::Finite(bound.value(), RightOpen),
+                BoundType::Closed => Self::new_finite(bound.value(), Closed),
+                BoundType::Open => Self::new_finite(bound.value(), RightOpen),
             }
         }
     }
@@ -447,14 +589,14 @@ pub mod ord {
         /// Create an owned `OrdBound<T>` from an `OrdBound<&T>` view.
         pub fn cloned(self) -> OrdBound<T> {
             match self {
-                Finite(value, order) => Finite(value.clone(), order),
+                Finite(inner) => Finite(inner.cloned()),
                 LeftUnbounded => LeftUnbounded,
                 RightUnbounded => RightUnbounded,
             }
         }
     }
 
-    impl<T> OrdBound<T> {
+    /*impl<T> OrdBound<T> {
         pub fn map<F, U>(self, func: F) -> OrdBound<U>
         where
             F: FnOnce(T) -> U,
@@ -465,7 +607,7 @@ pub mod ord {
                 RightUnbounded => RightUnbounded,
             }
         }
-    }
+    }*/
 
     /// Ordered exclusivity cases for finite bounds.
     ///
@@ -477,19 +619,61 @@ pub mod ord {
         derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
     )]
     #[allow(missing_docs)]
-    pub enum OrdBoundFinite {
+    pub enum FiniteOrdBoundKind {
         RightOpen,
         Closed,
         LeftOpen,
     }
 
+    use FiniteOrdBoundKind::*;
     use OrdBound::*;
-    use OrdBoundFinite::*;
 
-    impl OrdBoundFinite {
+    impl FiniteOrdBoundKind {
         /// Create the correctly sided open ord bound type.
         pub fn open(side: super::Side) -> Self {
             side.select(LeftOpen, RightOpen)
+        }
+    }
+
+    /// Finite bound with a total ordering
+    #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
+    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+    #[cfg_attr(
+        feature = "rkyv",
+        derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+    )]
+    pub struct FiniteOrdBound<T>(pub T, pub FiniteOrdBoundKind);
+
+    impl<T> FiniteOrdBound<T> {
+        /// Creates a new `FiniteOrdBound<T>`.
+        #[inline(always)]
+        pub const fn new(limit: T, kind: FiniteOrdBoundKind) -> Self {
+            Self(limit, kind)
+        }
+
+        /// Creates a new closed `FiniteOrdBound<T>`.
+        #[inline(always)]
+        pub const fn closed(limit: T) -> Self {
+            Self::new(limit, FiniteOrdBoundKind::Closed)
+        }
+
+        /// Creates a new left or right open `FiniteOrdBound<T>`
+        #[inline(always)]
+        pub const fn open(side: super::Side, limit: T) -> Self {
+            Self::new(
+                limit,
+                match side {
+                    super::Side::Left => LeftOpen,
+                    super::Side::Right => RightOpen,
+                },
+            )
+        }
+    }
+
+    impl<T: Clone> FiniteOrdBound<&T> {
+        /// Converts `FiniteOrdBound<&T>` to `FiniteOrdBound<T>`.
+        pub fn cloned(&self) -> FiniteOrdBound<T> {
+            FiniteOrdBound::new(self.0.clone(), self.1)
         }
     }
 
@@ -524,9 +708,9 @@ pub mod ord {
                 (LeftUnbounded, LeftUnbounded) => Self::empty(),
                 (left, right) => {
                     debug_assert!(!matches!(&left, RightUnbounded));
-                    debug_assert!(!matches!(&left, Finite(_, RightOpen)));
                     debug_assert!(!matches!(&right, LeftUnbounded));
-                    debug_assert!(!matches!(&right, Finite(_, LeftOpen)));
+                    debug_assert!(!matches!(&left, Finite(FiniteOrdBound(_, RightOpen))));
+                    debug_assert!(!matches!(&right, Finite(FiniteOrdBound(_, LeftOpen))));
                     Self(left, right)
                 }
             }
@@ -542,66 +726,85 @@ pub mod ord {
 mod test {
     use ord::OrdBound;
 
+    use super::Side::*;
     use super::*;
     use crate::try_cmp::{TryMax, TryMin};
 
     #[test]
     fn test_bound_min_max() {
-        assert_eq!(
-            FiniteBound::min(
-                Side::Left,
-                &FiniteBound::closed(0),
+        unsafe {
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
+                &FiniteBound::closed(0)
+            );
+
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::closed(0)
+            );
+
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
                 &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(0)
-        );
+            );
 
-        assert_eq!(
-            FiniteBound::min(Side::Left, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::closed(0)
-        );
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Left,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::open(0)
+            );
 
-        assert_eq!(
-            FiniteBound::max(
-                Side::Left,
-                &FiniteBound::closed(0),
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
+                &FiniteBound::closed(0)
+            );
+
+            assert_eq!(
+                FiniteBound::min_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::open(0)
+            );
+
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::closed(10)
+                ),
                 &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(10)
-        );
+            );
 
-        assert_eq!(
-            FiniteBound::max(Side::Left, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::open(0)
-        );
-
-        assert_eq!(
-            FiniteBound::min(
-                Side::Right,
-                &FiniteBound::closed(0),
-                &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(0)
-        );
-
-        assert_eq!(
-            FiniteBound::min(Side::Right, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::open(0)
-        );
-
-        assert_eq!(
-            FiniteBound::max(
-                Side::Right,
-                &FiniteBound::closed(0),
-                &FiniteBound::closed(10)
-            ),
-            &FiniteBound::closed(10)
-        );
-
-        assert_eq!(
-            FiniteBound::max(Side::Right, &FiniteBound::closed(0), &FiniteBound::open(0)),
-            &FiniteBound::closed(0)
-        )
+            assert_eq!(
+                FiniteBound::max_unchecked(
+                    Side::Right,
+                    &FiniteBound::closed(0),
+                    &FiniteBound::open(0)
+                ),
+                &FiniteBound::closed(0)
+            )
+        }
     }
 
     #[test]
@@ -628,5 +831,85 @@ mod test {
             OrdBound::LeftUnbounded.try_max(OrdBound::closed(&f1)),
             Ok(OrdBound::closed(&f1))
         )
+    }
+
+    #[test]
+    pub fn test_strict_contains() {
+        let x = FiniteBound::closed(0.0);
+
+        assert_eq!(x.strict_contains(Left, &0.0).unwrap(), true);
+        assert_eq!(x.strict_contains(Left, &1.0).unwrap(), true);
+        assert_eq!(x.strict_contains(Left, &-1.0).unwrap(), false);
+        assert_eq!(x.strict_contains(Left, &f64::NAN).is_err(), true);
+
+        assert_eq!(x.strict_contains(Right, &0.0).unwrap(), true);
+        assert_eq!(x.strict_contains(Right, &-1.0).unwrap(), true);
+        assert_eq!(x.strict_contains(Right, &1.0).unwrap(), false);
+        assert_eq!(x.strict_contains(Right, &f64::NAN).is_err(), true);
+
+        let open = FiniteBound::open(0.0);
+
+        assert_eq!(open.strict_contains(Left, &0.0).unwrap(), false);
+        assert_eq!(open.strict_contains(Left, &1.0).unwrap(), true);
+        assert_eq!(open.strict_contains(Left, &-1.0).unwrap(), false);
+        assert_eq!(open.strict_contains(Left, &f64::NAN).is_err(), true);
+
+        assert_eq!(open.strict_contains(Right, &0.0).unwrap(), false);
+        assert_eq!(open.strict_contains(Right, &-1.0).unwrap(), true);
+        assert_eq!(open.strict_contains(Right, &1.0).unwrap(), false);
+        assert_eq!(open.strict_contains(Right, &f64::NAN).is_err(), true);
+    }
+
+    #[test]
+    fn test_strict_contains_bound() {
+        let cl_0 = FiniteBound::closed(0.0);
+        let cl_p1 = FiniteBound::closed(1.0);
+        let cl_n1 = FiniteBound::closed(-1.0);
+        let cl_nan = FiniteBound::closed(f64::NAN);
+
+        let op_0 = FiniteBound::open(0.0);
+        let op_p1 = FiniteBound::open(1.0);
+        let op_n1 = FiniteBound::open(-1.0);
+        let op_nan = FiniteBound::open(f64::NAN);
+
+        assert_eq!(cl_0.strict_contains_bound(Left, &cl_0).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Left, &cl_p1).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Left, &cl_n1).unwrap(), false);
+        assert_eq!(cl_0.strict_contains_bound(Left, &cl_nan).is_err(), true);
+
+        assert_eq!(cl_0.strict_contains_bound(Left, &op_0).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Left, &op_p1).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Left, &op_n1).unwrap(), false);
+        assert_eq!(cl_0.strict_contains_bound(Left, &op_nan).is_err(), true);
+
+        assert_eq!(op_0.strict_contains_bound(Left, &op_0).unwrap(), true);
+        assert_eq!(op_0.strict_contains_bound(Left, &op_p1).unwrap(), true);
+        assert_eq!(op_0.strict_contains_bound(Left, &op_n1).unwrap(), false);
+        assert_eq!(op_0.strict_contains_bound(Left, &op_nan).is_err(), true);
+
+        assert_eq!(op_0.strict_contains_bound(Left, &cl_0).unwrap(), false);
+        assert_eq!(op_0.strict_contains_bound(Left, &cl_p1).unwrap(), true);
+        assert_eq!(op_0.strict_contains_bound(Left, &cl_n1).unwrap(), false);
+        assert_eq!(op_0.strict_contains_bound(Left, &cl_nan).is_err(), true);
+
+        assert_eq!(cl_0.strict_contains_bound(Right, &cl_0).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Right, &cl_p1).unwrap(), false);
+        assert_eq!(cl_0.strict_contains_bound(Right, &cl_n1).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Right, &cl_nan).is_err(), true);
+
+        assert_eq!(cl_0.strict_contains_bound(Right, &op_0).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Right, &op_p1).unwrap(), false);
+        assert_eq!(cl_0.strict_contains_bound(Right, &op_n1).unwrap(), true);
+        assert_eq!(cl_0.strict_contains_bound(Right, &op_nan).is_err(), true);
+
+        assert_eq!(op_0.strict_contains_bound(Right, &op_0).unwrap(), true);
+        assert_eq!(op_0.strict_contains_bound(Right, &op_p1).unwrap(), false);
+        assert_eq!(op_0.strict_contains_bound(Right, &op_n1).unwrap(), true);
+        assert_eq!(op_0.strict_contains_bound(Right, &op_nan).is_err(), true);
+
+        assert_eq!(op_0.strict_contains_bound(Right, &cl_0).unwrap(), false);
+        assert_eq!(op_0.strict_contains_bound(Right, &cl_p1).unwrap(), false);
+        assert_eq!(op_0.strict_contains_bound(Right, &cl_n1).unwrap(), true);
+        assert_eq!(op_0.strict_contains_bound(Right, &cl_nan).is_err(), true);
     }
 }

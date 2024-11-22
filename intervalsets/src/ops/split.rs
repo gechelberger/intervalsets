@@ -32,7 +32,7 @@ impl<T: Domain + Clone + Zero> Split<T> for IntervalSet<T> {
                 left.push(ileft);
                 right.push(iright);
             } else if let Some(rbound) = subset.right() {
-                if !rbound.contains(Side::Right, &at) {
+                if !rbound.strict_contains(Side::Right, &at).unwrap() {
                     left.push(subset);
                 } else {
                     right.push(subset);
