@@ -1,10 +1,10 @@
 use super::util::commutative_predicate_impl;
 use super::Contains;
 //use crate::bound::ord::{OrdBound, OrdBounded};
-use crate::bound::Side;
+use crate::bound::Side::{Left, Right};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-/// Test if two sets intersect.
+/// Test if the intersection of two sets would be non-empty.
 ///
 /// ```text
 /// ∃x | x ∈ A ∧ x ∈ B
@@ -43,13 +43,11 @@ impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
             return false;
         };
 
-        unsafe {
-            lhs_min.contains_bound_unchecked(Side::Left, rhs_max)
-                && rhs_min.contains_bound_unchecked(Side::Left, lhs_max)
-        }
+        lhs_min.finite_ord(Left) <= rhs_max.finite_ord(Right)
+            && rhs_min.finite_ord(Left) <= lhs_max.finite_ord(Right)
 
         /*
-        // this is definitely correct
+        // this is definitely correct but slightly more expensive
         let (lhs_min, lhs_max) = self.ord_bound_pair().into_raw();
         let (rhs_min, rhs_max) = rhs.ord_bound_pair().into_raw();
         lhs_max != OrdBound::LeftUnbounded
@@ -67,16 +65,14 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
             return false;
         };
 
-        self.contains(left.finite_ord(crate::bound::Side::Left))
-            || self.contains(right.finite_ord(crate::bound::Side::Right))
+        self.contains(left.finite_ord(Left)) || self.contains(right.finite_ord(Right))
     }
 }
 
 impl<T: PartialOrd> Intersects<&Self> for HalfInterval<T> {
     #[inline(always)]
     fn intersects(&self, rhs: &Self) -> bool {
-        self.contains(rhs.bound.finite_ord(rhs.side))
-            || rhs.contains(self.bound.finite_ord(self.side))
+        self.contains(rhs.finite_ord_bound()) || rhs.contains(self.finite_ord_bound())
     }
 }
 
@@ -131,5 +127,22 @@ mod tests {
         assert!(y.intersects(&y));
 
         assert!(x.is_disjoint_from(&y));
+    }
+
+    #[test]
+    fn test_open_disjoint() {
+        let a = FiniteInterval::open(0.0, 10.0);
+        let b = FiniteInterval::open(10.0, 20.0);
+
+        assert_eq!(a.intersects(&b), false);
+        assert_eq!(b.intersects(&a), false);
+
+        let hb = HalfInterval::open_unbound(10.0);
+        assert_eq!(a.intersects(&hb), false);
+        assert_eq!(hb.intersects(&a), false);
+
+        let ha = HalfInterval::unbound_open(0.0);
+        assert_eq!(a.intersects(&ha), false);
+        assert_eq!(ha.intersects(&a), false);
     }
 }
