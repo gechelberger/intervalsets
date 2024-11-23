@@ -12,6 +12,8 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// Alt:   A ⊇ B
 /// ```
 ///
+/// Individual elements are treated as if they were a singleton set.
+///
 /// # Examples
 ///
 /// ```
