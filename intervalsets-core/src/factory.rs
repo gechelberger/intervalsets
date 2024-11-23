@@ -427,8 +427,8 @@ where
 {
     /// Returns a new unbounded interval.
     ///
-    /// An unbounded interval contains every element in T,
-    /// as well as every set of T except the `Empty` set.
+    /// An unbounded interval contains every element in `T``,
+    /// and therefore is a superset of all sets of `T`.
     ///
     /// (<-, ->) = { x in T }
     ///
@@ -439,7 +439,7 @@ where
     ///
     /// let x = EnumInterval::<f32>::unbounded();
     /// assert_eq!(x.contains(&10.0), true);
-    /// assert_eq!(x.contains(&EnumInterval::empty()), false);
+    /// assert_eq!(x.contains(&EnumInterval::empty()), true);
     /// ```
     fn unbounded() -> Self::Output;
 }

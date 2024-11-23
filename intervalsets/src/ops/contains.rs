@@ -97,7 +97,10 @@ mod tests {
         let interval = Interval::closed(-50, 50);
         let candidate = Interval::closed(a, b);
 
-        assert_eq!(interval.contains(&candidate), a <= b && -50 <= a && b <= 50)
+        assert_eq!(
+            interval.contains(&candidate),
+            (-50 <= a && b <= 50) || a > b
+        );
     }
 
     #[quickcheck]
@@ -111,7 +114,7 @@ mod tests {
 
         assert_eq!(
             interval.contains(&candidate),
-            a < b && -100.0 < a && b < 100.0
+            (-100.0 < a && b < 100.0) || a >= b
         )
     }
 
@@ -131,7 +134,7 @@ mod tests {
         let interval = Interval::open_unbound(0);
 
         let finite = Interval::closed(a, b);
-        assert_eq!(interval.contains(&finite), 0 < a && a <= b);
+        assert_eq!(interval.contains(&finite), 0 < a || a > b);
     }
 
     #[quickcheck]
@@ -139,7 +142,7 @@ mod tests {
         let interval = Interval::<i8>::unbounded();
 
         let finite = Interval::closed(a, b);
-        assert_eq!(interval.contains(&finite), a <= b);
+        assert_eq!(interval.contains(&finite), true);
     }
 
     #[test]
