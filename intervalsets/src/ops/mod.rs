@@ -30,3 +30,6 @@ pub use difference::{Difference, SymDifference};
 
 mod rebound;
 pub use rebound::Rebound;
+
+mod finite;
+pub use finite::IntoFinite;

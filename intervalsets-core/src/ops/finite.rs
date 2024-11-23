@@ -1,15 +1,19 @@
 use crate::bound::{FiniteBound, Side};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
+/// Truncates a set to only the elements representable by the generic data type.
 pub trait IntoFinite {
+    /// The type of interval to create.
     type Output;
 
+    /// Converts to a finite set.
     fn into_finite(self) -> Self::Output;
 }
 
 impl<T> IntoFinite for FiniteInterval<T> {
     type Output = Self;
 
+    #[inline(always)]
     fn into_finite(self) -> Self::Output {
         self
     }
@@ -18,6 +22,7 @@ impl<T> IntoFinite for FiniteInterval<T> {
 impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
     type Output = FiniteInterval<T>;
 
+    #[inline(always)]
     fn into_finite(self) -> Self::Output {
         match self.side {
             Side::Left => unsafe {
@@ -33,6 +38,7 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
 impl<T: num_traits::Bounded + PartialOrd> IntoFinite for EnumInterval<T> {
     type Output = FiniteInterval<T>;
 
+    #[inline(always)]
     fn into_finite(self) -> Self::Output {
         match self {
             Self::Finite(inner) => inner.into_finite(),
