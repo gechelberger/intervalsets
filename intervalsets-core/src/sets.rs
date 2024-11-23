@@ -3,6 +3,7 @@ use core::fmt;
 
 use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::{FiniteBound, SetBounds, Side};
+use crate::bound::ord::FiniteOrdBound;
 use crate::numeric::{Element, Zero};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -159,8 +160,14 @@ impl<T: Element + Zero> HalfInterval<T> {
 }
 
 impl<T> HalfInterval<T> {
+    #[inline(always)]
     pub fn into_raw(self) -> (Side, FiniteBound<T>) {
         (self.side, self.bound)
+    }
+
+    #[inline(always)]
+    pub fn finite_ord_bound(&self) -> FiniteOrdBound<&T> {
+        self.bound.finite_ord(self.side)
     }
 }
 

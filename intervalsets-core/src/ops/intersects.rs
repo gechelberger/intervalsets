@@ -4,7 +4,7 @@ use super::Contains;
 use crate::bound::Side::{Left, Right};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-/// Test if two sets intersect.
+/// Test if the intersection of two sets would be non-empty.
 ///
 /// ```text
 /// ∃x | x ∈ A ∧ x ∈ B
@@ -43,10 +43,8 @@ impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
             return false;
         };
 
-        unsafe {
-            lhs_min.contains_bound_unchecked(Left, rhs_max.finite_ord(Right))
-                && rhs_min.contains_bound_unchecked(Left, lhs_max.finite_ord(Right))
-        }
+        lhs_min.finite_ord(Left) <= rhs_max.finite_ord(Right)
+            && rhs_min.finite_ord(Left) <= lhs_max.finite_ord(Right)
 
         /*
         // this is definitely correct but slightly more expensive
@@ -67,16 +65,14 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
             return false;
         };
 
-        self.contains(left.finite_ord(crate::bound::Side::Left))
-            || self.contains(right.finite_ord(crate::bound::Side::Right))
+        self.contains(left.finite_ord(Left)) || self.contains(right.finite_ord(Right))
     }
 }
 
 impl<T: PartialOrd> Intersects<&Self> for HalfInterval<T> {
     #[inline(always)]
     fn intersects(&self, rhs: &Self) -> bool {
-        self.contains(rhs.bound.finite_ord(rhs.side))
-            || rhs.contains(self.bound.finite_ord(self.side))
+        self.contains(rhs.finite_ord_bound()) || rhs.contains(self.finite_ord_bound())
     }
 }
 
