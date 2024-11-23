@@ -41,7 +41,7 @@
 //! ```
 
 use crate::bound::{FiniteBound, Side};
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Can be used instead of the prelude to pull in all factory traits.
@@ -49,7 +49,7 @@ pub mod traits {
     pub use super::{EmptyFactory, FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 }
 
-/// Convert an arbitrary type to one implemnting [`Domain`].
+/// Convert an arbitrary type to one implemnting [`Element`].
 ///
 /// The [`Converter`] trait provides a mechanism to wrap
 /// or coerse a type into one that is compatible with interval bounds. This is
@@ -90,7 +90,7 @@ pub mod traits {
 /// let b = Timestamp{ seconds: 10, nanos: 0};
 ///
 /// impl Converter<Timestamp> for u64 {
-///     type To = u64; // impl Domain & Zero
+///     type To = u64; // impl Element & Zero
 ///     fn convert(value: Timestamp) -> Self::To {
 ///         (value.seconds as u64) << 32 | value.nanos as u64
 ///     }
@@ -119,7 +119,7 @@ pub mod traits {
 /// ```
 pub trait Converter<From> {
     /// The underlying storage type.
-    type To: Domain;
+    type To: Element;
 
     /// Creates a new value of the associated type.
     fn convert(value: From) -> Self::To;
@@ -128,7 +128,7 @@ pub trait Converter<From> {
 /// [`Identity`] is the default [`Converter`] implementation and is a NOOP.
 pub struct Identity;
 
-impl<T: Domain> Converter<T> for Identity {
+impl<T: Element> Converter<T> for Identity {
     type To = T;
 
     fn convert(value: T) -> Self::To {
@@ -140,7 +140,7 @@ impl<T: Domain> Converter<T> for Identity {
 pub trait ConvertingFactory<T, C = Identity>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     /// The type that this factory produces
     type Output;
@@ -150,7 +150,7 @@ where
 pub trait EmptyFactory<T, C>: ConvertingFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     /// Returns a new Empty Set
     ///
@@ -170,7 +170,7 @@ where
 pub trait FiniteFactory<T, C>: ConvertingFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     /// Creates a new finite interval of the factory's associated type.
     ///
@@ -339,7 +339,7 @@ where
 pub trait HalfBoundedFactory<T, C>: ConvertingFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain + Zero,
+    C::To: Element + Zero,
 {
     /// Returns a new half bounded interval.
     ///
@@ -423,7 +423,7 @@ where
 pub trait UnboundedFactory<T, C = Identity>: ConvertingFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     /// Returns a new unbounded interval.
     ///
@@ -444,17 +444,17 @@ where
     fn unbounded() -> Self::Output;
 }
 
-impl<T: Domain> ConvertingFactory<T, Identity> for FiniteInterval<T> {
+impl<T: Element> ConvertingFactory<T, Identity> for FiniteInterval<T> {
     type Output = Self;
 }
 
-impl<T: Domain> EmptyFactory<T, Identity> for FiniteInterval<T> {
+impl<T: Element> EmptyFactory<T, Identity> for FiniteInterval<T> {
     fn empty() -> Self::Output {
         Self::empty()
     }
 }
 
-impl<T: Domain> FiniteFactory<T, Identity> for FiniteInterval<T> {
+impl<T: Element> FiniteFactory<T, Identity> for FiniteInterval<T> {
     fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
         Self::new(lhs, rhs)
     }
@@ -464,11 +464,11 @@ impl<T: Domain> FiniteFactory<T, Identity> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> ConvertingFactory<T, Identity> for HalfInterval<T> {
+impl<T: Element> ConvertingFactory<T, Identity> for HalfInterval<T> {
     type Output = Self;
 }
 
-impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
+impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
         Self::new(side, bound)
     }
@@ -478,17 +478,17 @@ impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> ConvertingFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element> ConvertingFactory<T, Identity> for EnumInterval<T> {
     type Output = Self;
 }
 
-impl<T: Domain> EmptyFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element> EmptyFactory<T, Identity> for EnumInterval<T> {
     fn empty() -> Self::Output {
         Self::empty()
     }
 }
 
-impl<T: Domain> FiniteFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element> FiniteFactory<T, Identity> for EnumInterval<T> {
     fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
         FiniteInterval::finite(lhs, rhs).into()
     }
@@ -498,7 +498,7 @@ impl<T: Domain> FiniteFactory<T, Identity> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
         HalfInterval::new(side, bound).into()
     }
@@ -508,7 +508,7 @@ impl<T: Domain + Zero> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain> UnboundedFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element> UnboundedFactory<T, Identity> for EnumInterval<T> {
     fn unbounded() -> Self::Output {
         EnumInterval::Unbounded
     }
@@ -522,7 +522,7 @@ pub struct EIFactory<T, C = Identity>(core::marker::PhantomData<(T, C)>);
 impl<T, C> ConvertingFactory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     type Output = EnumInterval<C::To>;
 }
@@ -530,7 +530,7 @@ where
 impl<T, C> EmptyFactory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     fn empty() -> Self::Output {
         EnumInterval::empty()
@@ -540,7 +540,7 @@ where
 impl<T, C> FiniteFactory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
         FiniteInterval::new(lhs, rhs).into()
@@ -554,7 +554,7 @@ where
 impl<T, C> HalfBoundedFactory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain + Zero,
+    C::To: Element + Zero,
 {
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
         HalfInterval::new(side, bound).into()
@@ -568,7 +568,7 @@ where
 impl<T, C> UnboundedFactory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Domain,
+    C::To: Element,
 {
     fn unbounded() -> Self::Output {
         EnumInterval::Unbounded

@@ -1,17 +1,17 @@
 use intervalsets_core::EnumInterval;
 use quickcheck::{Arbitrary, Gen};
 
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::ops::{Intersects, Union};
 use crate::{Interval, IntervalSet};
 
-impl<T: Domain + Clone + Arbitrary + Zero> Arbitrary for Interval<T> {
+impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for Interval<T> {
     fn arbitrary(g: &mut Gen) -> Self {
         Self(EnumInterval::arbitrary(g))
     }
 }
 
-impl<T: Domain + Clone + Arbitrary + Zero> Arbitrary for IntervalSet<T> {
+impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for IntervalSet<T> {
     fn arbitrary(g: &mut Gen) -> Self {
         let n = *g
             .choose(&[

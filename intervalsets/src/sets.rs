@@ -2,7 +2,7 @@ use intervalsets_core::sets::{EnumInterval, FiniteInterval};
 
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, SetBounds, Side};
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::ops::Intersects;
 use crate::MaybeEmpty;
 
@@ -131,7 +131,7 @@ impl<T> Interval<T> {
     }
 }
 
-impl<T: Domain> Default for Interval<T> {
+impl<T: Element> Default for Interval<T> {
     fn default() -> Self {
         Interval::empty()
     }
@@ -179,7 +179,7 @@ pub struct IntervalSet<T> {
     intervals: Vec<Interval<T>>,
 }
 
-impl<T: Domain> IntervalSet<T> {
+impl<T: Element> IntervalSet<T> {
     /// Create a new Set of intervals and enforce invariants.
     pub fn new<I>(intervals: I) -> Self
     where
@@ -248,7 +248,7 @@ impl<T> IntervalSet<T> {
     }
 }
 
-impl<T: Clone + Domain> IntervalSet<T> {
+impl<T: Clone + Element> IntervalSet<T> {
     /// Creates an [`Interval`] that forms a convex hull for this Set.
     ///
     /// This should be equivalent to using [`ConvexHull`](crate::ops::ConvexHull),
@@ -355,7 +355,7 @@ impl<T> IntervalSet<T> {
 
 impl<T, I> FromIterator<I> for IntervalSet<T>
 where
-    T: Domain,
+    T: Element,
     I: Into<Interval<T>>,
 {
     fn from_iter<U: IntoIterator<Item = I>>(iter: U) -> Self {
@@ -363,7 +363,7 @@ where
     }
 }
 
-impl<T: Domain> IntoIterator for IntervalSet<T> {
+impl<T: Element> IntoIterator for IntervalSet<T> {
     type Item = Interval<T>;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -413,7 +413,7 @@ mod tests {
         );
     }
 
-    fn assert_lt<T: Domain>(itv1: Interval<T>, itv2: Interval<T>) {
+    fn assert_lt<T: Element>(itv1: Interval<T>, itv2: Interval<T>) {
         assert!(itv1 < itv2);
         assert!(!(itv1 >= itv2)); // antisymmetry
 

@@ -2,7 +2,7 @@ use num_traits::Zero;
 
 use super::Contains;
 use crate::bound::{FiniteBound, Side};
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Split a Set into two disjoint subsets, fully covering the original.
@@ -38,7 +38,7 @@ fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBoun
     }
 }
 
-impl<T: Domain + Clone> Split<T> for FiniteInterval<T> {
+impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output)
@@ -64,7 +64,7 @@ impl<T: Domain + Clone> Split<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone + Zero> Split<T> for HalfInterval<T> {
+impl<T: Element + Clone + Zero> Split<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
@@ -91,7 +91,7 @@ impl<T: Domain + Clone + Zero> Split<T> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain + Clone + Zero> Split<T> for EnumInterval<T> {
+impl<T: Element + Clone + Zero> Split<T> for EnumInterval<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
@@ -113,7 +113,7 @@ impl<T: Domain + Clone + Zero> Split<T> for EnumInterval<T> {
 }
 
 /*
-impl<T: Domain + Clone> Split<T> for StackSet<T> {
+impl<T: Element + Clone> Split<T> for StackSet<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {

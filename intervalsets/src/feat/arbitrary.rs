@@ -2,18 +2,18 @@ use arbitrary::Arbitrary;
 use intervalsets_core::ops::Intersects;
 use intervalsets_core::EnumInterval;
 
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::ops::Union;
 use crate::{Interval, IntervalSet};
 
-impl<'a, T: Domain + Zero + Arbitrary<'a>> Arbitrary<'a> for Interval<T> {
+impl<'a, T: Element + Zero + Arbitrary<'a>> Arbitrary<'a> for Interval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         let enum_interval = EnumInterval::arbitrary(u)?;
         Ok(Interval::from(enum_interval))
     }
 }
 
-impl<'a, T: Domain + Zero + Arbitrary<'a>> Arbitrary<'a> for IntervalSet<T> {
+impl<'a, T: Element + Zero + Arbitrary<'a>> Arbitrary<'a> for IntervalSet<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> arbitrary::Result<Self> {
         let mut iset = IntervalSet::empty();
         let n = usize::arbitrary(u)? % 20;

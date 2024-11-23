@@ -42,13 +42,13 @@ use super::Measurement;
 /// assert_eq!(b.width().finite(), 4);
 /// ```
 use super::Width;
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::{Interval, IntervalSet};
 
 impl<T, Out> Width for Interval<T>
 where
     Out: Zero,
-    T: Domain,
+    T: Element,
     for<'a> &'a T: core::ops::Sub<Output = Out>,
 {
     type Output = Out;
@@ -60,7 +60,7 @@ where
 
 impl<T, Out> Width for IntervalSet<T>
 where
-    T: Domain,
+    T: Element,
     for<'a> &'a T: core::ops::Sub<Output = Out>,
     Out: Zero + core::ops::Add<Out, Output = Out> + Clone,
 {

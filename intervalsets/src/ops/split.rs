@@ -1,11 +1,11 @@
 pub use intervalsets_core::ops::Split;
 
 use crate::bound::Side;
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::ops::Contains;
 use crate::{Interval, IntervalSet, MaybeEmpty, SetBounds};
 
-impl<T: Domain + Clone + Zero> Split<T> for Interval<T> {
+impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
@@ -14,7 +14,7 @@ impl<T: Domain + Clone + Zero> Split<T> for Interval<T> {
     }
 }
 
-impl<T: Domain + Clone + Zero> Split<T> for IntervalSet<T> {
+impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
     type Output = Self;
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {

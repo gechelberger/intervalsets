@@ -3,7 +3,7 @@ use quickcheck::{Arbitrary, Gen};
 use crate::bound::BoundType::{self, *};
 use crate::bound::FiniteBound;
 use crate::bound::Side::{self, *};
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
 const fn first_n_i32s<const N: usize>() -> [i32; N] {
@@ -36,7 +36,7 @@ impl<T: Clone + Arbitrary> Arbitrary for FiniteBound<T> {
     }
 }
 
-impl<T: Domain + Clone + Arbitrary> Arbitrary for FiniteInterval<T> {
+impl<T: Element + Clone + Arbitrary> Arbitrary for FiniteInterval<T> {
     fn arbitrary(g: &mut Gen) -> Self {
         match g.choose(&CHANCES_100).unwrap() {
             // empty 3% of the time
@@ -60,7 +60,7 @@ impl<T: Domain + Clone + Arbitrary> Arbitrary for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone + Arbitrary + Zero> Arbitrary for HalfInterval<T> {
+impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for HalfInterval<T> {
     fn arbitrary(g: &mut Gen) -> Self {
         let side = Side::arbitrary(g);
         let bound = FiniteBound::<T>::arbitrary(g);
@@ -72,7 +72,7 @@ impl<T: Domain + Clone + Arbitrary + Zero> Arbitrary for HalfInterval<T> {
     }
 }
 
-impl<T: Domain + Clone + Arbitrary + Zero> Arbitrary for EnumInterval<T> {
+impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for EnumInterval<T> {
     fn arbitrary(g: &mut Gen) -> Self {
         let x = *g.choose(&CHANCES_100).unwrap();
         if x < 75 {

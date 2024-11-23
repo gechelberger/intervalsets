@@ -60,7 +60,7 @@ fn test_pseudo_empty() {
 
 #[test]
 fn test_restricted_universe() {
-    fn natural_numbers<T: Domain + Zero>() -> Interval<T> {
+    fn natural_numbers<T: Element + Zero>() -> Interval<T> {
         Interval::<T>::closed_unbound(T::zero())
     }
 

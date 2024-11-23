@@ -4,7 +4,7 @@ mod try_from;
 
 use crate::bound::ord::{OrdBound, OrdBoundPair};
 use crate::bound::{FiniteBound, Side};
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T> From<()> for FiniteInterval<T> {
@@ -13,13 +13,13 @@ impl<T> From<()> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> From<(T, T)> for FiniteInterval<T> {
+impl<T: Element> From<(T, T)> for FiniteInterval<T> {
     fn from(value: (T, T)) -> Self {
         Self::new(FiniteBound::open(value.0), FiniteBound::open(value.1))
     }
 }
 
-impl<T: Domain + Clone> From<&(T, T)> for FiniteInterval<T> {
+impl<T: Element + Clone> From<&(T, T)> for FiniteInterval<T> {
     fn from(value: &(T, T)) -> Self {
         Self::new(
             FiniteBound::open(value.0.clone()),
@@ -28,7 +28,7 @@ impl<T: Domain + Clone> From<&(T, T)> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> From<(T, T)> for EnumInterval<T> {
+impl<T: Element> From<(T, T)> for EnumInterval<T> {
     fn from(value: (T, T)) -> Self {
         EnumInterval::from(FiniteInterval::from(value))
     }
@@ -40,7 +40,7 @@ impl<T> From<()> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain> From<[T; 2]> for FiniteInterval<T> {
+impl<T: Element> From<[T; 2]> for FiniteInterval<T> {
     fn from(value: [T; 2]) -> Self {
         let mut iter = value.into_iter();
         FiniteInterval::new(
@@ -50,13 +50,13 @@ impl<T: Domain> From<[T; 2]> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> From<&[T; 2]> for FiniteInterval<T> {
+impl<T: Element + Clone> From<&[T; 2]> for FiniteInterval<T> {
     fn from(value: &[T; 2]) -> Self {
         FiniteInterval::from(value.clone())
     }
 }
 
-impl<T: Domain> From<[T; 2]> for EnumInterval<T> {
+impl<T: Element> From<[T; 2]> for EnumInterval<T> {
     fn from(value: [T; 2]) -> Self {
         EnumInterval::from(FiniteInterval::from(value))
     }
@@ -154,7 +154,7 @@ impl<T> TryFrom<OrdBound<T>> for FiniteBound<T> {
     }
 }
 
-impl<T: Domain> TryFrom<OrdBoundPair<T>> for FiniteInterval<T> {
+impl<T: Element> TryFrom<OrdBoundPair<T>> for FiniteInterval<T> {
     type Error = Error;
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
         let (left, right) = value.into_raw();

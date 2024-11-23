@@ -6,14 +6,14 @@ use FiniteInterval::Bounded;
 
 use crate::bound::{FiniteBound, Side};
 use crate::factory::UnboundedFactory;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::ops::{Adjacent, Contains, Intersects};
 use crate::util::commutative_op_move_impl;
 use crate::{Interval, IntervalSet};
 
 fn merge_sorted_intervals<T, I>(iter: I) -> impl Iterator<Item = Interval<T>>
 where
-    T: Domain + Zero,
+    T: Element + Zero,
     I: IntoIterator<Item = Interval<T>>,
 {
     MergeSorted::new(iter.into_iter().map(|x| x.0))
@@ -58,7 +58,7 @@ pub trait Union<Rhs = Self> {
 mod icore {
     use super::*;
 
-    impl<T: Domain> Union<Self> for FiniteInterval<T> {
+    impl<T: Element> Union<Self> for FiniteInterval<T> {
         type Output = IntervalSet<T>;
 
         fn union(self, rhs: Self) -> Self::Output {
@@ -91,7 +91,7 @@ mod icore {
         }
     }
 
-    impl<T: Domain> Union<Self> for HalfInterval<T> {
+    impl<T: Element> Union<Self> for HalfInterval<T> {
         type Output = IntervalSet<T>;
 
         fn union(self, rhs: Self) -> Self::Output {
@@ -112,7 +112,7 @@ mod icore {
         }
     }
 
-    impl<T: Domain> Union<HalfInterval<T>> for FiniteInterval<T> {
+    impl<T: Element> Union<HalfInterval<T>> for FiniteInterval<T> {
         type Output = IntervalSet<T>;
 
         fn union(self, rhs: HalfInterval<T>) -> Self::Output {
@@ -132,7 +132,7 @@ mod icore {
         }
     }
 
-    impl<T: Domain> Union<FiniteInterval<T>> for HalfInterval<T> {
+    impl<T: Element> Union<FiniteInterval<T>> for HalfInterval<T> {
         type Output = IntervalSet<T>;
 
         fn union(self, rhs: FiniteInterval<T>) -> Self::Output {
@@ -144,7 +144,7 @@ mod icore {
         ($t:ty) => {
             impl<T> Union<$t> for EnumInterval<T>
             where
-                T: $crate::numeric::Domain,
+                T: $crate::numeric::Element,
                 T: $crate::numeric::Zero,
             {
                 type Output = IntervalSet<T>;
@@ -179,7 +179,7 @@ mod icore {
     );
 }
 
-impl<T: Domain + Zero> Union<Self> for Interval<T> {
+impl<T: Element + Zero> Union<Self> for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn union(self, rhs: Self) -> Self::Output {
@@ -187,7 +187,7 @@ impl<T: Domain + Zero> Union<Self> for Interval<T> {
     }
 }
 
-impl<T: Domain + Zero> Union<Self> for IntervalSet<T> {
+impl<T: Element + Zero> Union<Self> for IntervalSet<T> {
     type Output = Self;
 
     fn union(self, rhs: Self) -> Self::Output {
@@ -195,7 +195,7 @@ impl<T: Domain + Zero> Union<Self> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain + Zero> Union<Interval<T>> for IntervalSet<T> {
+impl<T: Element + Zero> Union<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(self, rhs: Interval<T>) -> Self::Output {

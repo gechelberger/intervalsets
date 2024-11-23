@@ -1,7 +1,7 @@
 pub use intervalsets_core::ops::IntoFinite;
 use intervalsets_core::MaybeEmpty;
 
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::{Interval, IntervalSet};
 
 impl<T: num_traits::Bounded + PartialOrd> IntoFinite for Interval<T> {
@@ -13,7 +13,7 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for Interval<T> {
     }
 }
 
-impl<T: num_traits::Bounded + Domain> IntoFinite for IntervalSet<T> {
+impl<T: num_traits::Bounded + Element> IntoFinite for IntervalSet<T> {
     type Output = Self;
 
     fn into_finite(self) -> Self::Output {

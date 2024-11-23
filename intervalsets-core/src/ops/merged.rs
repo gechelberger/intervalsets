@@ -1,7 +1,7 @@
 use super::adjacent::Adjacent;
 use crate::bound::{FiniteBound, Side};
 use crate::empty::MaybeEmpty;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::ops::{Contains, Intersects};
 use crate::sets::EnumInterval::{self, *};
 use crate::sets::FiniteInterval::{self, Bounded};
@@ -85,7 +85,7 @@ pub trait TryMerge<Rhs = Self> {
     fn try_merge(self, rhs: Rhs) -> Option<Self::Output>;
 }
 
-impl<T: Domain> TryMerge<Self> for FiniteInterval<T> {
+impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
     type Output = Self;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
@@ -118,7 +118,7 @@ impl<T: Domain> TryMerge<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> TryMerge<Self> for &FiniteInterval<T> {
+impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
@@ -151,7 +151,7 @@ impl<T: Domain + Clone> TryMerge<Self> for &FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> TryMerge<Self> for HalfInterval<T> {
+impl<T: Element> TryMerge<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
@@ -176,7 +176,7 @@ impl<T: Domain> TryMerge<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> TryMerge<Self> for &HalfInterval<T> {
+impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
@@ -197,7 +197,7 @@ impl<T: Domain + Clone> TryMerge<Self> for &HalfInterval<T> {
     }
 }
 
-impl<T: Domain> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
@@ -229,7 +229,7 @@ impl<T: Domain> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
+impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
@@ -259,7 +259,7 @@ impl<T: Domain + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
     }
 }
 
-impl<T: Domain> TryMerge<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Element> TryMerge<HalfInterval<T>> for FiniteInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: HalfInterval<T>) -> Option<Self::Output> {
@@ -267,7 +267,7 @@ impl<T: Domain> TryMerge<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> TryMerge<&HalfInterval<T>> for &FiniteInterval<T> {
+impl<T: Element + Clone> TryMerge<&HalfInterval<T>> for &FiniteInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
@@ -275,7 +275,7 @@ impl<T: Domain + Clone> TryMerge<&HalfInterval<T>> for &FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> TryMerge<FiniteInterval<T>> for EnumInterval<T> {
+impl<T: Element> TryMerge<FiniteInterval<T>> for EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
@@ -287,7 +287,7 @@ impl<T: Domain> TryMerge<FiniteInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> TryMerge<&FiniteInterval<T>> for &EnumInterval<T> {
+impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
@@ -299,7 +299,7 @@ impl<T: Domain + Clone> TryMerge<&FiniteInterval<T>> for &EnumInterval<T> {
     }
 }
 
-impl<T: Domain> TryMerge<HalfInterval<T>> for EnumInterval<T> {
+impl<T: Element> TryMerge<HalfInterval<T>> for EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: HalfInterval<T>) -> Option<Self::Output> {
@@ -311,7 +311,7 @@ impl<T: Domain> TryMerge<HalfInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> TryMerge<&HalfInterval<T>> for &EnumInterval<T> {
+impl<T: Element + Clone> TryMerge<&HalfInterval<T>> for &EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: &HalfInterval<T>) -> Option<Self::Output> {
@@ -323,7 +323,7 @@ impl<T: Domain + Clone> TryMerge<&HalfInterval<T>> for &EnumInterval<T> {
     }
 }
 
-impl<T: Domain> TryMerge<Self> for EnumInterval<T> {
+impl<T: Element> TryMerge<Self> for EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
@@ -335,7 +335,7 @@ impl<T: Domain> TryMerge<Self> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> TryMerge for &EnumInterval<T> {
+impl<T: Element + Clone> TryMerge for &EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
@@ -347,28 +347,28 @@ impl<T: Domain + Clone> TryMerge for &EnumInterval<T> {
     }
 }
 
-impl<T: Domain> TryMerge<EnumInterval<T>> for FiniteInterval<T> {
+impl<T: Element> TryMerge<EnumInterval<T>> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
     fn try_merge(self, rhs: EnumInterval<T>) -> Option<Self::Output> {
         rhs.try_merge(self)
     }
 }
 
-impl<T: Domain + Clone> TryMerge<&EnumInterval<T>> for &FiniteInterval<T> {
+impl<T: Element + Clone> TryMerge<&EnumInterval<T>> for &FiniteInterval<T> {
     type Output = EnumInterval<T>;
     fn try_merge(self, rhs: &EnumInterval<T>) -> Option<Self::Output> {
         rhs.try_merge(self)
     }
 }
 
-impl<T: Domain> TryMerge<EnumInterval<T>> for HalfInterval<T> {
+impl<T: Element> TryMerge<EnumInterval<T>> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     fn try_merge(self, rhs: EnumInterval<T>) -> Option<Self::Output> {
         rhs.try_merge(self)
     }
 }
 
-impl<T: Domain + Clone> TryMerge<&EnumInterval<T>> for &HalfInterval<T> {
+impl<T: Element + Clone> TryMerge<&EnumInterval<T>> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
     fn try_merge(self, rhs: &EnumInterval<T>) -> Option<Self::Output> {
         rhs.try_merge(self)
@@ -376,13 +376,13 @@ impl<T: Domain + Clone> TryMerge<&EnumInterval<T>> for &HalfInterval<T> {
 }
 
 /// MergeSorted merges intersecting intervals and returns disjoint ones.
-pub struct MergeSorted<T: Domain, I: Iterator<Item = EnumInterval<T>>> {
+pub struct MergeSorted<T: Element, I: Iterator<Item = EnumInterval<T>>> {
     sorted: core::iter::Peekable<I>,
 }
 
 impl<T, I> MergeSorted<T, I>
 where
-    T: Domain,
+    T: Element,
     I: Iterator<Item = EnumInterval<T>>,
 {
     /// Creates a new `MergeSorted` Iterator
@@ -400,7 +400,7 @@ where
 
 impl<T, I> Iterator for MergeSorted<T, I>
 where
-    T: Domain,
+    T: Element,
     I: Iterator<Item = EnumInterval<T>>,
 {
     type Item = I::Item;

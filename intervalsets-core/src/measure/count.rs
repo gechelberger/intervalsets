@@ -1,5 +1,5 @@
 use super::Measurement;
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Defines the counting measure of a [`Countable`] Set.
@@ -33,7 +33,7 @@ pub trait Count {
 ///
 /// # Example
 /// ```
-/// use intervalsets_core::numeric::Domain;
+/// use intervalsets_core::numeric::Element;
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::default_countable_impl;
 /// use intervalsets_core::measure::{Count, Countable};
@@ -65,7 +65,7 @@ pub trait Count {
 ///     }
 /// }
 ///
-/// impl Domain for MyInt {
+/// impl Element for MyInt {
 ///     fn try_adjacent(&self, side: Side) -> Option<Self> {
 ///         Some(match side {
 ///             Side::Left => MyInt(self.0 - 1),
@@ -87,7 +87,7 @@ pub trait Count {
 /// let interval = FiniteInterval::closed(MyInt(0), MyInt(10));
 /// assert_eq!(interval.count().finite(), MyInt(11));
 /// ```
-pub trait Countable: Domain {
+pub trait Countable: Element {
     type Output;
 
     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output>;
@@ -109,7 +109,7 @@ macro_rules! default_countable_impl {
                     return Some(right.clone() - lower);
                 }
 
-                panic!("Countable type overflow; or Domain adjacent not implemented for Countable type.");
+                panic!("Countable type overflow; or Element adjacent not implemented for Countable type.");
             }
         }
     }

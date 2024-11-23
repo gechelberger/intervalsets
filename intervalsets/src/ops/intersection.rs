@@ -1,7 +1,7 @@
 pub use intervalsets_core::ops::Intersection;
 use intervalsets_core::ops::SetSetIntersection;
 
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::{Interval, IntervalSet, MaybeEmpty};
 
 /// The intersection of two sets.
@@ -22,7 +22,7 @@ use crate::{Interval, IntervalSet, MaybeEmpty};
 /// let y = Interval::closed(20, 30);
 /// assert!(x.intersection(y).is_empty());
 /// ```
-impl<T: Domain> Intersection<Self> for Interval<T> {
+impl<T: Element> Intersection<Self> for Interval<T> {
     type Output = Self;
 
     fn intersection(self, rhs: Self) -> Self::Output {
@@ -30,7 +30,7 @@ impl<T: Domain> Intersection<Self> for Interval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<Interval<T>> for IntervalSet<T> {
+impl<T: Element + Clone> Intersection<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn intersection(self, rhs: Interval<T>) -> Self::Output {
@@ -45,7 +45,7 @@ impl<T: Domain + Clone> Intersection<Interval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<IntervalSet<T>> for Interval<T> {
+impl<T: Element + Clone> Intersection<IntervalSet<T>> for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn intersection(self, rhs: IntervalSet<T>) -> Self::Output {
@@ -53,7 +53,7 @@ impl<T: Domain + Clone> Intersection<IntervalSet<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<Self> for IntervalSet<T> {
+impl<T: Element + Clone> Intersection<Self> for IntervalSet<T> {
     type Output = IntervalSet<T>;
 
     fn intersection(self, rhs: Self) -> Self::Output {

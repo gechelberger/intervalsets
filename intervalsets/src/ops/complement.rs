@@ -2,7 +2,7 @@ use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 use crate::bound::Side::*;
 use crate::factory::UnboundedFactory;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::ops::Intersection;
 use crate::{Interval, IntervalSet};
 
@@ -18,7 +18,7 @@ pub trait Complement {
     fn complement(self) -> Self::Output;
 }
 
-impl<T: Domain> Complement for FiniteInterval<T> {
+impl<T: Element> Complement for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
@@ -36,7 +36,7 @@ impl<T: Domain> Complement for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Complement for HalfInterval<T> {
+impl<T: Element> Complement for HalfInterval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
@@ -46,7 +46,7 @@ impl<T: Domain> Complement for HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Complement for EnumInterval<T> {
+impl<T: Element> Complement for EnumInterval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
@@ -58,7 +58,7 @@ impl<T: Domain> Complement for EnumInterval<T> {
     }
 }
 
-impl<T: Domain> Complement for Interval<T> {
+impl<T: Element> Complement for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
@@ -66,7 +66,7 @@ impl<T: Domain> Complement for Interval<T> {
     }
 }
 
-impl<T: Domain + Clone> Complement for IntervalSet<T> {
+impl<T: Element + Clone> Complement for IntervalSet<T> {
     type Output = Self;
 
     fn complement(self) -> Self::Output {

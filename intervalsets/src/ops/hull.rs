@@ -2,22 +2,22 @@ pub use intervalsets_core::ops::ConvexHull;
 use intervalsets_core::ops::{convex_hull_into_ord_bound_impl, convex_hull_ord_bounded_impl};
 use intervalsets_core::EnumInterval;
 
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::{Interval, IntervalSet};
 
-impl<T: Domain + Clone> ConvexHull<T> for Interval<T> {
+impl<T: Element + Clone> ConvexHull<T> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = T>>(iter: U) -> Option<Self> {
         EnumInterval::convex_hull(iter).map(Interval::from)
     }
 }
 
-impl<'a, T: Domain + Clone> ConvexHull<&'a T> for Interval<T> {
+impl<'a, T: Element + Clone> ConvexHull<&'a T> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Option<Self> {
         EnumInterval::convex_hull(iter).map(Interval::from)
     }
 }
 
-impl<T: Domain + Clone + Zero> ConvexHull<Interval<T>> for Interval<T> {
+impl<T: Element + Clone + Zero> ConvexHull<Interval<T>> for Interval<T> {
     /// Create a new interval that covers a set of intervals
     ///
     /// # Example
@@ -36,19 +36,19 @@ impl<T: Domain + Clone + Zero> ConvexHull<Interval<T>> for Interval<T> {
     }
 }
 
-impl<'a, T: Domain + Clone + Zero> ConvexHull<&'a Interval<T>> for Interval<T> {
+impl<'a, T: Element + Clone + Zero> ConvexHull<&'a Interval<T>> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = &'a Interval<T>>>(iter: U) -> Option<Self> {
         convex_hull_ord_bounded_impl(iter).map(Interval::from)
     }
 }
 
-impl<T: Domain + Clone + Zero> ConvexHull<IntervalSet<T>> for Interval<T> {
+impl<T: Element + Clone + Zero> ConvexHull<IntervalSet<T>> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = IntervalSet<T>>>(iter: U) -> Option<Self> {
         convex_hull_into_ord_bound_impl(iter).map(Interval::from)
     }
 }
 
-impl<'a, T: Domain + Clone> ConvexHull<&'a IntervalSet<T>> for Interval<T> {
+impl<'a, T: Element + Clone> ConvexHull<&'a IntervalSet<T>> for Interval<T> {
     fn convex_hull<U: IntoIterator<Item = &'a IntervalSet<T>>>(iter: U) -> Option<Self> {
         convex_hull_ord_bounded_impl(iter).map(Interval::from)
     }

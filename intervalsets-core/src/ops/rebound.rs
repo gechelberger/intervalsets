@@ -2,7 +2,7 @@ use num_traits::Zero;
 
 use crate::bound::{FiniteBound, Side};
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Create a new interval, replacing a bound.
@@ -61,7 +61,7 @@ pub trait Rebound<T>: Sized {
     }
 }
 
-impl<T: Domain + Zero> Rebound<T> for FiniteInterval<T> {
+impl<T: Element + Zero> Rebound<T> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
@@ -87,7 +87,7 @@ impl<T: Domain + Zero> Rebound<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Zero> Rebound<T> for HalfInterval<T> {
+impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
@@ -117,7 +117,7 @@ impl<T: Domain + Zero> Rebound<T> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain + Zero> Rebound<T> for EnumInterval<T> {
+impl<T: Element + Zero> Rebound<T> for EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {

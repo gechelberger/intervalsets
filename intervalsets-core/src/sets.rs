@@ -3,7 +3,7 @@ use core::fmt;
 
 use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::{FiniteBound, SetBounds, Side};
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct InvertedBoundsError;
@@ -28,7 +28,7 @@ pub enum FiniteInterval<T> {
     Bounded(FiniteBound<T>, FiniteBound<T>),
 }
 
-impl<T: Domain> FiniteInterval<T> {
+impl<T: Element> FiniteInterval<T> {
     pub fn new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
         unsafe { Self::new_norm(lhs.normalized(Side::Left), rhs.normalized(Side::Right)) }
     }
@@ -137,7 +137,7 @@ impl<T> HalfInterval<T> {
     }
 }
 
-impl<T: Domain + Zero> HalfInterval<T> {
+impl<T: Element + Zero> HalfInterval<T> {
     pub fn new(side: Side, bound: FiniteBound<T>) -> Self {
         Self::new_strict(side, bound).expect("Bound should have been comparable")
     }

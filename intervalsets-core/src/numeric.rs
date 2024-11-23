@@ -27,8 +27,8 @@
 //! Interval types use a handful of traits to fully define interval and set
 //! behavior.
 //!
-//! * [`Domain`]
-//! > The `Domain` trait serves one purpose -- to distinguish between types
+//! * [`Element`]
+//! > The `Element` trait serves one purpose -- to distinguish between types
 //! > that represent **discrete** vs **continuous** data.
 //! >
 //! > This allows us to do two important things:
@@ -37,7 +37,7 @@
 //! >    eg. **[1, 9]** == (0, 10) == (0, 9] == [1, 10).
 //! > 2. Properly test the adjacency of sets (union / merge).
 //! >
-//! > The method [`try_adjacent`](Domain::try_adjacent) is the
+//! > The method [`try_adjacent`](Element::try_adjacent) is the
 //! > mechanism by which both of these goals is accomplished. Implementations
 //! > for **continuous** types should simply return None.
 //! >
@@ -51,7 +51,7 @@
 //! > The `Countable` trait is only relevant to **discrete** data types. It is
 //! > the mechanism by which a data type can say how many distinct values fall
 //! > between some bounds of that type. There is a macro
-//! > [`default_countable_impl`](crate::default_countable_impl) which uses [`try_adjacent`](Domain).
+//! > [`default_countable_impl`](crate::default_countable_impl) which uses [`try_adjacent`](Element).
 //!
 //! * [`Add`](core::ops::Add) and [`Sub`](core::ops::Sub)
 //! > The `Add` and `Sub` traits are used by the [`measure`](crate::measure) module, and could
@@ -62,7 +62,7 @@
 //!
 //! ```
 //! use core::ops::{Add, Sub};
-//! use intervalsets_core::numeric::{Domain, Zero};
+//! use intervalsets_core::numeric::{Element, Zero};
 //! use intervalsets_core::measure::Countable;
 //! use intervalsets_core::bound::Side;
 //!
@@ -70,7 +70,7 @@
 //! #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 //! pub struct MyInt(i32);
 //!
-//! impl Domain for MyInt {
+//! impl Element for MyInt {
 //!     fn try_adjacent(&self, side: Side) -> Option<Self> {
 //!         Some(match side {
 //!             Side::Left => Self(self.0 - 1),
@@ -122,14 +122,14 @@ use crate::bound::Side;
 ///
 /// `try_adjacent` determines whether the elements are
 /// treated as continuous or discrete data.
-pub trait Domain: Sized + PartialEq + PartialOrd {
+pub trait Element: Sized + PartialEq + PartialOrd {
     fn try_adjacent(&self, side: Side) -> Option<Self>;
 }
 
-/// Automatically implements [`Domain`] for a type.
+/// Automatically implements [`Element`] for a type.
 ///
 /// Interval/Set types require generic storage types to implement
-/// the [`Domain`] trait. It's primary function is to normalize **disrete**
+/// the [`Element`] trait. It's primary function is to normalize **disrete**
 /// data types.
 ///
 /// For **continuous** data types, normalization is a **noop**, but the trait
@@ -157,7 +157,7 @@ pub trait Domain: Sized + PartialEq + PartialOrd {
 macro_rules! continuous_domain_impl {
     ($($t:ty), +) => {
         $(
-            impl $crate::numeric::Domain for $t {
+            impl $crate::numeric::Element for $t {
                 #[inline]
                 fn try_adjacent(&self, _: $crate::bound::Side) -> Option<Self> {
                     None
@@ -172,7 +172,7 @@ continuous_domain_impl!(f32, f64);
 macro_rules! integer_domain_impl {
     ($($t:ty), +) => {
         $(
-            impl $crate::numeric::Domain for $t {
+            impl $crate::numeric::Element for $t {
                 #[inline]
                 fn try_adjacent(&self, side: $crate::bound::Side) -> Option<Self> {
                     match side {

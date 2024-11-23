@@ -1,7 +1,7 @@
 use crate::bound::ord::{FiniteOrdBound, FiniteOrdBoundKind, OrdBound, OrdBoundPair};
 use crate::bound::{BoundType, FiniteBound, Side};
 use crate::error::InvariantError;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl From<FiniteOrdBoundKind> for BoundType {
@@ -19,7 +19,7 @@ impl<T> From<FiniteOrdBound<T>> for FiniteBound<T> {
     }
 }
 
-impl<T: Domain> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
+impl<T: Element> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
     type Error = InvariantError;
 
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
