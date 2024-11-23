@@ -18,6 +18,7 @@ fn test_foo() {
 }
  */
 
+use intervalsets::numeric::Zero;
 use intervalsets::prelude::*;
 
 #[test]
@@ -46,4 +47,33 @@ fn from_readme() {
         rejected,
         vec![Interval::closed(10, 20), Interval::closed(200, 210),]
     )
+}
+
+#[test]
+fn test_pseudo_empty() {
+    let x = Interval::<u8>::unbound_open(0);
+    for i in 0..=255u8 {
+        assert!(!x.contains(&i));
+    }
+    assert_ne!(x, Interval::<u8>::empty());
+}
+
+#[test]
+fn test_restricted_universe() {
+    fn natural_numbers<T: Domain + Zero>() -> Interval<T> {
+        Interval::<T>::closed_unbound(T::zero())
+    }
+
+    let x = Interval::<u8>::closed(0, 10);
+    let y = x.complement().intersection(natural_numbers());
+    assert_eq!(y.expect_interval(), Interval::open_unbound(10));
+}
+
+#[test]
+fn test_unsigned_edge_case() {
+    let x = Interval::<u8>::unbound_open(0); // (<-, 0)
+    let all_valid_u8_values = Interval::<u8>::closed(0, 255);
+
+    assert_eq!(x.intersection(all_valid_u8_values), Interval::empty());
+    assert!(x.count().is_infinite());
 }

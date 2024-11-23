@@ -68,6 +68,7 @@ impl<T: PartialOrd> FiniteInterval<T> {
 }
 
 impl<T> FiniteInterval<T> {
+    #[inline(always)]
     pub const fn empty() -> Self {
         Self::Empty
     }
@@ -131,7 +132,7 @@ impl<T> HalfInterval<T> {
     ///
     /// The user is responsible for ensuring that `bound` is comparable. This
     /// is assumed if the bound is taken from an existing set.
-    pub unsafe fn new_unchecked(side: Side, bound: FiniteBound<T>) -> Self {
+    pub const unsafe fn new_unchecked(side: Side, bound: FiniteBound<T>) -> Self {
         Self { side, bound }
     }
 }
