@@ -18,4 +18,7 @@ pub use rebound::Rebound;
 mod split;
 pub use split::Split;
 
+mod finite;
+pub use finite::IntoFinite;
+
 mod util;
