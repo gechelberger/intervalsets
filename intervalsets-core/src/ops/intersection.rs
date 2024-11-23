@@ -104,9 +104,9 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
             return Empty;
         };
 
-        let n = [&lhs_min, &lhs_max]
+        let n = [lhs_min.finite_ord(Left), lhs_max.finite_ord(Right)]
             .into_iter()
-            .filter(|bound| rhs.contains(bound.value()))
+            .filter(|bound| rhs.contains(*bound))
             .count();
 
         if n == 2 {
@@ -128,7 +128,7 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
 
     #[inline(always)]
     fn intersection(self, rhs: &HalfInterval<T>) -> Self::Output {
-        if self.contains(rhs.bound.value()) {
+        if self.contains(rhs.finite_ord_bound()) {
             let Bounded(lhs_min, lhs_max) = self else {
                 unreachable!();
             };
@@ -160,7 +160,7 @@ impl<T: Element> Intersection<Self> for HalfInterval<T> {
     #[inline(always)]
     fn intersection(self, rhs: Self) -> Self::Output {
         if self.side == rhs.side {
-            if self.contains(rhs.bound.value()) {
+            if self.contains(rhs.finite_ord_bound()) {
                 rhs.into()
             } else {
                 self.into()
@@ -184,12 +184,12 @@ impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
     #[inline(always)]
     fn intersection(self, rhs: Self) -> Self::Output {
         if self.side == rhs.side {
-            if self.contains(rhs.bound.value()) {
+            if self.contains(rhs.finite_ord_bound()) {
                 rhs.clone().into()
             } else {
                 self.clone().into()
             }
-        } else if self.contains(rhs.bound.value()) {
+        } else if self.contains(rhs.finite_ord_bound()) {
             let lhs = self.bound.clone();
             let rhs = rhs.bound.clone();
             match self.side {

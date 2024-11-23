@@ -35,8 +35,9 @@ pub trait Adjacent<Rhs = Self> {
 
 #[inline(always)]
 fn are_continuous_adjacent<T: PartialEq>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bool {
-    // not sure how to deal with the rounding issues of floats
-    right.value() == left.value() && (right.is_closed() || left.is_closed())
+    // not sure how to deal with float rounding
+    right.value() == left.value()
+        && ((right.is_closed() && left.is_open()) || (left.is_closed() && right.is_open()))
 
     // closed_open or open_closed
     // if closed = 1, open = 0 don't branch =>
@@ -51,8 +52,16 @@ fn are_adjacent<T: Element>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bo
 
     match (right_up, left_down) {
         (None, None) => are_continuous_adjacent(right, left),
-        (None, _) => false, // assume we are at T::Max
-        (_, None) => false, // assume we are at T::Min
+        (None, Some(_)) => {
+            // Open(T::MAX) **is** the normalized form since there is no valid
+            // closed bit-pattern but the operation needs to be reversible.
+            right.is_closed() && left.is_open() && right.value() == left.value()
+        }
+        (Some(_), None) => {
+            // Open(T::MIN) **is** the normalized form since there is no valid
+            // closed bit-pattern but the operation needs to be reversible.
+            right.is_open() && left.is_closed() && right.value() == left.value()
+        }
         (Some(right_up), Some(left_down)) => {
             right_up == *left.value() && left_down == *right.value()
         }

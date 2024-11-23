@@ -96,15 +96,12 @@ mod icore {
 
         fn union(self, rhs: Self) -> Self::Output {
             if self.side == rhs.side {
-                if self.contains(rhs.bound.value()) {
+                if self.contains(rhs.finite_ord_bound()) {
                     IntervalSet::new_unchecked([self.into()])
                 } else {
                     IntervalSet::new_unchecked([rhs.into()])
                 }
-            } else if self.contains(rhs.bound.value())
-                || rhs.contains(self.bound.value())
-                || self.is_adjacent_to(&rhs)
-            {
+            } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(&rhs) {
                 IntervalSet::unbounded()
             } else {
                 IntervalSet::new_unchecked(ordered_pair(self.into(), rhs.into()))
@@ -118,7 +115,7 @@ mod icore {
         fn union(self, rhs: HalfInterval<T>) -> Self::Output {
             if rhs.contains(&self) {
                 IntervalSet::new_unchecked([rhs.into()])
-            } else if self.contains(rhs.bound.value()) || self.is_adjacent_to(&rhs) {
+            } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(&rhs) {
                 let Bounded(lhs_min, lhs_max) = self else {
                     unreachable!();
                 };
