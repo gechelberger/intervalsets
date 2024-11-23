@@ -156,15 +156,12 @@ impl<T: Element> TryMerge<Self> for HalfInterval<T> {
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.side == rhs.side {
-            if self.contains(rhs.bound.value()) {
+            if self.contains(rhs.finite_ord_bound()) {
                 Some(self.into())
             } else {
                 Some(rhs.into())
             }
-        } else if self.contains(rhs.bound.value())
-            || rhs.contains(self.bound.value())
-            || self.is_adjacent_to(&rhs)
-        {
+        } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(&rhs) {
             // <----](---->
             // <----][---->
             // <----)[---->
@@ -181,15 +178,12 @@ impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.side == rhs.side {
-            if self.contains(rhs.bound.value()) {
+            if self.contains(rhs.finite_ord_bound()) {
                 Some(self.clone().into())
             } else {
                 Some(rhs.clone().into())
             }
-        } else if self.contains(rhs.bound.value())
-            || rhs.contains(self.bound.value())
-            || self.is_adjacent_to(rhs)
-        {
+        } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(rhs) {
             Some(EnumInterval::Unbounded)
         } else {
             None

@@ -72,6 +72,29 @@ mod tests {
     }
 
     #[test]
+    fn test_regressions() {
+        let x = Interval::closed_unbound(i32::MIN);
+        let y = x.clone().complement().expect_interval();
+        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+
+        let x = Interval::unbound_closed(i32::MAX);
+        let y = x.clone().complement().expect_interval();
+        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+
+        let x = Interval::open_unbound(0.0);
+        let y = Interval::unbound_open(0.0);
+        assert_eq!(x.try_merge(y), None);
+
+        let x = Interval::closed_unbound(f32::MIN);
+        let y = x.clone().complement().expect_interval();
+        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+
+        let x = Interval::unbound_closed(f32::MAX);
+        let y = x.clone().complement().expect_interval();
+        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+    }
+
+    #[test]
     fn test_merged_max_i32() {
         let x = Interval::closed(0, i32::MAX);
         let y = Interval::closed(-100, -1);
