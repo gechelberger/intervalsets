@@ -13,6 +13,16 @@ impl<T> From<EnumInterval<T>> for Interval<T> {
 
 macro_rules! interval_delegate_from_impl {
     ($t:ty) => {
+        impl<T> From<$t> for Interval<T> {
+            fn from(value: $t) -> Self {
+                Self::from(EnumInterval::from(value))
+            }
+        }
+    };
+}
+
+macro_rules! interval_delegate_w_domain_from_impl {
+    ($t:ty) => {
         impl<T: Domain> From<$t> for Interval<T> {
             fn from(value: $t) -> Self {
                 Self::from(EnumInterval::from(value))
@@ -21,7 +31,7 @@ macro_rules! interval_delegate_from_impl {
     };
 }
 
-macro_rules! interval_w_zero_delegate_from_impl {
+macro_rules! interval_delegate_w_domain_zero_from_impl {
     ($t:ty) => {
         impl<T: Domain + $crate::numeric::Zero> From<$t> for Interval<T> {
             fn from(value: $t) -> Self {
@@ -33,14 +43,13 @@ macro_rules! interval_w_zero_delegate_from_impl {
 
 interval_delegate_from_impl!(FiniteInterval<T>);
 interval_delegate_from_impl!(HalfInterval<T>);
-//interval_delegate_from_impl!(OrdBoundPair<T>);
-interval_delegate_from_impl!((T, T));
-interval_delegate_from_impl!([T; 2]);
-interval_delegate_from_impl!(core::ops::Range<T>);
-interval_delegate_from_impl!(core::ops::RangeInclusive<T>);
-interval_w_zero_delegate_from_impl!(core::ops::RangeFrom<T>);
-interval_w_zero_delegate_from_impl!(core::ops::RangeTo<T>);
-interval_w_zero_delegate_from_impl!(core::ops::RangeToInclusive<T>);
+interval_delegate_w_domain_from_impl!((T, T));
+interval_delegate_w_domain_from_impl!([T; 2]);
+interval_delegate_w_domain_from_impl!(core::ops::Range<T>);
+interval_delegate_w_domain_from_impl!(core::ops::RangeInclusive<T>);
+interval_delegate_w_domain_zero_from_impl!(core::ops::RangeFrom<T>);
+interval_delegate_w_domain_zero_from_impl!(core::ops::RangeTo<T>);
+interval_delegate_w_domain_zero_from_impl!(core::ops::RangeToInclusive<T>);
 interval_delegate_from_impl!(core::ops::RangeFull);
 
 impl<T: Domain> TryFrom<OrdBoundPair<T>> for Interval<T> {
@@ -58,7 +67,7 @@ impl<T: Domain> TryFrom<OrdBoundPair<T>> for Interval<T> {
     }
 }*/
 
-impl<T: Domain> From<Interval<T>> for IntervalSet<T> {
+impl<T> From<Interval<T>> for IntervalSet<T> {
     fn from(value: Interval<T>) -> Self {
         if value.is_empty() {
             IntervalSet::empty()
@@ -70,6 +79,16 @@ impl<T: Domain> From<Interval<T>> for IntervalSet<T> {
 
 macro_rules! interval_set_delegate_from_impl {
     ($t:ty) => {
+        impl<T> From<$t> for IntervalSet<T> {
+            fn from(value: $t) -> Self {
+                Self::from(Interval::from(value))
+            }
+        }
+    };
+}
+
+macro_rules! interval_set_delegate_w_domain_from_impl {
+    ($t:ty) => {
         impl<T: Domain> From<$t> for IntervalSet<T> {
             fn from(value: $t) -> Self {
                 Self::from(Interval::from(value))
@@ -78,7 +97,7 @@ macro_rules! interval_set_delegate_from_impl {
     };
 }
 
-macro_rules! interval_set_w_zero_delegate_from_impl {
+macro_rules! interval_set_delegate_w_domain_zero_from_impl {
     ($t:ty) => {
         impl<T: Domain + $crate::numeric::Zero> From<$t> for IntervalSet<T> {
             fn from(value: $t) -> Self {
@@ -91,14 +110,13 @@ macro_rules! interval_set_w_zero_delegate_from_impl {
 interval_set_delegate_from_impl!(FiniteInterval<T>);
 interval_set_delegate_from_impl!(HalfInterval<T>);
 interval_set_delegate_from_impl!(EnumInterval<T>);
-//interval_set_delegate_from_impl!(OrdBoundPair<T>);
-interval_set_delegate_from_impl!((T, T));
-interval_set_delegate_from_impl!([T; 2]);
-interval_set_delegate_from_impl!(core::ops::Range<T>);
-interval_set_delegate_from_impl!(core::ops::RangeInclusive<T>);
-interval_set_w_zero_delegate_from_impl!(core::ops::RangeFrom<T>);
-interval_set_w_zero_delegate_from_impl!(core::ops::RangeTo<T>);
-interval_set_w_zero_delegate_from_impl!(core::ops::RangeToInclusive<T>);
+interval_set_delegate_w_domain_from_impl!((T, T));
+interval_set_delegate_w_domain_from_impl!([T; 2]);
+interval_set_delegate_w_domain_from_impl!(core::ops::Range<T>);
+interval_set_delegate_w_domain_from_impl!(core::ops::RangeInclusive<T>);
+interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeFrom<T>);
+interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeTo<T>);
+interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeToInclusive<T>);
 interval_set_delegate_from_impl!(core::ops::RangeFull);
 
 impl<T: Domain> TryFrom<OrdBoundPair<T>> for IntervalSet<T> {
