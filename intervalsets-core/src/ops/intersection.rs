@@ -4,7 +4,7 @@ use crate::bound::ord::OrdBounded;
 use crate::bound::FiniteBound;
 use crate::bound::Side::{self, Left, Right};
 use crate::empty::MaybeEmpty;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::sets::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::sets::FiniteInterval::{self, Bounded, Empty};
 use crate::sets::HalfInterval;
@@ -35,7 +35,7 @@ pub trait Intersection<Rhs = Self> {
     fn intersection(self, rhs: Rhs) -> Self::Output;
 }
 
-impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
+impl<T: Element> Intersection<Self> for FiniteInterval<T> {
     type Output = Self;
 
     #[inline(always)]
@@ -58,7 +58,7 @@ impl<T: Domain> Intersection<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<Self> for &FiniteInterval<T> {
+impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
@@ -81,7 +81,7 @@ impl<T: Domain + Clone> Intersection<Self> for &FiniteInterval<T> {
     }
 }
 
-impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
+impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     type Output = Self;
 
     #[inline(always)]
@@ -123,7 +123,7 @@ impl<T: Domain> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
+impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
@@ -145,7 +145,7 @@ impl<T: Domain + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<&FiniteInterval<T>> for &HalfInterval<T> {
+impl<T: Element + Clone> Intersection<&FiniteInterval<T>> for &HalfInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
@@ -154,7 +154,7 @@ impl<T: Domain + Clone> Intersection<&FiniteInterval<T>> for &HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Intersection<Self> for HalfInterval<T> {
+impl<T: Element> Intersection<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
@@ -178,7 +178,7 @@ impl<T: Domain> Intersection<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<Self> for &HalfInterval<T> {
+impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
@@ -202,7 +202,7 @@ impl<T: Domain + Clone> Intersection<Self> for &HalfInterval<T> {
     }
 }
 
-impl<T: Domain> Intersection<FiniteInterval<T>> for EnumInterval<T> {
+impl<T: Element> Intersection<FiniteInterval<T>> for EnumInterval<T> {
     type Output = Self;
 
     #[inline(always)]
@@ -215,7 +215,7 @@ impl<T: Domain> Intersection<FiniteInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<&FiniteInterval<T>> for &EnumInterval<T> {
+impl<T: Element + Clone> Intersection<&FiniteInterval<T>> for &EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
@@ -228,7 +228,7 @@ impl<T: Domain + Clone> Intersection<&FiniteInterval<T>> for &EnumInterval<T> {
     }
 }
 
-impl<T: Domain> Intersection<HalfInterval<T>> for EnumInterval<T> {
+impl<T: Element> Intersection<HalfInterval<T>> for EnumInterval<T> {
     type Output = Self;
 
     #[inline(always)]
@@ -241,7 +241,7 @@ impl<T: Domain> Intersection<HalfInterval<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<&HalfInterval<T>> for &EnumInterval<T> {
+impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
@@ -254,7 +254,7 @@ impl<T: Domain + Clone> Intersection<&HalfInterval<T>> for &EnumInterval<T> {
     }
 }
 
-impl<T: Domain> Intersection<Self> for EnumInterval<T> {
+impl<T: Element> Intersection<Self> for EnumInterval<T> {
     type Output = Self;
 
     #[inline(always)]
@@ -267,7 +267,7 @@ impl<T: Domain> Intersection<Self> for EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection for &EnumInterval<T> {
+impl<T: Element + Clone> Intersection for &EnumInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
@@ -280,7 +280,7 @@ impl<T: Domain + Clone> Intersection for &EnumInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<&EnumInterval<T>> for &FiniteInterval<T> {
+impl<T: Element + Clone> Intersection<&EnumInterval<T>> for &FiniteInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
@@ -289,7 +289,7 @@ impl<T: Domain + Clone> Intersection<&EnumInterval<T>> for &FiniteInterval<T> {
     }
 }
 
-impl<T: Domain + Clone> Intersection<&EnumInterval<T>> for &HalfInterval<T> {
+impl<T: Element + Clone> Intersection<&EnumInterval<T>> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
@@ -379,7 +379,7 @@ where
 
 impl<T, I1, I2> Iterator for SetSetIntersection<T, I1, I2>
 where
-    T: Domain + Clone,
+    T: Element + Clone,
     I1: Iterator<Item = EnumInterval<T>>,
     I2: Iterator<Item = EnumInterval<T>>,
 {
@@ -479,7 +479,7 @@ mod tests {
 
     fn check_enum_enum<T>(expect: EnumInterval<T>, a: EnumInterval<T>, b: EnumInterval<T>)
     where
-        T: PartialEq + Domain + Clone + core::fmt::Debug,
+        T: PartialEq + Element + Clone + core::fmt::Debug,
     {
         assert_eq!(expect, (&a).intersection(&b));
         assert_eq!(expect, a.intersection(b));

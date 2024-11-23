@@ -3,9 +3,9 @@ use num_traits::{CheckedAdd, CheckedSub, One};
 
 use crate::bound::Side::{self, *};
 use crate::default_countable_impl;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 
-impl Domain for BigInt {
+impl Element for BigInt {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
         match side {
             Left => self.checked_sub(&BigInt::one()),
@@ -16,7 +16,7 @@ impl Domain for BigInt {
 
 default_countable_impl!(BigInt);
 
-impl Domain for BigUint {
+impl Element for BigUint {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
         match side {
             Left => self.checked_sub(&BigUint::one()),

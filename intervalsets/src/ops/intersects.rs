@@ -1,6 +1,6 @@
 pub use intervalsets_core::ops::Intersects;
 
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::{Interval, IntervalSet};
 
 impl<T: PartialOrd> Intersects<&Self> for Interval<T> {
@@ -21,7 +21,7 @@ impl<T: PartialOrd> Intersects<&IntervalSet<T>> for Interval<T> {
     }
 }
 
-impl<T: Domain> Intersects<&Self> for IntervalSet<T> {
+impl<T: Element> Intersects<&Self> for IntervalSet<T> {
     fn intersects(&self, rhs: &Self) -> bool {
         self.iter().any(|subset| rhs.intersects(subset))
     }

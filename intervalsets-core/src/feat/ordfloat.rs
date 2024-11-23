@@ -2,28 +2,28 @@ use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
 use crate::factory::Converter;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 
-impl<T: FloatCore + Domain> Domain for NotNan<T> {
+impl<T: FloatCore + Element> Element for NotNan<T> {
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
     }
 }
 
-impl<T: FloatCore + Domain> Domain for OrderedFloat<T> {
+impl<T: FloatCore + Element> Element for OrderedFloat<T> {
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
     }
 }
 
-impl<T: FloatCore + Domain> Converter<T> for NotNan<T> {
+impl<T: FloatCore + Element> Converter<T> for NotNan<T> {
     type To = Self;
     fn convert(value: T) -> Self::To {
         NotNan::new(value).unwrap()
     }
 }
 
-impl<T: FloatCore + Domain> Converter<T> for OrderedFloat<T> {
+impl<T: FloatCore + Element> Converter<T> for OrderedFloat<T> {
     type To = Self;
     fn convert(value: T) -> Self::To {
         OrderedFloat(value)

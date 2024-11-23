@@ -1,7 +1,7 @@
 use core::ops::Sub;
 
 use super::Measurement;
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
@@ -45,8 +45,8 @@ pub trait Width {
 impl<T, Out> Width for FiniteInterval<T>
 where
     Out: Zero,
-    T: Domain,
-    for<'a> &'a T: Sub<Output = Out>, //T: Domain + Clone + Sub<T, Output = Out>,
+    T: Element,
+    for<'a> &'a T: Sub<Output = Out>, //T: Element + Clone + Sub<T, Output = Out>,
 {
     type Output = Out;
 
@@ -61,7 +61,7 @@ where
 impl<T, Out> Width for HalfInterval<T>
 where
     Out: Zero,
-    T: Domain,
+    T: Element,
     for<'a> &'a T: Sub<Output = Out>,
 {
     type Output = Out;
@@ -74,7 +74,7 @@ where
 impl<T, Out> Width for EnumInterval<T>
 where
     Out: Zero,
-    T: Domain,
+    T: Element,
     for<'a> &'a T: Sub<Output = Out>,
 {
     type Output = Out;

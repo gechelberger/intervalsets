@@ -1,39 +1,39 @@
 pub use intervalsets_core::ops::Contains;
 
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::{Interval, IntervalSet};
 
-impl<T: Domain> Contains<&T> for Interval<T> {
+impl<T: Element> Contains<&T> for Interval<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.0.contains(rhs)
     }
 }
 
-impl<T: Domain> Contains<&Self> for Interval<T> {
+impl<T: Element> Contains<&Self> for Interval<T> {
     fn contains(&self, rhs: &Self) -> bool {
         self.0.contains(&rhs.0)
     }
 }
 
-impl<T: Domain> Contains<&IntervalSet<T>> for Interval<T> {
+impl<T: Element> Contains<&IntervalSet<T>> for Interval<T> {
     fn contains(&self, rhs: &IntervalSet<T>) -> bool {
         rhs.iter().all(|subset| self.contains(subset))
     }
 }
 
-impl<T: Domain> Contains<&T> for IntervalSet<T> {
+impl<T: Element> Contains<&T> for IntervalSet<T> {
     fn contains(&self, rhs: &T) -> bool {
         self.iter().any(|subset| subset.contains(rhs))
     }
 }
 
-impl<T: Domain> Contains<&Interval<T>> for IntervalSet<T> {
+impl<T: Element> Contains<&Interval<T>> for IntervalSet<T> {
     fn contains(&self, rhs: &Interval<T>) -> bool {
         self.iter().any(|subset| subset.contains(rhs))
     }
 }
 
-impl<T: Domain> Contains<&Self> for IntervalSet<T> {
+impl<T: Element> Contains<&Self> for IntervalSet<T> {
     fn contains(&self, rhs: &Self) -> bool {
         rhs.iter().all(|subset| self.contains(subset))
     }

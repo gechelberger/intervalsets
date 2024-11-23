@@ -1,10 +1,10 @@
 pub use intervalsets_core::ops::Rebound;
 
 use crate::bound::FiniteBound;
-use crate::numeric::{Domain, Zero};
+use crate::numeric::{Element, Zero};
 use crate::sets::Interval;
 
-impl<T: Domain + Zero> Rebound<T> for Interval<T> {
+impl<T: Element + Zero> Rebound<T> for Interval<T> {
     type Output = Self;
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {

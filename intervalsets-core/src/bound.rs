@@ -14,7 +14,7 @@
 use core::cmp::Ordering::{Equal, Greater, Less};
 
 use crate::error::TotalOrderError;
-use crate::numeric::Domain;
+use crate::numeric::Element;
 
 /// An interface to query the left and right bounds of a set.
 pub trait SetBounds<T> {
@@ -418,7 +418,7 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 }
 
-impl<T: Domain> FiniteBound<T> {
+impl<T: Element> FiniteBound<T> {
     /// For discrete types, normalize to closed form.
     pub fn normalized(self, side: Side) -> Self {
         match self.0 {

@@ -37,7 +37,7 @@ macro_rules! difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
         impl<T> $crate::ops::Difference<$t_rhs> for $t_lhs
         where
-            T: $crate::numeric::Domain,
+            T: $crate::numeric::Element,
             T: $crate::numeric::Zero,
             T: Clone,
         {
@@ -87,7 +87,7 @@ macro_rules! sym_difference_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
         impl<T> $crate::ops::SymDifference<$t_rhs> for $t_lhs
         where
-            T: $crate::numeric::Domain,
+            T: $crate::numeric::Element,
             T: $crate::numeric::Zero,
             T: Clone,
         {

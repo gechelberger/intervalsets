@@ -2,11 +2,11 @@
 #[allow(unused_imports)]
 use num_traits::{CheckedAdd, CheckedSub};
 
-/// private macro for Domain on fixed crate types.
+/// private macro for Element on fixed crate types.
 macro_rules! fixed_domain {
     ($($t:ty,) +) => {
         $(
-            impl<N: typenum::Unsigned> crate::numeric::Domain for $t {
+            impl<N: typenum::Unsigned> crate::numeric::Element for $t {
                 fn try_adjacent(&self, side: crate::bound::Side) -> Option<Self> {
                     let bits = self.to_bits();
                     let next = match side {
@@ -38,7 +38,7 @@ mod tests {
     use fixed::types::{I6F2, U6F2};
 
     use crate::bound::Side::*;
-    use crate::numeric::Domain;
+    use crate::numeric::Element;
 
     #[test]
     fn test_adjacent() {

@@ -2,7 +2,7 @@ use intervalsets_core::bound::ord::OrdBoundPair;
 use intervalsets_core::error::InvariantError;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-use crate::numeric::Domain;
+use crate::numeric::Element;
 use crate::{Interval, IntervalSet, MaybeEmpty};
 
 impl<T> From<EnumInterval<T>> for Interval<T> {
@@ -23,7 +23,7 @@ macro_rules! interval_delegate_from_impl {
 
 macro_rules! interval_delegate_w_domain_from_impl {
     ($t:ty) => {
-        impl<T: Domain> From<$t> for Interval<T> {
+        impl<T: $crate::numeric::Element> From<$t> for Interval<T> {
             fn from(value: $t) -> Self {
                 Self::from(EnumInterval::from(value))
             }
@@ -33,7 +33,7 @@ macro_rules! interval_delegate_w_domain_from_impl {
 
 macro_rules! interval_delegate_w_domain_zero_from_impl {
     ($t:ty) => {
-        impl<T: Domain + $crate::numeric::Zero> From<$t> for Interval<T> {
+        impl<T: $crate::numeric::Element + $crate::numeric::Zero> From<$t> for Interval<T> {
             fn from(value: $t) -> Self {
                 Self::from(EnumInterval::from(value))
             }
@@ -52,7 +52,7 @@ interval_delegate_w_domain_zero_from_impl!(core::ops::RangeTo<T>);
 interval_delegate_w_domain_zero_from_impl!(core::ops::RangeToInclusive<T>);
 interval_delegate_from_impl!(core::ops::RangeFull);
 
-impl<T: Domain> TryFrom<OrdBoundPair<T>> for Interval<T> {
+impl<T: Element> TryFrom<OrdBoundPair<T>> for Interval<T> {
     type Error = InvariantError;
 
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
@@ -89,7 +89,7 @@ macro_rules! interval_set_delegate_from_impl {
 
 macro_rules! interval_set_delegate_w_domain_from_impl {
     ($t:ty) => {
-        impl<T: Domain> From<$t> for IntervalSet<T> {
+        impl<T: $crate::numeric::Element> From<$t> for IntervalSet<T> {
             fn from(value: $t) -> Self {
                 Self::from(Interval::from(value))
             }
@@ -99,7 +99,7 @@ macro_rules! interval_set_delegate_w_domain_from_impl {
 
 macro_rules! interval_set_delegate_w_domain_zero_from_impl {
     ($t:ty) => {
-        impl<T: Domain + $crate::numeric::Zero> From<$t> for IntervalSet<T> {
+        impl<T: $crate::numeric::Element + $crate::numeric::Zero> From<$t> for IntervalSet<T> {
             fn from(value: $t) -> Self {
                 Self::from(Interval::from(value))
             }
@@ -119,7 +119,7 @@ interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeTo<T>);
 interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeToInclusive<T>);
 interval_set_delegate_from_impl!(core::ops::RangeFull);
 
-impl<T: Domain> TryFrom<OrdBoundPair<T>> for IntervalSet<T> {
+impl<T: Element> TryFrom<OrdBoundPair<T>> for IntervalSet<T> {
     type Error = InvariantError;
 
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
