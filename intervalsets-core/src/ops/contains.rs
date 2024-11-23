@@ -1,7 +1,7 @@
 use FiniteInterval::Bounded;
 
 use crate::bound::ord::{FiniteOrdBound, OrdBound, OrdBoundPair};
-use crate::bound::Side;
+use crate::bound::Side::{self, Left, Right};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Test if this `Set` fully contains `T`.
@@ -155,14 +155,10 @@ impl<T: PartialOrd> Contains<&Self> for FiniteInterval<T> {
             return false;
         };
 
-        // SAFETY: lhs_min <= lhs_max && rhs_min <= rhs_max so all are comparable.
-        unsafe {
-            lhs_min.contains_bound_unchecked(Side::Left, rhs_min)
-                && lhs_max.contains_bound_unchecked(Side::Right, rhs_max)
-        }
-
-        //lhs_min.finite_ord(Side::Left) <= rhs_min.finite_ord(Side::Left)
-        //    && rhs_max.finite_ord(Side::Right) <= lhs_max.finite_ord(Side::Right)
+        // IMPLICIT UNSAFE: If lhs and rhs invariants are satisfied then all bounds
+        // are comparable and lhs_min <= rhs_max, rhs_min <= rhs_max.
+        lhs_min.finite_ord(Left) <= rhs_min.finite_ord(Left)
+            && rhs_max.finite_ord(Right) <= lhs_max.finite_ord(Right)
     }
 }
 

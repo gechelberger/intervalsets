@@ -124,7 +124,7 @@ mod tests {
     }
 
     #[test]
-    fn regression_test_a() {
+    fn test_regressions() {
         let a = EnumInterval::Half(HalfInterval {
             side: Side::Right,
             bound: FiniteBound::closed(-0.0),
@@ -133,6 +133,17 @@ mod tests {
         let b = EnumInterval::Finite(FiniteInterval::Bounded(
             FiniteBound::open(-0.0),
             FiniteBound::closed(44411.26),
+        ));
+
+        check_intersect_and_merge(a, b);
+
+        let a = EnumInterval::Finite(FiniteInterval::Bounded(
+            FiniteBound::open(-6.2386875e25),
+            FiniteBound::open(0.0),
+        ));
+        let b = EnumInterval::Finite(FiniteInterval::Bounded(
+            FiniteBound::open(0.0),
+            FiniteBound::open(2.0899204e32),
         ));
 
         check_intersect_and_merge(a, b);
