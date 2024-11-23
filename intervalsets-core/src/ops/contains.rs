@@ -4,11 +4,12 @@ use crate::bound::ord::{FiniteOrdBound, OrdBound, OrdBoundPair};
 use crate::bound::Side::{Left, Right};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-/// Test if `rhs` is a subset of self.
+/// Test if self is a superset of rhs.
 ///
 /// ```text
-/// Given A = self, B = rhs:
-/// ∀ x ∈ B -> x ∈ A
+/// Given: A = self, B = rhs:
+/// Test:  ∀ x ∈ B -> x ∈ A
+/// Alt:   A ⊇ B
 /// ```
 ///
 /// # Examples
@@ -21,6 +22,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(x.contains(&10.0), false);
 /// assert_eq!(x.contains(&FiniteInterval::open(0.0, 10.0)), true);
 /// assert_eq!(x.contains(&FiniteInterval::closed(0.0, 10.0)), false);
+/// assert_eq!(x.contains(&FiniteInterval::empty()), true);
 /// ```
 pub trait Contains<T> {
     /// Test if rhs is fully contained.
@@ -109,7 +111,7 @@ impl<T: PartialOrd> Contains<&Self> for FiniteInterval<T> {
         };
 
         let Bounded(rhs_min, rhs_max) = rhs else {
-            return false;
+            return true;
         };
 
         // IMPLICIT UNSAFE: If lhs and rhs invariants are satisfied then all bounds
@@ -141,7 +143,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         let Bounded(rhs_min, rhs_max) = rhs else {
-            return false;
+            return true;
         };
 
         let lhs = self.finite_ord_bound();
@@ -176,7 +178,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => *rhs != FiniteInterval::Empty,
+            Self::Unbounded => true,
         }
     }
 }
