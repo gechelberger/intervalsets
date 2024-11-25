@@ -10,6 +10,12 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// ∃x | x ∈ A ∧ x ∈ B
 /// ```
 ///
+/// # Contract
+///
+/// Intersects should be usable with strict api calls, therefore it should
+/// not panic. Since it is only testing between instantiated sets, comparability
+/// is already addressed by set invariants and should not be a problem.
+///
 /// # Examples
 ///
 /// ```
