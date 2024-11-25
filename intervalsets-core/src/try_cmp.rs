@@ -28,9 +28,7 @@ pub trait TryMax: Sized {
 
 impl<T: PartialOrd> TryMin for T {
     fn try_min(self, rhs: Self) -> Result<Self, TotalOrderError> {
-        let order = self
-            .partial_cmp(&rhs)
-            .ok_or(TotalOrderError::new("TryMin"))?;
+        let order = self.partial_cmp(&rhs).ok_or(TotalOrderError)?;
 
         match order {
             Less | Equal => Ok(self),
@@ -41,9 +39,7 @@ impl<T: PartialOrd> TryMin for T {
 
 impl<T: PartialOrd> TryMax for T {
     fn try_max(self, rhs: Self) -> Result<Self, TotalOrderError> {
-        let order = self
-            .partial_cmp(&rhs)
-            .ok_or_else(|| TotalOrderError::new("TryMax"))?;
+        let order = self.partial_cmp(&rhs).ok_or(TotalOrderError)?;
         match order {
             Greater | Equal => Ok(self),
             Less => Ok(rhs),
@@ -52,9 +48,7 @@ impl<T: PartialOrd> TryMax for T {
 }
 
 pub fn try_ord_pair<A: PartialOrd>(lhs: A, rhs: A) -> Result<[A; 2], TotalOrderError> {
-    let order = lhs
-        .partial_cmp(&rhs)
-        .ok_or(TotalOrderError::new("try_ord_pair"))?;
+    let order = lhs.partial_cmp(&rhs).ok_or(TotalOrderError)?;
 
     match order {
         Less | Equal => Ok([lhs, rhs]),

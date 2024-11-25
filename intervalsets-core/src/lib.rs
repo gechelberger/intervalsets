@@ -176,10 +176,10 @@
 //! assert!(result.is_err());
 //!
 //! let x = FiniteInterval::strict_open(f32::NAN, 0.0);
-//! assert_eq!(x, None);
+//! assert_eq!(x.ok(), None);
 //!
 //! let x = FiniteInterval::strict_open(1.0, 0.0);
-//! assert_eq!(x, None);
+//! assert_eq!(x.unwrap(), FiniteInterval::empty());
 //! ```
 //!
 //! Silent failures can make it difficult to isolate logic errors as they are

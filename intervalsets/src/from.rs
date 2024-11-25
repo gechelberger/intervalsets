@@ -1,5 +1,5 @@
 use intervalsets_core::bound::ord::OrdBoundPair;
-use intervalsets_core::error::InvariantError;
+use intervalsets_core::error::Error;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 use crate::numeric::Element;
@@ -53,7 +53,7 @@ interval_delegate_w_domain_zero_from_impl!(core::ops::RangeToInclusive<T>);
 interval_delegate_from_impl!(core::ops::RangeFull);
 
 impl<T: Element> TryFrom<OrdBoundPair<T>> for Interval<T> {
-    type Error = InvariantError;
+    type Error = Error;
 
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
         let success = EnumInterval::<T>::try_from(value)?;
@@ -120,7 +120,7 @@ interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeToInclusive<T>);
 interval_set_delegate_from_impl!(core::ops::RangeFull);
 
 impl<T: Element> TryFrom<OrdBoundPair<T>> for IntervalSet<T> {
-    type Error = InvariantError;
+    type Error = Error;
 
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
         let success = Interval::<T>::try_from(value)?;

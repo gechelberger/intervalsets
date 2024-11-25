@@ -1,21 +1,11 @@
 use core::cmp::Ordering::{self, *};
-use core::fmt;
 
 use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
-use super::bound::{FiniteBound, SetBounds, Side};
+use super::bound::Side::{self, Left, Right};
+use super::bound::{FiniteBound, SetBounds};
 use crate::bound::ord::FiniteOrdBound;
+use crate::error::{Error, TotalOrderError};
 use crate::numeric::{Element, Zero};
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct InvertedBoundsError;
-
-impl fmt::Display for InvertedBoundsError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "expected lhs <= rhs")
-    }
-}
-
-impl core::error::Error for InvertedBoundsError {}
 
 /// todo
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -30,40 +20,56 @@ pub enum FiniteInterval<T> {
 }
 
 impl<T: Element> FiniteInterval<T> {
+    /// Creates a FiniteInterval.
+    ///
+    /// # Panics
+    ///
+    /// Panics if lhs and rhs are not comparable
     pub fn new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        unsafe { Self::new_norm(lhs.normalized(Side::Left), rhs.normalized(Side::Right)) }
+        let lhs = lhs.normalized(Left);
+        let rhs = rhs.normalized(Right);
+        unsafe { Self::new_assume_normed(lhs, rhs) }
     }
 
-    pub fn new_strict(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self> {
-        match lhs.value().partial_cmp(rhs.value())? {
-            Less | Equal => Some(Self::new(lhs, rhs)),
-            Greater => None,
+    /// Creates a new FiniteInterval or Error; Should never panic.
+    pub fn new_strict(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
+        let lhs = lhs.normalized(Left);
+        let rhs = rhs.normalized(Right);
+        let order = lhs
+            .value()
+            .partial_cmp(rhs.value())
+            .ok_or(TotalOrderError)?;
+
+        if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
+            // SAFETY: normalized & comparable & lhs <= rhs
+            unsafe { Ok(Self::new_unchecked(lhs, rhs)) }
+        } else {
+            Ok(Self::empty())
         }
     }
 }
 
 impl<T: PartialOrd> FiniteInterval<T> {
-    /// todo...
+    /// Creates a FiniteInterval; assuming normalized & comparable.
+    ///
+    /// # Panics
+    ///
+    /// Panics if lhs and rhs are not comparable.
     ///
     /// # Safety
     ///
-    /// todo...
+    /// The user is responsible for ensuring that invariants are satisfied.
     #[inline]
-    pub unsafe fn new_norm(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        Self::strict_new_norm(lhs, rhs).unwrap()
-    }
+    pub unsafe fn new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+        let order = match lhs.value().partial_cmp(rhs.value()) {
+            Some(order) => order,
+            None => panic!("assumed normalized and comparable"),
+        };
 
-    /// # Safety
-    ///
-    /// The user must ensure invariants are satisfied:
-    /// 1. discrete bounds are normalized to closed form
-    ///
-    #[inline]
-    pub unsafe fn strict_new_norm(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self> {
-        match lhs.value().partial_cmp(rhs.value())? {
-            Less => Some(Self::Bounded(lhs, rhs)),
-            Equal if lhs.is_closed() && rhs.is_closed() => Some(Self::Bounded(lhs, rhs)),
-            _ => Some(Self::Empty),
+        if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
+            unsafe { Self::new_unchecked(lhs, rhs) }
+        } else {
+            Self::empty()
         }
     }
 }
@@ -143,11 +149,13 @@ impl<T: Element + Zero> HalfInterval<T> {
         Self::new_strict(side, bound).expect("Bound should have been comparable")
     }
 
-    pub fn new_strict(side: Side, bound: FiniteBound<T>) -> Option<Self> {
+    pub fn new_strict(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
         // make sure bound is comparable
-        let _ = T::zero().partial_cmp(bound.value())?;
+        let _ = T::zero()
+            .partial_cmp(bound.value())
+            .ok_or(TotalOrderError)?;
         let bound = bound.normalized(side);
-        Some(Self { side, bound })
+        Ok(Self { side, bound })
     }
 
     pub fn left(bound: FiniteBound<T>) -> Self {

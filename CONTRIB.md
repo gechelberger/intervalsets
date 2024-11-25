@@ -57,7 +57,14 @@ just ci
 
 ### documentation
 
+#### api docs
 ```
 just doc-serve
+```
+
+#### book docs
+```
+cd book
+mdbook serve
 ```
 

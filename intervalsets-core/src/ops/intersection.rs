@@ -50,7 +50,7 @@ impl<T: Element> Intersection<Self> for FiniteInterval<T> {
 
         // Safety: self and rhs should already be normalized.
         unsafe {
-            FiniteInterval::new_norm(
+            FiniteInterval::new_assume_normed(
                 FiniteBound::take_max_unchecked(Left, lhs_min, rhs_min),
                 FiniteBound::take_min_unchecked(Right, lhs_max, rhs_max),
             )
@@ -73,7 +73,7 @@ impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
 
         // Safety: self and rhs should already be normalized.
         unsafe {
-            FiniteInterval::new_norm(
+            FiniteInterval::new_assume_normed(
                 FiniteBound::max_unchecked(Left, lhs_min, rhs_min).clone(),
                 FiniteBound::min_unchecked(Right, lhs_max, rhs_max).clone(),
             )
@@ -114,8 +114,8 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
         } else if n == 1 {
             // SAFETY: bounds should already be normalized
             match rhs.side {
-                Left => unsafe { FiniteInterval::new_norm(rhs.bound, lhs_max) },
-                Right => unsafe { FiniteInterval::new_norm(lhs_min, rhs.bound) },
+                Left => unsafe { FiniteInterval::new_assume_normed(rhs.bound, lhs_max) },
+                Right => unsafe { FiniteInterval::new_assume_normed(lhs_min, rhs.bound) },
             }
         } else {
             Empty
@@ -134,8 +134,12 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
             };
 
             match rhs.side {
-                Left => unsafe { FiniteInterval::new_norm(rhs.bound.clone(), lhs_max.clone()) },
-                Right => unsafe { FiniteInterval::new_norm(lhs_min.clone(), rhs.bound.clone()) },
+                Left => unsafe {
+                    FiniteInterval::new_assume_normed(rhs.bound.clone(), lhs_max.clone())
+                },
+                Right => unsafe {
+                    FiniteInterval::new_assume_normed(lhs_min.clone(), rhs.bound.clone())
+                },
             }
         } else if rhs.contains(self) {
             self.clone()
@@ -169,8 +173,8 @@ impl<T: Element> Intersection<Self> for HalfInterval<T> {
             // SAFETY: bounds are already normalized
             unsafe {
                 match self.side {
-                    Side::Left => FiniteInterval::new_norm(self.bound, rhs.bound),
-                    Side::Right => FiniteInterval::new_norm(rhs.bound, self.bound),
+                    Side::Left => FiniteInterval::new_assume_normed(self.bound, rhs.bound),
+                    Side::Right => FiniteInterval::new_assume_normed(rhs.bound, self.bound),
                 }
             }
             .into()
@@ -193,8 +197,8 @@ impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
             let lhs = self.bound.clone();
             let rhs = rhs.bound.clone();
             match self.side {
-                Left => unsafe { FiniteInterval::new_norm(lhs, rhs).into() },
-                Right => unsafe { FiniteInterval::new_norm(rhs, lhs).into() },
+                Left => unsafe { FiniteInterval::new_assume_normed(lhs, rhs).into() },
+                Right => unsafe { FiniteInterval::new_assume_normed(rhs, lhs).into() },
             }
         } else {
             Empty.into()

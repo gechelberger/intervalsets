@@ -52,8 +52,8 @@ impl<T: Element + Clone + Arbitrary> Arbitrary for FiniteInterval<T> {
                 };
 
                 match FiniteInterval::new_strict(left, right) {
-                    Some(interval) => interval,
-                    None => Self::arbitrary(g),
+                    Ok(interval) => interval,
+                    Err(_) => Self::arbitrary(g),
                 }
             }
         }
@@ -66,8 +66,8 @@ impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for HalfInterval<T> {
         let bound = FiniteBound::<T>::arbitrary(g);
 
         match HalfInterval::new_strict(side, bound) {
-            Some(interval) => interval,
-            None => Self::arbitrary(g),
+            Ok(interval) => interval,
+            Err(_) => Self::arbitrary(g),
         }
     }
 }

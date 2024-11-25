@@ -51,8 +51,8 @@ impl<'a, T: Element + Zero + Arbitrary<'a>> Arbitrary<'a> for HalfInterval<T> {
         let interval = HalfInterval::new_strict(Side::arbitrary(u)?, FiniteBound::arbitrary(u)?);
 
         match interval {
-            Some(inner) => Ok(inner),
-            None => Self::arbitrary(u),
+            Ok(inner) => Ok(inner),
+            Err(_) => Self::arbitrary(u),
         }
     }
 }
