@@ -39,6 +39,9 @@ setup:
     # checks commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
     cargo install commitlint-rs --locked
 
+    # check codebase for loose ends
+    cargo install ripgrep
+
     # building the test dependencies installs newest githooks (husky-rs)
     cargo clean && cargo test build
 
@@ -95,3 +98,6 @@ bench-main pattern="":
 ci: docs test check-msrv check-no-std
     cargo criterion --package benchmarks --no-run
     @echo "CI checks complete"
+
+loose-ends:
+    rg --glob !justfile --ignore-case 'dbg!|fixme|todo|wip|xxx' .
