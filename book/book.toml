@@ -1,0 +1,15 @@
+[book]
+authors = ["Greg Echelberger"]
+language = "en"
+multilingual = false
+src = "src"
+title = "intervalsets"
+
+[rust]
+edition = "2021"
+
+[output.html]
+mathjax-support = true
+
+# default-theme = "dark"
+preferred-dark-theme = "navy"

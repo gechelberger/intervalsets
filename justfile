@@ -31,6 +31,9 @@ update:
     # watch the docs as you work
     cargo install static-web-server --locked
 
+    # markdown book for higher level docs
+    cargo install mdbook --locked
+
     # benchmarking
     cargo install cargo-criterion --locked
 
@@ -72,6 +75,9 @@ test pattern="":
     cargo +{{RV}} test --all-features {{pattern}}
 
 alias t := test
+
+book-serve:
+    mdbook serve book
 
 # format the code base
 fmt:
