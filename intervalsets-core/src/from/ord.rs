@@ -1,6 +1,6 @@
 use crate::bound::ord::{FiniteOrdBound, FiniteOrdBoundKind, OrdBound, OrdBoundPair};
 use crate::bound::{BoundType, FiniteBound, Side};
-use crate::error::InvariantError;
+use crate::error::Error;
 use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -20,7 +20,7 @@ impl<T> From<FiniteOrdBound<T>> for FiniteBound<T> {
 }
 
 impl<T: Element> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
-    type Error = InvariantError;
+    type Error = Error;
 
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
         let interval = match value.into_raw() {
@@ -51,7 +51,7 @@ impl<T: Element> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
                 unsafe { Self::Finite(FiniteInterval::new_unchecked(lhs, rhs)) }
             }
             _ => {
-                return Err(InvariantError::new(
+                return Err(Error::InvariantError(
                     "EnumInterval::TryFrom<OrdBoundPair> did not match a valid bitpattern",
                 ))
             }

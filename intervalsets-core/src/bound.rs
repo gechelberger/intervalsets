@@ -381,9 +381,7 @@ impl<T: PartialOrd> FiniteBound<T> {
     pub fn strict_contains(&self, side: Side, test: &T) -> Result<bool, TotalOrderError> {
         let lhs = self.finite_ord(side);
         let rhs = ord::FiniteOrdBound::closed(test);
-        let order = lhs
-            .partial_cmp(&rhs)
-            .ok_or(TotalOrderError::new("FiniteBound::strict_contains"))?;
+        let order = lhs.partial_cmp(&rhs).ok_or(TotalOrderError)?;
 
         Ok(order == Equal || order == side.select(Less, Greater))
     }
@@ -412,9 +410,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         test: ord::FiniteOrdBound<&T>,
     ) -> Result<bool, TotalOrderError> {
         let lhs = self.finite_ord(side);
-        let order = lhs
-            .partial_cmp(&test)
-            .ok_or(TotalOrderError::new("FiniteBound::strict_contains_bound"))?;
+        let order = lhs.partial_cmp(&test).ok_or(TotalOrderError)?;
 
         Ok(order == Equal || order == side.select(Less, Greater))
     }

@@ -10,6 +10,7 @@ use crate::{Interval, IntervalSet, Side};
 
 impl<T: Element> ConvertingFactory<T, Identity> for Interval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 }
 
 impl<T: Element> EmptyFactory<T, Identity> for Interval<T> {
@@ -23,7 +24,10 @@ impl<T: Element> FiniteFactory<T, Identity> for Interval<T> {
         FiniteInterval::new(lhs, rhs).into()
     }
 
-    fn strict_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self::Output> {
+    fn strict_finite(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
         FiniteInterval::new_strict(lhs, rhs).map(Interval::from)
     }
 }
@@ -33,7 +37,7 @@ impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for Interval<T> {
         HalfInterval::new(side, bound).into()
     }
 
-    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Option<Self::Output>
+    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>
     where
         T: num_traits::Zero,
     {
@@ -49,6 +53,7 @@ impl<T: Element> UnboundedFactory<T, Identity> for Interval<T> {
 
 impl<T: Element> ConvertingFactory<T, Identity> for IntervalSet<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 }
 
 impl<T: Element> EmptyFactory<T, Identity> for IntervalSet<T> {
@@ -62,7 +67,10 @@ impl<T: Element> FiniteFactory<T, Identity> for IntervalSet<T> {
         FiniteInterval::new(lhs, rhs).into()
     }
 
-    fn strict_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Option<Self::Output> {
+    fn strict_finite(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
         FiniteInterval::new_strict(lhs, rhs).map(IntervalSet::from)
     }
 }
@@ -72,7 +80,7 @@ impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for IntervalSet<T> {
         HalfInterval::new(side, bound).into()
     }
 
-    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Option<Self::Output>
+    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>
     where
         T: num_traits::Zero,
     {
@@ -94,6 +102,7 @@ where
     C::To: Element,
 {
     type Output = Interval<C::To>;
+    type Error = crate::error::Error;
 }
 
 impl<T, C> EmptyFactory<T, C> for IFactory<T, C>
@@ -115,7 +124,10 @@ where
         Interval::from(EIFactory::<T, C>::finite(lhs, rhs))
     }
 
-    fn strict_finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Option<Self::Output> {
+    fn strict_finite(
+        lhs: FiniteBound<C::To>,
+        rhs: FiniteBound<C::To>,
+    ) -> Result<Self::Output, Self::Error> {
         EIFactory::<T, C>::strict_finite(lhs, rhs).map(Interval::from)
     }
 }
@@ -129,7 +141,10 @@ where
         Interval::from(EIFactory::<T, C>::half_bounded(side, bound))
     }
 
-    fn strict_half_bounded(side: Side, bound: FiniteBound<C::To>) -> Option<Self::Output> {
+    fn strict_half_bounded(
+        side: Side,
+        bound: FiniteBound<C::To>,
+    ) -> Result<Self::Output, Self::Error> {
         EIFactory::<T, C>::strict_half_bounded(side, bound).map(Interval::from)
     }
 }
@@ -152,6 +167,7 @@ where
     C::To: Element,
 {
     type Output = IntervalSet<C::To>;
+    type Error = crate::error::Error;
 }
 
 impl<T, C> EmptyFactory<T, C> for ISFactory<T, C>
@@ -173,7 +189,10 @@ where
         IFactory::<T, C>::finite(lhs, rhs).into()
     }
 
-    fn strict_finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Option<Self::Output> {
+    fn strict_finite(
+        lhs: FiniteBound<C::To>,
+        rhs: FiniteBound<C::To>,
+    ) -> Result<Self::Output, Self::Error> {
         IFactory::<T, C>::strict_finite(lhs, rhs).map(IntervalSet::from)
     }
 }
@@ -187,7 +206,10 @@ where
         IFactory::<T, C>::half_bounded(side, bound).into()
     }
 
-    fn strict_half_bounded(side: Side, bound: FiniteBound<C::To>) -> Option<Self::Output> {
+    fn strict_half_bounded(
+        side: Side,
+        bound: FiniteBound<C::To>,
+    ) -> Result<Self::Output, Self::Error> {
         IFactory::<T, C>::strict_half_bounded(side, bound).map(IntervalSet::from)
     }
 }
