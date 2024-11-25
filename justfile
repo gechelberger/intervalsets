@@ -76,6 +76,9 @@ test pattern="":
 
 alias t := test
 
+book-serve:
+    mdbook serve book
+
 # format the code base
 fmt:
     cargo +{{RV}} fmt

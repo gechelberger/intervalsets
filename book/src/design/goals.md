@@ -17,20 +17,18 @@ All set and interval types provided are generic over the type of element(s) in t
 
 These are low level abstractions which should be deployable in almost any environment.
 
-`intervalsets-core`, by default, should be usable in any embedded environment, with or 
+`intervalsets-core`, by default, should be usable in any embedded environment - with or 
 without an allocator. The crate does provide some optional features for externally defined 
 `set element types` that require allocation. These must live in `intervalsets-core` due to rust's 
 [orphan rule](https://github.com/Ixrec/rust-orphan-rules) since the required traits 
-are defined in `intervalsets-core`.
+are defined there.
 
 `intervalsets` should be usable in a no-std environment but does require an allocator to
 support collections of intervals.
 
 ## Robustness
 
-Fault tolerance is critical, especially in embedded environments.
-
-todo: (design/fallability.md)
+[Fault tolerance](errors.md) is critical, especially in embedded environments.
 
 ## Performance
 
