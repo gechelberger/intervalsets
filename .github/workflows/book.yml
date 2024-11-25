@@ -32,6 +32,8 @@ jobs:
 
   deploy:
     needs: build
+    if: ${{ startsWith(github.ref, 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
+
 
     permissions:
       pages: write
