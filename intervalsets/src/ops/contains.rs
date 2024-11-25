@@ -89,7 +89,7 @@ mod tests {
     #[quickcheck]
     fn check_unbounded_contains_float(x: f32) {
         let iv = Interval::unbounded();
-        assert!(iv.contains(&x));
+        assert_eq!(iv.contains(&x), !x.is_nan());
     }
 
     #[quickcheck]

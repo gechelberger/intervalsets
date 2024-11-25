@@ -1,3 +1,5 @@
+use core::cmp::Ordering::Equal;
+
 use FiniteInterval::Bounded;
 
 use crate::bound::ord::{FiniteOrdBound, OrdBound, OrdBoundPair};
@@ -13,6 +15,11 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// ```
 ///
 /// Individual elements are treated as if they were a singleton set.
+///
+/// # Contract
+///
+/// Contains should be useable in strict api calls. Therefore, it should not
+/// panic and it should always return false for incomparable arguments.
 ///
 /// # Examples
 ///
@@ -56,7 +63,7 @@ impl<T: PartialOrd> Contains<&T> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true,
+            Self::Unbounded => rhs.partial_cmp(rhs) == Some(Equal),
         }
     }
 }
@@ -91,7 +98,7 @@ impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true,
+            Self::Unbounded => rhs.0.partial_cmp(rhs.0) == Some(Equal),
         }
     }
 }
@@ -116,8 +123,6 @@ impl<T: PartialOrd> Contains<&Self> for FiniteInterval<T> {
             return true;
         };
 
-        // IMPLICIT UNSAFE: If lhs and rhs invariants are satisfied then all bounds
-        // are comparable and lhs_min <= rhs_max, rhs_min <= rhs_max.
         lhs_min.finite_ord(Left) <= rhs_min.finite_ord(Left)
             && rhs_max.finite_ord(Right) <= lhs_max.finite_ord(Right)
     }
@@ -180,7 +185,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true,
+            Self::Unbounded => true, // ok; set type invariants ensure comparable.
         }
     }
 }
@@ -191,7 +196,7 @@ impl<T: PartialOrd> Contains<&HalfInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true,
+            Self::Unbounded => true, // ok; set type invariants ensure comparable.
         }
     }
 }
@@ -202,11 +207,7 @@ impl<T: PartialOrd> Contains<&Self> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => match rhs {
-                Self::Finite(rhs) => self.contains(rhs),
-                Self::Half(rhs) => self.contains(rhs),
-                Self::Unbounded => true,
-            },
+            Self::Unbounded => true, // ok; set type invariants ensure comparable.
         }
     }
 }
@@ -228,5 +229,26 @@ mod tests {
         let h = EnumInterval::open_unbound(0.0);
         assert!(h.contains(&h));
         assert!(h.contains(&f));
+    }
+
+    #[test]
+    fn test_contains_nan() {
+        let closed_ord_nan = crate::bound::ord::FiniteOrdBound::closed(&f64::NAN);
+
+        let f = FiniteInterval::open(0.0, 10.0);
+        assert_eq!(f.contains(&f64::NAN), false);
+        assert_eq!(f.contains(closed_ord_nan), false);
+
+        let h = EnumInterval::unbound_open(0.0);
+        assert_eq!(h.contains(&f64::NAN), false);
+        assert_eq!(h.contains(closed_ord_nan), false);
+
+        let h = EnumInterval::open_unbound(0.0);
+        assert_eq!(h.contains(&f64::NAN), false);
+        assert_eq!(h.contains(closed_ord_nan), false);
+
+        let h = EnumInterval::unbounded();
+        assert_eq!(h.contains(&f64::NAN), false);
+        assert_eq!(h.contains(closed_ord_nan), false);
     }
 }
