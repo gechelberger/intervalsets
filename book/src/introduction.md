@@ -3,11 +3,20 @@ intervalsets
 
 `intervalsets` is a family of crates for working with intervals and numeric sets.
 
-* [`intervalsets-core`](https://crates.io/crates/intervalsets-core) -- no-std, no-alloc functionality.
-* [`intervalsets`](https://crates.io/crates/intervalsets) -- extended functionality requiring allocations.
+* [`intervalsets-core`](https://crates.io/crates/intervalsets-core) no-std, no-alloc functionality.
+* [`intervalsets`](https://crates.io/crates/intervalsets)
+    extended functionality requiring allocation.
 
 This booklet is intended to cover information applicable to the family of crates. 
-For specifics see the [`intervalsets-core`]() or [`intervalsets`]() documentation.
+For specifics see the [`intervalsets-core`]() or [`intervalsets`]() api documentation.
+
+Version
+-------
+
+<div class="warning">
+This reference is continuously deployed to GitHub Pages in sync with "main". 
+It is <b>not</b> gauaranteed to reflect a release in the crates registry.
+</div>
 
 Limitations
 -----------
