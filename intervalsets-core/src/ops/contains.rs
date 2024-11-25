@@ -185,7 +185,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true,
+            Self::Unbounded => true, // ok; set type invariants ensure comparable.
         }
     }
 }
@@ -196,7 +196,7 @@ impl<T: PartialOrd> Contains<&HalfInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true,
+            Self::Unbounded => true, // ok; set type invariants ensure comparable.
         }
     }
 }
@@ -207,7 +207,7 @@ impl<T: PartialOrd> Contains<&Self> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true,
+            Self::Unbounded => true, // ok; set type invariants ensure comparable.
         }
     }
 }
