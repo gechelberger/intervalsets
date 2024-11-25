@@ -1,3 +1,6 @@
 Cargo.lock
 .vscode/
 /target
+
+# the build directory for mdbook
+/book/book
