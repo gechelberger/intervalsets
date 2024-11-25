@@ -19,7 +19,7 @@ These are low level abstractions which should be deployable in almost any enviro
 
 `intervalsets-core`, by default, should be usable in any embedded environment, with or 
 without an allocator. The crate does provide some optional features for externally defined 
-`set element types` that require allocation. These must live in `intervalsets-core` due to rust`s 
+`set element types` that require allocation. These must live in `intervalsets-core` due to rust's 
 [orphan rule](https://github.com/Ixrec/rust-orphan-rules) since the required traits 
 are defined in `intervalsets-core`.
 
