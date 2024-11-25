@@ -59,35 +59,3 @@ assert_eq!(rejected, vec![
     Interval::closed(200, 210),
 ])
 ```
-
-## development
-
-### setup
-
-```sh
-cargo install just
-just setup # install or update all our build tools
-
-just --list
-```
-
-#### commit msgs
-
-This project follows a subset of [conventional commits](https://www.conventionalcommits.org/en/v1.0.0/)
-for changelog management with git-cliff. [.commitlintrc.yaml] defines the linting
-rules.
-
-```sh
-# minor semver change, closes github issue #55
-git commit -m 'feat: [resolves #55] added new function struct::foo'
-
-# major semver change, references github issue #67
-# NOTE: single quotes are required because of the exclamation point.
-git commit -m 'feat!: [issue #67] changed public api for Bar'
-
-# patch semver change, closes github issue #33
-git commit -m 'fix: [resolves #33] fence post error in Baz'
-
-# no semver change
-git commit -m 'chore: changed ci pipeline'
-```

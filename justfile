@@ -1,13 +1,17 @@
-# cargo install just
+# Common tasks for intervalsets dev.
 
+# the minimum supported rust version
 MSRV := "1.81.0"
+
+# the target rust version
+RV := "nightly"
 
 # just run the tests
 default: test
 
 # install and/or update build tools and environment
-setup:
-    @echo 'refreshing the dev environment'
+update:
+    @echo 'update the dev environment'
 
     # update rustup
     rustup self update
@@ -20,6 +24,9 @@ setup:
 
     # make sure we have the MSRV toolchain installed
     rustup toolchain install {{MSRV}}
+
+    # make sure that we have the nightly compiler
+    rustup toolchain install nightly
 
     # watch the docs as you work
     cargo install static-web-server --locked
@@ -40,24 +47,39 @@ setup:
     cargo install commitlint-rs --locked
 
     # check codebase for loose ends
-    cargo install ripgrep
+    cargo install ripgrep --locked
 
+setup: update
     # building the test dependencies installs newest githooks (husky-rs)
     cargo clean && cargo test build
 
-alias d := docs
-
 # build the docs
-docs:
-    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo doc \
+doc:
+    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo +{{RV}} doc \
         --workspace \
         --all-features \
         --no-deps \
         --exclude benchmarks
+        
+alias d := doc
 
 # launch a file server for docs
-serve-docs port="8080": docs
+doc-serve port="8080": doc
     static-web-server --root target/doc --port {{port}} -z
+
+# run the tests
+test pattern="":
+    cargo +{{RV}} test --all-features {{pattern}}
+
+alias t := test
+
+# format the code base
+fmt:
+    cargo +{{RV}} fmt
+
+# check the build
+check:
+    cargo +{{RV}} check --all-features
 
 # run the test suite against the msrv
 check-msrv:
@@ -65,20 +87,14 @@ check-msrv:
 
 # build against a no-std target
 check-no-std:
-    cargo hack check --package intervalsets-core --each-feature \
+    cargo +{{RV}} hack check --package intervalsets-core --each-feature \
         --exclude-features std,num-bigint,bigdecimal,arbitrary,quickcheck \
         --target thumbv6m-none-eabi \
         --verbose
 
-alias t := test
-
-# run the tests
-test pattern="":
-    cargo test --all-features {{pattern}}
-
-# check the build
-check:
-    cargo check --all-features
+# check the benchmarks
+check-bench:
+    just bench --no-run
 
 # clean old build artifacts
 clean:
@@ -86,18 +102,20 @@ clean:
 
 # run the micro benchmarks
 bench pattern="":
-    cargo criterion --package benchmarks {{pattern}}
+    cargo +{{RV}} criterion --package benchmarks {{pattern}}
 
-# run the core micro benchmarks
+# run the core crate micro benchmarks
 bench-core pattern="":
-    cargo criterion --package benchmarks --bench intervalsets_core {{pattern}}
+    just bench "--bench intervalsets_core {{pattern}}"
 
+# run the main crate micro benchmarks
 bench-main pattern="":
-    cargo criterion --package benchmarks --bench intervalsets {{pattern}}
+    just bench "--bench intervalsets {{pattern}}"
 
-ci: docs test check-msrv check-no-std
-    cargo criterion --package benchmarks --no-run
+# check the ci targets locally
+ci: doc test check-msrv check-no-std check-bench
     @echo "CI checks complete"
 
+# scan codebase for pre-release markers
 loose-ends:
     rg --glob !justfile --ignore-case 'dbg!|fixme|todo|wip|xxx' .
