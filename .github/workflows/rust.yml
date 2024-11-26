@@ -51,6 +51,29 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - run: cargo +nightly doc --all-features --no-deps
-        env:
-          RUSTDOCFLAGS: "-D warnings --cfg docsrs"
+      - name: install just
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: just
+          version: '^1'
+      - run: just doc
+
+      #- run: cargo +nightly doc --all-features --no-deps
+      #  env:
+      #    RUSTDOCFLAGS: "-D warnings --cfg docsrs"
+  
+  check-book:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@nightly
+      - name: Setup mdbook
+        uses: peaceiris/actions-mdbook@v2
+        with:
+          mdbook-version: 'latest'
+      - name: install just
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: just
+          version: '^1'
+      - run: just book-test
