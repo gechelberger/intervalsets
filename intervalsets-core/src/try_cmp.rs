@@ -16,6 +16,7 @@ use crate::error::TotalOrderError;
 
 /// Returns the ordering of lhs and rhs or TotalOrderError
 pub trait TryCmp {
+    #[allow(missing_docs)]
     fn try_cmp(&self, rhs: &Self) -> Result<Ordering, TotalOrderError>;
 }
 
@@ -39,6 +40,7 @@ impl<T: PartialOrd> TryCmp for T {
 }
 
 impl<T: PartialOrd> TryMin for T {
+    #[inline]
     fn try_min(self, rhs: Self) -> Result<Self, TotalOrderError> {
         match self.try_cmp(&rhs)? {
             Less | Equal => Ok(self),
@@ -48,6 +50,7 @@ impl<T: PartialOrd> TryMin for T {
 }
 
 impl<T: PartialOrd> TryMax for T {
+    #[inline]
     fn try_max(self, rhs: Self) -> Result<Self, TotalOrderError> {
         match self.try_cmp(&rhs)? {
             Greater | Equal => Ok(self),
@@ -56,6 +59,7 @@ impl<T: PartialOrd> TryMax for T {
     }
 }
 
+#[inline]
 pub fn try_ord_pair<A: PartialOrd>(lhs: A, rhs: A) -> Result<[A; 2], TotalOrderError> {
     match lhs.try_cmp(&rhs)? {
         Less | Equal => Ok([lhs, rhs]),
@@ -63,6 +67,7 @@ pub fn try_ord_pair<A: PartialOrd>(lhs: A, rhs: A) -> Result<[A; 2], TotalOrderE
     }
 }
 
+#[inline]
 pub fn try_ord_tuple<A: PartialOrd>(lhs: A, rhs: A) -> Result<(A, A), TotalOrderError> {
     match lhs.try_cmp(&rhs)? {
         Less | Equal => Ok((lhs, rhs)),
