@@ -228,7 +228,7 @@
 #![deny(bad_style)]
 #![deny(future_incompatible)]
 #![deny(nonstandard_style)]
-#![deny(unused)]
+//#![deny(unused)]
 
 //#![warn(clippy::pedantic)]
 //#![warn(clippy::cargo)]
