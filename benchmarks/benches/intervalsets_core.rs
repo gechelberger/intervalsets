@@ -392,14 +392,14 @@ pub fn bench_interval_hull(c: &mut Criterion) {
     group.bench_function("finite-by-value", |b| {
         b.iter(|| {
             let x = black_box(points.clone());
-            FiniteInterval::convex_hull(x)
+            FiniteInterval::strict_hull(x)
         })
     });
 
     group.bench_function("finite-by-ref", |b| {
         b.iter(|| {
             let x = black_box(&points);
-            FiniteInterval::convex_hull(x)
+            FiniteInterval::strict_hull(x)
         })
     });
 }
