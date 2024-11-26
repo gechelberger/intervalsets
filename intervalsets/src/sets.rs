@@ -109,7 +109,7 @@ impl<T> Interval<T> {
     /// ```
     pub fn is_half_bounded_on(&self, side: Side) -> bool {
         match self.0 {
-            EnumInterval::Half(ref inner) => inner.side == side,
+            EnumInterval::Half(ref inner) => inner.side() == side,
             _ => false,
         }
     }

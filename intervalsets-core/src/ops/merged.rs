@@ -155,7 +155,7 @@ impl<T: Element> TryMerge<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
-        if self.side == rhs.side {
+        if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Some(self.into())
             } else {
@@ -177,7 +177,7 @@ impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
-        if self.side == rhs.side {
+        if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Some(self.clone().into())
             } else {
@@ -207,15 +207,15 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
         if n == 2 {
             Some(self) // finite interval is fully contained
         } else if n == 1 {
-            let bound = self.side.select(rhs_min, rhs_max);
+            let bound = self.side().select(rhs_min, rhs_max);
             // SAFETY: assume invariants satisfied by FiniteInterval.
-            unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+            unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
         } else {
-            let maybe_adjacent = self.side.select(&rhs_max, &rhs_min);
+            let maybe_adjacent = self.side().select(&rhs_max, &rhs_min);
             if self.is_adjacent_to(maybe_adjacent) {
-                let bound = self.side.select(rhs_min, rhs_max);
+                let bound = self.side().select(rhs_min, rhs_max);
                 // SAFETY: assum invariants satisfied by FiniteInterval.
-                unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
             } else {
                 None
             }
@@ -239,13 +239,13 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
         if n == 2 {
             Some(self.clone())
         } else if n == 1 {
-            let bound = self.side.select(rhs_min, rhs_max).clone();
-            unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+            let bound = self.side().select(rhs_min, rhs_max).clone();
+            unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
         } else {
-            let maybe_adj = self.side.select(rhs_max, rhs_min);
+            let maybe_adj = self.side().select(rhs_max, rhs_min);
             if self.is_adjacent_to(maybe_adj) {
-                let bound = self.side.select(rhs_min, rhs_max).clone();
-                unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+                let bound = self.side().select(rhs_min, rhs_max).clone();
+                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
             } else {
                 None
             }

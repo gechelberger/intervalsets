@@ -91,27 +91,32 @@ impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        match self.side {
+        let (side, current_bound) = self.into_raw();
+        match side {
             Side::Left => match bound {
                 None => EnumInterval::unbounded(),
                 Some(inner) => EnumInterval::left_bounded(inner),
             },
             Side::Right => match bound {
-                None => EnumInterval::from(self),
-                Some(inner) => EnumInterval::finite(inner, self.bound),
+                None => unsafe { EnumInterval::from(Self::new_unchecked(side, current_bound)) },
+                Some(inner) => EnumInterval::finite(inner, current_bound),
             },
         }
     }
 
     fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        match self.side {
+        let (side, current_bound) = self.into_raw();
+        match side {
             Side::Right => match bound {
                 None => EnumInterval::unbounded(),
                 Some(inner) => EnumInterval::right_bounded(inner),
             },
             Side::Left => match bound {
-                None => EnumInterval::from(self),
-                Some(inner) => EnumInterval::finite(self.bound, inner),
+                None => unsafe {
+                    // SAFETY: just putting it back together
+                    EnumInterval::from(Self::new_unchecked(side, current_bound))
+                },
+                Some(inner) => EnumInterval::finite(current_bound, inner),
             },
         }
     }

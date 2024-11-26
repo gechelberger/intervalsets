@@ -74,20 +74,21 @@ impl<T: Element + Clone + Zero> Split<T> for HalfInterval<T> {
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
         if self.contains(&at) {
             let (l_max, r_min) = split_bounds_at(at, closed);
-            match self.side {
+            let (side, bound) = self.into_raw();
+            match side {
                 Side::Left => {
-                    let left = FiniteInterval::new(self.bound, l_max);
-                    let right = Self::new(self.side, r_min);
+                    let left = FiniteInterval::new(bound, l_max);
+                    let right = Self::new(side, r_min);
                     (left.into(), right.into())
                 }
                 Side::Right => {
-                    let left = Self::new(self.side, l_max);
-                    let right = FiniteInterval::new(r_min, self.bound);
+                    let left = Self::new(side, l_max);
+                    let right = FiniteInterval::new(r_min, bound);
                     (left.into(), right.into())
                 }
             }
         } else {
-            match self.side {
+            match self.side() {
                 Side::Left => (EnumInterval::empty(), self.into()),
                 Side::Right => (self.into(), EnumInterval::empty()),
             }

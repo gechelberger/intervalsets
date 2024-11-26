@@ -93,9 +93,9 @@ impl<T: Element> Adjacent<&Self> for FiniteInterval<T> {
 
 impl<T: Element> Adjacent<&FiniteBound<T>> for HalfInterval<T> {
     fn is_adjacent_to(&self, rhs: &FiniteBound<T>) -> bool {
-        match self.side {
-            Side::Left => are_adjacent(rhs, &self.bound),
-            Side::Right => are_adjacent(&self.bound, rhs),
+        match self.side() {
+            Side::Left => are_adjacent(rhs, self.finite_bound()),
+            Side::Right => are_adjacent(self.finite_bound(), rhs),
         }
     }
 }
@@ -103,9 +103,9 @@ impl<T: Element> Adjacent<&FiniteBound<T>> for HalfInterval<T> {
 impl<T: Element> Adjacent<&Self> for HalfInterval<T> {
     #[inline(always)]
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
-        match (self.side, rhs.side) {
-            (Side::Left, Side::Right) => are_adjacent(&rhs.bound, &self.bound),
-            (Side::Right, Side::Left) => are_adjacent(&self.bound, &rhs.bound),
+        match (self.side(), rhs.side()) {
+            (Side::Left, Side::Right) => are_adjacent(rhs.finite_bound(), self.finite_bound()),
+            (Side::Right, Side::Left) => are_adjacent(self.finite_bound(), rhs.finite_bound()),
             _ => false,
         }
     }
@@ -117,9 +117,9 @@ impl<T: Element> Adjacent<&HalfInterval<T>> for FiniteInterval<T> {
             return true;
         };
 
-        match rhs.side {
-            Side::Left => are_adjacent(lhs_max, &rhs.bound),
-            Side::Right => are_adjacent(&rhs.bound, lhs_min),
+        match rhs.side() {
+            Side::Left => are_adjacent(lhs_max, rhs.finite_bound()),
+            Side::Right => are_adjacent(rhs.finite_bound(), lhs_min),
         }
     }
 }

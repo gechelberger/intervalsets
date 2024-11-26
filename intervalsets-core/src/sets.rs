@@ -181,8 +181,8 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 pub struct HalfInterval<T> {
-    pub side: Side,
-    pub bound: FiniteBound<T>,
+    side: Side,
+    bound: FiniteBound<T>,
 }
 
 impl<T> HalfInterval<T> {
@@ -226,9 +226,31 @@ impl<T> HalfInterval<T> {
         (self.side, self.bound)
     }
 
-    #[inline(always)]
+    pub fn into_finite_ord_bound(self) -> FiniteOrdBound<T> {
+        self.bound.into_finite_ord(self.side)
+    }
+
+    pub fn into_ord_bound(self) -> OrdBound<T> {
+        self.bound.into_ord(self.side)
+    }
+
     pub fn finite_ord_bound(&self) -> FiniteOrdBound<&T> {
         self.bound.finite_ord(self.side)
+    }
+
+    pub fn ord_bound(&self) -> OrdBound<&T> {
+        self.bound.ord(self.side)
+    }
+
+    #[inline(always)]
+    pub fn side(&self) -> Side {
+        self.side
+    }
+
+    /// Returns the finite bound of the HalfBounded interval.
+    #[inline(always)]
+    pub fn finite_bound(&self) -> &FiniteBound<T> {
+        &self.bound
     }
 }
 

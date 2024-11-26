@@ -96,18 +96,17 @@ impl<'a, T> From<&'a FiniteInterval<T>> for OrdBoundPair<&'a T> {
 
 impl<T> From<HalfInterval<T>> for OrdBoundPair<T> {
     fn from(value: HalfInterval<T>) -> Self {
-        let ord_bound = value.bound.into_ord(value.side);
-        match value.side {
-            Side::Left => OrdBoundPair::new(ord_bound, OrdBound::RightUnbounded),
-            Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, ord_bound),
+        match value.side() {
+            Side::Left => OrdBoundPair::new(value.into_ord_bound(), OrdBound::RightUnbounded),
+            Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, value.into_ord_bound()),
         }
     }
 }
 
 impl<'a, T> From<&'a HalfInterval<T>> for OrdBoundPair<&'a T> {
     fn from(value: &'a HalfInterval<T>) -> Self {
-        let ord_bound = value.bound.ord(value.side);
-        match value.side {
+        let ord_bound = value.ord_bound();
+        match value.side() {
             Side::Left => OrdBoundPair::new(ord_bound, OrdBound::RightUnbounded),
             Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, ord_bound),
         }

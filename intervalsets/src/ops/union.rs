@@ -94,7 +94,7 @@ mod icore {
         type Output = IntervalSet<T>;
 
         fn union(self, rhs: Self) -> Self::Output {
-            if self.side == rhs.side {
+            if self.side() == rhs.side() {
                 if self.contains(rhs.finite_ord_bound()) {
                     IntervalSet::new_unchecked([self.into()])
                 } else {
@@ -120,9 +120,11 @@ mod icore {
                     return IntervalSet::new_unchecked([rhs.into()]);
                 };
 
-                let side = rhs.side;
+                let side = rhs.side();
                 let bound = side.select(lhs_min, lhs_max);
-                IntervalSet::new_unchecked([HalfInterval { side, bound }.into()])
+                unsafe {
+                    IntervalSet::new_unchecked([HalfInterval::new_unchecked(side, bound).into()])
+                }
             } else {
                 IntervalSet::new_unchecked(ordered_pair(self.into(), rhs.into()))
             }

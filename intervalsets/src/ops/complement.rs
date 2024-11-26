@@ -40,9 +40,10 @@ impl<T: Element> Complement for HalfInterval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
-        let side = self.side.flip();
+        let (side, bound) = self.into_raw();
+        let side = side.flip();
         // Safety: Assume bound satisfies invariants; manually re-normalize after flip;
-        unsafe { HalfInterval::new_unchecked(side, self.bound.flip().normalized(side)).into() }
+        unsafe { HalfInterval::new_unchecked(side, bound.flip().normalized(side)).into() }
     }
 }
 

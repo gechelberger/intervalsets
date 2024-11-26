@@ -107,11 +107,12 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
             // SAFETY: just putting it back together
             unsafe { Ok(FiniteInterval::new_unchecked(lhs_min, lhs_max)) }
         } else if n == 1 {
+            let (rhs_side, rhs_bound) = rhs.into_raw();
             // SAFETY: if self and rhs already satisfy invariants then ok.
             unsafe {
-                match rhs.side {
-                    Left => FiniteInterval::new_strict_assume_normed(rhs.bound, lhs_max),
-                    Right => FiniteInterval::new_strict_assume_normed(lhs_min, rhs.bound),
+                match rhs_side {
+                    Left => FiniteInterval::new_strict_assume_normed(rhs_bound, lhs_max),
+                    Right => FiniteInterval::new_strict_assume_normed(lhs_min, rhs_bound),
                 }
             }
         } else {
@@ -146,13 +147,15 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
         } else if n == 1 {
             // SAFETY: if self and rhs already satisfy invariants then ok.
             unsafe {
-                match rhs.side {
-                    Left => {
-                        FiniteInterval::new_strict_assume_normed(rhs.bound.clone(), lhs_max.clone())
-                    }
-                    Right => {
-                        FiniteInterval::new_strict_assume_normed(lhs_min.clone(), rhs.bound.clone())
-                    }
+                match rhs.side() {
+                    Left => FiniteInterval::new_strict_assume_normed(
+                        rhs.finite_bound().clone(),
+                        lhs_max.clone(),
+                    ),
+                    Right => FiniteInterval::new_strict_assume_normed(
+                        lhs_min.clone(),
+                        rhs.finite_bound().clone(),
+                    ),
                 }
             }
         } else {
@@ -167,18 +170,21 @@ impl<T: Element> Intersection<Self> for HalfInterval<T> {
 
     #[inline(always)]
     fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        if self.side == rhs.side {
+        if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Ok(rhs.into())
             } else {
                 Ok(self.into())
             }
         } else {
+            let (lhs_side, lhs_bound) = self.into_raw();
+            let (_, rhs_bound) = rhs.into_raw();
+
             // SAFETY: self and rhs should already satifsy invariants
             let result = unsafe {
-                match self.side {
-                    Side::Left => FiniteInterval::new_strict_assume_normed(self.bound, rhs.bound),
-                    Side::Right => FiniteInterval::new_strict_assume_normed(rhs.bound, self.bound),
+                match lhs_side {
+                    Side::Left => FiniteInterval::new_strict_assume_normed(lhs_bound, rhs_bound),
+                    Side::Right => FiniteInterval::new_strict_assume_normed(rhs_bound, lhs_bound),
                 }
             };
 
@@ -193,19 +199,19 @@ impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
 
     #[inline(always)]
     fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        if self.side == rhs.side {
+        if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Ok(rhs.clone().into())
             } else {
                 Ok(self.clone().into())
             }
         } else if self.contains(rhs.finite_ord_bound()) {
-            let lhs = self.bound.clone();
-            let rhs = rhs.bound.clone();
+            let lhs = self.finite_bound().clone();
+            let rhs = rhs.finite_bound().clone();
 
             // SAFETY: self and rhs should satisfy invariants
             let result = unsafe {
-                match self.side {
+                match self.side() {
                     Left => FiniteInterval::new_strict_assume_normed(lhs, rhs),
                     Right => FiniteInterval::new_strict_assume_normed(rhs, lhs),
                 }
