@@ -2,7 +2,7 @@
 authors = ["Greg Echelberger"]
 language = "en"
 multilingual = false
-src = "src"
+src = "content"
 title = "intervalsets"
 
 [rust]

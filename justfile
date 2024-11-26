@@ -79,6 +79,10 @@ alias t := test
 book-serve:
     mdbook serve book
 
+book-test:
+    mdbook build book
+    cargo +{{RV}} test --package book --doc
+
 # format the code base
 fmt:
     cargo +{{RV}} fmt
@@ -119,7 +123,7 @@ bench-main pattern="":
     just bench "--bench intervalsets {{pattern}}"
 
 # check the ci targets locally
-ci: doc test check-msrv check-no-std check-bench
+ci: doc book-test test check-msrv check-no-std check-bench
     @echo "CI checks complete"
 
 # scan codebase for pre-release markers

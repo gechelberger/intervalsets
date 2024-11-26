@@ -10,7 +10,7 @@
 # Design
 
 - [Goals](design/goals.md)
-- [Types](design/meta-types.md)
+- [Types](design/types.md)
 - [Errors](design/errors.md)
 - [Footguns](design/footguns.md)
 

@@ -1,4 +1,4 @@
 [workspace]
-members = [ "benchmarks","intervalsets", "intervalsets-core"]
+members = [ "benchmarks", "book","intervalsets", "intervalsets-core"]
 default-members = ["intervalsets", "intervalsets-core"]
 resolver = "2"
