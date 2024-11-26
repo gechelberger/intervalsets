@@ -3,8 +3,8 @@ name: gh-pages-book
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
+  #pull_request:
+  #  branches: [ "main" ]
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
 
   deploy:
     needs: build
-    if: ${{ startsWith(github.ref, 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
+    # if: ${{ startsWith(github.ref, 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
 
 
     permissions:
