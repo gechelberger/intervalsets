@@ -6,6 +6,7 @@ use super::bound::{FiniteBound, SetBounds};
 use crate::bound::ord::FiniteOrdBound;
 use crate::error::{Error, TotalOrderError};
 use crate::numeric::{Element, Zero};
+use crate::try_cmp::TryCmp;
 
 /// todo
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -61,15 +62,28 @@ impl<T: PartialOrd> FiniteInterval<T> {
     /// The user is responsible for ensuring that invariants are satisfied.
     #[inline]
     pub unsafe fn new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        let order = match lhs.value().partial_cmp(rhs.value()) {
-            Some(order) => order,
-            None => panic!("assumed normalized and comparable"),
-        };
+        match Self::new_strict_assume_normed(lhs, rhs) {
+            Ok(finterval) => finterval,
+            Err(e) => panic!("assumed normalized and comparable: {}", e),
+        }
+    }
 
+    /// Creates a FiniteInterval; assumes normalized.
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring that bounds are normed.
+    /// Bounds checking is done but may not be correct if not normed.
+    #[inline(always)]
+    pub unsafe fn new_strict_assume_normed(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self, Error> {
+        let order = lhs.value().try_cmp(rhs.value())?;
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
-            unsafe { Self::new_unchecked(lhs, rhs) }
+            Ok(Self::new_unchecked(lhs, rhs))
         } else {
-            Self::empty()
+            Ok(Self::empty())
         }
     }
 }
@@ -307,5 +321,29 @@ mod tests {
 
         assert_eq!(x.left().unwrap(), &FiniteBound::closed(0));
         assert_eq!(x.right().unwrap(), &FiniteBound::closed(10));
+    }
+
+    #[test]
+    fn test_ord_bounded_trait() {
+        let x = EnumInterval::closed(0, 10);
+
+        fn by_ref(y: &EnumInterval<i32>) {
+            let ob = y.ord_bound_pair();
+            assert_eq!(
+                ob,
+                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
+            );
+        }
+
+        fn by_val(y: EnumInterval<i32>) {
+            let ob = y.ord_bound_pair();
+            assert_eq!(
+                ob,
+                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
+            );
+        }
+
+        by_ref(&x);
+        by_val(x);
     }
 }

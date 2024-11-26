@@ -1,4 +1,5 @@
-use super::util::commutative_op_move_impl;
+use core::borrow::Borrow;
+
 use super::Contains;
 use crate::bound::ord::OrdBounded;
 use crate::bound::FiniteBound;
@@ -27,30 +28,37 @@ use crate::sets::HalfInterval;
 /// let y = FiniteInterval::closed(20, 30);
 /// assert!(x.intersection(y).is_empty());
 /// ```
-pub trait Intersection<Rhs = Self> {
+pub trait Intersection<Rhs = Self>: Sized {
     /// The type of `Set` to create.
     type Output;
+    type Error: core::error::Error;
 
     /// Creates a new `Set` intersection of A and B.
-    fn intersection(self, rhs: Rhs) -> Self::Output;
+    #[inline(always)]
+    fn intersection(self, rhs: Rhs) -> Self::Output {
+        self.strict_intersection(rhs).unwrap()
+    }
+
+    fn strict_intersection(self, rhs: Rhs) -> Result<Self::Output, Self::Error>;
 }
 
 impl<T: Element> Intersection<Self> for FiniteInterval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
     #[inline(always)]
-    fn intersection(self, rhs: Self) -> Self::Output {
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let Bounded(lhs_min, lhs_max) = self else {
-            return Empty;
+            return Ok(Empty);
         };
 
         let Bounded(rhs_min, rhs_max) = rhs else {
-            return Empty;
+            return Ok(Empty);
         };
 
-        // Safety: self and rhs should already be normalized.
+        // SAFETY: self and rhs should already satisfy invariants.
         unsafe {
-            FiniteInterval::new_assume_normed(
+            FiniteInterval::new_strict_assume_normed(
                 FiniteBound::take_max_unchecked(Left, lhs_min, rhs_min),
                 FiniteBound::take_min_unchecked(Right, lhs_max, rhs_max),
             )
@@ -60,20 +68,20 @@ impl<T: Element> Intersection<Self> for FiniteInterval<T> {
 
 impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
+    type Error = crate::error::Error;
 
     #[inline(always)]
-    fn intersection(self, rhs: Self) -> Self::Output {
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let Bounded(lhs_min, lhs_max) = self else {
-            return Empty;
+            return Ok(Empty);
         };
 
         let Bounded(rhs_min, rhs_max) = rhs else {
-            return Empty;
+            return Ok(Empty);
         };
 
-        // Safety: self and rhs should already be normalized.
         unsafe {
-            FiniteInterval::new_assume_normed(
+            FiniteInterval::new_strict_assume_normed(
                 FiniteBound::max_unchecked(Left, lhs_min, rhs_min).clone(),
                 FiniteBound::min_unchecked(Right, lhs_max, rhs_max).clone(),
             )
@@ -83,25 +91,12 @@ impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
 
 impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
     #[inline(always)]
-    fn intersection(self, rhs: HalfInterval<T>) -> Self::Output {
-        /*if self.contains(rhs.bound.value()) {
-            let Bounded(lhs_min, lhs_max) = self else {
-                unreachable!();
-            };
-            match rhs.side {
-                Left => unsafe { FiniteInterval::new_norm(rhs.bound, lhs_max) },
-                Right => unsafe { FiniteInterval::new_norm(lhs_min, rhs.bound) },
-            }
-        } else if rhs.contains(&self) {
-            self
-        } else {
-            Empty
-        }*/
-
-        let Bounded(lhs_min, lhs_max) = self else {
-            return Empty;
+    fn strict_intersection(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        let Some((lhs_min, lhs_max)) = self.into_raw() else {
+            return Ok(Empty);
         };
 
         let n = [lhs_min.finite_ord(Left), lhs_max.finite_ord(Right)]
@@ -110,219 +105,182 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
             .count();
 
         if n == 2 {
-            unsafe { FiniteInterval::new_unchecked(lhs_min, lhs_max) }
+            // SAFETY: just putting it back together
+            unsafe { Ok(FiniteInterval::new_unchecked(lhs_min, lhs_max)) }
         } else if n == 1 {
-            // SAFETY: bounds should already be normalized
-            match rhs.side {
-                Left => unsafe { FiniteInterval::new_assume_normed(rhs.bound, lhs_max) },
-                Right => unsafe { FiniteInterval::new_assume_normed(lhs_min, rhs.bound) },
+            // SAFETY: if self and rhs already satisfy invariants then ok.
+            unsafe {
+                match rhs.side {
+                    Left => FiniteInterval::new_strict_assume_normed(rhs.bound, lhs_max),
+                    Right => FiniteInterval::new_strict_assume_normed(lhs_min, rhs.bound),
+                }
             }
         } else {
-            Empty
+            Ok(Empty)
         }
     }
 }
 
 impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
+    type Error = crate::error::Error;
 
     #[inline(always)]
-    fn intersection(self, rhs: &HalfInterval<T>) -> Self::Output {
-        if self.contains(rhs.finite_ord_bound()) {
-            let Bounded(lhs_min, lhs_max) = self else {
-                unreachable!();
-            };
+    fn strict_intersection(self, rhs: &HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        let Bounded(lhs_min, lhs_max) = self else {
+            return Ok(Empty);
+        };
 
-            match rhs.side {
-                Left => unsafe {
-                    FiniteInterval::new_assume_normed(rhs.bound.clone(), lhs_max.clone())
-                },
-                Right => unsafe {
-                    FiniteInterval::new_assume_normed(lhs_min.clone(), rhs.bound.clone())
-                },
+        let n = [lhs_min.finite_ord(Left), lhs_max.finite_ord(Right)]
+            .into_iter()
+            .filter(|bound| rhs.contains(*bound))
+            .count();
+
+        if n == 2 {
+            // SAFETY: just putting it back together
+            unsafe {
+                Ok(FiniteInterval::new_unchecked(
+                    lhs_min.clone(),
+                    lhs_max.clone(),
+                ))
             }
-        } else if rhs.contains(self) {
-            self.clone()
+        } else if n == 1 {
+            // SAFETY: if self and rhs already satisfy invariants then ok.
+            unsafe {
+                match rhs.side {
+                    Left => {
+                        FiniteInterval::new_strict_assume_normed(rhs.bound.clone(), lhs_max.clone())
+                    }
+                    Right => {
+                        FiniteInterval::new_strict_assume_normed(lhs_min.clone(), rhs.bound.clone())
+                    }
+                }
+            }
         } else {
-            Empty
+            Ok(Empty)
         }
-    }
-}
-
-impl<T: Element + Clone> Intersection<&FiniteInterval<T>> for &HalfInterval<T> {
-    type Output = FiniteInterval<T>;
-
-    #[inline(always)]
-    fn intersection(self, rhs: &FiniteInterval<T>) -> Self::Output {
-        rhs.intersection(self)
     }
 }
 
 impl<T: Element> Intersection<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
+    type Error = crate::error::Error;
 
     #[inline(always)]
-    fn intersection(self, rhs: Self) -> Self::Output {
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         if self.side == rhs.side {
             if self.contains(rhs.finite_ord_bound()) {
-                rhs.into()
+                Ok(rhs.into())
             } else {
-                self.into()
+                Ok(self.into())
             }
         } else {
-            // SAFETY: bounds are already normalized
-            unsafe {
+            // SAFETY: self and rhs should already satifsy invariants
+            let result = unsafe {
                 match self.side {
-                    Side::Left => FiniteInterval::new_assume_normed(self.bound, rhs.bound),
-                    Side::Right => FiniteInterval::new_assume_normed(rhs.bound, self.bound),
+                    Side::Left => FiniteInterval::new_strict_assume_normed(self.bound, rhs.bound),
+                    Side::Right => FiniteInterval::new_strict_assume_normed(rhs.bound, self.bound),
                 }
-            }
-            .into()
+            };
+
+            result.map(EnumInterval::from)
         }
     }
 }
 
 impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
+    type Error = crate::error::Error;
 
     #[inline(always)]
-    fn intersection(self, rhs: Self) -> Self::Output {
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         if self.side == rhs.side {
             if self.contains(rhs.finite_ord_bound()) {
-                rhs.clone().into()
+                Ok(rhs.clone().into())
             } else {
-                self.clone().into()
+                Ok(self.clone().into())
             }
         } else if self.contains(rhs.finite_ord_bound()) {
             let lhs = self.bound.clone();
             let rhs = rhs.bound.clone();
-            match self.side {
-                Left => unsafe { FiniteInterval::new_assume_normed(lhs, rhs).into() },
-                Right => unsafe { FiniteInterval::new_assume_normed(rhs, lhs).into() },
-            }
+
+            // SAFETY: self and rhs should satisfy invariants
+            let result = unsafe {
+                match self.side {
+                    Left => FiniteInterval::new_strict_assume_normed(lhs, rhs),
+                    Right => FiniteInterval::new_strict_assume_normed(rhs, lhs),
+                }
+            };
+            result.map(EnumInterval::from)
         } else {
-            Empty.into()
+            Ok(Empty.into())
         }
     }
 }
 
-impl<T: Element> Intersection<FiniteInterval<T>> for EnumInterval<T> {
-    type Output = Self;
+macro_rules! dispatch_intersection_impl {
+    ($t_lhs:ty, $t_rhs:ty) => {
+        impl<T: $crate::numeric::Element> Intersection<$t_rhs> for $t_lhs {
+            type Output = EnumInterval<T>;
+            type Error = $crate::error::Error;
 
-    #[inline(always)]
-    fn intersection(self, rhs: FiniteInterval<T>) -> Self::Output {
-        match self {
-            Self::Finite(lhs) => lhs.intersection(rhs).into(),
-            Self::Half(lhs) => lhs.intersection(rhs).into(),
-            Self::Unbounded => rhs.into(),
+            #[inline(always)]
+            fn strict_intersection(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
+                match self {
+                    Finite(lhs) => lhs.strict_intersection(rhs).map(EnumInterval::from),
+                    Half(lhs) => lhs.strict_intersection(rhs).map(EnumInterval::from),
+                    Unbounded => Ok(rhs.into()),
+                }
+            }
         }
-    }
-}
 
-impl<T: Element + Clone> Intersection<&FiniteInterval<T>> for &EnumInterval<T> {
-    type Output = EnumInterval<T>;
+        impl<T: $crate::numeric::Element + Clone> Intersection<&$t_rhs> for &$t_lhs {
+            type Output = EnumInterval<T>;
+            type Error = $crate::error::Error;
 
-    #[inline(always)]
-    fn intersection(self, rhs: &FiniteInterval<T>) -> Self::Output {
-        match self {
-            Finite(lhs) => lhs.intersection(rhs).into(),
-            Half(lhs) => lhs.intersection(rhs).into(),
-            Unbounded => rhs.clone().into(),
+            #[inline(always)]
+            fn strict_intersection(self, rhs: &$t_rhs) -> Result<Self::Output, Self::Error> {
+                match self {
+                    Finite(lhs) => lhs.strict_intersection(rhs).map(EnumInterval::from),
+                    Half(lhs) => lhs.strict_intersection(rhs).map(EnumInterval::from),
+                    Unbounded => Ok(rhs.clone().into()),
+                }
+            }
         }
-    }
+    };
 }
 
-impl<T: Element> Intersection<HalfInterval<T>> for EnumInterval<T> {
-    type Output = Self;
+dispatch_intersection_impl!(EnumInterval<T>, EnumInterval<T>);
+dispatch_intersection_impl!(EnumInterval<T>, HalfInterval<T>);
+dispatch_intersection_impl!(EnumInterval<T>, FiniteInterval<T>);
 
-    #[inline(always)]
-    fn intersection(self, rhs: HalfInterval<T>) -> Self::Output {
-        match self {
-            Self::Finite(lhs) => lhs.intersection(rhs).into(),
-            Self::Half(lhs) => lhs.intersection(rhs),
-            Self::Unbounded => rhs.into(),
+macro_rules! commutative_intersection_impl {
+    ($t_lhs:ty, $t_rhs:ty, $t_ret:ty) => {
+        impl<T: $crate::numeric::Element> Intersection<$t_rhs> for $t_lhs {
+            type Output = $t_ret;
+            type Error = $crate::error::Error;
+
+            #[inline(always)]
+            fn strict_intersection(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
+                rhs.strict_intersection(self)
+            }
         }
-    }
-}
 
-impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &EnumInterval<T> {
-    type Output = EnumInterval<T>;
+        impl<T: $crate::numeric::Element + Clone> Intersection<&$t_rhs> for &$t_lhs {
+            type Output = $t_ret;
+            type Error = $crate::error::Error;
 
-    #[inline(always)]
-    fn intersection(self, rhs: &HalfInterval<T>) -> Self::Output {
-        match self {
-            Finite(lhs) => lhs.intersection(rhs).into(),
-            Half(lhs) => lhs.intersection(rhs),
-            Unbounded => rhs.clone().into(),
+            #[inline(always)]
+            fn strict_intersection(self, rhs: &$t_rhs) -> Result<Self::Output, Self::Error> {
+                rhs.strict_intersection(self)
+            }
         }
-    }
+    };
 }
 
-impl<T: Element> Intersection<Self> for EnumInterval<T> {
-    type Output = Self;
-
-    #[inline(always)]
-    fn intersection(self, rhs: Self) -> Self::Output {
-        match self {
-            Self::Finite(lhs) => rhs.intersection(lhs),
-            Self::Half(lhs) => rhs.intersection(lhs),
-            Self::Unbounded => rhs,
-        }
-    }
-}
-
-impl<T: Element + Clone> Intersection for &EnumInterval<T> {
-    type Output = EnumInterval<T>;
-
-    #[inline(always)]
-    fn intersection(self, rhs: Self) -> Self::Output {
-        match self {
-            Finite(lhs) => lhs.intersection(rhs),
-            Half(lhs) => lhs.intersection(rhs),
-            Unbounded => rhs.clone(),
-        }
-    }
-}
-
-impl<T: Element + Clone> Intersection<&EnumInterval<T>> for &FiniteInterval<T> {
-    type Output = EnumInterval<T>;
-
-    #[inline(always)]
-    fn intersection(self, rhs: &EnumInterval<T>) -> Self::Output {
-        rhs.intersection(self)
-    }
-}
-
-impl<T: Element + Clone> Intersection<&EnumInterval<T>> for &HalfInterval<T> {
-    type Output = EnumInterval<T>;
-
-    #[inline(always)]
-    fn intersection(self, rhs: &EnumInterval<T>) -> Self::Output {
-        rhs.intersection(self)
-    }
-}
-
-commutative_op_move_impl!(
-    Intersection,
-    intersection,
-    HalfInterval<T>,
-    FiniteInterval<T>,
-    FiniteInterval<T>
-);
-commutative_op_move_impl!(
-    Intersection,
-    intersection,
-    FiniteInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<T>
-);
-commutative_op_move_impl!(
-    Intersection,
-    intersection,
-    HalfInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<T>
-);
+commutative_intersection_impl!(HalfInterval<T>, FiniteInterval<T>, FiniteInterval<T>);
+commutative_intersection_impl!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>);
+commutative_intersection_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
 
 /// Compute the intersection of two iterators of intervals.
 ///
@@ -346,70 +304,80 @@ commutative_op_move_impl!(
 /// ];
 ///
 /// let mut s = SetSetIntersection::new(a, b);
-/// assert_eq!(s.next().unwrap(), EnumInterval::closed(10, 15));
-/// assert_eq!(s.next().unwrap(), EnumInterval::closed(20, 25));
-/// assert_eq!(s.next().unwrap(), EnumInterval::closed(75, 80));
-/// assert_eq!(s.next().unwrap(), EnumInterval::closed(95, 100));
+/// assert_eq!(s.next().unwrap(), Ok(EnumInterval::closed(10, 15)));
+/// assert_eq!(s.next().unwrap(), Ok(EnumInterval::closed(20, 25)));
+/// assert_eq!(s.next().unwrap(), Ok(EnumInterval::closed(75, 80)));
+/// assert_eq!(s.next().unwrap(), Ok(EnumInterval::closed(95, 100)));
 /// assert_eq!(s.next(), None);
 /// ```
-pub struct SetSetIntersection<T, I1, I2>
+pub struct SetSetIntersection<T, S, I1, I2>
 where
-    I1: Iterator<Item = EnumInterval<T>>,
-    I2: Iterator<Item = EnumInterval<T>>,
+    S: Borrow<EnumInterval<T>>,
+    I1: Iterator<Item = S>,
+    I2: Iterator<Item = S>,
 {
     a: itertools::PutBack<I1>,
     b: itertools::PutBack<I2>,
+    t: core::marker::PhantomData<T>,
 }
 
-impl<T, I1, I2> SetSetIntersection<T, I1, I2>
+impl<T, S, I1, I2> SetSetIntersection<T, S, I1, I2>
 where
-    I1: Iterator<Item = EnumInterval<T>>,
-    I2: Iterator<Item = EnumInterval<T>>,
+    S: Borrow<EnumInterval<T>>,
+    I1: Iterator<Item = S>,
+    I2: Iterator<Item = S>,
 {
     /// Creates a new SetSetIntersection Iterator
     ///
     /// If the standard `Set` invariants are not satisfied, behavior is undefined.
     pub fn new<U1, U2>(a: U1, b: U2) -> Self
     where
-        U1: IntoIterator<Item = EnumInterval<T>, IntoIter = I1>,
-        U2: IntoIterator<Item = EnumInterval<T>, IntoIter = I2>,
+        S: Borrow<EnumInterval<T>>,
+        U1: IntoIterator<Item = S, IntoIter = I1>,
+        U2: IntoIterator<Item = S, IntoIter = I2>,
     {
         Self {
             a: itertools::put_back(a),
             b: itertools::put_back(b),
+            t: core::marker::PhantomData,
         }
     }
 }
 
-impl<T, I1, I2> Iterator for SetSetIntersection<T, I1, I2>
+impl<T, S, I1, I2> Iterator for SetSetIntersection<T, S, I1, I2>
 where
     T: Element + Clone,
-    I1: Iterator<Item = EnumInterval<T>>,
-    I2: Iterator<Item = EnumInterval<T>>,
+    S: Borrow<EnumInterval<T>>,
+    I1: Iterator<Item = S>,
+    I2: Iterator<Item = S>,
 {
-    type Item = EnumInterval<T>;
+    type Item = Result<EnumInterval<T>, crate::error::Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let a = self.a.next()?;
         let b = self.b.next()?;
 
-        let ab = (&a).intersection(&b);
+        let ab = match a.borrow().strict_intersection(b.borrow()) {
+            Ok(inner) => inner,
+            Err(e) => return Some(Err(e)),
+        };
+
         if !ab.is_empty() {
             // since `a` and `b` intersect, we want to look at the right hand
             // bounds to decide which one (or both) to discard.
-            let (_, a_r) = a.ord_bound_pair().into_raw();
-            let (_, b_r) = b.ord_bound_pair().into_raw();
+            let (_, a_r) = a.borrow().ord_bound_pair().into_raw();
+            let (_, b_r) = b.borrow().ord_bound_pair().into_raw();
             if a_r > b_r {
                 self.a.put_back(a);
             } else if a_r < b_r {
                 self.b.put_back(b);
             }
-            Some(ab)
+            Some(Ok(ab))
         } else {
             // since `a` and `b` are disjoint, discard the one with the
             // smallest left hand bound.
-            let (l_a, _) = a.ord_bound_pair().into_raw();
-            let (l_b, _) = b.ord_bound_pair().into_raw();
+            let (l_a, _) = a.borrow().ord_bound_pair().into_raw();
+            let (l_b, _) = b.borrow().ord_bound_pair().into_raw();
             if l_a > l_b {
                 self.a.put_back(a);
             } else {
@@ -502,5 +470,30 @@ mod tests {
             EnumInterval::open(0.0, 10.0),
             EnumInterval::open(5.0, 15.0),
         );
+    }
+
+    extern crate std;
+
+    #[test]
+    fn test_set_set_iter() {
+        let a = std::vec![EnumInterval::closed(0, 10), EnumInterval::closed(100, 150)];
+
+        let b = std::vec![
+            EnumInterval::closed(5, 15),
+            EnumInterval::closed(90, 95),
+            EnumInterval::closed(140, 160),
+        ];
+
+        let mut it = SetSetIntersection::new(a.iter(), b.iter());
+
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(5, 10))));
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(140, 150))));
+        assert_eq!(it.next(), None);
+
+        let mut it = SetSetIntersection::new(a.into_iter(), b.into_iter());
+
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(5, 10))));
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(140, 150))));
+        assert_eq!(it.next(), None);
     }
 }

@@ -1,3 +1,5 @@
+use std::borrow::Borrow;
+
 pub use intervalsets_core::ops::Intersection;
 use intervalsets_core::ops::SetSetIntersection;
 
@@ -24,43 +26,94 @@ use crate::{Interval, IntervalSet, MaybeEmpty};
 /// ```
 impl<T: Element> Intersection<Self> for Interval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
-    fn intersection(self, rhs: Self) -> Self::Output {
-        self.0.intersection(rhs.0).into()
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        self.0.strict_intersection(rhs.0).map(Interval::from)
     }
+}
+
+impl<T: Element + Clone> Intersection<Self> for &Interval<T> {
+    type Output = Interval<T>;
+    type Error = crate::error::Error;
+
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        (&self.0).strict_intersection(&rhs.0).map(Interval::from)
+    }
+}
+
+fn do_strict_intersection<T, I>(
+    iset: IntervalSet<T>,
+    interval: I,
+) -> Result<IntervalSet<T>, crate::error::Error>
+where
+    T: Element + Clone,
+    I: Borrow<Interval<T>>,
+{
+    // invariants: intervals remain sorted; remain disjoint; filter out empty results;
+    let intervals = iset
+        .into_iter()
+        .map(|subset| (interval.borrow()).strict_intersection(&subset))
+        .collect::<Result<Vec<_>, crate::error::Error>>()?;
+
+    let intervals = intervals.into_iter().filter(|iv| !iv.is_empty());
+    Ok(IntervalSet::new_unchecked(intervals))
 }
 
 impl<T: Element + Clone> Intersection<Interval<T>> for IntervalSet<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
-    fn intersection(self, rhs: Interval<T>) -> Self::Output {
-        // invariants:
-        // intervals remain sorted; remain disjoint; filter out empty results;
-        let intervals = self
-            .into_iter()
-            .map(|iv| iv.intersection(rhs.clone()))
-            .filter(|iv| !iv.is_empty());
+    fn strict_intersection(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
+        do_strict_intersection(self, rhs)
+    }
+}
 
-        Self::new_unchecked(intervals)
+impl<T: Element + Clone> Intersection<&Interval<T>> for IntervalSet<T> {
+    type Output = Self;
+    type Error = crate::error::Error;
+
+    fn strict_intersection(self, rhs: &Interval<T>) -> Result<Self::Output, Self::Error> {
+        do_strict_intersection(self, rhs)
     }
 }
 
 impl<T: Element + Clone> Intersection<IntervalSet<T>> for Interval<T> {
     type Output = IntervalSet<T>;
+    type Error = crate::error::Error;
 
-    fn intersection(self, rhs: IntervalSet<T>) -> Self::Output {
-        rhs.intersection(self)
+    fn strict_intersection(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
+        rhs.strict_intersection(self)
     }
 }
 
 impl<T: Element + Clone> Intersection<Self> for IntervalSet<T> {
     type Output = IntervalSet<T>;
+    type Error = crate::error::Error;
 
-    fn intersection(self, rhs: Self) -> Self::Output {
-        Self::new_unchecked(
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let intersection =
             SetSetIntersection::new(self.into_iter().map(|x| x.0), rhs.into_iter().map(|x| x.0))
-                .map(Interval::from),
-        )
+                .collect::<Result<Vec<_>, crate::error::Error>>()?;
+
+        Ok(Self::new_unchecked(
+            intersection.into_iter().map(Interval::from),
+        ))
+    }
+}
+
+impl<T: Element + Clone> Intersection<Self> for &IntervalSet<T> {
+    type Output = IntervalSet<T>;
+    type Error = crate::error::Error;
+
+    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let intersection =
+            SetSetIntersection::new(self.iter().map(|x| &x.0), rhs.iter().map(|x| &x.0))
+                .collect::<Result<Vec<_>, Self::Error>>()?;
+
+        Ok(Self::Output::new_unchecked(
+            intersection.into_iter().map(Interval::from),
+        ))
     }
 }
 
@@ -216,6 +269,21 @@ mod tests {
         ]);
 
         assert_eq!(
+            (&a).intersection(&b),
+            IntervalSet::<i32>::new_unchecked(vec![
+                Interval::closed(0, 10),
+                Interval::closed(20, 30),
+                Interval::closed(50, 60),
+                Interval::closed(90, 100),
+                Interval::closed(500, 510),
+                Interval::closed(550, 560),
+                Interval::closed(590, 600),
+                Interval::closed(1000, 1100),
+                Interval::closed(10000, 11000)
+            ])
+        );
+
+        assert_eq!(
             a.intersection(b),
             IntervalSet::<i32>::new_unchecked(vec![
                 Interval::closed(0, 10),
@@ -247,6 +315,16 @@ mod tests {
             Interval::closed(-10, 10),       // [0, 10]
             Interval::closed_unbound(12000), // full
         ]);
+
+        assert_eq!(
+            (&a).intersection(&b),
+            IntervalSet::<i32>::new_unchecked(vec![
+                Interval::unbound_closed(-1000),
+                Interval::closed(-500, -400),
+                Interval::closed(0, 10),
+                Interval::closed_unbound(12000)
+            ])
+        );
 
         assert_eq!(
             a.intersection(b),
