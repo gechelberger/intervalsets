@@ -19,16 +19,22 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(left, FiniteInterval::closed(0, 5));
 /// assert_eq!(right, FiniteInterval::closed(6, 10));
 /// ```
-pub trait Split<T> {
+pub trait Split<T>: Sized {
     /// The type of `Set` to create when split.
     type Output;
+    type Error: core::error::Error;
 
     /// Creates two disjoint subsets with elements partitioned by `at`.
     ///
     /// # Panics
     ///
-    /// Can panic if `at` is not comparable.
-    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output);
+    /// Panic if `at` is not comparable.
+    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
+        self.strict_split(at, closed).unwrap()
+    }
+
+    fn strict_split(self, at: T, closed: Side)
+        -> Result<(Self::Output, Self::Output), Self::Error>;
 }
 
 fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBound<T>) {
@@ -40,57 +46,62 @@ fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBoun
 
 impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
-    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output)
-    where
-        Self: Sized,
-    {
-        let contains = self.contains(&at);
-        match self.into_raw() {
-            Some((left, right)) => {
-                if contains {
-                    let (l_max, r_min) = split_bounds_at(at, closed);
-                    let split_left = Self::new(left, l_max);
-                    let split_right = Self::new(r_min, right);
-                    (split_left, split_right)
-                } else {
-                    unsafe {
-                        if left.strict_contains(Side::Left, &at).unwrap() {
-                            (Self::new_unchecked(left, right), Self::empty())
-                        } else {
-                            (Self::empty(), Self::new_unchecked(left, right))
-                        }
-                    }
-                }
-            }
-            None => (Self::empty(), Self::empty()),
+    fn strict_split(
+        self,
+        at: T,
+        closed: Side,
+    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+        let Some((min, max)) = self.into_raw() else {
+            return Ok((Self::empty(), Self::empty()));
+        };
+
+        if !min.strict_contains(Side::Left, &at)? {
+            let repacked = unsafe { Self::new_unchecked(min, max) };
+            return Ok((Self::empty(), repacked));
         }
+
+        if !max.strict_contains(Side::Right, &at)? {
+            let repacked = unsafe { Self::new_unchecked(min, max) };
+            return Ok((repacked, Self::empty()));
+        }
+
+        let (lhs_max, rhs_min) = split_bounds_at(at, closed);
+        let split_left = Self::new_strict(min, lhs_max)?;
+        let split_right = Self::new_strict(rhs_min, max)?;
+        Ok((split_left, split_right))
     }
 }
 
 impl<T: Element + Clone + Zero> Split<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
+    type Error = crate::error::Error;
 
-    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
-        if self.contains(&at) {
-            let (l_max, r_min) = split_bounds_at(at, closed);
-            let (side, bound) = self.into_raw();
-            match side {
-                Side::Left => {
-                    let left = FiniteInterval::new(bound, l_max);
-                    let right = Self::new(side, r_min);
-                    (left.into(), right.into())
-                }
-                Side::Right => {
-                    let left = Self::new(side, l_max);
-                    let right = FiniteInterval::new(r_min, bound);
-                    (left.into(), right.into())
-                }
+    fn strict_split(
+        self,
+        at: T,
+        closed: Side,
+    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+        if !self.contains(&at) {
+            return match self.side() {
+                Side::Left => Ok((Self::Output::empty(), self.into())),
+                Side::Right => Ok((self.into(), Self::Output::empty())),
+            };
+        }
+
+        let (lhs_max, rhs_min) = split_bounds_at(at, closed);
+        let (side, bound) = self.into_raw();
+        match side {
+            Side::Left => {
+                let left = FiniteInterval::new_strict(bound, lhs_max)?;
+                let right = HalfInterval::new_strict(side, rhs_min)?;
+                Ok((left.into(), right.into()))
             }
-        } else {
-            match self.side() {
-                Side::Left => (EnumInterval::empty(), self.into()),
-                Side::Right => (self.into(), EnumInterval::empty()),
+            Side::Right => {
+                let left = HalfInterval::new_strict(side, lhs_max)?;
+                let right = FiniteInterval::new_strict(rhs_min, bound)?;
+                Ok((left.into(), right.into()))
             }
         }
     }
@@ -98,6 +109,26 @@ impl<T: Element + Clone + Zero> Split<T> for HalfInterval<T> {
 
 impl<T: Element + Clone + Zero> Split<T> for EnumInterval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
+
+    fn strict_split(
+        self,
+        at: T,
+        closed: Side,
+    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+        match self {
+            Self::Finite(inner) => inner
+                .strict_split(at, closed)
+                .map(|(l, r)| (l.into(), r.into())),
+            Self::Half(inner) => inner.strict_split(at, closed),
+            Self::Unbounded => {
+                let (lhs_max, rhs_min) = split_bounds_at(at, closed);
+                let left = HalfInterval::new_strict(Side::Right, lhs_max)?;
+                let right = HalfInterval::new_strict(Side::Left, rhs_min)?;
+                Ok((left.into(), right.into()))
+            }
+        }
+    }
 
     fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
         match self {
