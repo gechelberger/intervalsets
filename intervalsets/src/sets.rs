@@ -257,6 +257,7 @@ impl<T: Clone + Element> IntervalSet<T> {
     /// > This function call relies on invariants.
     ///
     /// # Example
+    ///
     /// ```
     /// use intervalsets::prelude::*;
     ///
@@ -264,13 +265,13 @@ impl<T: Clone + Element> IntervalSet<T> {
     ///     Interval::closed(100, 110),
     ///     Interval::closed(0, 10),
     /// ]);
-    /// assert_eq!(set.convex_hull(), Interval::closed(0, 110));
+    /// assert_eq!(set.hull(), Interval::closed(0, 110));
     ///
     /// // ConvexHull trait equivalent
-    /// assert_eq!(Interval::convex_hull([set]).unwrap(), Interval::closed(0, 110));
+    /// assert_eq!(Interval::hull([set]), Interval::closed(0, 110));
     /// ```
     ///
-    pub fn convex_hull(&self) -> Interval<T> {
+    pub fn hull(&self) -> Interval<T> {
         match self.intervals.len() {
             0 => Interval::empty(),
             1 => self.intervals.first().unwrap().clone(),

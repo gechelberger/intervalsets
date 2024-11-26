@@ -93,7 +93,7 @@ mod tests {
 
     #[quickcheck]
     fn check_qc_interval(interval: EnumInterval<f32>) {
-        let hull = EnumInterval::convex_hull([interval]).unwrap();
+        let hull = EnumInterval::strict_hull([interval]).unwrap();
         assert_eq!(hull, interval);
     }
 
