@@ -10,9 +10,15 @@
 //!
 //! These traits should be infallible for types implementing [`Ord`].
 
-use core::cmp::Ordering::*;
+use core::cmp::Ordering::{self, *};
 
 use crate::error::TotalOrderError;
+
+/// Returns the ordering of lhs and rhs or TotalOrderError
+pub trait TryCmp {
+    #[allow(missing_docs)]
+    fn try_cmp(&self, rhs: &Self) -> Result<Ordering, TotalOrderError>;
+}
 
 /// Return the min item *iff* self and rhs are ordered.
 pub trait TryMin: Sized {
@@ -26,11 +32,17 @@ pub trait TryMax: Sized {
     fn try_max(self, rhs: Self) -> Result<Self, TotalOrderError>;
 }
 
-impl<T: PartialOrd> TryMin for T {
-    fn try_min(self, rhs: Self) -> Result<Self, TotalOrderError> {
-        let order = self.partial_cmp(&rhs).ok_or(TotalOrderError)?;
+impl<T: PartialOrd> TryCmp for T {
+    #[inline]
+    fn try_cmp(&self, rhs: &Self) -> Result<Ordering, TotalOrderError> {
+        self.partial_cmp(rhs).ok_or(TotalOrderError)
+    }
+}
 
-        match order {
+impl<T: PartialOrd> TryMin for T {
+    #[inline]
+    fn try_min(self, rhs: Self) -> Result<Self, TotalOrderError> {
+        match self.try_cmp(&rhs)? {
             Less | Equal => Ok(self),
             Greater => Ok(rhs),
         }
@@ -38,20 +50,27 @@ impl<T: PartialOrd> TryMin for T {
 }
 
 impl<T: PartialOrd> TryMax for T {
+    #[inline]
     fn try_max(self, rhs: Self) -> Result<Self, TotalOrderError> {
-        let order = self.partial_cmp(&rhs).ok_or(TotalOrderError)?;
-        match order {
+        match self.try_cmp(&rhs)? {
             Greater | Equal => Ok(self),
             Less => Ok(rhs),
         }
     }
 }
 
+#[inline]
 pub fn try_ord_pair<A: PartialOrd>(lhs: A, rhs: A) -> Result<[A; 2], TotalOrderError> {
-    let order = lhs.partial_cmp(&rhs).ok_or(TotalOrderError)?;
-
-    match order {
+    match lhs.try_cmp(&rhs)? {
         Less | Equal => Ok([lhs, rhs]),
         Greater => Ok([rhs, lhs]),
+    }
+}
+
+#[inline]
+pub fn try_ord_tuple<A: PartialOrd>(lhs: A, rhs: A) -> Result<(A, A), TotalOrderError> {
+    match lhs.try_cmp(&rhs)? {
+        Less | Equal => Ok((lhs, rhs)),
+        Greater => Ok((rhs, lhs)),
     }
 }

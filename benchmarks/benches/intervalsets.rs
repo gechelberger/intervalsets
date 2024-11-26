@@ -79,7 +79,7 @@ pub fn bench_interval_hull_by_value(c: &mut Criterion) {
         ];
         b.iter(|| {
             let x = black_box(points.clone());
-            Interval::convex_hull(x)
+            Interval::strict_hull(x)
         })
     });
 }
@@ -90,7 +90,7 @@ pub fn bench_interval_hull_by_ref(c: &mut Criterion) {
             5, 300, -300, 32, 44, 83, 93, -1000, 20, 84, 74, -33, 49, 400, 55, 32, -2000, 100, 22,
             73, 1000, 3000, 30, -200, 432, 4000, 300, -3000, 12,
         ];
-        b.iter(|| Interval::convex_hull(black_box(&points)))
+        b.iter(|| Interval::strict_hull(black_box(&points)))
     });
 }
 
