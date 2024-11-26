@@ -15,7 +15,7 @@ impl<T: Element> ConvertingFactory<T, Identity> for Interval<T> {
 
 impl<T: Element> EmptyFactory<T, Identity> for Interval<T> {
     fn empty() -> Self::Output {
-        FiniteInterval::Empty.into()
+        FiniteInterval::empty().into()
     }
 }
 

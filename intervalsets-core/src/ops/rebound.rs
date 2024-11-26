@@ -65,8 +65,8 @@ impl<T: Element + Zero> Rebound<T> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
 
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        let Self::Bounded(_, rhs) = self else {
-            return EnumInterval::Finite(self); // empty
+        let Some((_, rhs)) = self.into_raw() else {
+            return Self::Output::empty();
         };
 
         match bound {
@@ -76,8 +76,8 @@ impl<T: Element + Zero> Rebound<T> for FiniteInterval<T> {
     }
 
     fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        let Self::Bounded(lhs, _) = self else {
-            return EnumInterval::Finite(self); // empty
+        let Some((lhs, _)) = self.into_raw() else {
+            return Self::Output::empty(); // empty
         };
 
         match bound {

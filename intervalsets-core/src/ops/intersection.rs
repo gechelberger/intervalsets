@@ -7,8 +7,7 @@ use crate::bound::Side::{self, Left, Right};
 use crate::empty::MaybeEmpty;
 use crate::numeric::Element;
 use crate::sets::EnumInterval::{self, Finite, Half, Unbounded};
-use crate::sets::FiniteInterval::{self, Bounded, Empty};
-use crate::sets::HalfInterval;
+use crate::sets::{FiniteInterval, HalfInterval};
 
 /// The intersection of two sets.
 ///
@@ -48,12 +47,12 @@ impl<T: Element> Intersection<Self> for FiniteInterval<T> {
 
     #[inline(always)]
     fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        let Bounded(lhs_min, lhs_max) = self else {
-            return Ok(Empty);
+        let Some((lhs_min, lhs_max)) = self.into_raw() else {
+            return Ok(Self::empty());
         };
 
-        let Bounded(rhs_min, rhs_max) = rhs else {
-            return Ok(Empty);
+        let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+            return Ok(Self::empty());
         };
 
         // SAFETY: self and rhs should already satisfy invariants.
@@ -72,12 +71,12 @@ impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
 
     #[inline(always)]
     fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        let Bounded(lhs_min, lhs_max) = self else {
-            return Ok(Empty);
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
+            return Ok(Self::Output::empty());
         };
 
-        let Bounded(rhs_min, rhs_max) = rhs else {
-            return Ok(Empty);
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
+            return Ok(Self::Output::empty());
         };
 
         unsafe {
@@ -96,7 +95,7 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     #[inline(always)]
     fn strict_intersection(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
-            return Ok(Empty);
+            return Ok(Self::Output::empty());
         };
 
         let n = [lhs_min.finite_ord(Left), lhs_max.finite_ord(Right)]
@@ -116,7 +115,7 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
                 }
             }
         } else {
-            Ok(Empty)
+            Ok(Self::Output::empty())
         }
     }
 }
@@ -127,8 +126,8 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
 
     #[inline(always)]
     fn strict_intersection(self, rhs: &HalfInterval<T>) -> Result<Self::Output, Self::Error> {
-        let Bounded(lhs_min, lhs_max) = self else {
-            return Ok(Empty);
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
+            return Ok(FiniteInterval::empty());
         };
 
         let n = [lhs_min.finite_ord(Left), lhs_max.finite_ord(Right)]
@@ -157,7 +156,7 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
                 }
             }
         } else {
-            Ok(Empty)
+            Ok(Self::Output::empty())
         }
     }
 }
@@ -213,7 +212,7 @@ impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
             };
             result.map(EnumInterval::from)
         } else {
-            Ok(Empty.into())
+            Ok(Self::Output::empty())
         }
     }
 }
@@ -402,8 +401,8 @@ mod tests {
         );
 
         assert_eq!(
-            FiniteInterval::closed(0, 100).intersection(FiniteInterval::Empty),
-            FiniteInterval::Empty
+            FiniteInterval::closed(0, 100).intersection(FiniteInterval::empty()),
+            FiniteInterval::empty()
         );
     }
 

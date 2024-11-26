@@ -2,7 +2,6 @@ use intervalsets_core::ops::MergeSorted;
 use intervalsets_core::sets::{FiniteInterval, HalfInterval};
 use intervalsets_core::{EnumInterval, MaybeEmpty};
 use num_traits::Zero;
-use FiniteInterval::Bounded;
 
 use crate::bound::{FiniteBound, Side};
 use crate::factory::UnboundedFactory;
@@ -63,12 +62,16 @@ mod icore {
 
         fn union(self, rhs: Self) -> Self::Output {
             if self.intersects(&rhs) || self.is_adjacent_to(&rhs) {
-                let Bounded(lhs_min, lhs_max) = self else {
-                    unreachable!();
+                let Some((lhs_min, lhs_max)) = self.into_raw() else {
+                    return IntervalSet::from(Interval::from(rhs));
                 };
 
-                let Bounded(rhs_min, rhs_max) = rhs else {
-                    unreachable!();
+                let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+                    // SAFETY: putting it back together
+                    unsafe {
+                        let lhs = Self::new_unchecked(lhs_min, lhs_max);
+                        return IntervalSet::from(Interval::from(lhs));
+                    }
                 };
 
                 // SAFETY: if self and rhs satisfy invariants then new interval
@@ -81,10 +84,6 @@ mod icore {
                 };
 
                 IntervalSet::new_unchecked([merged.into()])
-            } else if self.is_empty() {
-                IntervalSet::from(Interval::from(rhs))
-            } else if rhs.is_empty() {
-                IntervalSet::from(Interval::from(self))
             } else {
                 IntervalSet::new_unchecked(ordered_pair(self.into(), rhs.into()))
             }
@@ -116,8 +115,9 @@ mod icore {
             if rhs.contains(&self) {
                 IntervalSet::new_unchecked([rhs.into()])
             } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(&rhs) {
-                let Bounded(lhs_min, lhs_max) = self else {
-                    unreachable!();
+                let Some((lhs_min, lhs_max)) = self.into_raw() else {
+                    // this should already be cause by rhs.contains(empty)
+                    return IntervalSet::new_unchecked([rhs.into()]);
                 };
 
                 let side = rhs.side;

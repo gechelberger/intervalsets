@@ -1,4 +1,4 @@
-use intervalsets_core::sets::{EnumInterval, FiniteInterval};
+use intervalsets_core::sets::EnumInterval;
 
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, SetBounds, Side};
@@ -76,7 +76,7 @@ impl<T> Interval<T> {
     /// assert_eq!(Interval::<i32>::unbounded().is_fully_bounded(), false);
     /// ```
     pub fn is_fully_bounded(&self) -> bool {
-        matches!(self.0, EnumInterval::Finite(FiniteInterval::Bounded(_, _)))
+        self.0.is_fully_bounded()
     }
 
     /// Return `true` if the interval is unbounded on exactly one side.

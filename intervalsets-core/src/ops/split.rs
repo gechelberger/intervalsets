@@ -46,20 +46,24 @@ impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
         Self: Sized,
     {
         let contains = self.contains(&at);
-        match self {
-            Self::Bounded(left, right) => {
+        match self.into_raw() {
+            Some((left, right)) => {
                 if contains {
                     let (l_max, r_min) = split_bounds_at(at, closed);
                     let split_left = Self::new(left, l_max);
                     let split_right = Self::new(r_min, right);
                     (split_left, split_right)
-                } else if left.strict_contains(Side::Left, &at).unwrap() {
-                    (Self::Bounded(left, right), Self::Empty)
                 } else {
-                    (Self::Empty, Self::Bounded(left, right))
+                    unsafe {
+                        if left.strict_contains(Side::Left, &at).unwrap() {
+                            (Self::new_unchecked(left, right), Self::empty())
+                        } else {
+                            (Self::empty(), Self::new_unchecked(left, right))
+                        }
+                    }
                 }
             }
-            Self::Empty => (Self::Empty, Self::Empty),
+            None => (Self::empty(), Self::empty()),
         }
     }
 }
@@ -84,8 +88,8 @@ impl<T: Element + Clone + Zero> Split<T> for HalfInterval<T> {
             }
         } else {
             match self.side {
-                Side::Left => (FiniteInterval::Empty.into(), self.into()),
-                Side::Right => (self.into(), FiniteInterval::Empty.into()),
+                Side::Left => (EnumInterval::empty(), self.into()),
+                Side::Right => (self.into(), EnumInterval::empty()),
             }
         }
     }

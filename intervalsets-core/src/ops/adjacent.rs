@@ -1,5 +1,3 @@
-use FiniteInterval::Bounded;
-
 use super::util::commutative_predicate_impl;
 use crate::bound::{FiniteBound, Side};
 use crate::numeric::Element;
@@ -70,8 +68,8 @@ fn are_adjacent<T: Element>(right: &FiniteBound<T>, left: &FiniteBound<T>) -> bo
 
 impl<T: Element> Adjacent<&FiniteBound<T>> for FiniteInterval<T> {
     fn is_adjacent_to(&self, rhs: &FiniteBound<T>) -> bool {
-        let Self::Bounded(lhs_min, lhs_max) = self else {
-            return false;
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
+            return true;
         };
 
         are_adjacent(lhs_max, rhs) || are_adjacent(rhs, lhs_min)
@@ -81,12 +79,12 @@ impl<T: Element> Adjacent<&FiniteBound<T>> for FiniteInterval<T> {
 impl<T: Element> Adjacent<&Self> for FiniteInterval<T> {
     #[inline(always)]
     fn is_adjacent_to(&self, rhs: &Self) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
-            return false;
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
+            return true;
         };
 
-        let Bounded(rhs_min, rhs_max) = rhs else {
-            return false;
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
+            return true;
         };
 
         are_adjacent(lhs_max, rhs_min) || are_adjacent(rhs_max, lhs_min)
@@ -115,8 +113,8 @@ impl<T: Element> Adjacent<&Self> for HalfInterval<T> {
 
 impl<T: Element> Adjacent<&HalfInterval<T>> for FiniteInterval<T> {
     fn is_adjacent_to(&self, rhs: &HalfInterval<T>) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
-            return false;
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
+            return true;
         };
 
         match rhs.side {

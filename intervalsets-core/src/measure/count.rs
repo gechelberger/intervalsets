@@ -137,13 +137,13 @@ where
     type Output = T::Output;
 
     fn count(&self) -> crate::measure::Measurement<Self::Output> {
-        match self {
-            Self::Bounded(left, right) => {
+        match self.view_raw() {
+            Some((left, right)) => {
                 let count = T::count_inclusive(left.value(), right.value())
                     .expect("Count should be Some since interval is FullyBounded");
                 Measurement::Finite(count)
             }
-            Self::Empty => Measurement::Finite(Self::Output::zero()),
+            None => Measurement::Finite(Self::Output::zero()),
         }
     }
 }

@@ -22,9 +22,9 @@ impl<T: Element> Complement for FiniteInterval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
-        match self {
-            Self::Empty => IntervalSet::new_unchecked(vec![Interval::unbounded()]),
-            Self::Bounded(lhs, rhs) => unsafe {
+        match self.into_raw() {
+            None => IntervalSet::new_unchecked(vec![Interval::unbounded()]),
+            Some((lhs, rhs)) => unsafe {
                 // SAFETY: Assuming FiniteInterval invariants are satisfied, then lhs <= rhs and
                 // new half intervals are properly sorted; bounds are comparable; manually renormalized.
                 IntervalSet::new_unchecked(vec![

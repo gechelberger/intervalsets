@@ -1,7 +1,5 @@
 use core::cmp::Ordering::Equal;
 
-use FiniteInterval::Bounded;
-
 use crate::bound::ord::{FiniteOrdBound, OrdBound, OrdBoundPair};
 use crate::bound::Side::{Left, Right};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -41,7 +39,7 @@ pub trait Contains<T> {
 impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
 
@@ -71,7 +69,7 @@ impl<T: PartialOrd> Contains<&T> for EnumInterval<T> {
 impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
 
@@ -115,11 +113,11 @@ impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
 impl<T: PartialOrd> Contains<&Self> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &Self) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
 
-        let Bounded(rhs_min, rhs_max) = rhs else {
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
             return true;
         };
 
@@ -149,7 +147,7 @@ impl<T: PartialOrd> Contains<&EnumInterval<T>> for FiniteInterval<T> {
 impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
-        let Bounded(rhs_min, rhs_max) = rhs else {
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
             return true;
         };
 

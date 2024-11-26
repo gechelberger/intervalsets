@@ -46,9 +46,9 @@ where
 
 impl<T: fmt::Display> fmt::Display for FiniteInterval<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Empty => f.write_str("{}")?,
-            Self::Bounded(lhs, rhs) => {
+        match self.view_raw() {
+            None => f.write_str("{}")?,
+            Some((lhs, rhs)) => {
                 write_bound(f, Side::Left, Some(lhs))?;
                 f.write_str(", ")?;
                 write_bound(f, Side::Right, Some(rhs))?;

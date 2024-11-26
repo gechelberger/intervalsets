@@ -14,7 +14,7 @@ pub trait MaybeEmpty {
 
 impl<T> MaybeEmpty for FiniteInterval<T> {
     fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty)
+        self.is_empty() // forwards to concrete impl
     }
 }
 
