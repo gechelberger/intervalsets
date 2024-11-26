@@ -1,27 +1,13 @@
-mod introduction {
-    doc_comment::doctest!("../content/introduction.md");
-}
+doc_comment::doctest!("../content/introduction.md", introduction);
 
 mod quickstart {
-    mod api {
-        doc_comment::doctest!("../content/quickstart/api.md");
-    }
-    mod examples {
-        doc_comment::doctest!("../content/quickstart/example.md");
-    }
+    doc_comment::doctest!("../content/quickstart/api.md", api);
+    doc_comment::doctest!("../content/quickstart/example.md", examples);
 }
 
 mod design {
-    mod goals {
-        doc_comment::doctest!("../content/design/goals.md");
-    }
-    mod types {
-        doc_comment::doctest!("../content/design/types.md");
-    }
-    mod errors {
-        doc_comment::doctest!("../content/design/errors.md");
-    }
-    mod footguns {
-        doc_comment::doctest!("../content/design/footguns.md");
-    }
+    doc_comment::doctest!("../content/design/goals.md", goals);
+    doc_comment::doctest!("../content/design/types.md", types);
+    doc_comment::doctest!("../content/design/errors.md", errors);
+    doc_comment::doctest!("../content/design/footguns.md", footguns);
 }
