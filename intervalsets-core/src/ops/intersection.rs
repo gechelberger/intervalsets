@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use super::Contains;
 use crate::bound::ord::OrdBounded;
 use crate::bound::FiniteBound;
@@ -308,40 +310,46 @@ commutative_intersection_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>
 /// assert_eq!(s.next().unwrap(), Ok(EnumInterval::closed(95, 100)));
 /// assert_eq!(s.next(), None);
 /// ```
-pub struct SetSetIntersection<T, I1, I2>
+pub struct SetSetIntersection<T, S, I1, I2>
 where
-    I1: Iterator<Item = EnumInterval<T>>,
-    I2: Iterator<Item = EnumInterval<T>>,
+    S: Borrow<EnumInterval<T>>,
+    I1: Iterator<Item = S>,
+    I2: Iterator<Item = S>,
 {
     a: itertools::PutBack<I1>,
     b: itertools::PutBack<I2>,
+    t: core::marker::PhantomData<T>,
 }
 
-impl<T, I1, I2> SetSetIntersection<T, I1, I2>
+impl<T, S, I1, I2> SetSetIntersection<T, S, I1, I2>
 where
-    I1: Iterator<Item = EnumInterval<T>>,
-    I2: Iterator<Item = EnumInterval<T>>,
+    S: Borrow<EnumInterval<T>>,
+    I1: Iterator<Item = S>,
+    I2: Iterator<Item = S>,
 {
     /// Creates a new SetSetIntersection Iterator
     ///
     /// If the standard `Set` invariants are not satisfied, behavior is undefined.
     pub fn new<U1, U2>(a: U1, b: U2) -> Self
     where
-        U1: IntoIterator<Item = EnumInterval<T>, IntoIter = I1>,
-        U2: IntoIterator<Item = EnumInterval<T>, IntoIter = I2>,
+        S: Borrow<EnumInterval<T>>,
+        U1: IntoIterator<Item = S, IntoIter = I1>,
+        U2: IntoIterator<Item = S, IntoIter = I2>,
     {
         Self {
             a: itertools::put_back(a),
             b: itertools::put_back(b),
+            t: core::marker::PhantomData,
         }
     }
 }
 
-impl<T, I1, I2> Iterator for SetSetIntersection<T, I1, I2>
+impl<T, S, I1, I2> Iterator for SetSetIntersection<T, S, I1, I2>
 where
     T: Element + Clone,
-    I1: Iterator<Item = EnumInterval<T>>,
-    I2: Iterator<Item = EnumInterval<T>>,
+    S: Borrow<EnumInterval<T>>,
+    I1: Iterator<Item = S>,
+    I2: Iterator<Item = S>,
 {
     type Item = Result<EnumInterval<T>, crate::error::Error>;
 
@@ -349,7 +357,7 @@ where
         let a = self.a.next()?;
         let b = self.b.next()?;
 
-        let ab = match (&a).strict_intersection(&b) {
+        let ab = match a.borrow().strict_intersection(b.borrow()) {
             Ok(inner) => inner,
             Err(e) => return Some(Err(e)),
         };
@@ -357,8 +365,8 @@ where
         if !ab.is_empty() {
             // since `a` and `b` intersect, we want to look at the right hand
             // bounds to decide which one (or both) to discard.
-            let (_, a_r) = a.ord_bound_pair().into_raw();
-            let (_, b_r) = b.ord_bound_pair().into_raw();
+            let (_, a_r) = a.borrow().ord_bound_pair().into_raw();
+            let (_, b_r) = b.borrow().ord_bound_pair().into_raw();
             if a_r > b_r {
                 self.a.put_back(a);
             } else if a_r < b_r {
@@ -368,8 +376,8 @@ where
         } else {
             // since `a` and `b` are disjoint, discard the one with the
             // smallest left hand bound.
-            let (l_a, _) = a.ord_bound_pair().into_raw();
-            let (l_b, _) = b.ord_bound_pair().into_raw();
+            let (l_a, _) = a.borrow().ord_bound_pair().into_raw();
+            let (l_b, _) = b.borrow().ord_bound_pair().into_raw();
             if l_a > l_b {
                 self.a.put_back(a);
             } else {
@@ -462,5 +470,30 @@ mod tests {
             EnumInterval::open(0.0, 10.0),
             EnumInterval::open(5.0, 15.0),
         );
+    }
+
+    extern crate std;
+
+    #[test]
+    fn test_set_set_iter() {
+        let a = std::vec![EnumInterval::closed(0, 10), EnumInterval::closed(100, 150)];
+
+        let b = std::vec![
+            EnumInterval::closed(5, 15),
+            EnumInterval::closed(90, 95),
+            EnumInterval::closed(140, 160),
+        ];
+
+        let mut it = SetSetIntersection::new(a.iter(), b.iter());
+
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(5, 10))));
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(140, 150))));
+        assert_eq!(it.next(), None);
+
+        let mut it = SetSetIntersection::new(a.into_iter(), b.into_iter());
+
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(5, 10))));
+        assert_eq!(it.next(), Some(Ok(EnumInterval::closed(140, 150))));
+        assert_eq!(it.next(), None);
     }
 }

@@ -322,4 +322,28 @@ mod tests {
         assert_eq!(x.left().unwrap(), &FiniteBound::closed(0));
         assert_eq!(x.right().unwrap(), &FiniteBound::closed(10));
     }
+
+    #[test]
+    fn test_ord_bounded_trait() {
+        let x = EnumInterval::closed(0, 10);
+
+        fn by_ref(y: &EnumInterval<i32>) {
+            let ob = y.ord_bound_pair();
+            assert_eq!(
+                ob,
+                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
+            );
+        }
+
+        fn by_val(y: EnumInterval<i32>) {
+            let ob = y.ord_bound_pair();
+            assert_eq!(
+                ob,
+                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
+            );
+        }
+
+        by_ref(&x);
+        by_val(x);
+    }
 }
