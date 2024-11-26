@@ -9,7 +9,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T> From<()> for FiniteInterval<T> {
     fn from((): ()) -> Self {
-        Self::Empty
+        Self::empty()
     }
 }
 
@@ -76,9 +76,9 @@ impl<T> From<HalfInterval<T>> for EnumInterval<T> {
 
 impl<T> From<FiniteInterval<T>> for OrdBoundPair<T> {
     fn from(value: FiniteInterval<T>) -> Self {
-        match value {
-            FiniteInterval::Empty => OrdBoundPair::empty(),
-            FiniteInterval::Bounded(lhs, rhs) => {
+        match value.into_raw() {
+            None => OrdBoundPair::empty(),
+            Some((lhs, rhs)) => {
                 OrdBoundPair::new(lhs.into_ord(Side::Left), rhs.into_ord(Side::Right))
             }
         }
@@ -87,29 +87,26 @@ impl<T> From<FiniteInterval<T>> for OrdBoundPair<T> {
 
 impl<'a, T> From<&'a FiniteInterval<T>> for OrdBoundPair<&'a T> {
     fn from(value: &'a FiniteInterval<T>) -> Self {
-        match value {
-            FiniteInterval::Empty => OrdBoundPair::empty(),
-            FiniteInterval::Bounded(lhs, rhs) => {
-                OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right))
-            }
+        match value.view_raw() {
+            None => OrdBoundPair::empty(),
+            Some((lhs, rhs)) => OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right)),
         }
     }
 }
 
 impl<T> From<HalfInterval<T>> for OrdBoundPair<T> {
     fn from(value: HalfInterval<T>) -> Self {
-        let ord_bound = value.bound.into_ord(value.side);
-        match value.side {
-            Side::Left => OrdBoundPair::new(ord_bound, OrdBound::RightUnbounded),
-            Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, ord_bound),
+        match value.side() {
+            Side::Left => OrdBoundPair::new(value.into_ord_bound(), OrdBound::RightUnbounded),
+            Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, value.into_ord_bound()),
         }
     }
 }
 
 impl<'a, T> From<&'a HalfInterval<T>> for OrdBoundPair<&'a T> {
     fn from(value: &'a HalfInterval<T>) -> Self {
-        let ord_bound = value.bound.ord(value.side);
-        match value.side {
+        let ord_bound = value.ord_bound();
+        match value.side() {
             Side::Left => OrdBoundPair::new(ord_bound, OrdBound::RightUnbounded),
             Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, ord_bound),
         }

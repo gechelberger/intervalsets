@@ -4,8 +4,7 @@ use crate::empty::MaybeEmpty;
 use crate::numeric::Element;
 use crate::ops::{Contains, Intersects};
 use crate::sets::EnumInterval::{self, *};
-use crate::sets::FiniteInterval::{self, Bounded};
-use crate::sets::HalfInterval;
+use crate::sets::{FiniteInterval, HalfInterval};
 
 /// Test whether two sets are mergable.
 ///
@@ -90,12 +89,14 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.intersects(&rhs) || self.is_adjacent_to(&rhs) {
-            let Bounded(lhs_min, lhs_max) = self else {
-                unreachable!();
+            let Some((lhs_min, lhs_max)) = self.into_raw() else {
+                return Some(rhs); // intersects is false, but the empty set
+                                  // is trivially connected to all other sets.
             };
 
-            let Bounded(rhs_min, rhs_max) = rhs else {
-                unreachable!();
+            let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+                let lhs = unsafe { Self::new_unchecked(lhs_min, lhs_max) };
+                return Some(lhs);
             };
 
             // SAFETY: if lhs and rhs satisfy invariants, then bounds are
@@ -108,10 +109,6 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
             };
 
             Some(merged)
-        } else if self.is_empty() {
-            Some(rhs)
-        } else if rhs.is_empty() {
-            Some(self)
         } else {
             None
         }
@@ -123,12 +120,15 @@ impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.intersects(rhs) || self.is_adjacent_to(rhs) {
-            let Bounded(lhs_min, lhs_max) = self else {
-                unreachable!();
+            let Some((lhs_min, lhs_max)) = self.view_raw() else {
+                return Some(rhs.clone());
             };
 
-            let Bounded(rhs_min, rhs_max) = rhs else {
-                unreachable!();
+            let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
+                // SAFETY: just putting it back together
+                let lhs =
+                    unsafe { FiniteInterval::new_unchecked(lhs_min.clone(), lhs_max.clone()) };
+                return Some(lhs);
             };
 
             // SAFETY: if lhs and rhs satisfy invariants, bounds are normalized,
@@ -155,7 +155,7 @@ impl<T: Element> TryMerge<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
-        if self.side == rhs.side {
+        if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Some(self.into())
             } else {
@@ -177,7 +177,7 @@ impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
-        if self.side == rhs.side {
+        if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Some(self.clone().into())
             } else {
@@ -195,7 +195,7 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
-        let Bounded(rhs_min, rhs_max) = rhs else {
+        let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
             return Some(self); // identity: merge with empty
         };
 
@@ -207,15 +207,15 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
         if n == 2 {
             Some(self) // finite interval is fully contained
         } else if n == 1 {
-            let bound = self.side.select(rhs_min, rhs_max);
+            let bound = self.side().select(rhs_min, rhs_max);
             // SAFETY: assume invariants satisfied by FiniteInterval.
-            unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+            unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
         } else {
-            let maybe_adjacent = self.side.select(&rhs_max, &rhs_min);
+            let maybe_adjacent = self.side().select(&rhs_max, &rhs_min);
             if self.is_adjacent_to(maybe_adjacent) {
-                let bound = self.side.select(rhs_min, rhs_max);
+                let bound = self.side().select(rhs_min, rhs_max);
                 // SAFETY: assum invariants satisfied by FiniteInterval.
-                unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
             } else {
                 None
             }
@@ -227,7 +227,7 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
-        let Bounded(rhs_min, rhs_max) = rhs else {
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
             return Some(self.clone());
         };
 
@@ -239,13 +239,13 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
         if n == 2 {
             Some(self.clone())
         } else if n == 1 {
-            let bound = self.side.select(rhs_min, rhs_max).clone();
-            unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+            let bound = self.side().select(rhs_min, rhs_max).clone();
+            unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
         } else {
-            let maybe_adj = self.side.select(rhs_max, rhs_min);
+            let maybe_adj = self.side().select(rhs_max, rhs_min);
             if self.is_adjacent_to(maybe_adj) {
-                let bound = self.side.select(rhs_min, rhs_max).clone();
-                unsafe { Some(HalfInterval::new_unchecked(self.side, bound)) }
+                let bound = self.side().select(rhs_min, rhs_max).clone();
+                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
             } else {
                 None
             }

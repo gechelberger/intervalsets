@@ -15,10 +15,36 @@ use crate::try_cmp::TryCmp;
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-pub enum FiniteInterval<T> {
+enum FiniteIntervalInner<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
 }
+
+impl<T> OrdBounded<T> for FiniteIntervalInner<T> {
+    fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
+        match self {
+            Self::Empty => OrdBoundPair::empty(),
+            Self::Bounded(lhs, rhs) => OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right)),
+        }
+    }
+}
+
+impl<T> SetBounds<T> for FiniteIntervalInner<T> {
+    fn bound(&self, side: Side) -> Option<&FiniteBound<T>> {
+        match self {
+            Self::Bounded(lhs, rhs) => Some(side.select(lhs, rhs)),
+            _ => None,
+        }
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
+pub struct FiniteInterval<T>(FiniteIntervalInner<T>);
 
 impl<T: Element> FiniteInterval<T> {
     /// Creates a FiniteInterval.
@@ -91,7 +117,7 @@ impl<T: PartialOrd> FiniteInterval<T> {
 impl<T> FiniteInterval<T> {
     #[inline(always)]
     pub const fn empty() -> Self {
-        Self::Empty
+        Self(FiniteIntervalInner::Empty)
     }
 
     /// # Safety
@@ -101,32 +127,45 @@ impl<T> FiniteInterval<T> {
     /// 2. discrete bounds are normalized to closed form.
     #[inline]
     pub const unsafe fn new_unchecked(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        Self::Bounded(lhs, rhs)
+        Self(FiniteIntervalInner::Bounded(lhs, rhs))
     }
 
+    #[inline]
     pub fn into_raw(self) -> Option<(FiniteBound<T>, FiniteBound<T>)> {
-        match self {
-            Self::Bounded(lhs, rhs) => Some((lhs, rhs)),
-            Self::Empty => None,
+        match self.0 {
+            FiniteIntervalInner::Bounded(lhs, rhs) => Some((lhs, rhs)),
+            FiniteIntervalInner::Empty => None,
         }
+    }
+
+    #[inline]
+    pub fn view_raw(&self) -> Option<(&FiniteBound<T>, &FiniteBound<T>)> {
+        match self.0 {
+            FiniteIntervalInner::Bounded(ref lhs, ref rhs) => Some((lhs, rhs)),
+            FiniteIntervalInner::Empty => None,
+        }
+    }
+}
+
+impl<T> FiniteInterval<T> {
+    pub fn is_empty(&self) -> bool {
+        core::mem::discriminant(&self.0) == core::mem::discriminant(&FiniteIntervalInner::Empty)
+    }
+
+    pub fn is_fully_bounded(&self) -> bool {
+        !self.is_empty()
     }
 }
 
 impl<T> OrdBounded<T> for FiniteInterval<T> {
     fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
-        match self {
-            Self::Empty => OrdBoundPair::empty(),
-            Self::Bounded(lhs, rhs) => OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right)),
-        }
+        self.0.ord_bound_pair()
     }
 }
 
 impl<T> SetBounds<T> for FiniteInterval<T> {
     fn bound(&self, side: Side) -> Option<&FiniteBound<T>> {
-        match self {
-            Self::Bounded(lhs, rhs) => Some(side.select(lhs, rhs)),
-            _ => None,
-        }
+        self.0.bound(side)
     }
 
     // fn into_bounds(self) -> Option<(Option<FiniteBound<T>>, Option<FiniteBound<T>>)> {
@@ -142,8 +181,8 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 pub struct HalfInterval<T> {
-    pub side: Side,
-    pub bound: FiniteBound<T>,
+    side: Side,
+    bound: FiniteBound<T>,
 }
 
 impl<T> HalfInterval<T> {
@@ -187,9 +226,31 @@ impl<T> HalfInterval<T> {
         (self.side, self.bound)
     }
 
-    #[inline(always)]
+    pub fn into_finite_ord_bound(self) -> FiniteOrdBound<T> {
+        self.bound.into_finite_ord(self.side)
+    }
+
+    pub fn into_ord_bound(self) -> OrdBound<T> {
+        self.bound.into_ord(self.side)
+    }
+
     pub fn finite_ord_bound(&self) -> FiniteOrdBound<&T> {
         self.bound.finite_ord(self.side)
+    }
+
+    pub fn ord_bound(&self) -> OrdBound<&T> {
+        self.bound.ord(self.side)
+    }
+
+    #[inline(always)]
+    pub fn side(&self) -> Side {
+        self.side
+    }
+
+    /// Returns the finite bound of the HalfBounded interval.
+    #[inline(always)]
+    pub fn finite_bound(&self) -> &FiniteBound<T> {
+        &self.bound
     }
 }
 
@@ -242,7 +303,16 @@ pub enum EnumInterval<T> {
 impl<T> EnumInterval<T> {
     /// Creates a new empty EnumInterval.
     pub const fn empty() -> Self {
-        Self::Finite(FiniteInterval::Empty)
+        Self::Finite(FiniteInterval::empty())
+    }
+}
+
+impl<T> EnumInterval<T> {
+    pub fn is_fully_bounded(&self) -> bool {
+        match self {
+            Self::Finite(inner) => inner.is_fully_bounded(),
+            _ => false,
+        }
     }
 }
 
@@ -308,7 +378,7 @@ macro_rules! impl_interval_cmp {
     }
 }
 
-impl_interval_cmp!(FiniteInterval, HalfInterval, EnumInterval);
+impl_interval_cmp!(FiniteIntervalInner, HalfInterval, EnumInterval);
 
 #[cfg(test)]
 mod tests {

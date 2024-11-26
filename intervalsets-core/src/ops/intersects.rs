@@ -41,11 +41,11 @@ pub trait Intersects<T> {
 impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
     #[inline(always)]
     fn intersects(&self, rhs: &Self) -> bool {
-        let Self::Bounded(lhs_min, lhs_max) = self else {
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
 
-        let Self::Bounded(rhs_min, rhs_max) = rhs else {
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
             return false;
         };
 
@@ -67,7 +67,7 @@ impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
 impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
     #[inline(always)]
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
-        let FiniteInterval::Bounded(left, right) = rhs else {
+        let Some((left, right)) = rhs.view_raw() else {
             return false;
         };
 
@@ -88,7 +88,7 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.intersects(rhs),
             Self::Half(lhs) => lhs.intersects(rhs),
-            Self::Unbounded => *rhs != FiniteInterval::Empty,
+            Self::Unbounded => *rhs != FiniteInterval::empty(),
         }
     }
 }
@@ -110,7 +110,7 @@ impl<T: PartialOrd> Intersects<&Self> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => rhs.intersects(lhs),
             Self::Half(lhs) => rhs.intersects(lhs),
-            Self::Unbounded => *rhs != FiniteInterval::Empty.into(),
+            Self::Unbounded => *rhs != EnumInterval::empty(),
         }
     }
 }

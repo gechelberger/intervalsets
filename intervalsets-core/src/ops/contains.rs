@@ -1,7 +1,5 @@
 use core::cmp::Ordering::Equal;
 
-use FiniteInterval::Bounded;
-
 use crate::bound::ord::{FiniteOrdBound, OrdBound, OrdBoundPair};
 use crate::bound::Side::{Left, Right};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -41,7 +39,7 @@ pub trait Contains<T> {
 impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
 
@@ -53,7 +51,9 @@ impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
 impl<T: PartialOrd> Contains<&T> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {
-        self.bound.strict_contains(self.side, rhs).unwrap_or(false)
+        self.finite_bound()
+            .strict_contains(self.side(), rhs)
+            .unwrap_or(false)
     }
 }
 
@@ -71,7 +71,7 @@ impl<T: PartialOrd> Contains<&T> for EnumInterval<T> {
 impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
 
@@ -84,8 +84,8 @@ impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for FiniteInterval<T> {
 impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
-        let lhs = self.bound.finite_ord(self.side);
-        match self.side {
+        let lhs = self.finite_ord_bound();
+        match self.side() {
             Left => lhs <= rhs,
             Right => rhs <= lhs,
         }
@@ -115,11 +115,11 @@ impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
 impl<T: PartialOrd> Contains<&Self> for FiniteInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &Self) -> bool {
-        let Bounded(lhs_min, lhs_max) = self else {
+        let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
 
-        let Bounded(rhs_min, rhs_max) = rhs else {
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
             return true;
         };
 
@@ -149,12 +149,12 @@ impl<T: PartialOrd> Contains<&EnumInterval<T>> for FiniteInterval<T> {
 impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
-        let Bounded(rhs_min, rhs_max) = rhs else {
+        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
             return true;
         };
 
         let lhs = self.finite_ord_bound();
-        match self.side {
+        match self.side() {
             Left => lhs <= rhs_min.finite_ord(Left), // rhs <= rhs_max transitive
             Right => rhs_max.finite_ord(Right) <= lhs, // rhs_min <= lhs transitive
         }
@@ -164,7 +164,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
 impl<T: PartialOrd> Contains<&Self> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &Self) -> bool {
-        self.side == rhs.side && self.contains(rhs.finite_ord_bound())
+        self.side() == rhs.side() && self.contains(rhs.finite_ord_bound())
     }
 }
 

@@ -46,9 +46,9 @@ where
 
 impl<T: fmt::Display> fmt::Display for FiniteInterval<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Empty => f.write_str("{}")?,
-            Self::Bounded(lhs, rhs) => {
+        match self.view_raw() {
+            None => f.write_str("{}")?,
+            Some((lhs, rhs)) => {
                 write_bound(f, Side::Left, Some(lhs))?;
                 f.write_str(", ")?;
                 write_bound(f, Side::Right, Some(rhs))?;
@@ -61,16 +61,16 @@ impl<T: fmt::Display> fmt::Display for FiniteInterval<T> {
 
 impl<T: fmt::Display> fmt::Display for HalfInterval<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.side {
+        match self.side() {
             Side::Left => {
-                write_bound(f, Side::Left, Some(&self.bound))?;
+                write_bound(f, Side::Left, Some(self.finite_bound()))?;
                 f.write_str(", ")?;
                 write_bound::<T>(f, Side::Right, None)?;
             }
             Side::Right => {
                 write_bound::<T>(f, Side::Left, None)?;
                 f.write_str(", ")?;
-                write_bound(f, Side::Right, Some(&self.bound))?;
+                write_bound(f, Side::Right, Some(self.finite_bound()))?;
             }
         }
 

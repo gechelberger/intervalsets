@@ -147,15 +147,15 @@ impl<'a, T: Element + Clone> ConvexHull<&'a Self> for FiniteInterval<T> {
         let (mut left, mut right) = loop {
             match iter.next() {
                 None => return Ok(Self::empty()),
-                Some(interval) => match interval {
-                    Self::Empty => continue,
-                    Self::Bounded(lhs, rhs) => break (lhs, rhs),
+                Some(interval) => match interval.view_raw() {
+                    None => continue,
+                    Some((lhs, rhs)) => break (lhs, rhs),
                 },
             }
         };
 
         for candidate in iter {
-            let Self::Bounded(c_left, c_right) = candidate else {
+            let Some((c_left, c_right)) = candidate.view_raw() else {
                 continue;
             };
 

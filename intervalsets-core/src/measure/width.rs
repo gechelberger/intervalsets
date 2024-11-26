@@ -51,9 +51,9 @@ where
     type Output = Out;
 
     fn width(&self) -> Measurement<Self::Output> {
-        match self {
-            Self::Empty => Measurement::Finite(Out::zero()),
-            Self::Bounded(left, right) => Measurement::Finite(right.value() - left.value()),
+        match self.view_raw() {
+            None => Measurement::Finite(Out::zero()),
+            Some((left, right)) => Measurement::Finite(right.value() - left.value()),
         }
     }
 }

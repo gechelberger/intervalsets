@@ -24,12 +24,13 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
 
     #[inline(always)]
     fn into_finite(self) -> Self::Output {
-        match self.side {
+        let (side, bound) = self.into_raw();
+        match side {
             Side::Left => unsafe {
-                FiniteInterval::new_assume_normed(self.bound, FiniteBound::closed(T::max_value()))
+                FiniteInterval::new_assume_normed(bound, FiniteBound::closed(T::max_value()))
             },
             Side::Right => unsafe {
-                FiniteInterval::new_assume_normed(FiniteBound::closed(T::min_value()), self.bound)
+                FiniteInterval::new_assume_normed(FiniteBound::closed(T::min_value()), bound)
             },
         }
     }
