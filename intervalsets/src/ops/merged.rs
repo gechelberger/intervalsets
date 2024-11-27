@@ -1,11 +1,4 @@
-/// Defines the union of two intervals if contiguous.
-///
-/// Two intervals are contiguous if they share any elements **or** if
-/// they are **adjacent** to each other such that they share bounds
-/// with no other elements possible between them.
-///
-/// Other **disjoint sets** return `None` unless one is the `Empty` Set,
-/// in which case the other input Set is the result.
+/// Defines the union of two intervals if [connected](super::Connects).
 ///
 /// # Note
 ///
@@ -34,10 +27,10 @@
 /// ```
 pub use intervalsets_core::ops::TryMerge;
 
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::Interval;
 
-impl<T: Element + Zero> TryMerge<Self> for Interval<T> {
+impl<T: Element> TryMerge<Self> for Interval<T> {
     type Output = Self;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {

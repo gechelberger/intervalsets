@@ -11,7 +11,7 @@ There is an extensive test suite to ensure that operations produce the intended 
 
 ## Generality
 
-All set and interval types provided are generic over the type of element(s) in the set.
+All set and interval types provided are generic over the type of element in the set.
 
 ## Portability
 
@@ -19,7 +19,7 @@ These are low level abstractions which should be deployable in almost any enviro
 
 `intervalsets-core`, by default, should be usable in any embedded environment - with or 
 without an allocator. The crate does provide some optional features for externally defined 
-`set element types` that require allocation. These must live in `intervalsets-core` due to rust's 
+`element-types` that require allocation. These must live in `intervalsets-core` due to rust's 
 [orphan rule](https://github.com/Ixrec/rust-orphan-rules) since the required traits 
 are defined there.
 

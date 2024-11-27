@@ -1,5 +1,3 @@
-use std::borrow::Borrow;
-
 pub use intervalsets_core::ops::Intersection;
 use intervalsets_core::ops::SetSetIntersection;
 
@@ -26,94 +24,63 @@ use crate::{Interval, IntervalSet, MaybeEmpty};
 /// ```
 impl<T: Element> Intersection<Self> for Interval<T> {
     type Output = Self;
-    type Error = crate::error::Error;
 
-    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        self.0.strict_intersection(rhs.0).map(Interval::from)
+    fn intersection(self, rhs: Self) -> Self::Output {
+        self.0.intersection(rhs.0).into()
     }
 }
 
 impl<T: Element + Clone> Intersection<Self> for &Interval<T> {
     type Output = Interval<T>;
-    type Error = crate::error::Error;
 
-    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        (&self.0).strict_intersection(&rhs.0).map(Interval::from)
+    fn intersection(self, rhs: Self) -> Self::Output {
+        (&self.0).intersection(&rhs.0).into()
     }
-}
-
-fn do_strict_intersection<T, I>(
-    iset: IntervalSet<T>,
-    interval: I,
-) -> Result<IntervalSet<T>, crate::error::Error>
-where
-    T: Element + Clone,
-    I: Borrow<Interval<T>>,
-{
-    // invariants: intervals remain sorted; remain disjoint; filter out empty results;
-    let intervals = iset
-        .into_iter()
-        .map(|subset| (interval.borrow()).strict_intersection(&subset))
-        .collect::<Result<Vec<_>, crate::error::Error>>()?;
-
-    let intervals = intervals.into_iter().filter(|iv| !iv.is_empty());
-    Ok(IntervalSet::new_unchecked(intervals))
 }
 
 impl<T: Element + Clone> Intersection<Interval<T>> for IntervalSet<T> {
     type Output = Self;
-    type Error = crate::error::Error;
 
-    fn strict_intersection(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
-        do_strict_intersection(self, rhs)
-    }
-}
+    fn intersection(self, rhs: Interval<T>) -> Self::Output {
+        // invariants: intervals remain sorted; remain disjoint; filter out empty results;
+        let intervals = self
+            .into_iter()
+            .map(|subset| (subset).intersection(rhs.clone()))
+            .filter(|iv| !iv.is_empty());
 
-impl<T: Element + Clone> Intersection<&Interval<T>> for IntervalSet<T> {
-    type Output = Self;
-    type Error = crate::error::Error;
-
-    fn strict_intersection(self, rhs: &Interval<T>) -> Result<Self::Output, Self::Error> {
-        do_strict_intersection(self, rhs)
+        IntervalSet::new_unchecked(intervals)
     }
 }
 
 impl<T: Element + Clone> Intersection<IntervalSet<T>> for Interval<T> {
     type Output = IntervalSet<T>;
-    type Error = crate::error::Error;
 
-    fn strict_intersection(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
-        rhs.strict_intersection(self)
+    fn intersection(self, rhs: IntervalSet<T>) -> Self::Output {
+        rhs.intersection(self)
     }
 }
 
 impl<T: Element + Clone> Intersection<Self> for IntervalSet<T> {
     type Output = IntervalSet<T>;
-    type Error = crate::error::Error;
 
-    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        let intersection =
+    fn intersection(self, rhs: Self) -> Self::Output {
+        let intervals =
             SetSetIntersection::new(self.into_iter().map(|x| x.0), rhs.into_iter().map(|x| x.0))
-                .collect::<Result<Vec<_>, crate::error::Error>>()?;
+                .map(Interval::from);
 
-        Ok(Self::new_unchecked(
-            intersection.into_iter().map(Interval::from),
-        ))
+        Self::new_unchecked(intervals)
     }
 }
 
 impl<T: Element + Clone> Intersection<Self> for &IntervalSet<T> {
     type Output = IntervalSet<T>;
-    type Error = crate::error::Error;
 
-    fn strict_intersection(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        let intersection =
+    fn intersection(self, rhs: Self) -> Self::Output {
+        let intervals =
             SetSetIntersection::new(self.iter().map(|x| &x.0), rhs.iter().map(|x| &x.0))
-                .collect::<Result<Vec<_>, Self::Error>>()?;
+                .map(Interval::from);
 
-        Ok(Self::Output::new_unchecked(
-            intersection.into_iter().map(Interval::from),
-        ))
+        Self::Output::new_unchecked(intervals)
     }
 }
 

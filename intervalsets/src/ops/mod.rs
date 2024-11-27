@@ -1,5 +1,5 @@
-mod adjacent;
-pub use adjacent::Adjacent;
+mod connects;
+pub use connects::Connects;
 
 mod contains;
 pub use contains::Contains;

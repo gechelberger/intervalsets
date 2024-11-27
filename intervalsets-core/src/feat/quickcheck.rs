@@ -111,7 +111,7 @@ mod tests {
             assert!(merge.is_some());
         } else {
             assert!(intersection.is_empty());
-            if a.is_adjacent_to(&b) {
+            if a.connects(&b) {
                 assert!(merge.is_some());
             } else {
                 if a.is_empty() || b.is_empty() {

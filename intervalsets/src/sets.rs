@@ -1,3 +1,4 @@
+use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::EnumInterval;
 
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
@@ -198,10 +199,7 @@ impl<T: Element> IntervalSet<T> {
                 .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
         });
 
-        Self::new_unchecked(
-            intervalsets_core::ops::MergeSorted::new(intervals.into_iter().map(|x| x.0))
-                .map(Interval::from),
-        )
+        Self::new_unchecked(MergeSortedByValue::new(intervals).filter(|iv| !iv.is_empty()))
     }
 }
 
