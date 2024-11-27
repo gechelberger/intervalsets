@@ -1,6 +1,5 @@
 use super::adjacent::Adjacent;
 use crate::bound::{FiniteBound, Side};
-use crate::empty::MaybeEmpty;
 use crate::numeric::Element;
 use crate::ops::{Contains, Intersects};
 use crate::sets::EnumInterval::{self, *};
@@ -24,10 +23,9 @@ use crate::sets::{FiniteInterval, HalfInterval};
 #[inline]
 pub fn mergeable<'a, A, B>(a: &'a A, b: &'a B) -> bool
 where
-    A: MaybeEmpty + Intersects<&'a B> + Adjacent<&'a B>,
-    B: MaybeEmpty,
+    A: Intersects<&'a B> + Adjacent<&'a B>,
 {
-    a.intersects(b) || a.is_adjacent_to(b) || a.is_empty() || b.is_empty()
+    a.intersects(b) || a.is_adjacent_to(b)
 }
 
 /// The union of two intervals if and only if connected else `None``.
@@ -307,21 +305,20 @@ commutative_try_merge_impl!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>)
 commutative_try_merge_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
 
 /// MergeSorted merges intersecting intervals and returns disjoint ones.
-pub struct MergeSorted<T: Element, I: Iterator<Item = EnumInterval<T>>> {
+pub struct MergeSortedByValue<S, I: Iterator<Item = S>> {
     sorted: core::iter::Peekable<I>,
 }
 
-impl<T, I> MergeSorted<T, I>
+impl<S, I> MergeSortedByValue<S, I>
 where
-    T: Element,
-    I: Iterator<Item = EnumInterval<T>>,
+    I: Iterator<Item = S>,
 {
     /// Creates a new `MergeSorted` Iterator
     ///
     /// If the input is not sorted, behavior is undefined.
     pub fn new<U>(sorted: U) -> Self
     where
-        U: IntoIterator<Item = EnumInterval<T>, IntoIter = I>,
+        U: IntoIterator<Item = S, IntoIter = I>,
     {
         Self {
             sorted: sorted.into_iter().peekable(),
@@ -329,10 +326,11 @@ where
     }
 }
 
-impl<T, I> Iterator for MergeSorted<T, I>
+impl<S, I> Iterator for MergeSortedByValue<S, I>
 where
-    T: Element,
-    I: Iterator<Item = EnumInterval<T>>,
+    S: TryMerge + for<'a> Intersects<&'a S> + for<'a> Adjacent<&'a S>,
+    S: From<<S as TryMerge>::Output>,
+    I: Iterator<Item = S>,
 {
     type Item = I::Item;
 
@@ -346,7 +344,7 @@ where
 
             let candidate = self.sorted.next().unwrap();
             current = match current.try_merge(candidate) {
-                Some(merged) => merged,
+                Some(merged) => S::from(merged),
                 None => unreachable!(),
             };
         }
@@ -421,5 +419,38 @@ mod tests {
         let b = EnumInterval::closed_unbound(15);
         assert_eq!((&a).try_merge(&b), None);
         assert_eq!(a.try_merge(b), None);
+    }
+
+    #[test]
+    fn test_merge_sorted() {
+        let finite = [
+            FiniteInterval::closed(0, 10),
+            FiniteInterval::closed(5, 15),
+            FiniteInterval::closed(50, 60),
+            FiniteInterval::closed(55, 65),
+            FiniteInterval::closed(60, 70),
+            FiniteInterval::closed(90, 100),
+        ];
+
+        let mut finite_by_val = MergeSortedByValue::new(finite);
+        assert_eq!(finite_by_val.next(), Some(FiniteInterval::closed(0, 15)));
+        assert_eq!(finite_by_val.next(), Some(FiniteInterval::closed(50, 70)));
+        assert_eq!(finite_by_val.next(), Some(FiniteInterval::closed(90, 100)));
+        assert_eq!(finite_by_val.next(), None);
+
+        let enums = [
+            EnumInterval::closed(0, 10),
+            EnumInterval::closed(5, 15),
+            EnumInterval::closed(50, 60),
+            EnumInterval::closed(55, 65),
+            EnumInterval::closed(60, 70),
+            EnumInterval::closed(90, 100),
+        ];
+
+        let mut finite_by_val = MergeSortedByValue::new(enums);
+        assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(0, 15)));
+        assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(50, 70)));
+        assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(90, 100)));
+        assert_eq!(finite_by_val.next(), None);
     }
 }

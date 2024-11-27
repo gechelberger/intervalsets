@@ -34,10 +34,10 @@
 /// ```
 pub use intervalsets_core::ops::TryMerge;
 
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::Interval;
 
-impl<T: Element + Zero> TryMerge<Self> for Interval<T> {
+impl<T: Element> TryMerge<Self> for Interval<T> {
     type Output = Self;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {

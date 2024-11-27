@@ -12,7 +12,7 @@ pub use hull::{convex_hull_into_ord_bound_impl, convex_hull_ord_bounded_impl, Co
 mod intersection; // todo: SetSetIntersection
 pub use intersection::{Intersection, SetSetIntersection};
 mod merged; // todo: MergeSorted
-pub use merged::{mergeable, MergeSorted, TryMerge};
+pub use merged::{mergeable, MergeSortedByValue, TryMerge};
 mod rebound;
 pub use rebound::Rebound;
 mod split;
