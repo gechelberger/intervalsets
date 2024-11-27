@@ -353,6 +353,55 @@ where
     }
 }
 
+
+/// MergeSorted merges intersecting intervals and returns disjoint ones.
+pub struct MergeSortedByRef<'a, T: 'a, I: Iterator<Item = &'a EnumInterval<T>>> {
+    sorted: itertools::PutBack<I>
+}
+
+impl<'a, T, I> MergeSortedByRef<'a, T, I>
+where
+    I: Iterator<Item = &'a EnumInterval<T>>,
+{
+    /// Creates a new `MergeSorted` Iterator
+    ///
+    /// If the input is not sorted, behavior is undefined.
+    pub fn new<U>(sorted: U) -> Self
+    where
+        U: IntoIterator<Item = &'a EnumInterval<T>, IntoIter = I>,
+    {
+        Self {
+            sorted: itertools::put_back(sorted),
+        }
+    }
+}
+
+impl<'a, T, I> Iterator for MergeSortedByRef<'a, T, I>
+where
+    T: Clone + Element,
+    I: Iterator<Item = &'a EnumInterval<T>>,
+{
+    type Item = EnumInterval<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut current = self.sorted.next()?.clone();
+
+        while let Some(cand) = self.sorted.next() {
+
+            current = match (&current).try_merge(cand) {
+                Some(merged) => merged,
+                None => {
+                    self.sorted.put_back(cand);
+                    break;
+                },
+            };
+        }
+
+        Some(current)
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -422,7 +471,7 @@ mod tests {
     }
 
     #[test]
-    fn test_merge_sorted() {
+    fn test_merge_sorted_by_value() {
         let finite = [
             FiniteInterval::closed(0, 10),
             FiniteInterval::closed(5, 15),
@@ -452,5 +501,23 @@ mod tests {
         assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(50, 70)));
         assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(90, 100)));
         assert_eq!(finite_by_val.next(), None);
+    }
+
+    #[test]
+    fn test_merge_sorted_by_ref() {
+        let enums = [
+            EnumInterval::closed(0, 10),
+            EnumInterval::closed(5, 15),
+            EnumInterval::closed(50, 60),
+            EnumInterval::closed(55, 65),
+            EnumInterval::closed(60, 70),
+            EnumInterval::closed(90, 100),
+        ];
+
+        let mut finite_by_ref = MergeSortedByRef::new(enums.iter());
+        assert_eq!(finite_by_ref.next(), Some(EnumInterval::closed(0, 15)));
+        assert_eq!(finite_by_ref.next(), Some(EnumInterval::closed(50, 70)));
+        assert_eq!(finite_by_ref.next(), Some(EnumInterval::closed(90, 100)));
+        assert_eq!(finite_by_ref.next(), None);
     }
 }
