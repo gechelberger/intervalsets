@@ -53,19 +53,14 @@ impl<T: Element> FiniteInterval<T> {
     ///
     /// Panics if lhs and rhs are not comparable
     pub fn new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        let lhs = lhs.normalized(Left);
-        let rhs = rhs.normalized(Right);
-        unsafe { Self::new_assume_normed(lhs, rhs) }
+        Self::new_strict(lhs, rhs).unwrap()
     }
 
     /// Creates a new FiniteInterval or Error; Should never panic.
     pub fn new_strict(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
         let lhs = lhs.normalized(Left);
         let rhs = rhs.normalized(Right);
-        let order = lhs
-            .value()
-            .partial_cmp(rhs.value())
-            .ok_or(TotalOrderError)?;
+        let order = lhs.value().try_cmp(rhs.value())?;
 
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
             // SAFETY: normalized & comparable & lhs <= rhs
@@ -79,18 +74,17 @@ impl<T: Element> FiniteInterval<T> {
 impl<T: PartialOrd> FiniteInterval<T> {
     /// Creates a FiniteInterval; assuming normalized & comparable.
     ///
-    /// # Panics
-    ///
-    /// Panics if lhs and rhs are not comparable.
-    ///
     /// # Safety
     ///
     /// The user is responsible for ensuring that invariants are satisfied.
     #[inline]
     pub unsafe fn new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        match Self::new_strict_assume_normed(lhs, rhs) {
-            Ok(finterval) => finterval,
-            Err(e) => panic!("assumed normalized and comparable: {}", e),
+        if lhs.value() < rhs.value()
+            || (lhs.value() == rhs.value() && lhs.is_closed() && rhs.is_closed())
+        {
+            Self::new_unchecked(lhs, rhs)
+        } else {
+            Self::empty()
         }
     }
 
