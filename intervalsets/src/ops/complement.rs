@@ -106,7 +106,6 @@ mod test {
     fn test_half_complement_i8(a: i8) {
         let baseline = Interval::unbound_closed(50 as i8);
         let complement = baseline.clone().complement();
-
         assert!(baseline.contains(&a) != complement.contains(&a));
     }
 
@@ -115,18 +114,12 @@ mod test {
         let a = Interval::closed(a, a.saturating_add(100));
         let b = Interval::closed(b, b.saturating_add(100));
         let c = Interval::closed(c, c.saturating_add(100));
-
         let c0 = IntervalSet::new(vec![a, b, c]);
-        println!("c0: {}", c0);
         assert!(IntervalSet::satisfies_invariants(c0.slice()));
-
         let c1 = c0.clone().complement();
-        println!("c1: {}", c1);
         assert!(IntervalSet::satisfies_invariants(c1.slice()));
-
         let c2 = c1.complement();
         assert!(IntervalSet::satisfies_invariants(c2.slice()));
-
         assert_eq!(c2, c0);
     }
 
@@ -175,11 +168,9 @@ mod test {
         let c = Interval::closed(c, c.saturating_add(100));
 
         let c0 = IntervalSet::new(vec![a, b, c]);
-        println!("c0: {}", c0);
         assert!(IntervalSet::satisfies_invariants(c0.slice()));
 
         let c1 = c0.clone().complement();
-        println!("c1: {}", c1);
         assert!(IntervalSet::satisfies_invariants(c1.slice()));
 
         let c2 = c1.complement();

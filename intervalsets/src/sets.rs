@@ -185,16 +185,17 @@ impl<T: Element> IntervalSet<T> {
     {
         let mut intervals: Vec<_> = intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
 
-        //if Self::satisfies_invariants(&intervals) {
-        //    return unsafe { Self::new_unchecked(intervals) };
-        //}
+        if Self::satisfies_invariants(&intervals) {
+            return Self { intervals };
+        }
 
         intervals.sort_unstable_by(|a, b| {
             a.partial_cmp(b)
                 .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
         });
 
-        unsafe { Self::new_unchecked(MergeSortedByValue::new(intervals)) }
+        let intervals: Vec<_> = MergeSortedByValue::new(intervals).collect();
+        Self { intervals }
     }
 }
 
