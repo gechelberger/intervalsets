@@ -116,9 +116,18 @@ mod test {
         let b = Interval::closed(b, b.saturating_add(100));
         let c = Interval::closed(c, c.saturating_add(100));
 
-        let set = IntervalSet::new(vec![a, b, c]);
+        let c0 = IntervalSet::new(vec![a, b, c]);
+        println!("c0: {}", c0);
+        assert!(IntervalSet::satisfies_invariants(c0.slice()));
 
-        assert_eq!(set.clone().complement().complement(), set);
+        let c1 = c0.clone().complement();
+        println!("c1: {}", c1);
+        assert!(IntervalSet::satisfies_invariants(c1.slice()));
+
+        let c2 = c1.complement();
+        assert!(IntervalSet::satisfies_invariants(c2.slice()));
+
+        assert_eq!(c2, c0);
     }
 
     #[quickcheck]
@@ -153,5 +162,29 @@ mod test {
         assert_eq!(a.intersection(c).expect_interval(), Interval::empty());
 
         true
+    }
+
+    #[test]
+    fn test_set_complement_regressions() {
+        let a: i32 = 0;
+        let b: i32 = 0;
+        let c: i32 = 2147483647;
+
+        let a = Interval::closed(a, a.saturating_add(100));
+        let b = Interval::closed(b, b.saturating_add(100));
+        let c = Interval::closed(c, c.saturating_add(100));
+
+        let c0 = IntervalSet::new(vec![a, b, c]);
+        println!("c0: {}", c0);
+        assert!(IntervalSet::satisfies_invariants(c0.slice()));
+
+        let c1 = c0.clone().complement();
+        println!("c1: {}", c1);
+        assert!(IntervalSet::satisfies_invariants(c1.slice()));
+
+        let c2 = c1.complement();
+        assert!(IntervalSet::satisfies_invariants(c2.slice()));
+
+        assert_eq!(c2, c0);
     }
 }

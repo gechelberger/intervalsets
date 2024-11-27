@@ -185,9 +185,9 @@ impl<T: Element> IntervalSet<T> {
     {
         let mut intervals: Vec<_> = intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
 
-        if Self::satisfies_invariants(&intervals) {
-            return unsafe { Self::new_unchecked(intervals) };
-        }
+        //if Self::satisfies_invariants(&intervals) {
+        //    return unsafe { Self::new_unchecked(intervals) };
+        //}
 
         intervals.sort_unstable_by(|a, b| {
             a.partial_cmp(b)
@@ -210,10 +210,9 @@ impl<T: Element> IntervalSet<T> {
         let mut prev = &Interval::<T>::empty();
         for interval in intervals {
             if prev >= interval || (prev.is_inhabited() && prev.connects(interval)) {
-                // current starts as empty which is the least most possible set
-                // so we should only reach this branch on the first element if it is empty.
                 return false;
             }
+
             prev = interval;
         }
         true
