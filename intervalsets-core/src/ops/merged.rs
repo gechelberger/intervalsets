@@ -1,39 +1,11 @@
-use super::adjacent::Adjacent;
-use crate::bound::{FiniteBound, Side};
+use crate::bound::FiniteBound;
+use crate::bound::Side::{self, Left, Right};
 use crate::numeric::Element;
-use crate::ops::{Contains, Intersects};
+use crate::ops::{Connects, Contains};
 use crate::sets::EnumInterval::{self, *};
 use crate::sets::{FiniteInterval, HalfInterval};
 
-/// Test whether two sets are mergable.
-///
-/// # Examples
-///
-/// ```
-/// use intervalsets_core::prelude::*;
-///
-/// let x = FiniteInterval::closed(0, 10);
-/// let y = FiniteInterval::closed(11, 20);
-/// assert_eq!(mergeable(&x, &y), true);
-///
-/// let x = FiniteInterval::closed(0.0, 10.0);
-/// let y = FiniteInterval::closed(11.0, 20.0);
-/// assert_eq!(mergeable(&x, &y), false);
-/// ```
-#[inline]
-pub fn mergeable<'a, A, B>(a: &'a A, b: &'a B) -> bool
-where
-    A: Intersects<&'a B> + Adjacent<&'a B>,
-{
-    a.intersects(b) || a.is_adjacent_to(b)
-}
-
-/// The union of two intervals if and only if connected else `None``.
-///
-/// Two intervals are connected if they share any elements (ie. [`Intersects`])
-/// **or** if they are [`Adjacent`] such that no other elements exist between them.
-/// The empty set is considered adjacent and connect to all other sets since
-/// no elements exist between the two.
+/// The union of two intervals if and only if [connected](`Connects`) else `None``.
 ///
 /// ```text
 /// {x | x ∈ A ∨ x ∈ B } ⇔ {x} is an interval
@@ -86,7 +58,7 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
     type Output = Self;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
-        if self.intersects(&rhs) || self.is_adjacent_to(&rhs) {
+        if self.connects(&rhs) {
             let Some((lhs_min, lhs_max)) = self.into_raw() else {
                 // intersects is false, but the empty set
                 // is trivially connected to all other sets.
@@ -119,7 +91,7 @@ impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
-        if self.intersects(rhs) || self.is_adjacent_to(rhs) {
+        if self.connects(rhs) {
             let Some((lhs_min, lhs_max)) = self.view_raw() else {
                 return Some(rhs.clone());
             };
@@ -157,7 +129,7 @@ impl<T: Element> TryMerge<Self> for HalfInterval<T> {
             } else {
                 Some(rhs.into())
             }
-        } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(&rhs) {
+        } else if self.connects(&rhs) {
             // <----](---->
             // <----][---->
             // <----)[---->
@@ -179,7 +151,7 @@ impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
             } else {
                 Some(rhs.clone().into())
             }
-        } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(rhs) {
+        } else if self.connects(rhs) {
             Some(EnumInterval::Unbounded)
         } else {
             None
@@ -191,30 +163,21 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
-        let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-            return Some(self); // identity: merge with empty
-        };
+        if self.connects(&rhs) {
+            let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+                return Some(self); // identity: merge with empty
+            };
 
-        let n = [&rhs_min, &rhs_max]
-            .into_iter()
-            .filter(|b| self.contains(b.value()))
-            .count();
-
-        if n == 2 {
-            Some(self) // finite interval is fully contained
-        } else if n == 1 {
-            let bound = self.side().select(rhs_min, rhs_max);
-            // SAFETY: assume invariants satisfied by FiniteInterval.
-            unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
-        } else {
-            let maybe_adjacent = self.side().select(&rhs_max, &rhs_min);
-            if self.is_adjacent_to(maybe_adjacent) {
-                let bound = self.side().select(rhs_min, rhs_max);
-                // SAFETY: assum invariants satisfied by FiniteInterval.
-                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
+            let left_contained = self.side() == Left && self.contains(rhs_min.finite_ord(Left));
+            let right_contained = self.side() == Right && self.contains(rhs_max.finite_ord(Right));
+            if left_contained || right_contained {
+                Some(self)
             } else {
-                None
+                let bound = self.side().select(rhs_min, rhs_max);
+                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
             }
+        } else {
+            None
         }
     }
 }
@@ -223,28 +186,21 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     fn try_merge(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
-        let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
-            return Some(self.clone());
-        };
+        if self.connects(rhs) {
+            let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
+                return Some(self.clone());
+            };
 
-        let n = [rhs_min, rhs_max]
-            .into_iter()
-            .filter(|b| self.contains(b.value()))
-            .count();
-
-        if n == 2 {
-            Some(self.clone())
-        } else if n == 1 {
-            let bound = self.side().select(rhs_min, rhs_max).clone();
-            unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
-        } else {
-            let maybe_adj = self.side().select(rhs_max, rhs_min);
-            if self.is_adjacent_to(maybe_adj) {
+            let left_contained = self.side() == Left && self.contains(rhs_min.finite_ord(Left));
+            let right_contained = self.side() == Right && self.contains(rhs_max.finite_ord(Right));
+            if left_contained || right_contained {
+                Some(self.clone())
+            } else {
                 let bound = self.side().select(rhs_min, rhs_max).clone();
                 unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
-            } else {
-                None
             }
+        } else {
+            None
         }
     }
 }
@@ -328,7 +284,7 @@ where
 
 impl<S, I> Iterator for MergeSortedByValue<S, I>
 where
-    S: TryMerge + for<'a> Intersects<&'a S> + for<'a> Adjacent<&'a S>,
+    S: TryMerge + for<'a> Connects<&'a S>,
     S: From<<S as TryMerge>::Output>,
     I: Iterator<Item = S>,
 {
@@ -338,7 +294,7 @@ where
         let mut current = self.sorted.next()?;
 
         while let Some(peek) = self.sorted.peek() {
-            if !super::mergeable(&current, peek) {
+            if !current.connects(peek) {
                 break;
             }
 
@@ -353,10 +309,9 @@ where
     }
 }
 
-
 /// MergeSorted merges intersecting intervals and returns disjoint ones.
 pub struct MergeSortedByRef<'a, T: 'a, I: Iterator<Item = &'a EnumInterval<T>>> {
-    sorted: itertools::PutBack<I>
+    sorted: itertools::PutBack<I>,
 }
 
 impl<'a, T, I> MergeSortedByRef<'a, T, I>
@@ -366,6 +321,7 @@ where
     /// Creates a new `MergeSorted` Iterator
     ///
     /// If the input is not sorted, behavior is undefined.
+    #[allow(unused)]
     pub fn new<U>(sorted: U) -> Self
     where
         U: IntoIterator<Item = &'a EnumInterval<T>, IntoIter = I>,
@@ -387,20 +343,18 @@ where
         let mut current = self.sorted.next()?.clone();
 
         while let Some(cand) = self.sorted.next() {
-
             current = match (&current).try_merge(cand) {
                 Some(merged) => merged,
                 None => {
                     self.sorted.put_back(cand);
                     break;
-                },
+                }
             };
         }
 
         Some(current)
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -470,6 +424,8 @@ mod tests {
         assert_eq!(a.try_merge(b), None);
     }
 
+    extern crate std;
+
     #[test]
     fn test_merge_sorted_by_value() {
         let finite = [
@@ -500,6 +456,26 @@ mod tests {
         assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(0, 15)));
         assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(50, 70)));
         assert_eq!(finite_by_val.next(), Some(EnumInterval::closed(90, 100)));
+        assert_eq!(finite_by_val.next(), None);
+    }
+
+    #[test]
+    fn test_merge_sorted_by_value_merge() {
+        let a = std::vec![
+            EnumInterval::unbound_closed(-100),
+            EnumInterval::closed(0, 10),
+            EnumInterval::closed_unbound(100),
+        ];
+
+        let b = std::vec![
+            EnumInterval::closed(-500, -400),
+            EnumInterval::closed(-350, -300),
+            EnumInterval::closed(-150, 150),
+            EnumInterval::closed(300, 500),
+        ];
+
+        let mut finite_by_val = MergeSortedByValue::new(itertools::merge(a, b));
+        assert_eq!(finite_by_val.next(), Some(EnumInterval::unbounded()));
         assert_eq!(finite_by_val.next(), None);
     }
 

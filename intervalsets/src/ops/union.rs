@@ -6,7 +6,7 @@ use num_traits::Zero;
 use crate::bound::{FiniteBound, Side};
 use crate::factory::UnboundedFactory;
 use crate::numeric::Element;
-use crate::ops::{Adjacent, Contains, Intersects};
+use crate::ops::{Connects, Contains};
 use crate::util::commutative_op_move_impl;
 use crate::{Interval, IntervalSet};
 
@@ -59,7 +59,7 @@ mod icore {
         type Output = IntervalSet<T>;
 
         fn union(self, rhs: Self) -> Self::Output {
-            if self.intersects(&rhs) || self.is_adjacent_to(&rhs) {
+            if self.connects(&rhs) {
                 let Some((lhs_min, lhs_max)) = self.into_raw() else {
                     return IntervalSet::from(Interval::from(rhs));
                 };
@@ -98,7 +98,7 @@ mod icore {
                 } else {
                     IntervalSet::new_unchecked([rhs.into()])
                 }
-            } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(&rhs) {
+            } else if self.connects(&rhs) {
                 IntervalSet::unbounded()
             } else {
                 IntervalSet::new_unchecked(ordered_pair(self.into(), rhs.into()))
@@ -112,7 +112,7 @@ mod icore {
         fn union(self, rhs: HalfInterval<T>) -> Self::Output {
             if rhs.contains(&self) {
                 IntervalSet::new_unchecked([rhs.into()])
-            } else if self.contains(rhs.finite_ord_bound()) || self.is_adjacent_to(&rhs) {
+            } else if self.connects(&rhs) {
                 let Some((lhs_min, lhs_max)) = self.into_raw() else {
                     // this should already be cause by rhs.contains(empty)
                     return IntervalSet::new_unchecked([rhs.into()]);
