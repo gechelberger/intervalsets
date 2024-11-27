@@ -1,6 +1,6 @@
 use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::{FiniteInterval, HalfInterval};
-use intervalsets_core::{EnumInterval, MaybeEmpty};
+use intervalsets_core::EnumInterval;
 use num_traits::Zero;
 
 use crate::bound::{FiniteBound, Side};
@@ -15,7 +15,7 @@ where
     T: Element + Zero,
     I: IntoIterator<Item = Interval<T>>,
 {
-    MergeSortedByValue::new(iter).filter(|x| x.is_inhabited())
+    MergeSortedByValue::new(iter)
 }
 
 fn ordered_pair<T: PartialOrd>(a: Interval<T>, b: Interval<T>) -> [Interval<T>; 2] {

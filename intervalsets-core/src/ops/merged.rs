@@ -4,6 +4,7 @@ use crate::numeric::Element;
 use crate::ops::{Connects, Contains};
 use crate::sets::EnumInterval::{self, *};
 use crate::sets::{FiniteInterval, HalfInterval};
+use crate::MaybeEmpty;
 
 /// The union of two intervals if and only if [connected](`Connects`) else `None``.
 ///
@@ -261,12 +262,16 @@ commutative_try_merge_impl!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>)
 commutative_try_merge_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
 
 /// MergeSorted merges intersecting intervals and returns disjoint ones.
+///
+/// As an `Iterator` is should return disjoint intervals from the sorted
+/// input in order, omitting empty sets.
 pub struct MergeSortedByValue<S, I: Iterator<Item = S>> {
     sorted: core::iter::Peekable<I>,
 }
 
 impl<S, I> MergeSortedByValue<S, I>
 where
+    S: MaybeEmpty,
     I: Iterator<Item = S>,
 {
     /// Creates a new `MergeSorted` Iterator
@@ -276,9 +281,18 @@ where
     where
         U: IntoIterator<Item = S, IntoIter = I>,
     {
-        Self {
-            sorted: sorted.into_iter().peekable(),
+        let mut sorted = sorted.into_iter().peekable();
+
+        // discard all empty sets from the list
+        while let Some(head) = sorted.peek() {
+            if head.is_empty() {
+                sorted.next();
+            } else {
+                break;
+            }
         }
+
+        Self { sorted }
     }
 }
 
@@ -428,7 +442,11 @@ mod tests {
 
     #[test]
     fn test_merge_sorted_by_value() {
+        let mut empty_by_val = MergeSortedByValue::new([FiniteInterval::<u8>::empty()]);
+        assert_eq!(empty_by_val.next(), None);
+
         let finite = [
+            FiniteInterval::empty(),
             FiniteInterval::closed(0, 10),
             FiniteInterval::closed(5, 15),
             FiniteInterval::closed(50, 60),
