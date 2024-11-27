@@ -129,7 +129,7 @@ mod tests {
 
         assert_eq!(
             Interval::closed(0.0, 10.0).difference(Interval::closed(2.5, 7.5)),
-            IntervalSet::new_unchecked(vec![
+            IntervalSet::new(vec![
                 Interval::closed_open(0.0, 2.5),
                 Interval::open_closed(7.5, 10.0)
             ])

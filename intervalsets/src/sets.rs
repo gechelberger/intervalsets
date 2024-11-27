@@ -4,7 +4,7 @@ use intervalsets_core::sets::EnumInterval;
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, SetBounds, Side};
 use crate::numeric::Element;
-use crate::ops::Intersects;
+use crate::ops::Connects;
 use crate::MaybeEmpty;
 
 /// A Set representation of a contiguous interval in N, Z, or R.
@@ -156,20 +156,17 @@ impl<T> OrdBounded<T> for Interval<T> {
     }
 }
 
-/// A Set in N, Z, or R consisting of disjoint contiguous intervals.
+/// A subset of Z, or R consisting of unconnected intervals.
 ///
 /// # Invariants
 ///
 /// * All stored intervals are normalized.
-///     * We do not enforce this here because it should be
+///     * This is not checked here because it should be
 ///       an invariant of `Interval<T>` already.
 /// * No stored interval may be the empty set.
 ///     * Emptiness is represented by storing no intervals.
-///     * Normalized `Interval<T>` should have a total ordering w/o empty sets.
 /// * All intervals are stored in ascending order.
-/// * All stored intervals are disjoint subsets of T.
-///     * Stored intervals *should* not be adjacent.
-///         * This can only be assured for `T: Eq + Ord`
+/// * All stored intervals are unconnected subsets of T.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
@@ -189,17 +186,15 @@ impl<T: Element> IntervalSet<T> {
         let mut intervals: Vec<_> = intervals.into_iter().filter(|iv| !iv.is_empty()).collect();
 
         if Self::satisfies_invariants(&intervals) {
-            // includes empty case
-            return Self::new_unchecked(intervals);
+            return unsafe { Self::new_unchecked(intervals) };
         }
 
-        // re
         intervals.sort_unstable_by(|a, b| {
             a.partial_cmp(b)
                 .expect("Could not sort intervals in IntervalSet because partial_cmp returned None. Likely float NaN")
         });
 
-        Self::new_unchecked(MergeSortedByValue::new(intervals).filter(|iv| !iv.is_empty()))
+        unsafe { Self::new_unchecked(MergeSortedByValue::new(intervals)) }
     }
 }
 
@@ -210,19 +205,17 @@ impl<T> IntervalSet<T> {
     }
 }
 
-impl<T: PartialOrd> IntervalSet<T> {
+impl<T: Element> IntervalSet<T> {
     pub fn satisfies_invariants(intervals: &[Interval<T>]) -> bool {
-        let mut current = &Interval::empty();
+        let mut prev = &Interval::<T>::empty();
         for interval in intervals {
-            if interval.is_empty() || current > interval || current.intersects(interval) {
-                // current starts as empty which always compares false and intersects false
+            if prev >= interval || (prev.is_inhabited() && prev.connects(interval)) {
+                // current starts as empty which is the least most possible set
                 // so we should only reach this branch on the first element if it is empty.
                 return false;
             }
-
-            current = interval;
+            prev = interval;
         }
-
         true
     }
 }
@@ -230,13 +223,13 @@ impl<T: PartialOrd> IntervalSet<T> {
 impl<T> IntervalSet<T> {
     /// Creates a new IntervalSet without checking invariants.
     ///
-    /// The invariants check and enforcement step can be expensive, O(nlog(n)),
-    /// since it sorts all elements. If an operation is certain
-    /// that it has left the invariants in tact it can create a new IntervalSet
-    /// directly.
+    /// # Safety
     ///
-    /// Behavior is **undefined** if invariants are violated!
-    pub fn new_unchecked<I>(intervals: I) -> Self
+    /// User is responsible for enforcing invariants:
+    /// 1. provided intervals do not include the empty set.
+    /// 2. provided intervals are sorted ascendingly.
+    /// 3. provided intervals are not connected to each other.
+    pub unsafe fn new_unchecked<I>(intervals: I) -> Self
     where
         I: IntoIterator<Item = Interval<T>>,
     {

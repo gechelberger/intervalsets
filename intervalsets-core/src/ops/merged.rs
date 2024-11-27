@@ -175,6 +175,7 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
                 Some(self)
             } else {
                 let bound = self.side().select(rhs_min, rhs_max);
+                // SAFETY: bound is stolen from existing FiniteInterval
                 unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
             }
         } else {

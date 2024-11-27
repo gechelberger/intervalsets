@@ -1,22 +1,17 @@
+use core::iter::once;
+
 use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::{FiniteInterval, HalfInterval};
 use intervalsets_core::EnumInterval;
 use num_traits::Zero;
 
+use crate::bound::Side::{Left, Right};
 use crate::bound::{FiniteBound, Side};
 use crate::factory::UnboundedFactory;
 use crate::numeric::Element;
 use crate::ops::{Connects, Contains};
 use crate::util::commutative_op_move_impl;
 use crate::{Interval, IntervalSet};
-
-fn merge_sorted_intervals<T, I>(iter: I) -> impl Iterator<Item = Interval<T>>
-where
-    T: Element + Zero,
-    I: IntoIterator<Item = Interval<T>>,
-{
-    MergeSortedByValue::new(iter)
-}
 
 fn ordered_pair<T: PartialOrd>(a: Interval<T>, b: Interval<T>) -> [Interval<T>; 2] {
     if a <= b {
@@ -61,15 +56,12 @@ mod icore {
         fn union(self, rhs: Self) -> Self::Output {
             if self.connects(&rhs) {
                 let Some((lhs_min, lhs_max)) = self.into_raw() else {
-                    return IntervalSet::from(Interval::from(rhs));
+                    return IntervalSet::from(rhs);
                 };
 
                 let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
                     // SAFETY: putting it back together
-                    unsafe {
-                        let lhs = Self::new_unchecked(lhs_min, lhs_max);
-                        return IntervalSet::from(Interval::from(lhs));
-                    }
+                    return IntervalSet::from(unsafe { Self::new_unchecked(lhs_min, lhs_max) });
                 };
 
                 // SAFETY: if self and rhs satisfy invariants then new interval
@@ -81,9 +73,13 @@ mod icore {
                     )
                 };
 
-                IntervalSet::new_unchecked([merged.into()])
+                IntervalSet::from(merged)
             } else {
-                IntervalSet::new_unchecked(ordered_pair(self.into(), rhs.into()))
+                let ordpair = ordered_pair(self.into(), rhs.into());
+                // SAFETY:
+                // 2. intervals are sorted here
+                // 1+3. Just checked that the two sets are not connected
+                unsafe { IntervalSet::new_unchecked(ordpair) }
             }
         }
     }
@@ -94,14 +90,18 @@ mod icore {
         fn union(self, rhs: Self) -> Self::Output {
             if self.side() == rhs.side() {
                 if self.contains(rhs.finite_ord_bound()) {
-                    IntervalSet::new_unchecked([self.into()])
+                    IntervalSet::from(self)
                 } else {
-                    IntervalSet::new_unchecked([rhs.into()])
+                    IntervalSet::from(rhs)
                 }
             } else if self.connects(&rhs) {
                 IntervalSet::unbounded()
             } else {
-                IntervalSet::new_unchecked(ordered_pair(self.into(), rhs.into()))
+                let ordpair = ordered_pair(self.into(), rhs.into());
+                // SAFETY:
+                // 2: intervals are sorted here
+                // 1+3: intervals are not connected (and therefore also non-empty)
+                unsafe { IntervalSet::new_unchecked(ordpair) }
             }
         }
     }
@@ -110,21 +110,28 @@ mod icore {
         type Output = IntervalSet<T>;
 
         fn union(self, rhs: HalfInterval<T>) -> Self::Output {
-            if rhs.contains(&self) {
-                IntervalSet::new_unchecked([rhs.into()])
-            } else if self.connects(&rhs) {
+            if self.connects(&rhs) {
                 let Some((lhs_min, lhs_max)) = self.into_raw() else {
-                    // this should already be cause by rhs.contains(empty)
-                    return IntervalSet::new_unchecked([rhs.into()]);
+                    return IntervalSet::from(rhs);
                 };
 
-                let side = rhs.side();
-                let bound = side.select(lhs_min, lhs_max);
-                unsafe {
-                    IntervalSet::new_unchecked([HalfInterval::new_unchecked(side, bound).into()])
+                let left_contained = rhs.side() == Left && rhs.contains(lhs_min.finite_ord(Left));
+                let right_contained =
+                    rhs.side() == Right && rhs.contains(lhs_max.finite_ord(Right));
+                if left_contained || right_contained {
+                    IntervalSet::from(rhs)
+                } else {
+                    let bound = rhs.side().select(lhs_min, lhs_max);
+                    // SAFETY: bound stolen from existing FiniteInterval
+                    let merged = unsafe { HalfInterval::new_unchecked(rhs.side(), bound) };
+                    IntervalSet::from(merged)
                 }
             } else {
-                IntervalSet::new_unchecked(ordered_pair(self.into(), rhs.into()))
+                let ordpair = ordered_pair(self.into(), rhs.into());
+                // SAFETY:
+                // 2. intervals are sorted here
+                // 1+3. intervals not connected (and therefore non-empty)
+                unsafe { IntervalSet::new_unchecked(ordpair) }
             }
         }
     }
@@ -188,7 +195,12 @@ impl<T: Element + Zero> Union<Self> for IntervalSet<T> {
     type Output = Self;
 
     fn union(self, rhs: Self) -> Self::Output {
-        Self::new_unchecked(merge_sorted_intervals(itertools::merge(self, rhs)))
+        let sorted = itertools::merge(self, rhs);
+        // SAFETY:
+        // 1. Neither operand may produce the empty set per invariants.
+        // 2. Operands are sorted per invariants.
+        // 3. MergSortedByValue merged connected intervals if properly sorted.
+        unsafe { Self::new_unchecked(MergeSortedByValue::new(sorted)) }
     }
 }
 
@@ -196,10 +208,12 @@ impl<T: Element + Zero> Union<Interval<T>> for IntervalSet<T> {
     type Output = Self;
 
     fn union(self, rhs: Interval<T>) -> Self::Output {
-        Self::new_unchecked(merge_sorted_intervals(itertools::merge(
-            self,
-            core::iter::once(rhs),
-        )))
+        let sorted = itertools::merge(self, once(rhs));
+        // SAFETY:
+        // 1. MergeSortedByValue strips empty sets from the head of its input.
+        // 2. values are sorted if self invariants are satisfied.
+        // 3. MergeSortedByValue merges connected intervals if properly sorted.
+        unsafe { Self::new_unchecked(MergeSortedByValue::new(sorted)) }
     }
 }
 
@@ -235,18 +249,12 @@ mod tests {
     fn test_finite_union_disjoint() {
         assert_eq!(
             Interval::<i32>::closed(0, 10).union(Interval::closed(100, 110)),
-            IntervalSet::<i32>::new_unchecked(vec![
-                Interval::closed(0, 10),
-                Interval::closed(100, 110),
-            ])
+            IntervalSet::<i32>::new(vec![Interval::closed(0, 10), Interval::closed(100, 110),])
         );
 
         assert_eq!(
             Interval::<i32>::closed(100, 110).union(Interval::closed(0, 10)),
-            IntervalSet::<i32>::new_unchecked(vec![
-                Interval::closed(0, 10),
-                Interval::closed(100, 110),
-            ])
+            IntervalSet::<i32>::new(vec![Interval::closed(0, 10), Interval::closed(100, 110),])
         );
     }
 

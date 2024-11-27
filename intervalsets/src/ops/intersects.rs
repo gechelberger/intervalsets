@@ -41,12 +41,12 @@ mod test {
 
     #[test]
     fn test_set_set_intersects() {
-        let a = IntervalSet::new_unchecked(vec![
+        let a = IntervalSet::new(vec![
             Interval::unbound_open(0.0),
             Interval::closed(100.0, 110.0),
             Interval::open(1000.0, 1100.0),
         ]);
-        let b = IntervalSet::new_unchecked(vec![
+        let b = IntervalSet::new(vec![
             Interval::open(10.0, 20.0),     // no
             Interval::closed(110.0, 120.0), // [110.0, 110.0]
         ]);

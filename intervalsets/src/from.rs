@@ -72,7 +72,10 @@ impl<T> From<Interval<T>> for IntervalSet<T> {
         if value.is_empty() {
             IntervalSet::empty()
         } else {
-            IntervalSet::new_unchecked([value])
+            // SAFETY:
+            // 1. the empty set is explicitly excluded.
+            // 2+3. only one interval -> sorted/connected are not applicable
+            unsafe { IntervalSet::new_unchecked([value]) }
         }
     }
 }
