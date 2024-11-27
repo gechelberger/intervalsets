@@ -7,19 +7,30 @@ use crate::{Interval, IntervalSet, MaybeEmpty, SetBounds};
 
 impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
-    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
-        let (left, right) = self.0.split(at, closed);
-        (left.into(), right.into())
+    fn strict_split(
+        self,
+        at: T,
+        closed: Side,
+    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+        self.0
+            .strict_split(at, closed)
+            .map(|(l, r)| (l.into(), r.into()))
     }
 }
 
 impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
-    fn split(self, at: T, closed: Side) -> (Self::Output, Self::Output) {
+    fn strict_split(
+        self,
+        at: T,
+        closed: Side,
+    ) -> Result<(Self::Output, Self::Output), Self::Error> {
         if self.is_empty() {
-            return (Self::empty(), Self::empty());
+            return Ok((Self::Output::empty(), Self::Output::empty()));
         }
 
         let mut left = Vec::<Interval<T>>::new();
@@ -28,11 +39,11 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
         // iter is faster than a binary search for small (typical) N.
         for subset in self.into_iter() {
             if subset.contains(&at) {
-                let (ileft, iright) = subset.split(at.clone(), closed);
-                left.push(ileft);
-                right.push(iright);
+                let split = subset.strict_split(at.clone(), closed)?;
+                left.push(split.0);
+                right.push(split.1);
             } else if let Some(rbound) = subset.right() {
-                if !rbound.strict_contains(Side::Right, &at).unwrap() {
+                if !rbound.strict_contains(Side::Right, &at)? {
                     left.push(subset);
                 } else {
                     right.push(subset);
@@ -42,7 +53,9 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
             }
         }
 
-        (Self::new_unchecked(left), Self::new_unchecked(right))
+        let left_set = Self::Output::new_unchecked(left);
+        let right_set = Self::Output::new_unchecked(right);
+        Ok((left_set, right_set))
     }
 }
 
