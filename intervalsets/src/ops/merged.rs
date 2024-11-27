@@ -1,11 +1,4 @@
-/// Defines the union of two intervals if contiguous.
-///
-/// Two intervals are contiguous if they share any elements **or** if
-/// they are **adjacent** to each other such that they share bounds
-/// with no other elements possible between them.
-///
-/// Other **disjoint sets** return `None` unless one is the `Empty` Set,
-/// in which case the other input Set is the result.
+/// Defines the union of two intervals if [connected](super::Connects).
 ///
 /// # Note
 ///

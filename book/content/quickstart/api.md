@@ -22,7 +22,7 @@ easy to use API for each type.
 |-------------------|-----------|:-------:|:-------:|-------------|
 | Contains      | predicate | &check; | &check; | Test if A is a superset of B                     |
 | Intersects    | predicate | &check; | &check; | Test for some shared element of A and B          |
-| Adjacent      | predicate | &check; | &check; | Test if set bounds are connected                 |
+| Connects      | predicate | &check; | &check; | Test if sets are connected                       |
 | Width         | measure   | &check; | &check; | Find the width/diameter/length of a set          |
 | Count         | measure   | &check; | &check; | Count the elements of a set                      |
 | Intersection  | binary    | &check; | &check; | The intersection set of two sets                 |
