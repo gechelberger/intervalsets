@@ -65,7 +65,13 @@ pub fn are_bounds_connected<T: Element>(right: &FiniteBound<T>, left: &FiniteBou
             left.is_closed() && right.value() == left.value()
         }
         (Some(right_up), Some(left_down)) => {
-            right_up == *left.value() && left_down == *right.value()
+            // std normalized comparison. a discrete bound may only be open if
+            // it is the MIN/MAX of the data type which is handled by the prev
+            // two cases. ie. connects([0, MAX-1], (MAX, ->)) -> should be false.
+            right_up == *left.value()
+                && left_down == *right.value()
+                && left.is_closed()
+                && right.is_closed()
         }
     }
 }
@@ -184,5 +190,24 @@ mod tests {
         );
 
         assert_eq!(EI::unbounded().connects(&EI::closed(0, 10)), true);
+    }
+
+    #[test]
+    fn test_connects_discrete_min_max() {
+        let a = EI::closed(0, i32::MAX - 1);
+        let b = EI::open_unbound(i32::MAX);
+        assert_eq!(a.connects(&b), false);
+
+        let a = EI::closed(0, i32::MAX);
+        let b = EI::open_unbound(i32::MAX);
+        assert_eq!(a.connects(&b), true);
+
+        let a = EI::closed(i32::MIN + 1, 0);
+        let b = EI::unbound_open(i32::MIN);
+        assert_eq!(a.connects(&b), false);
+
+        let a = EI::closed(i32::MIN, 0);
+        let b = EI::unbound_open(i32::MIN);
+        assert_eq!(a.connects(&b), true);
     }
 }

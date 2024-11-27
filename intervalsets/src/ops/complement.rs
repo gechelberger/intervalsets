@@ -23,7 +23,7 @@ impl<T: Element> Complement for FiniteInterval<T> {
 
     fn complement(self) -> Self::Output {
         match self.into_raw() {
-            None => IntervalSet::new_unchecked(vec![Interval::unbounded()]),
+            None => IntervalSet::unbounded(),
             Some((lhs, rhs)) => unsafe {
                 // SAFETY: Assuming FiniteInterval invariants are satisfied, then lhs <= rhs and
                 // new half intervals are properly sorted; bounds are comparable; manually renormalized.
@@ -106,7 +106,6 @@ mod test {
     fn test_half_complement_i8(a: i8) {
         let baseline = Interval::unbound_closed(50 as i8);
         let complement = baseline.clone().complement();
-
         assert!(baseline.contains(&a) != complement.contains(&a));
     }
 
@@ -115,10 +114,13 @@ mod test {
         let a = Interval::closed(a, a.saturating_add(100));
         let b = Interval::closed(b, b.saturating_add(100));
         let c = Interval::closed(c, c.saturating_add(100));
-
-        let set = IntervalSet::new(vec![a, b, c]);
-
-        assert_eq!(set.clone().complement().complement(), set);
+        let c0 = IntervalSet::new(vec![a, b, c]);
+        assert!(IntervalSet::satisfies_invariants(c0.slice()));
+        let c1 = c0.clone().complement();
+        assert!(IntervalSet::satisfies_invariants(c1.slice()));
+        let c2 = c1.complement();
+        assert!(IntervalSet::satisfies_invariants(c2.slice()));
+        assert_eq!(c2, c0);
     }
 
     #[quickcheck]
@@ -153,5 +155,27 @@ mod test {
         assert_eq!(a.intersection(c).expect_interval(), Interval::empty());
 
         true
+    }
+
+    #[test]
+    fn test_set_complement_regressions() {
+        let a: i32 = 0;
+        let b: i32 = 0;
+        let c: i32 = 2147483647;
+
+        let a = Interval::closed(a, a.saturating_add(100));
+        let b = Interval::closed(b, b.saturating_add(100));
+        let c = Interval::closed(c, c.saturating_add(100));
+
+        let c0 = IntervalSet::new(vec![a, b, c]);
+        assert!(IntervalSet::satisfies_invariants(c0.slice()));
+
+        let c1 = c0.clone().complement();
+        assert!(IntervalSet::satisfies_invariants(c1.slice()));
+
+        let c2 = c1.complement();
+        assert!(IntervalSet::satisfies_invariants(c2.slice()));
+
+        assert_eq!(c2, c0);
     }
 }

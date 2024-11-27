@@ -17,13 +17,16 @@ impl<T: num_traits::Bounded + Element> IntoFinite for IntervalSet<T> {
     type Output = Self;
 
     fn into_finite(self) -> Self::Output {
-        //unsafe {
-        Self::new_unchecked(
-            self.into_iter()
-                .map(IntoFinite::into_finite)
-                .filter(MaybeEmpty::is_inhabited),
-        )
-        //}
+        // SAFETY: The input satisfies invariants. Each subset is truncated to
+        // the finite bounds of the data type T or discarded if out of bounds.
+        // The original order for sets within bounds remains unchanged.
+        unsafe {
+            Self::new_unchecked(
+                self.into_iter()
+                    .map(IntoFinite::into_finite)
+                    .filter(MaybeEmpty::is_inhabited),
+            )
+        }
     }
 }
 

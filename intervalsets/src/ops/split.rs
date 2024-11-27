@@ -40,8 +40,12 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
         for subset in self.into_iter() {
             if subset.contains(&at) {
                 let split = subset.strict_split(at.clone(), closed)?;
-                left.push(split.0);
-                right.push(split.1);
+                if !split.0.is_empty() {
+                    left.push(split.0);
+                }
+                if !split.1.is_empty() {
+                    right.push(split.1);
+                }
             } else if let Some(rbound) = subset.right() {
                 if !rbound.strict_contains(Side::Right, &at)? {
                     left.push(subset);
@@ -53,9 +57,16 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
             }
         }
 
-        let left_set = Self::Output::new_unchecked(left);
-        let right_set = Self::Output::new_unchecked(right);
-        Ok((left_set, right_set))
+        // SAFETY:
+        // 1. no input subsets may be empty. split subsets are checked for empty.
+        // 2. original subset order is maintained
+        // 3. if intervals were unconnected in original set then that is preserved
+        //    in split child sets.
+        unsafe {
+            let left_set = Self::Output::new_unchecked(left);
+            let right_set = Self::Output::new_unchecked(right);
+            Ok((left_set, right_set))
+        }
     }
 }
 
@@ -164,5 +175,22 @@ mod tests {
         let (left, right) = set.split(-125, Side::Left);
         assert_eq!(left.expect_interval(), Interval::closed(-200, -150));
         assert_eq!(right, pos.union(Interval::closed(-100, -50)));
+    }
+
+    #[test]
+    fn test_split_set_on_interval_bound() {
+        let iset = IntervalSet::new(vec![
+            Interval::closed(10, 20),
+            Interval::closed(30, 40),
+            Interval::closed(50, 60),
+        ]);
+
+        let (left, right) = iset.clone().strict_split(30, Side::Right).unwrap();
+        assert_eq!(left, IntervalSet::from_iter([[10, 20]]));
+        assert_eq!(right, IntervalSet::from_iter([[30, 40], [50, 60]]));
+
+        let (left, right) = iset.strict_split(40, Side::Left).unwrap();
+        assert_eq!(left, IntervalSet::from_iter([[10, 20], [30, 40]]));
+        assert_eq!(right, IntervalSet::from_iter([[50, 60]]));
     }
 }

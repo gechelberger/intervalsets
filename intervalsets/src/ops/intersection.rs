@@ -48,7 +48,11 @@ impl<T: Element + Clone> Intersection<Interval<T>> for IntervalSet<T> {
             .map(|subset| (subset).intersection(rhs.clone()))
             .filter(|iv| !iv.is_empty());
 
-        IntervalSet::new_unchecked(intervals)
+        // SAFETY:
+        // 1. empty intervals are explicity filtered out
+        // 2. inputs are sorted per invariants
+        // 3. inputs are unconnected per invariants so intersection will be too.
+        unsafe { IntervalSet::new_unchecked(intervals) }
     }
 }
 
@@ -64,11 +68,16 @@ impl<T: Element + Clone> Intersection<Self> for IntervalSet<T> {
     type Output = IntervalSet<T>;
 
     fn intersection(self, rhs: Self) -> Self::Output {
-        let intervals =
-            SetSetIntersection::new(self.into_iter().map(|x| x.0), rhs.into_iter().map(|x| x.0))
-                .map(Interval::from);
+        let lhs = self.into_iter().map(|x| x.0);
+        let rhs = rhs.into_iter().map(|x| x.0);
+        let intervals = SetSetIntersection::new(lhs, rhs).map(Interval::from);
 
-        Self::new_unchecked(intervals)
+        // SAFETY:
+        // 1. SetSetIntersection never returns empty (just stops iteration)
+        // 2. lhs & rhs should be sorted per invariants and SetSetI maintains.
+        // 3. if lhs intervals are unconnected and rhs intervals are unconnected
+        //    then the intervals of their intersection should be unconnected.
+        unsafe { Self::Output::new_unchecked(intervals) }
     }
 }
 
@@ -76,11 +85,16 @@ impl<T: Element + Clone> Intersection<Self> for &IntervalSet<T> {
     type Output = IntervalSet<T>;
 
     fn intersection(self, rhs: Self) -> Self::Output {
-        let intervals =
-            SetSetIntersection::new(self.iter().map(|x| &x.0), rhs.iter().map(|x| &x.0))
-                .map(Interval::from);
+        let lhs = self.iter().map(|x| &x.0);
+        let rhs = rhs.iter().map(|x| &x.0);
+        let intervals = SetSetIntersection::new(lhs, rhs).map(Interval::from);
 
-        Self::Output::new_unchecked(intervals)
+        // SAFETY:
+        // 1. SetSetIntersection never returns empty (just stops iteration)
+        // 2. lhs & rhs should be sorted per invariants and SetSetI maintains.
+        // 3. if lhs intervals are unconnected and rhs intervals are unconnected
+        //    then the intervals of their intersection should be unconnected.
+        unsafe { Self::Output::new_unchecked(intervals) }
     }
 }
 
@@ -213,14 +227,14 @@ mod tests {
 
     #[test]
     fn test_set_set_intersection() {
-        let a: IntervalSet<i32> = IntervalSet::new_unchecked(vec![
+        let a: IntervalSet<i32> = IntervalSet::new(vec![
             Interval::closed(0, 100),
             Interval::closed(500, 600),
             Interval::closed(1000, 1100),
             Interval::closed(10000, 11000),
         ]);
 
-        let b: IntervalSet<i32> = IntervalSet::new_unchecked(vec![
+        let b: IntervalSet<i32> = IntervalSet::new(vec![
             Interval::closed(-500, -400),  // dropped
             Interval::closed(-300, -200),  // dropped
             Interval::closed(-50, 10),     // [0, 10]
@@ -237,7 +251,7 @@ mod tests {
 
         assert_eq!(
             (&a).intersection(&b),
-            IntervalSet::<i32>::new_unchecked(vec![
+            IntervalSet::<i32>::new(vec![
                 Interval::closed(0, 10),
                 Interval::closed(20, 30),
                 Interval::closed(50, 60),
@@ -252,7 +266,7 @@ mod tests {
 
         assert_eq!(
             a.intersection(b),
-            IntervalSet::<i32>::new_unchecked(vec![
+            IntervalSet::<i32>::new(vec![
                 Interval::closed(0, 10),
                 Interval::closed(20, 30),
                 Interval::closed(50, 60),
@@ -268,14 +282,14 @@ mod tests {
 
     #[test]
     fn test_set_set_intersection2() {
-        let a: IntervalSet<i32> = IntervalSet::new_unchecked(vec![
+        let a: IntervalSet<i32> = IntervalSet::new(vec![
             Interval::unbound_closed(-100),
             Interval::closed(0, 100),
             Interval::closed(1000, 1100),
             Interval::closed_unbound(10000),
         ]);
 
-        let b: IntervalSet<i32> = IntervalSet::new_unchecked(vec![
+        let b: IntervalSet<i32> = IntervalSet::new(vec![
             Interval::unbound_closed(-1000), // full
             Interval::closed(-500, -400),    // full
             Interval::closed(-50, -40),      // drop
@@ -283,24 +297,14 @@ mod tests {
             Interval::closed_unbound(12000), // full
         ]);
 
-        assert_eq!(
-            (&a).intersection(&b),
-            IntervalSet::<i32>::new_unchecked(vec![
-                Interval::unbound_closed(-1000),
-                Interval::closed(-500, -400),
-                Interval::closed(0, 10),
-                Interval::closed_unbound(12000)
-            ])
-        );
+        let expected = IntervalSet::<i32>::new(vec![
+            Interval::unbound_closed(-1000),
+            Interval::closed(-500, -400),
+            Interval::closed(0, 10),
+            Interval::closed_unbound(12000),
+        ]);
 
-        assert_eq!(
-            a.intersection(b),
-            IntervalSet::<i32>::new_unchecked(vec![
-                Interval::unbound_closed(-1000),
-                Interval::closed(-500, -400),
-                Interval::closed(0, 10),
-                Interval::closed_unbound(12000)
-            ])
-        )
+        assert_eq!((&a).intersection(&b), expected);
+        assert_eq!(a.intersection(b), expected);
     }
 }
