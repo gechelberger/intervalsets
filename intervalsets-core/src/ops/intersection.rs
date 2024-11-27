@@ -15,6 +15,8 @@ use crate::sets::{FiniteInterval, HalfInterval};
 /// {x | x ∈ A ∧ x ∈ B }
 /// ```
 ///
+/// This operation should not panic.
+///
 /// # Examples
 ///
 /// ```
