@@ -17,12 +17,20 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 pub trait Rebound<T>: Sized {
     /// The concrete type of `Set`` to create when replacing bounds.
     type Output;
+    type Error: core::error::Error;
+
+    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error>;
+    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error>;
 
     /// Creates a `Set`, replacing the left/lower bound.
-    fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output;
+    fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+        self.with_left_strict(bound).unwrap()
+    }
 
     /// Creates a `Set`, replacing the right/upper bound.
-    fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output;
+    fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+        self.with_right_strict(bound).unwrap()
+    }
 
     /// Creates a `Set` with a new finite left/lower bound.
     #[inline]
@@ -63,60 +71,63 @@ pub trait Rebound<T>: Sized {
 
 impl<T: Element + Zero> Rebound<T> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
+    type Error = crate::error::Error;
 
-    fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((_, rhs)) = self.into_raw() else {
-            return Self::Output::empty();
+            return Ok(Self::Output::empty());
         };
 
         match bound {
-            None => EnumInterval::right_bounded(rhs),
-            Some(inner) => EnumInterval::finite(inner, rhs),
+            None => EnumInterval::strict_right_bounded(rhs),
+            Some(inner) => EnumInterval::strict_finite(inner, rhs),
         }
     }
 
-    fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((lhs, _)) = self.into_raw() else {
-            return Self::Output::empty(); // empty
+            return Ok(Self::Output::empty()); // empty
         };
 
         match bound {
-            None => EnumInterval::left_bounded(lhs),
-            Some(inner) => EnumInterval::finite(lhs, inner),
+            None => EnumInterval::strict_left_bounded(lhs),
+            Some(inner) => EnumInterval::strict_finite(lhs, inner),
         }
     }
 }
 
 impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
+    type Error = crate::error::Error;
 
-    fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
             Side::Left => match bound {
-                None => EnumInterval::unbounded(),
-                Some(inner) => EnumInterval::left_bounded(inner),
+                None => Ok(EnumInterval::unbounded()),
+                Some(inner) => EnumInterval::strict_left_bounded(inner),
             },
             Side::Right => match bound {
-                None => unsafe { EnumInterval::from(Self::new_unchecked(side, current_bound)) },
-                Some(inner) => EnumInterval::finite(inner, current_bound),
+                // SAFETY: just repacking
+                None => unsafe { Ok(EnumInterval::from(Self::new_unchecked(side, current_bound))) },
+                Some(inner) => EnumInterval::strict_finite(inner, current_bound),
             },
         }
     }
 
-    fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
             Side::Right => match bound {
-                None => EnumInterval::unbounded(),
-                Some(inner) => EnumInterval::right_bounded(inner),
+                None => Ok(EnumInterval::unbounded()),
+                Some(inner) => EnumInterval::strict_right_bounded(inner),
             },
             Side::Left => match bound {
                 None => unsafe {
                     // SAFETY: just putting it back together
-                    EnumInterval::from(Self::new_unchecked(side, current_bound))
+                    Ok(EnumInterval::from(Self::new_unchecked(side, current_bound)))
                 },
-                Some(inner) => EnumInterval::finite(current_bound, inner),
+                Some(inner) => EnumInterval::strict_finite(current_bound, inner),
             },
         }
     }
@@ -124,25 +135,26 @@ impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
 
 impl<T: Element + Zero> Rebound<T> for EnumInterval<T> {
     type Output = EnumInterval<T>;
+    type Error = crate::error::Error;
 
-    fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
-            Self::Finite(inner) => inner.with_left(bound),
-            Self::Half(inner) => inner.with_left(bound),
+            Self::Finite(inner) => inner.with_left_strict(bound),
+            Self::Half(inner) => inner.with_left_strict(bound),
             Self::Unbounded => match bound {
-                None => Self::Unbounded,
-                Some(inner) => Self::left_bounded(inner),
+                None => Ok(Self::Unbounded),
+                Some(inner) => Self::strict_left_bounded(inner),
             },
         }
     }
 
-    fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
+    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
-            Self::Finite(inner) => inner.with_right(bound),
-            Self::Half(inner) => inner.with_right(bound),
+            Self::Finite(inner) => inner.with_right_strict(bound),
+            Self::Half(inner) => inner.with_right_strict(bound),
             Self::Unbounded => match bound {
-                None => Self::Unbounded,
-                Some(inner) => Self::right_bounded(inner),
+                None => Ok(Self::Unbounded),
+                Some(inner) => Self::strict_right_bounded(inner),
             },
         }
     }

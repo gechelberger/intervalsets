@@ -6,13 +6,14 @@ use crate::sets::Interval;
 
 impl<T: Element + Zero> Rebound<T> for Interval<T> {
     type Output = Self;
+    type Error = crate::error::Error;
 
-    fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        self.0.with_left(bound).into()
+    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+        self.0.with_left_strict(bound).map(Interval::from)
     }
 
-    fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        self.0.with_right(bound).into()
+    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+        self.0.with_right_strict(bound).map(Interval::from)
     }
 }
 
