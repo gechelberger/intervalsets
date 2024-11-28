@@ -1,9 +1,20 @@
 use crate::bound::{FiniteBound, Side};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
-/// Truncates a set to only the elements representable by the generic data type.
+/// Truncates a set to the universe of elements representable by the generic data type.
+///
+/// # Examples
+///
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let positive = EnumInterval::closed_unbound(1i8);
+/// assert_eq!(positive.count(), Measurement::Infinite);
+/// let as_finite = positive.into_finite();
+/// assert_eq!(as_finite.count(), Measurement::Finite(127));
+/// ```
 pub trait IntoFinite {
-    /// The type of interval to create.
+    /// The type of set to create.
     type Output;
 
     /// Converts to a finite set.
