@@ -98,6 +98,65 @@ impl<T: Element + Clone> Intersection<Self> for &IntervalSet<T> {
     }
 }
 
+impl<T: Element + Clone> Intersection<&Interval<T>> for &IntervalSet<T> {
+    type Output = IntervalSet<T>;
+
+    fn intersection(self, rhs: &Interval<T>) -> Self::Output {
+        let intervals = self
+            .iter()
+            .map(|subset| subset.intersection(rhs))
+            .filter(|iv| !iv.is_empty());
+
+        // SAFETY:
+        // 1. empty intervals are explicity filtered out
+        // 2. inputs are sorted per invariants
+        // 3. inputs are unconnected per invariants so intersection will be too.
+        unsafe { IntervalSet::new_unchecked(intervals) }
+    }
+}
+
+impl<T: Element + Clone> Intersection<&IntervalSet<T>> for &Interval<T> {
+    type Output = IntervalSet<T>;
+
+    fn intersection(self, rhs: &IntervalSet<T>) -> Self::Output {
+        rhs.intersection(self)
+    }
+}
+
+macro_rules! reflexive_ref_clone_intersection_impl {
+    ($t_lhs:ty, $t_rhs:ty) => {
+        impl<T: $crate::numeric::Element + Clone> Intersection<$t_rhs> for &$t_lhs {
+            type Output = <$t_lhs as Intersection<$t_rhs>>::Output;
+            fn intersection(self, rhs: $t_rhs) -> Self::Output {
+                self.clone().intersection(rhs)
+            }
+        }
+
+        impl<T: $crate::numeric::Element + Clone> Intersection<&$t_rhs> for $t_lhs {
+            type Output = <$t_lhs as Intersection<$t_rhs>>::Output;
+            fn intersection(self, rhs: &$t_rhs) -> Self::Output {
+                self.intersection(rhs.clone())
+            }
+        }
+    };
+}
+
+// Interval x &Interval
+// &Interval x Interval
+reflexive_ref_clone_intersection_impl!(Interval<T>, Interval<T>);
+
+// IntervalSet x &IntervalSet
+// &IntervalSet x IntervalSet
+reflexive_ref_clone_intersection_impl!(IntervalSet<T>, IntervalSet<T>);
+
+// IntervalSet x &Interval
+// &intervalSet x Interval
+reflexive_ref_clone_intersection_impl!(IntervalSet<T>, Interval<T>);
+
+// &Interval x IntervalSet
+// Interval x &IntervalSet
+reflexive_ref_clone_intersection_impl!(Interval<T>, IntervalSet<T>);
+
 #[cfg(test)]
 mod tests {
     use super::*;

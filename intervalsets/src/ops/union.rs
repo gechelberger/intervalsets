@@ -351,6 +351,40 @@ impl<T: Element + Clone> Union<&Interval<T>> for &IntervalSet<T> {
 
 icore::commutative_union_impl!(Interval<T>, IntervalSet<T>);
 
+macro_rules! reflexive_ref_clone_union_impl {
+    ($t_lhs:ty, $t_rhs:ty) => {
+        impl<T: $crate::numeric::Element + Clone> Union<$t_rhs> for &$t_lhs {
+            type Output = <$t_lhs as Union<$t_rhs>>::Output;
+            fn union(self, rhs: $t_rhs) -> Self::Output {
+                self.clone().union(rhs)
+            }
+        }
+
+        impl<T: $crate::numeric::Element + Clone> Union<&$t_rhs> for $t_lhs {
+            type Output = <$t_lhs as Union<$t_rhs>>::Output;
+            fn union(self, rhs: &$t_rhs) -> Self::Output {
+                self.union(rhs.clone())
+            }
+        }
+    };
+}
+
+// Interval x &Interval
+// &Interval x Interval
+reflexive_ref_clone_union_impl!(Interval<T>, Interval<T>);
+
+// IntervalSet x &IntervalSet
+// &IntervalSet x IntervalSet
+reflexive_ref_clone_union_impl!(IntervalSet<T>, IntervalSet<T>);
+
+// IntervalSet x &Interval
+// &intervalSet x Interval
+reflexive_ref_clone_union_impl!(IntervalSet<T>, Interval<T>);
+
+// &Interval x IntervalSet
+// Interval x &IntervalSet
+reflexive_ref_clone_union_impl!(Interval<T>, IntervalSet<T>);
+
 #[cfg(test)]
 mod tests {
     use super::*;
