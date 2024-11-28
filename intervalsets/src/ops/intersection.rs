@@ -98,6 +98,40 @@ impl<T: Element + Clone> Intersection<Self> for &IntervalSet<T> {
     }
 }
 
+macro_rules! reflexive_ref_clone_intersection_impl {
+    ($t_lhs:ty, $t_rhs:ty) => {
+        impl<T: $crate::numeric::Element + Clone> Intersection<$t_rhs> for &$t_lhs {
+            type Output = <$t_lhs as Intersection<$t_rhs>>::Output;
+            fn intersection(self, rhs: $t_rhs) -> Self::Output {
+                self.clone().intersection(rhs)
+            }
+        }
+
+        impl<T: $crate::numeric::Element + Clone> Intersection<&$t_rhs> for $t_lhs {
+            type Output = <$t_lhs as Intersection<$t_rhs>>::Output;
+            fn intersection(self, rhs: &$t_rhs) -> Self::Output {
+                self.intersection(rhs.clone())
+            }
+        }
+    };
+}
+
+// Interval x &Interval
+// &Interval x Interval
+reflexive_ref_clone_intersection_impl!(Interval<T>, Interval<T>);
+
+// IntervalSet x &IntervalSet
+// &IntervalSet x IntervalSet
+reflexive_ref_clone_intersection_impl!(IntervalSet<T>, IntervalSet<T>);
+
+// IntervalSet x &Interval
+// &intervalSet x Interval
+reflexive_ref_clone_intersection_impl!(IntervalSet<T>, Interval<T>);
+
+// &Interval x IntervalSet
+// Interval x &IntervalSet
+reflexive_ref_clone_intersection_impl!(Interval<T>, IntervalSet<T>);
+
 #[cfg(test)]
 mod tests {
     use super::*;
