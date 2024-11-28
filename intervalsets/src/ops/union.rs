@@ -1,16 +1,14 @@
 use core::iter::once;
 
-use intervalsets_core::ops::MergeSortedByValue;
+use intervalsets_core::ops::{MergeSortedByRef, MergeSortedByValue};
 use intervalsets_core::sets::{FiniteInterval, HalfInterval};
 use intervalsets_core::EnumInterval;
-use num_traits::Zero;
 
 use crate::bound::Side::{Left, Right};
 use crate::bound::{FiniteBound, Side};
 use crate::factory::UnboundedFactory;
 use crate::numeric::Element;
 use crate::ops::{Connects, Contains};
-use crate::util::commutative_op_move_impl;
 use crate::{Interval, IntervalSet};
 
 fn ordered_pair<T: PartialOrd>(a: Interval<T>, b: Interval<T>) -> [Interval<T>; 2] {
@@ -84,6 +82,39 @@ mod icore {
         }
     }
 
+    impl<T: Element + Clone> Union<Self> for &FiniteInterval<T> {
+        type Output = IntervalSet<T>;
+
+        fn union(self, rhs: Self) -> Self::Output {
+            if self.connects(rhs) {
+                let Some((lhs_min, lhs_max)) = self.view_raw() else {
+                    return IntervalSet::from(rhs.clone());
+                };
+
+                let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
+                    // SAFETY: just reconstructing a clone of self
+                    let lhs =
+                        unsafe { FiniteInterval::new_unchecked(lhs_min.clone(), lhs_max.clone()) };
+                    return IntervalSet::from(lhs);
+                };
+
+                // SAFETY: if self and rhs satisfy invariants then new interval
+                // is normalized and min(left, right) <= max(left, right)
+                let merged = unsafe {
+                    FiniteInterval::new_unchecked(
+                        FiniteBound::min_unchecked(Side::Left, lhs_min, rhs_min).clone(),
+                        FiniteBound::max_unchecked(Side::Right, lhs_max, rhs_max).clone(),
+                    )
+                };
+
+                IntervalSet::from(merged)
+            } else {
+                let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
+                unsafe { IntervalSet::new_unchecked(ordpair) }
+            }
+        }
+    }
+
     impl<T: Element> Union<Self> for HalfInterval<T> {
         type Output = IntervalSet<T>;
 
@@ -106,6 +137,28 @@ mod icore {
         }
     }
 
+    impl<T: Element + Clone> Union<Self> for &HalfInterval<T> {
+        type Output = IntervalSet<T>;
+
+        fn union(self, rhs: Self) -> Self::Output {
+            if self.side() == rhs.side() {
+                if self.contains(rhs.finite_ord_bound()) {
+                    IntervalSet::from(self.clone())
+                } else {
+                    IntervalSet::from(rhs.clone())
+                }
+            } else if self.connects(rhs) {
+                IntervalSet::unbounded()
+            } else {
+                let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
+                // SAFETY:
+                // 2: intervals are sorted here
+                // 1+3: intervals are not connected (and therefore also non-empty)
+                unsafe { IntervalSet::new_unchecked(ordpair) }
+            }
+        }
+    }
+
     impl<T: Element> Union<HalfInterval<T>> for FiniteInterval<T> {
         type Output = IntervalSet<T>;
 
@@ -115,10 +168,9 @@ mod icore {
                     return IntervalSet::from(rhs);
                 };
 
-                let left_contained = rhs.side() == Left && rhs.contains(lhs_min.finite_ord(Left));
-                let right_contained =
-                    rhs.side() == Right && rhs.contains(lhs_max.finite_ord(Right));
-                if left_contained || right_contained {
+                if (rhs.side() == Left && rhs.contains(lhs_min.finite_ord(Left)))
+                    || (rhs.side() == Right && rhs.contains(lhs_max.finite_ord(Right)))
+                {
                     IntervalSet::from(rhs)
                 } else {
                     let bound = rhs.side().select(lhs_min, lhs_max);
@@ -136,11 +188,32 @@ mod icore {
         }
     }
 
-    impl<T: Element> Union<FiniteInterval<T>> for HalfInterval<T> {
+    impl<T: Element + Clone> Union<&HalfInterval<T>> for &FiniteInterval<T> {
         type Output = IntervalSet<T>;
 
-        fn union(self, rhs: FiniteInterval<T>) -> Self::Output {
-            rhs.union(self)
+        fn union(self, rhs: &HalfInterval<T>) -> Self::Output {
+            if self.connects(rhs) {
+                let Some((lhs_min, lhs_max)) = self.view_raw() else {
+                    return IntervalSet::from(rhs.clone());
+                };
+
+                if (rhs.side() == Left && rhs.contains(lhs_min.finite_ord(Left)))
+                    || (rhs.side() == Right && rhs.contains(lhs_max.finite_ord(Right)))
+                {
+                    IntervalSet::from(rhs.clone())
+                } else {
+                    let bound = rhs.side().select(lhs_min, lhs_max).clone();
+                    // SAFETY: bound stolen from existing FiniteInterval
+                    let merged = unsafe { HalfInterval::new_unchecked(rhs.side(), bound) };
+                    IntervalSet::from(merged)
+                }
+            } else {
+                let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
+                // SAFETY:
+                // 2. intervals are sorted here
+                // 1+3. intervals not connected (and therefore non-empty)
+                unsafe { IntervalSet::new_unchecked(ordpair) }
+            }
         }
     }
 
@@ -149,7 +222,6 @@ mod icore {
             impl<T> Union<$t> for EnumInterval<T>
             where
                 T: $crate::numeric::Element,
-                T: $crate::numeric::Zero,
             {
                 type Output = IntervalSet<T>;
 
@@ -161,29 +233,53 @@ mod icore {
                     }
                 }
             }
+
+            impl<T> Union<&$t> for &EnumInterval<T>
+            where
+                T: $crate::numeric::Element + Clone,
+            {
+                type Output = IntervalSet<T>;
+                fn union(self, rhs: &$t) -> Self::Output {
+                    match self {
+                        EnumInterval::Finite(lhs) => lhs.union(rhs),
+                        EnumInterval::Half(lhs) => lhs.union(rhs),
+                        EnumInterval::Unbounded => IntervalSet::unbounded(),
+                    }
+                }
+            }
         };
     }
 
     delegate_enum_impl!(FiniteInterval<T>);
     delegate_enum_impl!(HalfInterval<T>);
     delegate_enum_impl!(EnumInterval<T>);
-    commutative_op_move_impl!(
-        Union,
-        union,
-        FiniteInterval<T>,
-        EnumInterval<T>,
-        IntervalSet<T>
-    );
-    commutative_op_move_impl!(
-        Union,
-        union,
-        HalfInterval<T>,
-        EnumInterval<T>,
-        IntervalSet<T>
-    );
+
+    macro_rules! commutative_union_impl {
+        ($t_lhs:ty, $t_rhs:ty) => {
+            impl<T: Element> Union<$t_rhs> for $t_lhs {
+                type Output = IntervalSet<T>;
+                fn union(self, rhs: $t_rhs) -> Self::Output {
+                    rhs.union(self)
+                }
+            }
+
+            impl<T: Element + Clone> Union<&$t_rhs> for &$t_lhs {
+                type Output = IntervalSet<T>;
+                fn union(self, rhs: &$t_rhs) -> Self::Output {
+                    rhs.union(self)
+                }
+            }
+        };
+    }
+
+    pub(super) use commutative_union_impl;
+
+    commutative_union_impl!(HalfInterval<T>, FiniteInterval<T>);
+    commutative_union_impl!(FiniteInterval<T>, EnumInterval<T>);
+    commutative_union_impl!(HalfInterval<T>, EnumInterval<T>);
 }
 
-impl<T: Element + Zero> Union<Self> for Interval<T> {
+impl<T: Element> Union<Self> for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn union(self, rhs: Self) -> Self::Output {
@@ -191,7 +287,15 @@ impl<T: Element + Zero> Union<Self> for Interval<T> {
     }
 }
 
-impl<T: Element + Zero> Union<Self> for IntervalSet<T> {
+impl<T: Element + Clone> Union<Self> for &Interval<T> {
+    type Output = IntervalSet<T>;
+
+    fn union(self, rhs: Self) -> Self::Output {
+        (&self.0).union(&rhs.0)
+    }
+}
+
+impl<T: Element> Union<Self> for IntervalSet<T> {
     type Output = Self;
 
     fn union(self, rhs: Self) -> Self::Output {
@@ -204,8 +308,22 @@ impl<T: Element + Zero> Union<Self> for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Zero> Union<Interval<T>> for IntervalSet<T> {
-    type Output = Self;
+impl<T: Element + Clone> Union<Self> for &IntervalSet<T> {
+    type Output = IntervalSet<T>;
+
+    fn union(self, rhs: Self) -> Self::Output {
+        let sorted = itertools::merge(self.iter(), rhs.iter());
+        let merged = MergeSortedByRef::new(sorted.into_iter().map(|x| &x.0));
+        // SAFETY:
+        // 1. Neither operand may produce the empty set per invariants
+        // 2. Operands are sorted per invariants.
+        // 3. MergeSortedByRef merges connected intervals if sorted.
+        unsafe { IntervalSet::new_unchecked(merged.map(Interval::from)) }
+    }
+}
+
+impl<T: Element> Union<Interval<T>> for IntervalSet<T> {
+    type Output = IntervalSet<T>;
 
     fn union(self, rhs: Interval<T>) -> Self::Output {
         let sorted = itertools::merge(self, once(rhs));
@@ -217,7 +335,21 @@ impl<T: Element + Zero> Union<Interval<T>> for IntervalSet<T> {
     }
 }
 
-commutative_op_move_impl!(Union, union, Interval<T>, IntervalSet<T>, IntervalSet<T>);
+impl<T: Element + Clone> Union<&Interval<T>> for &IntervalSet<T> {
+    type Output = IntervalSet<T>;
+
+    fn union(self, rhs: &Interval<T>) -> Self::Output {
+        let sorted = itertools::merge(self.iter(), once(rhs));
+        let merged = MergeSortedByRef::new(sorted.into_iter().map(|x| &x.0));
+        // SAFETY:
+        // 1. Neither operand may produce the empty set per invariants
+        // 2. Operands are sorted per invariants.
+        // 3. MergeSortedByRef merges connected intervals if sorted.
+        unsafe { IntervalSet::new_unchecked(merged.map(Interval::from)) }
+    }
+}
+
+icore::commutative_union_impl!(Interval<T>, IntervalSet<T>);
 
 #[cfg(test)]
 mod tests {
