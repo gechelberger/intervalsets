@@ -77,6 +77,14 @@ impl<T: Element + Clone> Complement for IntervalSet<T> {
     }
 }
 
+impl<T: Complement + Clone> Complement for &T {
+    type Output = <T as Complement>::Output;
+
+    fn complement(self) -> Self::Output {
+        self.clone().complement()
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
