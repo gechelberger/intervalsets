@@ -1,3 +1,5 @@
+use core::borrow::Borrow;
+
 use crate::ops::{Complement, Intersection, Union};
 use crate::{Interval, IntervalSet};
 
@@ -38,7 +40,6 @@ macro_rules! difference_impl {
         impl<T> $crate::ops::Difference<$t_rhs> for $t_lhs
         where
             T: $crate::numeric::Element,
-            T: $crate::numeric::Zero,
             T: Clone,
         {
             type Output = $crate::IntervalSet<T>;
@@ -51,9 +52,24 @@ macro_rules! difference_impl {
 }
 
 difference_impl!(Interval<T>, Interval<T>);
+difference_impl!(Interval<T>, &Interval<T>);
+difference_impl!(&Interval<T>, Interval<T>);
+difference_impl!(&Interval<T>, &Interval<T>);
+
 difference_impl!(Interval<T>, IntervalSet<T>);
+difference_impl!(Interval<T>, &IntervalSet<T>);
+difference_impl!(&Interval<T>, IntervalSet<T>);
+difference_impl!(&Interval<T>, &IntervalSet<T>);
+
 difference_impl!(IntervalSet<T>, Interval<T>);
+difference_impl!(IntervalSet<T>, &Interval<T>);
+difference_impl!(&IntervalSet<T>, Interval<T>);
+difference_impl!(&IntervalSet<T>, &Interval<T>);
+
 difference_impl!(IntervalSet<T>, IntervalSet<T>);
+difference_impl!(IntervalSet<T>, &IntervalSet<T>);
+difference_impl!(&IntervalSet<T>, IntervalSet<T>);
+difference_impl!(&IntervalSet<T>, &IntervalSet<T>);
 
 /// Defines the symmetric difference (A ⊕ B). A and B are consumed.
 ///
@@ -88,26 +104,38 @@ macro_rules! sym_difference_impl {
         impl<T> $crate::ops::SymDifference<$t_rhs> for $t_lhs
         where
             T: $crate::numeric::Element,
-            T: $crate::numeric::Zero,
             T: Clone,
         {
             type Output = $crate::IntervalSet<T>;
 
             fn sym_difference(self, rhs: $t_rhs) -> Self::Output {
-                self.clone()
-                    .union(rhs.clone())
-                    .difference(self.intersection(rhs))
+                let unioned = self.borrow().union(rhs.borrow());
+                let intersected = self.intersection(rhs);
+                unioned.difference(intersected)
             }
         }
     };
 }
 
-//pub(crate) use sym_difference_impl;
-
 sym_difference_impl!(Interval<T>, Interval<T>);
+sym_difference_impl!(Interval<T>, &Interval<T>);
+sym_difference_impl!(&Interval<T>, Interval<T>);
+sym_difference_impl!(&Interval<T>, &Interval<T>);
+
 sym_difference_impl!(Interval<T>, IntervalSet<T>);
+sym_difference_impl!(Interval<T>, &IntervalSet<T>);
+sym_difference_impl!(&Interval<T>, IntervalSet<T>);
+sym_difference_impl!(&Interval<T>, &IntervalSet<T>);
+
 sym_difference_impl!(IntervalSet<T>, Interval<T>);
+sym_difference_impl!(IntervalSet<T>, &Interval<T>);
+sym_difference_impl!(&IntervalSet<T>, Interval<T>);
+sym_difference_impl!(&IntervalSet<T>, &Interval<T>);
+
 sym_difference_impl!(IntervalSet<T>, IntervalSet<T>);
+sym_difference_impl!(IntervalSet<T>, &IntervalSet<T>);
+sym_difference_impl!(&IntervalSet<T>, IntervalSet<T>);
+sym_difference_impl!(&IntervalSet<T>, &IntervalSet<T>);
 
 #[cfg(test)]
 mod tests {
