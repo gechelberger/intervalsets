@@ -112,6 +112,7 @@ impl<T: Element> Connects<&Self> for HalfInterval<T> {
 }
 
 impl<T: Element> Connects<&HalfInterval<T>> for FiniteInterval<T> {
+    #[inline(always)]
     fn connects(&self, rhs: &HalfInterval<T>) -> bool {
         if self.intersects(rhs) {
             return true;
@@ -130,6 +131,7 @@ impl<T: Element> Connects<&HalfInterval<T>> for FiniteInterval<T> {
 commutative_predicate_impl!(Connects, connects, HalfInterval<T>, FiniteInterval<T>);
 
 impl<T: Element> Connects<&FiniteInterval<T>> for EnumInterval<T> {
+    #[inline(always)]
     fn connects(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.connects(rhs),
@@ -141,6 +143,7 @@ impl<T: Element> Connects<&FiniteInterval<T>> for EnumInterval<T> {
 commutative_predicate_impl!(Connects, connects, FiniteInterval<T>, EnumInterval<T>);
 
 impl<T: Element> Connects<&HalfInterval<T>> for EnumInterval<T> {
+    #[inline(always)]
     fn connects(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.connects(rhs),
@@ -152,6 +155,7 @@ impl<T: Element> Connects<&HalfInterval<T>> for EnumInterval<T> {
 commutative_predicate_impl!(Connects, connects, HalfInterval<T>, EnumInterval<T>);
 
 impl<T: Element> Connects<&Self> for EnumInterval<T> {
+    #[inline(always)]
     fn connects(&self, rhs: &Self) -> bool {
         match rhs {
             Self::Finite(rhs) => self.connects(rhs),
