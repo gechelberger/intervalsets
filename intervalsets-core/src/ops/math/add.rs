@@ -148,9 +148,15 @@ mod tests {
 
     #[test]
     fn test_unbounded_add() {
+        let u = EnumInterval::unbounded();
+        assert_eq!(u + u, u);
+
         let x = EnumInterval::closed(100.0, 200.0);
-        let y = EnumInterval::unbounded();
-        assert_eq!(x + y, y);
-        assert_eq!(y + x, y);
+        assert_eq!(x + u, u);
+        assert_eq!(u + x, u);
+
+        let x = EnumInterval::closed_unbound(100.0);
+        assert_eq!(x + u, u);
+        assert_eq!(u + x, u);
     }
 }
