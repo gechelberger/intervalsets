@@ -12,12 +12,11 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// Alt:   A ⊇ B
 /// ```
 ///
-/// Individual elements are treated as if they were a singleton set.
+/// Raw elements are treated as singleton sets.
 ///
 /// # Contract
 ///
-/// Contains should be useable in strict api calls. Therefore, it should not
-/// panic and it should always return false for incomparable arguments.
+/// Contains should not panic and should return false for incomparable arguments.
 ///
 /// # Examples
 ///
@@ -32,7 +31,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(x.contains(&FiniteInterval::empty()), true);
 /// ```
 pub trait Contains<T> {
-    /// Test if rhs is fully contained.
+    /// Test if rhs is a subset of self.
     fn contains(&self, rhs: T) -> bool;
 }
 
@@ -112,9 +111,9 @@ impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
     }
 }
 
-impl<T: PartialOrd> Contains<&Self> for FiniteInterval<T> {
+impl<T: PartialOrd> Contains<&FiniteInterval<T>> for FiniteInterval<T> {
     #[inline(always)]
-    fn contains(&self, rhs: &Self) -> bool {
+    fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
         };
@@ -161,9 +160,9 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: PartialOrd> Contains<&Self> for HalfInterval<T> {
+impl<T: PartialOrd> Contains<&HalfInterval<T>> for HalfInterval<T> {
     #[inline(always)]
-    fn contains(&self, rhs: &Self) -> bool {
+    fn contains(&self, rhs: &HalfInterval<T>) -> bool {
         self.side() == rhs.side() && self.contains(rhs.finite_ord_bound())
     }
 }
@@ -185,7 +184,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true, // ok; set type invariants ensure comparable.
+            Self::Unbounded => true, // ok; EnumInterval invariants ensure comparable.
         }
     }
 }
@@ -196,18 +195,18 @@ impl<T: PartialOrd> Contains<&HalfInterval<T>> for EnumInterval<T> {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true, // ok; set type invariants ensure comparable.
+            Self::Unbounded => true, // ok; HalfInterval invariants ensure comparable.
         }
     }
 }
 
-impl<T: PartialOrd> Contains<&Self> for EnumInterval<T> {
+impl<T: PartialOrd> Contains<&EnumInterval<T>> for EnumInterval<T> {
     #[inline(always)]
-    fn contains(&self, rhs: &Self) -> bool {
+    fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
             Self::Half(lhs) => lhs.contains(rhs),
-            Self::Unbounded => true, // ok; set type invariants ensure comparable.
+            Self::Unbounded => true, // ok; EnumInterval invariants ensure comparable.
         }
     }
 }

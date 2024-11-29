@@ -9,8 +9,8 @@ impl<T: Element> Contains<&T> for Interval<T> {
     }
 }
 
-impl<T: Element> Contains<&Self> for Interval<T> {
-    fn contains(&self, rhs: &Self) -> bool {
+impl<T: Element> Contains<&Interval<T>> for Interval<T> {
+    fn contains(&self, rhs: &Interval<T>) -> bool {
         self.0.contains(&rhs.0)
     }
 }
@@ -33,8 +33,8 @@ impl<T: Element> Contains<&Interval<T>> for IntervalSet<T> {
     }
 }
 
-impl<T: Element> Contains<&Self> for IntervalSet<T> {
-    fn contains(&self, rhs: &Self) -> bool {
+impl<T: Element> Contains<&IntervalSet<T>> for IntervalSet<T> {
+    fn contains(&self, rhs: &IntervalSet<T>) -> bool {
         rhs.iter().all(|subset| self.contains(subset))
     }
 }

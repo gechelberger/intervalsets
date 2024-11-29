@@ -1,17 +1,18 @@
 [package]
 name = "intervalsets"
-version = "0.1.0-alpha.2"
-authors = ["Greg Echelberger"]
-edition = "2021"
-rust-version = "1.81.0"
-readme = "README.md"
 description = """
-The intervalsets crate provides bounded and unbounded intervals 
-implemented as sets with all the associated set operations.
+intervalsets provides bounded and unbounded intervals and sets
+implemented generically with associated set operations.
 """
-repository = "https://github.com/gechelberger/intervalsets"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+readme = "README.md"
 documentation = "https://docs.rs/intervalsets"
-license = "MIT"
 keywords = [
     "intervals",
     "math",

@@ -58,6 +58,7 @@ pub trait TryMerge<Rhs = Self> {
 impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
     type Output = Self;
 
+    #[inline(always)]
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.connects(&rhs) {
             let Some((lhs_min, lhs_max)) = self.into_raw() else {
@@ -91,6 +92,7 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
 impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
+    #[inline(always)]
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.connects(rhs) {
             let Some((lhs_min, lhs_max)) = self.view_raw() else {
@@ -123,6 +125,7 @@ impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
 impl<T: Element> TryMerge<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
+    #[inline(always)]
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
@@ -145,6 +148,7 @@ impl<T: Element> TryMerge<Self> for HalfInterval<T> {
 impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
+    #[inline(always)]
     fn try_merge(self, rhs: Self) -> Option<Self::Output> {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
@@ -163,6 +167,7 @@ impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
 impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
     type Output = HalfInterval<T>;
 
+    #[inline(always)]
     fn try_merge(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
         if self.connects(&rhs) {
             let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
@@ -187,6 +192,7 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
 impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
     type Output = HalfInterval<T>;
 
+    #[inline(always)]
     fn try_merge(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         if self.connects(rhs) {
             let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
