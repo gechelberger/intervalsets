@@ -21,4 +21,6 @@ pub use split::Split;
 mod finite;
 pub use finite::IntoFinite;
 
+mod math;
+
 mod util;
