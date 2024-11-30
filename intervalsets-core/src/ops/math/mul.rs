@@ -319,19 +319,9 @@ pub mod impls {
                 // SAFETY: a always produces an intermediate value
                 EnumInterval::half_bounded(side, unsafe { non_zero_mul_unchecked(fmax, hbound) })
             }
-            (MCat::Pos(az), MCat::Neg(bz)) => {
-                // [a=0?, b>0] x [c=-inf, d=0?]
-                if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    EnumInterval::unbound_closed(<T as Mul>::Output::zero())
-                } else {
-                    // SAFETY: zeros handled ^^^
-                    EnumInterval::half_bounded(Right, unsafe {
-                        non_zero_mul_unchecked(fmax, hbound)
-                    })
-                }
-            }
-            (MCat::Neg(az), MCat::Pos(bz)) => {
-                // [a<0, b=0?] x [c=0?, d=+inf]
+            (MCat::Pos(az), MCat::Neg(bz)) | (MCat::Neg(az), MCat::Pos(bz)) => {
+                // Case 1: [a=0?, b>0] x [c=-inf, d=0?]
+                // Case 2: [a<0, b=0?] x [c=0?, d=+inf]
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
