@@ -632,10 +632,11 @@ pub mod ord {
         derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
     )]
     #[allow(missing_docs)]
+    #[repr(i32)]
     pub enum FiniteOrdBoundKind {
-        RightOpen,
-        Closed,
-        LeftOpen,
+        RightOpen = -1,
+        Closed = 0,
+        LeftOpen = 1,
     }
 
     use FiniteOrdBoundKind::*;

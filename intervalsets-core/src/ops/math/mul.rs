@@ -1,11 +1,117 @@
+use core::cmp::Ordering::{Equal, Greater, Less};
 use core::ops::Mul;
 
-use crate::bound::{FiniteBound, Side};
-use crate::factory::{HalfBoundedFactory, UnboundedFactory};
+use crate::bound::ord::{FiniteOrdBound, FiniteOrdBoundKind};
+use crate::bound::FiniteBound;
+use crate::bound::Side::{self, Left, Right};
+use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::{Element, Zero};
 use crate::ops::Connects;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
+enum MaybeZero {
+    Zero,
+    NonZero,
+}
+
+enum MCat {
+    Empty,
+    Zero,
+    NegPos,
+    Pos(MaybeZero),
+    Neg(MaybeZero),
+}
+
+impl<T: Zero + PartialOrd> FiniteInterval<T> {
+    #[inline]
+    fn mul_category(&self) -> MCat {
+        let Some((lhs, rhs)) = self.view_raw() else {
+            return MCat::Empty;
+        };
+
+        let zero = T::zero();
+        match lhs.value().partial_cmp(&zero).unwrap() {
+            Greater => MCat::Pos(MaybeZero::NonZero),
+            Equal => match rhs.value().partial_cmp(&zero).unwrap() {
+                Greater => MCat::Pos(MaybeZero::Zero),
+                Equal => MCat::Zero,
+                Less => unreachable!(),
+            },
+            Less => match rhs.value().partial_cmp(&zero).unwrap() {
+                Greater => MCat::NegPos,
+                Equal => MCat::Neg(MaybeZero::Zero),
+                Less => MCat::Neg(MaybeZero::NonZero),
+            },
+        }
+    }
+}
+
+impl<T: Zero + PartialOrd> HalfInterval<T> {
+    #[inline]
+    fn mul_category(&self) -> MCat {
+        let t_zero = T::zero();
+        let zero = FiniteOrdBound::closed(&t_zero);
+        match self.side() {
+            Left => match self.finite_ord_bound().partial_cmp(&zero).unwrap() {
+                Less => MCat::NegPos,
+                Equal => MCat::Pos(MaybeZero::Zero),
+                Greater => MCat::Pos(MaybeZero::NonZero),
+            },
+            Right => match self.finite_ord_bound().partial_cmp(&zero).unwrap() {
+                Less => MCat::Neg(MaybeZero::NonZero),
+                Equal => MCat::Neg(MaybeZero::Zero),
+                Greater => MCat::NegPos,
+            },
+        }
+    }
+}
+
+impl<T: Zero + PartialOrd> EnumInterval<T> {
+    fn mul_category(&self) -> MCat {
+        match self {
+            Self::Finite(inner) => inner.mul_category(),
+            Self::Half(inner) => inner.mul_category(),
+            Self::Unbounded => MCat::NegPos,
+        }
+    }
+}
+
+impl<T> Mul for FiniteOrdBound<T>
+where
+    T: Mul + Zero + PartialOrd,
+{
+    type Output = FiniteOrdBound<<T as Mul>::Output>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let zero = T::zero();
+
+        // lv*rv + lv*re + rv*le
+
+        fn sign_assign<T: PartialOrd>(pivot: &T, val: &T, pos: i32, neg: i32) -> i32 {
+            match val.partial_cmp(pivot).unwrap() {
+                Greater => pos,
+                Equal => 0,
+                Less => neg,
+            }
+        }
+
+        // LeftOpen => +1, Equal => 0, RightOpen => -1
+        let e_lhs = self.1 as i32;
+        let e_rhs = rhs.1 as i32;
+
+        let e1 =
+            sign_assign(&zero, &rhs.0, e_lhs, -e_lhs) + sign_assign(&zero, &self.0, e_rhs, -e_rhs);
+
+        let epsilons = (e1, e_lhs * e_rhs);
+
+        let value = self.0 * rhs.0;
+        match epsilons.cmp(&(0, 0)) {
+            Greater => FiniteOrdBound::new(value, FiniteOrdBoundKind::LeftOpen),
+            Less => FiniteOrdBound::new(value, FiniteOrdBoundKind::RightOpen),
+            Equal => FiniteOrdBound::closed(value),
+        }
+    }
+}
 
 impl<T> Mul for FiniteInterval<T>
 where
@@ -51,9 +157,9 @@ where
 }
 
 fn half_x_half<T>(a: HalfInterval<T>, b: HalfInterval<T>)
-where 
+where
     T: Mul + Element + Zero + Clone,
-    <T as Mul>::Output: Element
+    <T as Mul>::Output: Element,
 {
     todo!()
 }
@@ -100,23 +206,52 @@ where
     }
 }
 
-impl<T> Mul<HalfInterval<T>> for FiniteInterval<T> 
-where 
-    T: Mul,
-    <T as Mul>::Output: Element + Zero,
+impl<T> Mul<HalfInterval<T>> for FiniteInterval<T>
+where
+    T: Mul + PartialOrd + Zero,
+    <T as Mul>::Output: Element + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
-        
+        let fcat = self.mul_category();
+        let Some((fmin, fmax)) = self.into_raw() else {
+            return EnumInterval::empty();
+        };
 
-        todo!()
+        let hcat = rhs.mul_category();
+        let (side, hbound) = rhs.into_raw();
+
+        match (fcat, hcat) {
+            (MCat::Pos(_), MCat::Pos(_)) => EnumInterval::half_bounded(side, fmin * hbound),
+            (MCat::Pos(_), MCat::NegPos) => EnumInterval::half_bounded(side, fmax * hbound),
+            (MCat::Pos(_), MCat::Neg(_)) => EnumInterval::half_bounded(side, fmax * hbound),
+            (MCat::Neg(_), MCat::Pos(_)) => EnumInterval::half_bounded(Right, fmax * hbound),
+            (MCat::Neg(_), MCat::NegPos) => EnumInterval::half_bounded(side.flip(), fmin * hbound),
+            (MCat::NegPos, _) => EnumInterval::unbounded(),
+            (MCat::Zero, _) => EnumInterval::singleton(<T as Mul>::Output::zero()),
+            _ => unreachable!(),
+        }
+    }
+}
+
+impl<T> Mul<FiniteInterval<T>> for HalfInterval<T>
+where
+    T: Mul + PartialOrd + Zero,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+
+    fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
+        rhs * self
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::bound::Side::{Left, Right};
     use crate::factory::traits::*;
 
     #[test]
@@ -177,5 +312,40 @@ mod tests {
         let b = HalfInterval::closed_unbound(0.0);
         assert_eq!(a * b, u);
         assert_eq!(b * a, u);
+    }
+
+    #[test]
+    fn test_finite_ord_bound() {
+        //
+        let a = FiniteOrdBound::open(Side::Left, 5.0);
+        let b = FiniteOrdBound::open(Side::Left, 10.0);
+        assert_eq!(a * b, FiniteOrdBound::open(Side::Left, 50.0));
+
+        let b = FiniteOrdBound::open(Side::Right, 5.0);
+        assert_eq!(a * b, FiniteOrdBound::open(Side::Right, 25.0));
+
+        let a = FiniteOrdBound::open(Left, -5.0);
+        // -5+e * 5-e => -25 +5e + 5e - e^2
+        assert_eq!(a * b, FiniteOrdBound::open(Side::Left, -25.0));
+
+        // LO(+) * LO(+) => 3+e * 5+e => 15 + 8e + e2 => 15 + 8e => LO(15)
+        let a = FiniteOrdBound::open(Left, 3.0);
+        let b = FiniteOrdBound::open(Left, 5.0);
+        assert_eq!(a * b, FiniteOrdBound::open(Left, 15.0));
+
+        // LO(+) * LO(-) => 3+e * -5+e => -15 -2e + e2 => -15 -2e => RO(-15)
+        let a = FiniteOrdBound::open(Left, 3.0);
+        let b = FiniteOrdBound::open(Left, -5.0);
+        assert_eq!(a * b, FiniteOrdBound::open(Right, -15.0));
+        // LO(-) * LO(-)
+
+        // RO(+) * RO(+)
+        // RO(+) * RO(-) == RO(-) * RO(-)
+        // RO(-) * RO(-)
+
+        // LO(+) * RO(+)
+        // LO(-) * RO(+)
+        // LO(+) * RO(-)
+        // LO(-) * RO(-)
     }
 }
