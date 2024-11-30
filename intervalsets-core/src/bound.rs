@@ -237,6 +237,11 @@ impl<T> FiniteBound<T> {
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
+    /// Return a and b ordered.
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring both bounds are comparable.
     pub unsafe fn min_max_unchecked(
         side: Side,
         mut a: FiniteBound<T>,
@@ -634,12 +639,12 @@ pub mod ord {
         feature = "rkyv",
         derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
     )]
-    #[allow(missing_docs)]
-    #[repr(i32)]
     pub enum FiniteOrdBoundKind {
-        RightOpen = -1,
-        Closed = 0,
-        LeftOpen = 1,
+        RightOpen,
+        Closed,
+        LeftOpen,
+        // As of rkyv-0.8.9 enum discriminants may only be unsigned and do
+        // not respect #[repr(i32)].
     }
 
     use FiniteOrdBoundKind::*;
