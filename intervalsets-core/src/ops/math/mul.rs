@@ -71,7 +71,7 @@ where
 }
 
 impl<T> Mul<HalfInterval<T>> for EnumInterval<T>
-where 
+where
     T: Mul + Element + Zero + Clone,
     <T as Mul>::Output: Element + Zero + Clone,
 {
@@ -83,7 +83,7 @@ where
 }
 
 impl<T> Mul<EnumInterval<T>> for EnumInterval<T>
-where 
+where
     T: Mul + Element + Zero + Clone,
     <T as Mul>::Output: Element + Zero + Clone,
 {
@@ -93,11 +93,10 @@ where
         match self {
             Self::Finite(lhs) => lhs * rhs,
             Self::Half(lhs) => lhs * rhs,
-            Self::Unbounded => EnumInterval::Unbounded
+            Self::Unbounded => EnumInterval::Unbounded,
         }
     }
 }
-
 
 impl<T> Mul<EnumInterval<T>> for FiniteInterval<T>
 where
@@ -112,7 +111,7 @@ where
 }
 
 impl<T> Mul<EnumInterval<T>> for HalfInterval<T>
-where 
+where
     T: Mul + Element + Zero + Clone,
     <T as Mul>::Output: Element + Zero + Clone,
 {
@@ -130,34 +129,16 @@ pub mod impls {
     use crate::bound::FiniteBound as FB;
     use crate::{EnumInterval, FiniteInterval};
 
-    pub fn finite_x_finite<T>(
-        a: FiniteInterval<T>,
-        b: FiniteInterval<T>,
-    ) -> FiniteInterval<<T as Mul>::Output>
-    where
-        T: Mul + PartialOrd + Zero + Clone,
-        <T as Mul>::Output: Element,
-    {
-        let Some((amin, amax)) = a.into_raw() else {
-            return FiniteInterval::empty();
-        };
-
-        let Some((bmin, bmax)) = b.into_raw() else {
-            return FiniteInterval::empty();
-        };
-
-        let t_zero = T::zero();
-        if amin.value() >= &t_zero && bmin.value() >= &t_zero {
-            let min = amin * bmin;
-            let max = amax * bmax;
-            FiniteInterval::new(min, max)
-        } else if amax.value() <= &t_zero && bmax.value() <= &t_zero {
-            let min = amax * bmax;
-            let max = amin * bmin;
-            FiniteInterval::new(min, max)
-        } else {
-            span_zero_finite_mul(amin, amax, bmin, bmax)
-        }
+    /// Multiply two non-zero bounds together.
+    ///
+    /// # Safety
+    ///
+    /// The user must ensure that a Closed(Zero) bound is not passed.
+    /// Closed(0) * Open(5) will return Open(5) which is wrong.
+    unsafe fn non_zero_mul_unchecked<T: Mul>(a: FB<T>, b: FB<T>) -> FB<<T as Mul>::Output> {
+        let (akind, aval) = a.into_raw();
+        let (bkind, bval) = b.into_raw();
+        FiniteBound::new(akind.combine(bkind), aval * bval)
     }
 
     pub fn finite_x_finite_by_cat<T>(
@@ -180,41 +161,80 @@ pub mod impls {
         };
 
         match (acat, bcat) {
-            (MCat::Pos(_), MCat::Pos(_)) => unsafe {
-                FiniteInterval::new_unchecked(amin * bmin, amax * bmax)
+            (MCat::Pos(az), MCat::Pos(bz)) => unsafe {
+                // [a=0?, b>0] x [c=0?, d>0]
+                let max = non_zero_mul_unchecked(amax, bmax);
+                if az == MaybeZero::Zero || bz == MaybeZero::Zero {
+                    FiniteInterval::new(FiniteBound::zero(), max)
+                } else {
+                    let min = non_zero_mul_unchecked(amin, bmin);
+                    FiniteInterval::new(min, max)
+                }
             },
             (MCat::Pos(_), MCat::NegPos) => unsafe {
-                FiniteInterval::new_unchecked(amax.clone() * bmin, amax * bmax)
+                // [a=0?, b>0] * [c<0, d>0] => a produces intermediate values
+                let min = non_zero_mul_unchecked(amax.clone(), bmin);
+                let max = non_zero_mul_unchecked(amax, bmax);
+                FiniteInterval::new(min, max)
             },
-            (MCat::Pos(_), MCat::Neg(_)) => unsafe {
-                FiniteInterval::new_unchecked(amax * bmin, amin * bmax)
+            (MCat::Pos(az), MCat::Neg(bz)) => unsafe {
+                // [a=0?, b>0] * [c<0, d=0?]
+                let min = non_zero_mul_unchecked(amax, bmin);
+                if az == MaybeZero::Zero || bz == MaybeZero::Zero {
+                    FiniteInterval::new(min, FiniteBound::zero())
+                } else {
+                    let max = non_zero_mul_unchecked(amin, bmax);
+                    FiniteInterval::new(min, max)
+                }
             },
-            (MCat::Neg(_), MCat::Pos(_)) => unsafe {
-                FiniteInterval::new_unchecked(amin * bmax, amax * bmin)
+            (MCat::Neg(az), MCat::Pos(bz)) => unsafe {
+                // [a<0, b=0?] x [c=0?, d>0]
+                let min = non_zero_mul_unchecked(amin, bmax);
+                if az == MaybeZero::Zero || bz == MaybeZero::Zero {
+                    FiniteInterval::new(min, FiniteBound::zero())
+                } else {
+                    let max = non_zero_mul_unchecked(amax, bmin);
+                    FiniteInterval::new(min, max)
+                }
             },
             (MCat::Neg(_), MCat::NegPos) => unsafe {
-                FiniteInterval::new_unchecked(amin.clone() * bmax, amin * bmin)
+                // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
+                let min = non_zero_mul_unchecked(amin.clone(), bmax);
+                let max = non_zero_mul_unchecked(amin, bmin);
+                FiniteInterval::new_unchecked(min, max)
             },
-            (MCat::Neg(_), MCat::Neg(_)) => unsafe {
-                FiniteInterval::new_unchecked(amax * bmax, amin * bmin)
+            (MCat::Neg(az), MCat::Neg(bz)) => unsafe {
+                // [a<0, b=0?] x [c<0, d=0?]
+                let max = non_zero_mul_unchecked(amin, bmin);
+                if az == MaybeZero::Zero || bz == MaybeZero::Zero {
+                    FiniteInterval::new(FiniteBound::zero(), max)
+                } else {
+                    let min = non_zero_mul_unchecked(amax, bmax);
+                    FiniteInterval::new(min, max)
+                }
             },
             (MCat::NegPos, MCat::Pos(_)) => unsafe {
-                FiniteInterval::new_unchecked(amin * bmax.clone(), amax * bmax)
+                // [a<0, b>0] x [c=0?, d>0] => c produces intermediate values
+                let min = non_zero_mul_unchecked(amin, bmax.clone());
+                let max = non_zero_mul_unchecked(amax, bmax);
+                FiniteInterval::new(min, max)
             },
             (MCat::NegPos, MCat::Neg(_)) => unsafe {
-                FiniteInterval::new_unchecked(amax * bmin.clone(), amin * bmin)
+                // [a<0, b>0] x [c<0, d=0?] => d produces intermediate values
+                let min = non_zero_mul_unchecked(amax, bmin.clone());
+                let max = non_zero_mul_unchecked(amin, bmin);
+                FiniteInterval::new(min, max)
             },
-            (MCat::NegPos, MCat::NegPos) => {
-                let c1_min = amin.clone() * bmax.clone();
-                let c2_min = amax.clone() * bmin.clone();
-                let c1_max = amin * bmin;
-                let c2_max = amax * bmax;
-                unsafe {
-                    let min = FiniteBound::take_min_unchecked(Left, c1_min, c2_min);
-                    let max = FiniteBound::take_max_unchecked(Right, c1_max, c2_max);
-                    FiniteInterval::new_unchecked(min, max)
-                }
-            }
+            (MCat::NegPos, MCat::NegPos) => unsafe {
+                // SAFETY: NegPos category can not have an end bound of Closed(0)
+                let c1_min = non_zero_mul_unchecked(amin.clone(), bmax.clone());
+                let c2_min = non_zero_mul_unchecked(amax.clone(), bmin.clone());
+                let c1_max = non_zero_mul_unchecked(amin, bmin);
+                let c2_max = non_zero_mul_unchecked(amax, bmax);
+                let min = FiniteBound::take_min_unchecked(Left, c1_min, c2_min);
+                let max = FiniteBound::take_max_unchecked(Right, c1_max, c2_max);
+                FiniteInterval::new(min, max)
+            },
             (MCat::Zero, _) | (_, MCat::Zero) => {
                 FiniteInterval::singleton(<T as Mul>::Output::zero())
             }
@@ -305,13 +325,20 @@ pub mod impls {
 
         match (acat, bcat) {
             (MCat::NegPos, _) | (_, MCat::NegPos) => EnumInterval::unbounded(),
-            (MCat::Pos(_), MCat::Pos(_)) | (MCat::Neg(_), MCat::Neg(_)) => {
+            (MCat::Pos(az), MCat::Pos(bz)) | (MCat::Neg(az), MCat::Neg(bz)) => {
                 // probably still need to handle LO(0.0), LO(0.0)
-                EnumInterval::half_bounded(Left, abound * bbound)
+                if az == MaybeZero::NonZero && bz == MaybeZero::NonZero {
+                    EnumInterval::half_bounded(Left, abound * bbound)
+                } else {
+                    EnumInterval::closed_unbound(<T as Mul>::Output::zero())
+                }
             }
-            (MCat::Pos(_), MCat::Neg(_)) | (MCat::Neg(_), MCat::Pos(_)) => {
-                // probably still need to handle LO(0.0), RO(0.0)
-                EnumInterval::half_bounded(Right, abound * bbound)
+            (MCat::Pos(az), MCat::Neg(bz)) | (MCat::Neg(az), MCat::Pos(bz)) => {
+                if az == MaybeZero::NonZero && bz == MaybeZero::NonZero {
+                    EnumInterval::half_bounded(Right, abound * bbound)
+                } else {
+                    EnumInterval::unbound_closed(<T as Mul>::Output::zero())
+                }
             }
             _ => unreachable!(), // zero, empty should be unreachable
         }
@@ -383,11 +410,13 @@ pub mod impls {
         }
     }
 
+    #[derive(Debug, PartialEq)]
     enum MaybeZero {
         Zero,
         NonZero,
     }
 
+    #[derive(Debug, PartialEq)]
     enum MCat {
         Empty,
         Zero,
@@ -403,15 +432,16 @@ pub mod impls {
                 return MCat::Empty;
             };
 
-            let zero = T::zero();
-            match lhs.value().partial_cmp(&zero).unwrap() {
+            let t_zero = T::zero();
+            let zero = FiniteOrdBound::closed(&t_zero);
+            match lhs.finite_ord(Left).partial_cmp(&zero).unwrap() {
                 Greater => MCat::Pos(MaybeZero::NonZero),
-                Equal => match rhs.value().partial_cmp(&zero).unwrap() {
+                Equal => match rhs.finite_ord(Right).partial_cmp(&zero).unwrap() {
                     Greater => MCat::Pos(MaybeZero::Zero),
                     Equal => MCat::Zero,
                     Less => unreachable!(),
                 },
-                Less => match rhs.value().partial_cmp(&zero).unwrap() {
+                Less => match rhs.finite_ord(Right).partial_cmp(&zero).unwrap() {
                     Greater => MCat::NegPos,
                     Equal => MCat::Neg(MaybeZero::Zero),
                     Less => MCat::Neg(MaybeZero::NonZero),
@@ -487,19 +517,28 @@ mod tests {
         let x = HalfInterval::unbound_closed(1.0);
         assert_eq!(x * x, u);
 
-        let x = HalfInterval::open_unbound(10.0);
+        let xno = HalfInterval::unbound_open(-10.0);
+        let xpo = HalfInterval::open_unbound(10.0);
         let expected = EnumInterval::open_unbound(100.0);
-        assert_eq!(x * x, expected);
+        assert_eq!(xno * xno, expected);
+        assert_eq!(xpo * xpo, expected);
 
-        let x = HalfInterval::unbound_open(-10.0);
-        assert_eq!(x * x, expected);
+        let xnc = HalfInterval::unbound_closed(0.0);
+        let xpc = HalfInterval::closed_unbound(0.0);
+        assert_eq!(xnc * xnc, xpc.into());
+        assert_eq!(xpc * xpc, xpc.into());
+        assert_eq!(xnc * xpc, xnc.into());
+        assert_eq!(xpc * xnc, xnc.into());
 
-        let x = HalfInterval::unbound_closed(0.0);
-        let expected = EnumInterval::closed_unbound(0.0);
-        assert_eq!(x * x, expected);
+        assert_eq!(xno * xnc, xpc.into());
+        assert_eq!(xnc * xno, xpc.into());
+        assert_eq!(xpo * xpc, xpc.into());
+        assert_eq!(xpc * xpo, xpc.into());
 
-        let x = HalfInterval::closed_unbound(0.0);
-        assert_eq!(x * x, expected);
+        assert_eq!(xpc * xno, xnc.into());
+        assert_eq!(xno * xpc, xnc.into());
+        assert_eq!(xpo * xnc, xnc.into());
+        assert_eq!(xnc * xpo, xnc.into());
 
         assert_eq!(
             HalfInterval::unbound_closed(-5.0) * HalfInterval::closed_unbound(10.0),
@@ -512,8 +551,24 @@ mod tests {
         assert_eq!(a * b, expected);
         assert_eq!(b * a, expected);
 
+        let a = HalfInterval::unbound_open(0.0);
         let b = HalfInterval::closed_unbound(0.0);
-        assert_eq!(a * b, u);
-        assert_eq!(b * a, u);
+        let expected = EnumInterval::unbound_closed(0.0);
+        assert_eq!(a * b, expected);
+        assert_eq!(b * a, expected);
+
+        let a = HalfInterval::unbound_closed(0.0);
+        let b = HalfInterval::open_unbound(0.0);
+        let expected = EnumInterval::unbound_closed(0.0);
+        assert_eq!(a * b, expected);
+        assert_eq!(b * a, expected);
+    }
+
+    #[test]
+    fn test_enum_x_finite() {
+        assert_eq!(
+            EnumInterval::unbounded() * FiniteInterval::singleton(0.0),
+            EnumInterval::singleton(0.0)
+        );
     }
 }

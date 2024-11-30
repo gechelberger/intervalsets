@@ -463,6 +463,9 @@ mod math {
         type Output = FiniteBound<<T as Mul>::Output>;
 
         fn mul(self, rhs: Self) -> Self::Output {
+            // fixme!
+            // if either lhs or rhs is Closed(0) -> output must be Closed(0)
+            // as written Closed(0) * Open(5) -> Open(0)
             FiniteBound::new(self.0.combine(rhs.0), self.1 * rhs.1)
         }
     }
