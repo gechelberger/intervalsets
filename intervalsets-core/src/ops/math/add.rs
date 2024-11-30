@@ -3,7 +3,7 @@ use core::ops::Add;
 use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
-use crate::{FiniteInterval, HalfInterval};
+use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
 impl<T> Add for FiniteInterval<T>
 where
@@ -12,6 +12,7 @@ where
 {
     type Output = FiniteInterval<<T as Add>::Output>;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
             return FiniteInterval::empty();
@@ -35,6 +36,7 @@ where
 {
     type Output = EnumInterval<<T as Add>::Output>;
 
+    #[inline]
     fn add(self, rhs: Self) -> Self::Output {
         let (l_side, l_bound) = self.into_raw();
         let (r_side, r_bound) = rhs.into_raw();
@@ -53,6 +55,7 @@ where
 {
     type Output = EnumInterval<<T as Add>::Output>;
 
+    #[inline]
     fn add(self, rhs: FiniteInterval<T>) -> Self::Output {
         let Some((min, max)) = rhs.into_raw() else {
             return EnumInterval::empty();
@@ -78,7 +81,13 @@ macro_rules! dispatch_add_impl {
                 match self {
                     Finite(inner) => (inner + rhs).into(),
                     Half(inner) => (inner + rhs).into(),
-                    Unbounded => Unbounded,
+                    Unbounded => {
+                        if rhs.is_empty() {
+                            EnumInterval::empty()
+                        } else {
+                            Unbounded
+                        }
+                    }
                 }
             }
         }
@@ -158,5 +167,9 @@ mod tests {
         let x = EnumInterval::closed_unbound(100.0);
         assert_eq!(x + u, u);
         assert_eq!(u + x, u);
+
+        let x = EnumInterval::empty();
+        assert_eq!(u + x, x);
+        assert_eq!(x + u, x);
     }
 }
