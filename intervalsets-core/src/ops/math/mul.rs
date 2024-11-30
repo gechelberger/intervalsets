@@ -205,7 +205,7 @@ pub mod impls {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
                 let min = non_zero_mul_unchecked(amin.clone(), bmax);
                 let max = non_zero_mul_unchecked(amin, bmin);
-                FiniteInterval::new_unchecked(min, max)
+                FiniteInterval::new(min, max)
             },
             (MCat::Neg(az), MCat::Neg(bz)) => unsafe {
                 // [a<0, b=0?] x [c<0, d=0?]
