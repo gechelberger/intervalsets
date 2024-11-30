@@ -4,7 +4,7 @@ use crate::bound::FiniteBound;
 use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
-use crate::{FiniteInterval, HalfInterval};
+use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
 impl<T: Sub> Sub for FiniteBound<T> {
     type Output = FiniteBound<<T as Sub>::Output>;
@@ -115,7 +115,13 @@ macro_rules! dispatch_lhs_sub_impl {
                 match self {
                     Finite(inner) => (inner - rhs).into(),
                     Half(inner) => (inner - rhs).into(),
-                    Unbounded => Unbounded,
+                    Unbounded => {
+                        if rhs.is_empty() {
+                            EnumInterval::empty()
+                        } else {
+                            Unbounded
+                        }
+                    }
                 }
             }
         }
@@ -142,7 +148,13 @@ macro_rules! dispatch_rhs_sub_impl {
                 match rhs {
                     Finite(rhs) => (self - rhs).into(),
                     Half(rhs) => (self - rhs).into(),
-                    Unbounded => Unbounded,
+                    Unbounded => {
+                        if self.is_empty() {
+                            EnumInterval::empty()
+                        } else {
+                            Unbounded
+                        }
+                    }
                 }
             }
         }
@@ -195,5 +207,9 @@ mod tests {
         let x = EnumInterval::unbound_closed(100.0);
         assert_eq!(x - u, u);
         assert_eq!(u - x, u);
+
+        let x = EnumInterval::empty();
+        assert_eq!(x - u, x);
+        assert_eq!(u - x, x);
     }
 }
