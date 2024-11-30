@@ -1,3 +1,5 @@
 mod add;
-mod mul;
+
+#[doc(hidden)]
+pub mod mul;
 mod sub;
