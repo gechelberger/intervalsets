@@ -237,6 +237,21 @@ impl<T> FiniteBound<T> {
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
+    pub unsafe fn min_max_unchecked(
+        side: Side,
+        mut a: FiniteBound<T>,
+        mut b: FiniteBound<T>,
+    ) -> (FiniteBound<T>, FiniteBound<T>) {
+        if a.contains_bound_unchecked(side, b.finite_ord(side)) {
+            if side == Side::Right {
+                core::mem::swap(&mut a, &mut b);
+            }
+        } else if side == Side::Left {
+            core::mem::swap(&mut a, &mut b);
+        }
+        (a, b)
+    }
+
     /// Consume a and b, returning the minimum bound.
     ///
     /// # Safety
@@ -856,6 +871,22 @@ mod test {
         assert_eq!(open.strict_contains(Right, &-1.0).unwrap(), true);
         assert_eq!(open.strict_contains(Right, &1.0).unwrap(), false);
         assert_eq!(open.strict_contains(Right, &f64::NAN).is_err(), true);
+    }
+
+    #[test]
+    fn test_min_max() {
+        let a = FiniteBound::closed(0.0);
+        let b = FiniteBound::open(0.0);
+
+        unsafe {
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Left, a, b), (a, b));
+
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Left, b, a), (a, b));
+
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Right, a, b), (b, a));
+
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Right, b, a), (b, a))
+        }
     }
 
     /*
