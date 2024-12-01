@@ -1,7 +1,5 @@
-use core::cmp::Ordering::{Equal, Greater, Less};
 use core::ops::Mul;
 
-use crate::bound::ord::FiniteOrdBound;
 use crate::bound::FiniteBound;
 use crate::bound::Side::{Left, Right};
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
@@ -130,6 +128,7 @@ where
 pub mod impls {
     use super::*;
     use crate::bound::FiniteBound as FB;
+    use crate::category::{ECat, MaybeZero};
     use crate::{EnumInterval, FiniteInterval};
 
     /// Multiply two non-zero bounds together.
@@ -153,8 +152,8 @@ pub mod impls {
         T: Mul + PartialOrd + Clone + Zero,
         <T as Mul>::Output: Element + Zero + Clone,
     {
-        let acat = a.mul_category();
-        let bcat = b.mul_category();
+        let acat = a.category();
+        let bcat = b.category();
 
         let Some((amin, amax)) = a.into_raw() else {
             return FiniteInterval::empty();
@@ -165,7 +164,7 @@ pub mod impls {
         };
 
         match (acat, bcat) {
-            (MCat::Pos(az), MCat::Pos(bz)) => unsafe {
+            (ECat::Pos(az), ECat::Pos(bz)) => unsafe {
                 // [a=0?, b>0] x [c=0?, d>0]
                 let max = non_zero_mul_unchecked(amax, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
@@ -175,13 +174,13 @@ pub mod impls {
                     FiniteInterval::new(min, max)
                 }
             },
-            (MCat::Pos(_), MCat::NegPos) => unsafe {
+            (ECat::Pos(_), ECat::NegPos) => unsafe {
                 // [a=0?, b>0] x [c<0, d>0] => a produces intermediate values
                 let min = non_zero_mul_unchecked(amax.clone(), bmin);
                 let max = non_zero_mul_unchecked(amax, bmax);
                 FiniteInterval::new(min, max)
             },
-            (MCat::Pos(az), MCat::Neg(bz)) => unsafe {
+            (ECat::Pos(az), ECat::Neg(bz)) => unsafe {
                 // [a=0?, b>0] x [c<0, d=0?]
                 let min = non_zero_mul_unchecked(amax, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
@@ -191,7 +190,7 @@ pub mod impls {
                     FiniteInterval::new(min, max)
                 }
             },
-            (MCat::Neg(az), MCat::Pos(bz)) => unsafe {
+            (ECat::Neg(az), ECat::Pos(bz)) => unsafe {
                 // [a<0, b=0?] x [c=0?, d>0]
                 let min = non_zero_mul_unchecked(amin, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
@@ -201,13 +200,13 @@ pub mod impls {
                     FiniteInterval::new(min, max)
                 }
             },
-            (MCat::Neg(_), MCat::NegPos) => unsafe {
+            (ECat::Neg(_), ECat::NegPos) => unsafe {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
                 let min = non_zero_mul_unchecked(amin.clone(), bmax);
                 let max = non_zero_mul_unchecked(amin, bmin);
                 FiniteInterval::new(min, max)
             },
-            (MCat::Neg(az), MCat::Neg(bz)) => unsafe {
+            (ECat::Neg(az), ECat::Neg(bz)) => unsafe {
                 // [a<0, b=0?] x [c<0, d=0?]
                 let max = non_zero_mul_unchecked(amin, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
@@ -217,19 +216,19 @@ pub mod impls {
                     FiniteInterval::new(min, max)
                 }
             },
-            (MCat::NegPos, MCat::Pos(_)) => unsafe {
+            (ECat::NegPos, ECat::Pos(_)) => unsafe {
                 // [a<0, b>0] x [c=0?, d>0] => c produces intermediate values
                 let min = non_zero_mul_unchecked(amin, bmax.clone());
                 let max = non_zero_mul_unchecked(amax, bmax);
                 FiniteInterval::new(min, max)
             },
-            (MCat::NegPos, MCat::Neg(_)) => unsafe {
+            (ECat::NegPos, ECat::Neg(_)) => unsafe {
                 // [a<0, b>0] x [c<0, d=0?] => d produces intermediate values
                 let min = non_zero_mul_unchecked(amax, bmin.clone());
                 let max = non_zero_mul_unchecked(amin, bmin);
                 FiniteInterval::new(min, max)
             },
-            (MCat::NegPos, MCat::NegPos) => unsafe {
+            (ECat::NegPos, ECat::NegPos) => unsafe {
                 // SAFETY: NegPos category can not have an end bound of Closed(0)
                 let c1_min = non_zero_mul_unchecked(amin.clone(), bmax.clone());
                 let c2_min = non_zero_mul_unchecked(amax.clone(), bmin.clone());
@@ -239,7 +238,7 @@ pub mod impls {
                 let max = FiniteBound::take_max_unchecked(Right, c1_max, c2_max);
                 FiniteInterval::new(min, max)
             },
-            (MCat::Zero, _) | (_, MCat::Zero) => {
+            (ECat::Zero, _) | (_, ECat::Zero) => {
                 FiniteInterval::singleton(<T as Mul>::Output::zero())
             }
             _ => unreachable!(),
@@ -254,15 +253,15 @@ pub mod impls {
         T: Mul + PartialOrd + Zero,
         <T as Mul>::Output: Element + Zero,
     {
-        let acat = a.mul_category();
-        let bcat = b.mul_category();
+        let acat = a.category();
+        let bcat = b.category();
 
         let (_, abound) = a.into_raw();
         let (_, bbound) = b.into_raw();
 
         match (acat, bcat) {
-            (MCat::NegPos, _) | (_, MCat::NegPos) => EnumInterval::unbounded(),
-            (MCat::Pos(az), MCat::Pos(bz)) | (MCat::Neg(az), MCat::Neg(bz)) => {
+            (ECat::NegPos, _) | (_, ECat::NegPos) => EnumInterval::unbounded(),
+            (ECat::Pos(az), ECat::Pos(bz)) | (ECat::Neg(az), ECat::Neg(bz)) => {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
@@ -271,7 +270,7 @@ pub mod impls {
                     EnumInterval::half_bounded(Left, min)
                 }
             }
-            (MCat::Pos(az), MCat::Neg(bz)) | (MCat::Neg(az), MCat::Pos(bz)) => {
+            (ECat::Pos(az), ECat::Neg(bz)) | (ECat::Neg(az), ECat::Pos(bz)) => {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
@@ -292,16 +291,16 @@ pub mod impls {
         T: Mul + PartialOrd + Zero,
         <T as Mul>::Output: Element + Zero + Clone,
     {
-        let fcat = a.mul_category();
+        let fcat = a.category();
         let Some((fmin, fmax)) = a.into_raw() else {
             return EnumInterval::empty();
         };
 
-        let hcat = b.mul_category();
+        let hcat = b.category();
         let (side, hbound) = b.into_raw();
 
         match (fcat, hcat) {
-            (MCat::Pos(az), MCat::Pos(bz)) => {
+            (ECat::Pos(az), ECat::Pos(bz)) => {
                 // [a=0?, b>0] x [c=0? d=inf]
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
@@ -312,14 +311,14 @@ pub mod impls {
                     })
                 }
             }
-            (MCat::Pos(_), MCat::NegPos) => {
+            (ECat::Pos(_), ECat::NegPos) => {
                 // [a=0?, b>0] x [c<0, d>0]
                 // Case 1: [a=0?, b>0] x [c<0, d=+inf] => |ac<=0, ad>=0, bc<0, bd=+inf| => (bc, ->)
                 // Case 2: [a=0?, b>0] x [c=-inf, d>0] => |ac<=0, ad>=0, bc=-inf, bd>0| -> (<-, bd)
                 // SAFETY: a always produces an intermediate value
                 EnumInterval::half_bounded(side, unsafe { non_zero_mul_unchecked(fmax, hbound) })
             }
-            (MCat::Pos(az), MCat::Neg(bz)) | (MCat::Neg(az), MCat::Pos(bz)) => {
+            (ECat::Pos(az), ECat::Neg(bz)) | (ECat::Neg(az), ECat::Pos(bz)) => {
                 // Case 1: [a=0?, b>0] x [c=-inf, d=0?]
                 // Case 2: [a<0, b=0?] x [c=0?, d=+inf]
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
@@ -331,7 +330,7 @@ pub mod impls {
                     })
                 }
             }
-            (MCat::Neg(_), MCat::NegPos) => {
+            (ECat::Neg(_), ECat::NegPos) => {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
                 // Case 1: [a<0, b=0?] x [c<0, d=+inf] => |ac>0, ad=-inf, bc>=0, bd<=0| => (<-, ac>0)
                 // Case 2: [a<0, b=0?] x [c=-inf, d>0] => |ac=+inf, ad<0, bc>=0, bd<=0| => (ad<0, ->)
@@ -339,7 +338,7 @@ pub mod impls {
                     non_zero_mul_unchecked(fmin, hbound)
                 })
             }
-            (MCat::Neg(az), MCat::Neg(bz)) => {
+            (ECat::Neg(az), ECat::Neg(bz)) => {
                 // [a<0, b<=0?] x [c=-inf, d<=0?] => |ac=+inf, ad>=0, bc>=0, bd>=0
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
@@ -350,8 +349,8 @@ pub mod impls {
                     })
                 }
             }
-            (MCat::NegPos, _) => EnumInterval::unbounded(),
-            (MCat::Zero, _) => EnumInterval::singleton(<T as Mul>::Output::zero()),
+            (ECat::NegPos, _) => EnumInterval::unbounded(),
+            (ECat::Zero, _) => EnumInterval::singleton(<T as Mul>::Output::zero()),
             _ => unreachable!(),
         }
     }
@@ -368,9 +367,9 @@ pub mod impls {
         match a {
             EnumInterval::Finite(inner) => (inner * b).into(),
             EnumInterval::Half(inner) => inner * b,
-            EnumInterval::Unbounded => match b.mul_category() {
-                MCat::Empty => EnumInterval::empty(),
-                MCat::Zero => EnumInterval::singleton(<T as Mul>::Output::zero()),
+            EnumInterval::Unbounded => match b.category() {
+                ECat::Empty => EnumInterval::empty(),
+                ECat::Zero => EnumInterval::singleton(<T as Mul>::Output::zero()),
                 _ => EnumInterval::Unbounded,
             },
         }
@@ -389,66 +388,6 @@ pub mod impls {
             EnumInterval::Finite(inner) => inner * b,
             EnumInterval::Half(inner) => half_x_half_by_cat(inner, b),
             EnumInterval::Unbounded => EnumInterval::Unbounded,
-        }
-    }
-
-    #[derive(Debug, PartialEq)]
-    enum MaybeZero {
-        Zero,
-        NonZero,
-    }
-
-    #[derive(Debug, PartialEq)]
-    enum MCat {
-        Empty,
-        Zero,
-        NegPos,
-        Pos(MaybeZero),
-        Neg(MaybeZero),
-    }
-
-    impl<T: Zero + PartialOrd> FiniteInterval<T> {
-        #[inline]
-        fn mul_category(&self) -> MCat {
-            let Some((lhs, rhs)) = self.view_raw() else {
-                return MCat::Empty;
-            };
-
-            let t_zero = T::zero();
-            let zero = FiniteOrdBound::closed(&t_zero);
-            match lhs.finite_ord(Left).partial_cmp(&zero).unwrap() {
-                Greater => MCat::Pos(MaybeZero::NonZero),
-                Equal => match rhs.finite_ord(Right).partial_cmp(&zero).unwrap() {
-                    Greater => MCat::Pos(MaybeZero::Zero),
-                    Equal => MCat::Zero,
-                    Less => unreachable!(),
-                },
-                Less => match rhs.finite_ord(Right).partial_cmp(&zero).unwrap() {
-                    Greater => MCat::NegPos,
-                    Equal => MCat::Neg(MaybeZero::Zero),
-                    Less => MCat::Neg(MaybeZero::NonZero),
-                },
-            }
-        }
-    }
-
-    impl<T: Zero + PartialOrd> HalfInterval<T> {
-        #[inline]
-        fn mul_category(&self) -> MCat {
-            let t_zero = T::zero();
-            let zero = FiniteOrdBound::closed(&t_zero);
-            match self.side() {
-                Left => match self.finite_ord_bound().partial_cmp(&zero).unwrap() {
-                    Less => MCat::NegPos,
-                    Equal => MCat::Pos(MaybeZero::Zero),
-                    Greater => MCat::Pos(MaybeZero::NonZero),
-                },
-                Right => match self.finite_ord_bound().partial_cmp(&zero).unwrap() {
-                    Less => MCat::Neg(MaybeZero::NonZero),
-                    Equal => MCat::Neg(MaybeZero::Zero),
-                    Greater => MCat::NegPos,
-                },
-            }
         }
     }
 }

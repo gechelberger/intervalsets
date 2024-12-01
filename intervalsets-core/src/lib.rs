@@ -247,8 +247,8 @@ pub mod ops;
 
 pub mod factory;
 
+pub mod category;
 pub mod measure;
-
 pub mod try_cmp;
 
 mod display;
