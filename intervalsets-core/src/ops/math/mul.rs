@@ -542,5 +542,15 @@ mod tests {
             EnumInterval::unbounded() * FiniteInterval::singleton(0.0),
             EnumInterval::singleton(0.0)
         );
+
+        assert_eq!(
+            EnumInterval::closed(0, 5) * EnumInterval::closed(0, 5),
+            EnumInterval::closed(0, 25)
+        );
+
+        assert_eq!(
+            EnumInterval::open(-10.0, -5.0) * EnumInterval::open(-10.0, -5.0),
+            EnumInterval::open(25.0, 100.0)
+        );
     }
 }
