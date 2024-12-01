@@ -237,6 +237,26 @@ impl<T> FiniteBound<T> {
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
+    /// Return a and b ordered.
+    ///
+    /// # Safety
+    ///
+    /// The user is responsible for ensuring both bounds are comparable.
+    pub unsafe fn min_max_unchecked(
+        side: Side,
+        mut a: FiniteBound<T>,
+        mut b: FiniteBound<T>,
+    ) -> (FiniteBound<T>, FiniteBound<T>) {
+        if a.contains_bound_unchecked(side, b.finite_ord(side)) {
+            if side == Side::Right {
+                core::mem::swap(&mut a, &mut b);
+            }
+        } else if side == Side::Left {
+            core::mem::swap(&mut a, &mut b);
+        }
+        (a, b)
+    }
+
     /// Consume a and b, returning the minimum bound.
     ///
     /// # Safety
@@ -448,6 +468,9 @@ mod math {
         type Output = FiniteBound<<T as Mul>::Output>;
 
         fn mul(self, rhs: Self) -> Self::Output {
+            // fixme!
+            // if either lhs or rhs is Closed(0) -> output must be Closed(0)
+            // as written Closed(0) * Open(5) -> Open(0)
             FiniteBound::new(self.0.combine(rhs.0), self.1 * rhs.1)
         }
     }
@@ -616,11 +639,12 @@ pub mod ord {
         feature = "rkyv",
         derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
     )]
-    #[allow(missing_docs)]
     pub enum FiniteOrdBoundKind {
         RightOpen,
         Closed,
         LeftOpen,
+        // As of rkyv-0.8.9 enum discriminants may only be unsigned and do
+        // not respect #[repr(i32)].
     }
 
     use FiniteOrdBoundKind::*;
@@ -856,6 +880,22 @@ mod test {
         assert_eq!(open.strict_contains(Right, &-1.0).unwrap(), true);
         assert_eq!(open.strict_contains(Right, &1.0).unwrap(), false);
         assert_eq!(open.strict_contains(Right, &f64::NAN).is_err(), true);
+    }
+
+    #[test]
+    fn test_min_max() {
+        let a = FiniteBound::closed(0.0);
+        let b = FiniteBound::open(0.0);
+
+        unsafe {
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Left, a, b), (a, b));
+
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Left, b, a), (a, b));
+
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Right, a, b), (b, a));
+
+            assert_eq!(FiniteBound::min_max_unchecked(Side::Right, b, a), (b, a))
+        }
     }
 
     /*
