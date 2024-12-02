@@ -130,6 +130,8 @@ where
 }
 
 mod impls {
+    use EnumInterval as EI;
+
     use super::*;
     use crate::bound::FiniteBound as FB;
     use crate::bound::Side::{self, Left, Right};
@@ -160,7 +162,7 @@ mod impls {
     }
 
     fn zero_by_non_zero<T: Zero + Element + Clone>() -> MaybeDisjoint<T> {
-        MaybeDisjoint::Connected(EnumInterval::singleton(T::zero()))
+        MaybeDisjoint::Connected(EI::singleton(T::zero()))
     }
 
     pub fn finite_by_finite<T>(ab: FiniteInterval<T>, cd: FiniteInterval<T>) -> MaybeDisjoint<T>
@@ -198,20 +200,20 @@ mod impls {
                 // +epsilon repr is LeftOpen(0) and also may not be in denom.
                 if c.value() == &T::zero() {
                     // +e repr is LeftOpen(0.0)
-                    EnumInterval::half_bounded(Left, min).into()
+                    EI::left_bounded(min).into()
                 } else {
                     // SAFETY: ab is Pos(_) so b > 0; checked c=0/c=+e ^^^
-                    EnumInterval::finite(min, unsafe { non_zero_div_unchecked(b, c) }).into()
+                    EI::finite(min, unsafe { non_zero_div_unchecked(b, c) }).into()
                 }
             }
             (ECat::NegPos, ECat::Pos(_)) => {
                 if c.value() == &T::zero() {
                     // c = 0 or c = +e
-                    EnumInterval::unbounded().into()
+                    EI::unbounded().into()
                 } else {
                     // SAFETY: c > +e && a < -e && b > +e
                     unsafe {
-                        EnumInterval::finite(
+                        EI::finite(
                             non_zero_div_unchecked(a, c.clone()),
                             non_zero_div_unchecked(b, c),
                         )
@@ -230,35 +232,29 @@ mod impls {
 
                 if c.value() == &T::zero() {
                     // c = 0 or c = +e => (<-, max)
-                    EnumInterval::half_bounded(Right, max).into()
+                    EI::right_bounded(max).into()
                 } else {
                     // SAFETY: numer Neg(_) => a < -e
                     let min = unsafe { non_zero_div_unchecked(a, c) };
-                    EnumInterval::finite(min, max).into()
+                    EI::finite(min, max).into()
                 }
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // SAFETY: c < -e && d > +e && a != Closed(0)
-                let left = EnumInterval::half_bounded(Right, unsafe {
-                    non_zero_div_unchecked(a.clone(), c)
-                });
+                let left = EI::right_bounded(unsafe { non_zero_div_unchecked(a.clone(), c) });
 
                 // SAFETY: c < -e && d > +e && a != Closed(0)
-                let right =
-                    EnumInterval::half_bounded(Left, unsafe { non_zero_div_unchecked(a, d) });
+                let right = EI::left_bounded(unsafe { non_zero_div_unchecked(a, d) });
                 (left, right).into()
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // SAFETY: c < -e, && d > +e && b != Closed(0)
-                let left = EnumInterval::half_bounded(Right, unsafe {
-                    non_zero_div_unchecked(b.clone(), d)
-                });
+                let left = EI::right_bounded(unsafe { non_zero_div_unchecked(b.clone(), d) });
                 // SAFETY: c < -e, && d > +e && b != Closed(0)
-                let right =
-                    EnumInterval::half_bounded(Left, unsafe { non_zero_div_unchecked(b, c) });
+                let right = EI::left_bounded(unsafe { non_zero_div_unchecked(b, c) });
                 (left, right).into()
             }
-            (_, ECat::NegPos) => EnumInterval::unbounded().into(),
+            (_, ECat::NegPos) => EI::unbounded().into(),
             (ECat::Pos(lz), ECat::Neg(_)) => {
                 let max = match lz {
                     MaybeZero::Zero => FB::closed(T::zero()),
@@ -269,21 +265,21 @@ mod impls {
                 };
 
                 if d.value() == &T::zero() {
-                    EnumInterval::half_bounded(Right, max).into()
+                    EI::half_bounded(Right, max).into()
                 } else {
                     // ab Pos(_) => b > +e, checked d ^^
                     let min = unsafe { non_zero_div_unchecked(b, d) };
-                    EnumInterval::finite(min, max).into()
+                    EI::finite(min, max).into()
                 }
             }
             (ECat::NegPos, ECat::Neg(_)) => {
                 if d.value() == &T::zero() {
                     // d = 0 or d = -e
-                    EnumInterval::unbounded().into()
+                    EI::unbounded().into()
                 } else {
                     // SAFETY: numer NegPos => a < 0, b > 0 && d checked ^^
                     unsafe {
-                        EnumInterval::finite(
+                        EI::finite(
                             non_zero_div_unchecked(b, d.clone()),
                             non_zero_div_unchecked(a, d),
                         )
@@ -301,9 +297,9 @@ mod impls {
                 };
 
                 if d.value() == &T::zero() {
-                    EnumInterval::half_bounded(Left, min).into()
+                    EI::left_bounded(min).into()
                 } else {
-                    EnumInterval::finite(min, unsafe {
+                    EI::finite(min, unsafe {
                         // SAFETY: ab Neg(_) => a < 0 && checked d ^^^
                         non_zero_div_unchecked(a, d)
                     })
