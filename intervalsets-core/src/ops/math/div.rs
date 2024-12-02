@@ -2,7 +2,9 @@
 
 use core::ops::Div;
 
+use crate::category::ECat;
 use crate::disjoint::MaybeDisjoint;
+use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -24,7 +26,7 @@ where
     type Output = MaybeDisjoint<T>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        todo!()
+        impls::half_by_half(self, rhs)
     }
 }
 
@@ -35,7 +37,7 @@ where
     type Output = MaybeDisjoint<T>;
 
     fn div(self, rhs: HalfInterval<T>) -> Self::Output {
-        todo!()
+        impls::finite_by_half(self, rhs)
     }
 }
 
@@ -46,7 +48,7 @@ where
     type Output = MaybeDisjoint<T>;
 
     fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
-        todo!()
+        impls::half_by_finite(self, rhs)
     }
 }
 
@@ -60,7 +62,7 @@ where
         match self {
             Self::Finite(lhs) => lhs / rhs,
             Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => todo!(),
+            Self::Unbounded => impls::unbounded_by_cat(rhs.category()),
         }
     }
 }
@@ -75,7 +77,7 @@ where
         match self {
             Self::Finite(lhs) => lhs / rhs,
             Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => todo!(),
+            Self::Unbounded => Self::Unbounded.into(),
         }
     }
 }
@@ -90,11 +92,7 @@ where
         match self {
             Self::Finite(lhs) => lhs / rhs,
             Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => match rhs {
-                Self::Finite(rhs) => todo!(),
-                Self::Half(rhs) => todo!(),
-                Self::Unbounded => Self::Unbounded.into(),
-            },
+            Self::Unbounded => impls::unbounded_by_cat(rhs.category()),
         }
     }
 }
@@ -109,7 +107,12 @@ where
         match rhs {
             EnumInterval::Finite(rhs) => self / rhs,
             EnumInterval::Half(rhs) => self / rhs,
-            EnumInterval::Unbounded => EnumInterval::Unbounded.into(),
+            EnumInterval::Unbounded => match self.category() {
+                ECat::Empty => EnumInterval::empty(),
+                ECat::Zero => EnumInterval::singleton(T::zero()),
+                _ => EnumInterval::Unbounded,
+            }
+            .into(),
         }
     }
 }
@@ -163,6 +166,14 @@ mod impls {
 
     fn zero_by_non_zero<T: Zero + Element + Clone>() -> MaybeDisjoint<T> {
         MaybeDisjoint::Connected(EI::singleton(T::zero()))
+    }
+
+    pub fn unbounded_by_cat<T>(denom_cat: ECat) -> MaybeDisjoint<T> {
+        match denom_cat {
+            ECat::Empty => FiniteInterval::empty().into(),
+            ECat::Zero => any_by_zero(),
+            _ => EI::Unbounded.into(),
+        }
     }
 
     pub fn finite_by_finite<T>(ab: FiniteInterval<T>, cd: FiniteInterval<T>) -> MaybeDisjoint<T>
@@ -308,6 +319,87 @@ mod impls {
             _ => unreachable!(),
         }
     }
+
+    pub fn half_by_half<T>(ab: HalfInterval<T>, cd: HalfInterval<T>) -> MaybeDisjoint<T>
+    where
+        T: Div<Output = T> + Element + Clone + Zero,
+    {
+        let ab_cat = ab.category();
+        let cd_cat = cd.category();
+
+        let (ab_side, ab_bound) = ab.into_raw();
+        let (cd_side, cd_bound) = cd.into_raw();
+
+        match (ab_cat, cd_cat) {
+            (ECat::Pos(nz), ECat::Pos(_)) | (ECat::Neg(nz), ECat::Neg(_)) => match nz {
+                MaybeZero::Zero => EI::closed_unbound(T::zero()).into(),
+                MaybeZero::NonZero => EI::open_unbound(T::zero()).into(),
+            },
+            (ECat::Neg(nz), ECat::Pos(_)) | (ECat::Pos(nz), ECat::Neg(_)) => match nz {
+                MaybeZero::Zero => EI::unbound_closed(T::zero()).into(),
+                MaybeZero::NonZero => EI::unbound_open(T::zero()).into(),
+            },
+            (ECat::NegPos, ECat::Pos(_)) => {
+                if cd_bound.value() == &T::zero() {
+                    EnumInterval::unbounded().into()
+                } else {
+                    // SAFETY: ab < 0 or ab > 0 && checked cd != 0 or +e
+                    EnumInterval::half_bounded(ab_side, unsafe {
+                        non_zero_div_unchecked(ab_bound, cd_bound)
+                    })
+                    .into()
+                }
+            }
+            (ECat::NegPos, ECat::Neg(_)) => {
+                if cd_bound.value() == &T::zero() {
+                    EnumInterval::unbounded().into()
+                } else {
+                    EnumInterval::half_bounded(ab_side.flip(), unsafe {
+                        non_zero_div_unchecked(ab_bound, cd_bound)
+                    })
+                    .into()
+                }
+            }
+            (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
+                todo!() // disjoint
+            }
+            (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
+                todo!() // disjoint
+            }
+            (_, ECat::NegPos) => EI::unbounded().into(),
+
+            // half intervals can not be empty or zero
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn finite_by_half<T>(ab: FiniteInterval<T>, cd: HalfInterval<T>) -> MaybeDisjoint<T>
+    where
+        T: Div<Output = T> + Element + Clone + Zero,
+    {
+        let ab_cat = ab.category();
+        let cd_cat = cd.category();
+
+        todo!()
+    }
+
+    pub fn half_by_finite<T>(ab: HalfInterval<T>, cd: FiniteInterval<T>) -> MaybeDisjoint<T>
+    where
+        T: Div<Output = T> + Element + Clone + Zero,
+    {
+        let ab_cat = ab.category();
+        let cd_cat = cd.category();
+
+        let (ab_side, ab_bound) = ab.into_raw();
+        let Some((c, d)) = cd.into_raw() else {
+            return MaybeDisjoint::Consumed;
+        };
+
+        match (ab_cat, cd_cat) {
+            (ECat::Pos(_), ECat::Pos(_)) => todo!(),
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -348,5 +440,24 @@ mod tests {
 
         // (+e, 1.0) / [-1.0, 1.0] => (<-, 0.0) U (0.0, ->)
         assert_eq!(fo(0.0, 1.0) / fc(-1.0, 1.0), (euo(0.0), eou(0.0)).into());
+    }
+
+    #[test]
+    fn test_half_by_half() {
+        let cu = EnumInterval::closed_unbound;
+        let ou = EnumInterval::open_unbound;
+        let uc = EnumInterval::unbound_closed;
+        //let uo = EnumInterval::unbound_open;
+        //let u = EnumInterval::unbounded();
+
+        assert_eq!(cu(10.0) / cu(10.0), ou(0.0).into());
+        assert_eq!(cu(0.0) / cu(10.0), cu(0.0).into());
+        assert_eq!(cu(-10.0) / cu(10.0), cu(-1.0).into());
+        assert_eq!(cu(-100.0) / cu(10.0), cu(-10.0).into());
+
+        assert_eq!(uc(0.0) / cu(10.0), uc(0.0).into());
+        assert_eq!(cu(0.0) / uc(-10.0), uc(0.0).into());
+
+        assert_eq!(uc(-10.0) / uc(-10.0), ou(0.0).into());
     }
 }
