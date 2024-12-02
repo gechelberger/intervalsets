@@ -242,7 +242,6 @@ mod impls {
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // SAFETY: c < -e && d > +e && a != Closed(0)
                 let left = EI::right_bounded(unsafe { non_zero_div_unchecked(a.clone(), c) });
-
                 // SAFETY: c < -e && d > +e && a != Closed(0)
                 let right = EI::left_bounded(unsafe { non_zero_div_unchecked(a, d) });
                 (left, right).into()
@@ -324,9 +323,9 @@ mod tests {
         //let foc = FiniteInterval::open_closed;
 
         let ecu = EnumInterval::closed_unbound;
-        //let eou = EnumInterval::open_unbound;
+        let eou = EnumInterval::open_unbound;
         //let euc = EnumInterval::unbound_closed;
-        //let eoc = EnumInterval::unbound_open;
+        let euo = EnumInterval::unbound_open;
 
         // open/closed non-zero, strict pos / strict pos
         assert_eq!(fc(10.0, 100.0) / fc(1.0, 2.0), fc(5.0, 100.0).into());
@@ -346,5 +345,8 @@ mod tests {
 
         // closed-zero pos numer, closed-zero pos denom
         assert_eq!(fc(0.0, 10.0) / fc(0.0, 5.0), ecu(0.0).into());
+
+        // (+e, 1.0) / [-1.0, 1.0] => (<-, 0.0) U (0.0, ->)
+        assert_eq!(fo(0.0, 1.0) / fc(-1.0, 1.0), (euo(0.0), eou(0.0)).into());
     }
 }
