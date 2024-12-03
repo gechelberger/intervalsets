@@ -14,6 +14,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: Self) -> Self::Output {
         impls::finite_by_finite(self, rhs)
     }
@@ -25,6 +26,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: Self) -> Self::Output {
         impls::half_by_half(self, rhs)
     }
@@ -36,6 +38,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: HalfInterval<T>) -> Self::Output {
         impls::finite_by_half(self, rhs)
     }
@@ -47,6 +50,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
         impls::half_by_finite(self, rhs)
     }
@@ -58,6 +62,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
         match self {
             Self::Finite(lhs) => lhs / rhs,
@@ -73,6 +78,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: HalfInterval<T>) -> Self::Output {
         match self {
             Self::Finite(lhs) => lhs / rhs,
@@ -88,6 +94,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: EnumInterval<T>) -> Self::Output {
         match self {
             Self::Finite(lhs) => lhs / rhs,
@@ -103,6 +110,7 @@ where
 {
     type Output = MaybeDisjoint<T>;
 
+    #[inline(always)]
     fn div(self, rhs: EnumInterval<T>) -> Self::Output {
         match rhs {
             EnumInterval::Finite(rhs) => self / rhs,
@@ -149,6 +157,7 @@ mod impls {
     /// 1. the numerator is not Closed(0) unless the denom is also closed.
     ///    the numerator is allowed to be Open(0). ie. +/- epsilon.
     /// 2. the denominator is not allowed to be Open or Closed 0. ie. (-e, 0, +e)
+    #[inline(always)]
     unsafe fn non_zero_div_unchecked<T>(numer: FB<T>, denom: FB<T>) -> FB<T>
     where
         T: Div<Output = T>,
@@ -160,20 +169,24 @@ mod impls {
 
     /// anything divided by the zero singleton set.
     /// [a, b] / [0, 0]
+    #[inline(always)]
     fn any_by_zero<T>() -> MaybeDisjoint<T> {
         MaybeDisjoint::empty()
     }
 
+    #[inline(always)]
     fn zero_by_non_zero<T: Zero + Element + Clone>() -> MaybeDisjoint<T> {
         EI::singleton(T::zero()).into()
     }
 
+    #[inline(always)]
     fn all_except_zero<T: Zero + Element>() -> MaybeDisjoint<T> {
         let neg = EI::right_bounded(FB::open(T::zero()));
         let pos = EI::left_bounded(FB::open(T::zero()));
         (neg, pos).into()
     }
 
+    #[inline(always)]
     pub fn unbounded_by_cat<T>(denom_cat: ECat) -> MaybeDisjoint<T> {
         match denom_cat {
             ECat::Empty => FiniteInterval::empty().into(),
