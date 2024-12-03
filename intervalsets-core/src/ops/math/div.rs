@@ -287,16 +287,25 @@ mod impls {
 
         match (ab_cat, cd_cat) {
             (ECat::Pos(nz), ECat::Pos(_)) | (ECat::Neg(nz), ECat::Neg(_)) => {
+                // CASE 0: [a>=0, b>+e] / [c>=0, d>+e] = {0, +inf}
+                // CASE 1: [a<-e, b<=0] / [c<-e, d<=0] = {0, +inf}
                 EI::left_bounded(div_inf_bound(nz)).into()
             }
             (ECat::Neg(nz), ECat::Pos(_)) | (ECat::Pos(nz), ECat::Neg(_)) => {
+                // CASE 0: [a<-e, b<=0] / [c>=0, d>+e] = {-inf, 0}
+                // CASE 1: [a>=0, b>+e] / [c<-e, d<=0] = {-inf, 0}
                 EI::right_bounded(div_inf_bound(nz)).into()
             }
             (ECat::NegPos, ECat::Pos(_)) => {
+                // CASE 0: [a<0, b>0] / [0<=c<+e, d=inf] = {-inf, +inf}
+                // CASE 1: [a<0, b=+inf] / [c>+e, d=inf] = {a/c, +inf},
+                // CASE 2: [a=-inf, b>0] / [c>+e, d=inf] = {-inf, b/c}
                 if cd_bound.value() == &T::zero() {
                     EnumInterval::unbounded().into()
                 } else {
-                    // SAFETY: ab < 0 or ab > 0 && checked cd != 0 or +e
+                    // SAFETY:
+                    // - numer != closed(0) becasue NegPos.
+                    // - denom > +e because checked above.
                     EnumInterval::half_bounded(ab_side, unsafe {
                         non_zero_div_unchecked(ab_bound, cd_bound)
                     })
@@ -304,9 +313,15 @@ mod impls {
                 }
             }
             (ECat::NegPos, ECat::Neg(_)) => {
+                /// CASE 0: [a<0, b>0] / [c=-inf, -e<d<=0] => {-inf, inf}
+                /// CASE 1: [a<0, b=+inf] / [c=-inf, d<-e] => {-inf, a/d}
+                /// CASE 2: [a=-inf, b>0] / [c=-inf, d<-e] => {b/d, +inf}
                 if cd_bound.value() == &T::zero() {
                     EnumInterval::unbounded().into()
                 } else {
+                    // SAFETY:
+                    // - numer != closed(0) because NegPos.
+                    // - denom < -e because checked above.
                     EnumInterval::half_bounded(ab_side.flip(), unsafe {
                         non_zero_div_unchecked(ab_bound, cd_bound)
                     })
@@ -315,28 +330,20 @@ mod impls {
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a>0, b=+inf] / [c<0, d>0] = {-inf, a/c} U {a/d, +inf}
-
                 if cd_bound.value() == &T::zero() {
                     return all_except_zero();
                 }
 
-                match cd_side {
-                    Left => {
-                        // c < 0, d = +inf = {-inf, a/c} U {0, +inf}
-                        let left = EI::right_bounded(unsafe {
-                            non_zero_div_unchecked(ab_bound, cd_bound)
-                        });
-                        let right = EI::open_unbound(T::zero());
-                        (left, right).into()
-                    }
-                    Right => {
-                        // c = -inf, d > 0 = {-inf, 0} U {a/d, +inf}
-                        let left = EI::unbound_open(T::zero());
-                        let right =
-                            EI::left_bounded(unsafe { non_zero_div_unchecked(ab_bound, cd_bound) });
-                        (left, right).into()
-                    }
-                }
+                let zero = FB::open(T::zero());
+                let non_zero = unsafe { non_zero_div_unchecked(ab_bound, cd_bound) };
+
+                let pair = match cd_side {
+                    // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
+                    Left => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                    // ab / [c=-inf, d>0] = {-inf, 0} U {a/d, +inf}
+                    Right => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                };
+                pair.into()
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] = {-inf, b/d} U {b/c, +inf}
@@ -344,23 +351,17 @@ mod impls {
                     return all_except_zero();
                 }
 
-                match cd_side {
-                    Left => {
-                        // c < 0, d=+inf
-                        let left = EI::unbound_open(T::zero());
-                        let right =
-                            EI::left_bounded(unsafe { non_zero_div_unchecked(ab_bound, cd_bound) });
-                        (left, right).into()
-                    }
-                    Right => {
-                        // c = -inf, d > 0
-                        let left = EI::right_bounded(unsafe {
-                            non_zero_div_unchecked(ab_bound, cd_bound)
-                        });
-                        let right = EI::open_unbound(T::zero());
-                        (left, right).into()
-                    }
-                }
+                let zero = FB::open(T::zero());
+                let non_zero = unsafe { non_zero_div_unchecked(ab_bound, cd_bound) };
+
+                let disjoint = match cd_side {
+                    // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
+                    Left => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                    // ab / [c=-inf, d>0] = {-inf, b/d} U {0, +inf}
+                    Right => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                };
+
+                disjoint.into()
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
 
