@@ -209,19 +209,9 @@ mod impls {
                 unsafe { div_same_sign_max(min, b, c) }
             }
             (ECat::NegPos, ECat::Pos(_)) => {
-                if c.value() == &T::zero() {
-                    // c = 0 or c = +e
-                    EI::unbounded().into()
-                } else {
-                    // SAFETY: c > +e && a < -e && b > +e
-                    unsafe {
-                        EI::finite(
-                            non_zero_div_unchecked(a, c.clone()),
-                            non_zero_div_unchecked(b, c),
-                        )
-                        .into()
-                    }
-                }
+                // CASE 0: [a<0, b>0] / [0>=c>=+e, d>+e] = {-inf, +inf}
+                // CASE 1: [a<0, b>0] / [c>+e, d>+e]     = {a/c, b/c}
+                unsafe { div_non_zero_bounds_by_bound(a, b, c) }
             }
             (ECat::Neg(lz), ECat::Pos(_)) => {
                 // SAFETY: cd Pos(_) => d > +e
@@ -251,19 +241,9 @@ mod impls {
                 unsafe { div_opp_sign_min(max, b, d) }
             }
             (ECat::NegPos, ECat::Neg(_)) => {
-                if d.value() == &T::zero() {
-                    // d = 0 or d = -e
-                    EI::unbounded().into()
-                } else {
-                    // SAFETY: numer NegPos => a < 0, b > 0 && d checked ^^
-                    unsafe {
-                        EI::finite(
-                            non_zero_div_unchecked(b, d.clone()),
-                            non_zero_div_unchecked(a, d),
-                        )
-                        .into()
-                    }
-                }
+                // CASE 0: [a<0, b>0] / [c<-e, -e<=d<=0] = {-inf, inf}
+                // CASE 1: [a<0, b>0] / [c<-e, d<-e]     = {b/d, a/d}
+                unsafe { div_non_zero_bounds_by_bound(b, a, d) }
             }
             (ECat::Neg(lz), ECat::Neg(_)) => {
                 // SAFETY: `cd` is Neg(_) => `c` < -e
@@ -354,14 +334,14 @@ mod impls {
                 let zero = FB::open(T::zero());
                 let non_zero = unsafe { non_zero_div_unchecked(ab_bound, cd_bound) };
 
-                let disjoint = match cd_side {
+                let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
                     Left => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
                     // ab / [c=-inf, d>0] = {-inf, b/d} U {0, +inf}
                     Right => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
                 };
 
-                disjoint.into()
+                pair.into()
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
 
@@ -408,32 +388,14 @@ mod impls {
                 unsafe { div_opp_sign_min(max, a, cd_bound) }
             }
             (ECat::NegPos, ECat::Pos(_)) => {
-                // [a<0, b>0] / [c>=0, d=+inf] => {a/c, b/c}
-                if cd_bound.value() == &T::zero() {
-                    EI::unbounded().into()
-                } else {
-                    let (min, max) = unsafe {
-                        (
-                            non_zero_div_unchecked(a, cd_bound.clone()),
-                            non_zero_div_unchecked(b, cd_bound),
-                        )
-                    };
-                    EI::finite(min, max).into()
-                }
+                // CASE 0: [a<0, b>0] / [0>=c>=+e, d=+inf] = {-inf, +inf}
+                // CASE 1: [a<0, b>0] / [c>+e, d=+inf]     = {a/c, b/c}
+                unsafe { div_non_zero_bounds_by_bound(a, b, cd_bound) }
             }
             (ECat::NegPos, ECat::Neg(_)) => {
-                // [a<0, b>0] / [c=-inf, d<=0] => {b/d, a/d}
-                if cd_bound.value() == &T::zero() {
-                    EI::unbounded().into()
-                } else {
-                    let (min, max) = unsafe {
-                        (
-                            non_zero_div_unchecked(b, cd_bound.clone()),
-                            non_zero_div_unchecked(a, cd_bound),
-                        )
-                    };
-                    EI::finite(min, max).into()
-                }
+                // CASE 0: [a<0, b>0] / [c=-inf, -e<=d<=0] = {-inf, inf}
+                // CASE 1: [a<0, b>0] / [c=-inf, d<-e] = {b/d, a/d}
+                unsafe { div_non_zero_bounds_by_bound(b, a, cd_bound) }
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a>0, b>0] / [c<0, d>0] => (<-, a/c) U (a/d, ->)
@@ -441,24 +403,17 @@ mod impls {
                     return all_except_zero();
                 }
 
-                match cd_side {
-                    Left => {
-                        // c < 0, d = +inf
-                        //(<-, a/c) U (0, ->)
-                        let left =
-                            EI::right_bounded(unsafe { non_zero_div_unchecked(a, cd_bound) });
-                        let right = EI::open_unbound(T::zero());
-                        (left, right).into()
-                    }
-                    Right => {
-                        // c = -inf, d > 0
-                        //(<-, 0) U (a/d, ->)
-                        let left = EI::unbound_open(T::zero());
-                        let right =
-                            EI::left_bounded(unsafe { non_zero_div_unchecked(a, cd_bound) });
-                        (left, right).into()
-                    }
-                }
+                let zero = FB::open(T::zero());
+                let non_zero = unsafe { non_zero_div_unchecked(a, cd_bound) };
+
+                let pair = match cd_side {
+                    // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
+                    Left => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                    // ab / [c=-inf, d>0] = {-inf, 0} U {a/d, +inf}
+                    Right => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                };
+
+                pair.into()
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a<0, b<0] / [c<0, d>0] => (<-, b/d) U (b/c, ->)
@@ -467,24 +422,17 @@ mod impls {
                     return all_except_zero();
                 }
 
-                match cd_side {
-                    Left => {
-                        // c < 0, d = +inf
-                        // (<-, 0) U (b/c, ->)
-                        let left = EI::unbound_open(T::zero());
-                        let right =
-                            EI::left_bounded(unsafe { non_zero_div_unchecked(b, cd_bound) });
-                        (left, right).into()
-                    }
-                    Right => {
-                        // c = -inf, d > 0
-                        // (<-, b/d) U (0, ->)
-                        let left =
-                            EI::right_bounded(unsafe { non_zero_div_unchecked(b, cd_bound) });
-                        let right = EI::open_unbound(T::zero());
-                        (left, right).into()
-                    }
-                }
+                let zero = FB::open(T::zero());
+                let non_zero = unsafe { non_zero_div_unchecked(b, cd_bound) };
+
+                let pair = match cd_side {
+                    // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
+                    Left => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                    // ab / [c=-inf, d>0] = {-inf, b/d} U {0, +inf}
+                    Right => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                };
+
+                pair.into()
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
             _ => unreachable!(),
@@ -588,12 +536,11 @@ mod impls {
     /// Create interval with max from num/denom handling denom -> 0.
     ///
     /// ignore MaybeZero for denominator: only detects Closed(0).
-    /// +epsilon repr is LeftOpen(0) and also must be checked.
+    /// +/- epsilon is LeftOpen(0) & RightOpen(0) and also needs to be checked.
     ///
     /// # SAFETY
-    ///
-    /// Numerator is not checked and may not be Closed(0).
-    /// Denominator **is** checked for 0 and epsilon internally.
+    /// - Numerator is not checked and may not be Closed(0).
+    /// - Denominator **is** checked for 0 and epsilon internally.
     #[inline(always)]
     unsafe fn div_same_sign_max<T>(min: FB<T>, numer: FB<T>, denom: FB<T>) -> MaybeDisjoint<T>
     where
@@ -608,23 +555,14 @@ mod impls {
         }
     }
 
-    /// # Safety
+    /// Create interval with min from numer/denom handling denom -> 0.
     ///
-    /// Numerator is checked for closed(0), but the user is responsible for
-    /// ensuring that the denominator is not 0 or epsilon
-    #[inline(always)]
-    unsafe fn div_denom_unchecked<T>(nz: MaybeZero, numer: FB<T>, denom: FB<T>) -> FB<T>
-    where
-        T: Div<Output = T> + Element + Zero,
-    {
-        match nz {
-            MaybeZero::Zero => FB::closed(T::zero()),
-            MaybeZero::NonZero => unsafe { non_zero_div_unchecked(numer, denom) },
-        }
-    }
-
-    /// # Safety
+    /// ignore MaybeZero for denominator: only detects Closed(0).
+    /// +/- epsilon is LeftOpen(0) & RightOpen(0) and also needs to be checked.
     ///
+    ///  # Safety
+    /// - Numerator is not checked and may not be Closed(0).
+    /// - Denominator **is** checked for 0 and epsilon internally.
     #[inline(always)]
     unsafe fn div_opp_sign_min<T>(max: FB<T>, numer: FB<T>, denom: FB<T>) -> MaybeDisjoint<T>
     where
@@ -636,6 +574,47 @@ mod impls {
         } else {
             let min = non_zero_div_unchecked(numer, denom);
             EI::finite(min, max).into()
+        }
+    }
+
+    /// Devide two bounds, branch to handle numer = closed(0). Denom unchecked.
+    ///
+    ///  # Safety
+    /// - Numerator is checked for closed(0)
+    /// - User must ensure denominator is not 0 or epsilon
+    #[inline(always)]
+    unsafe fn div_denom_unchecked<T>(nz: MaybeZero, numer: FB<T>, denom: FB<T>) -> FB<T>
+    where
+        T: Div<Output = T> + Element + Zero,
+    {
+        match nz {
+            MaybeZero::Zero => FB::closed(T::zero()),
+            MaybeZero::NonZero => unsafe { non_zero_div_unchecked(numer, denom) },
+        }
+    }
+
+    // Divide non-zero numer bounds by denom. Denom is checked for 0/epsilon.
+    //
+    // # Safety
+    // - Caller is responsible for ordering num bounds according to denom sign.
+    // - Caller ensures that numerators are not closed(0).
+    #[inline(always)]
+    unsafe fn div_non_zero_bounds_by_bound<T>(
+        num_to_min: FB<T>,
+        num_to_max: FB<T>,
+        denom: FB<T>,
+    ) -> MaybeDisjoint<T>
+    where
+        T: Div<Output = T> + Element + Zero + Clone,
+    {
+        if denom.value() == &T::zero() {
+            EI::unbounded().into()
+        } else {
+            EI::finite(
+                non_zero_div_unchecked(num_to_min, denom.clone()),
+                non_zero_div_unchecked(num_to_max, denom),
+            )
+            .into()
         }
     }
 }
