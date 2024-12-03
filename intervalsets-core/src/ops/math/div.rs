@@ -190,11 +190,11 @@ mod impls {
         let cd_cat = cd.category();
 
         let Some((a, b)) = ab.into_raw() else {
-            return MaybeDisjoint::Consumed;
+            return MaybeDisjoint::empty();
         };
 
         let Some((c, d)) = cd.into_raw() else {
-            return MaybeDisjoint::Consumed;
+            return MaybeDisjoint::empty();
         };
 
         match (ab_cat, cd_cat) {
@@ -367,10 +367,53 @@ mod impls {
                 }
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
-                todo!() // disjoint
+                // [a>0, b=+inf] / [c<0, d>0] = {-inf, a/c} U {a/d, +inf}
+
+                if cd_bound.value() == &T::zero() {
+                    return all_except_zero();
+                }
+
+                match cd_side {
+                    Left => {
+                        // c < 0, d = +inf = {-inf, a/c} U {0, +inf}
+                        let left = EI::right_bounded(unsafe {
+                            non_zero_div_unchecked(ab_bound, cd_bound)
+                        });
+                        let right = EI::open_unbound(T::zero());
+                        (left, right).into()
+                    }
+                    Right => {
+                        // c = -inf, d > 0 = {-inf, 0} U {a/d, +inf}
+                        let left = EI::unbound_open(T::zero());
+                        let right =
+                            EI::left_bounded(unsafe { non_zero_div_unchecked(ab_bound, cd_bound) });
+                        (left, right).into()
+                    }
+                }
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
-                todo!() // disjoint
+                // [a=-inf, b<0] / [c<0, d>0] = {-inf, b/d} U {b/c, +inf}
+                if cd_bound.value() == &T::zero() {
+                    return all_except_zero();
+                }
+
+                match cd_side {
+                    Left => {
+                        // c < 0, d=+inf
+                        let left = EI::unbound_open(T::zero());
+                        let right =
+                            EI::left_bounded(unsafe { non_zero_div_unchecked(ab_bound, cd_bound) });
+                        (left, right).into()
+                    }
+                    Right => {
+                        // c = -inf, d > 0
+                        let left = EI::right_bounded(unsafe {
+                            non_zero_div_unchecked(ab_bound, cd_bound)
+                        });
+                        let right = EI::open_unbound(T::zero());
+                        (left, right).into()
+                    }
+                }
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
 
