@@ -158,14 +158,20 @@ mod impls {
         FB::new(nkind.combine(dkind), nval / dval)
     }
 
-    // anything divided by the zero singleton set.
-    // [a, b] / [0, 0]
+    /// anything divided by the zero singleton set.
+    /// [a, b] / [0, 0]
     fn any_by_zero<T>() -> MaybeDisjoint<T> {
-        MaybeDisjoint::Consumed
+        MaybeDisjoint::empty()
     }
 
     fn zero_by_non_zero<T: Zero + Element + Clone>() -> MaybeDisjoint<T> {
-        MaybeDisjoint::Connected(EI::singleton(T::zero()))
+        EI::singleton(T::zero()).into()
+    }
+
+    fn all_except_zero<T: Zero + Element>() -> MaybeDisjoint<T> {
+        let neg = EI::right_bounded(FB::open(T::zero()));
+        let pos = EI::left_bounded(FB::open(T::zero()));
+        (neg, pos).into()
     }
 
     pub fn unbounded_by_cat<T>(denom_cat: ECat) -> MaybeDisjoint<T> {
@@ -380,7 +386,126 @@ mod impls {
         let ab_cat = ab.category();
         let cd_cat = cd.category();
 
-        todo!()
+        let Some((a, b)) = ab.into_raw() else {
+            return EnumInterval::empty().into();
+        };
+
+        let (cd_side, cd_bound) = cd.into_raw();
+
+        match (ab_cat, cd_cat) {
+            (ECat::Zero, _) => zero_by_non_zero(),
+            (ECat::Pos(nz), ECat::Pos(_)) | (ECat::Neg(nz), ECat::Neg(_)) => {
+                let min = match nz {
+                    MaybeZero::Zero => FB::closed(T::zero()),
+                    MaybeZero::NonZero => FB::open(T::zero()),
+                };
+
+                if cd_bound.value() == &T::zero() {
+                    EI::left_bounded(min).into()
+                } else {
+                    let numer = cd_side.select(b, a);
+                    let max = unsafe { non_zero_div_unchecked(numer, cd_bound) };
+                    EI::finite(min, max).into()
+                }
+            }
+            (ECat::Pos(nz), ECat::Neg(_)) | (ECat::Neg(nz), ECat::Pos(_)) => {
+                // [a>=0, b>0] / [c=-inf, d<=0] => {b/d, a/c} => {b/d, 0}
+                // [a<0, b<=0] / [c>=0, d=+inf] => {a/c, b/d} => {a/c, 0}
+                let max = match nz {
+                    MaybeZero::Zero => FB::closed(T::zero()),
+                    MaybeZero::NonZero => FB::open(T::zero()),
+                };
+
+                if cd_bound.value() == &T::zero() {
+                    EI::right_bounded(max).into()
+                } else {
+                    let numer = cd_side.select(a, b);
+                    let min = unsafe { non_zero_div_unchecked(numer, cd_bound) };
+                    EI::finite(min, max).into()
+                }
+            }
+            (ECat::NegPos, ECat::Pos(_)) => {
+                // [a<0, b>0] / [c>=0, d=+inf] => {a/c, b/c}
+                if cd_bound.value() == &T::zero() {
+                    EI::unbounded().into()
+                } else {
+                    let (min, max) = unsafe {
+                        (
+                            non_zero_div_unchecked(a, cd_bound.clone()),
+                            non_zero_div_unchecked(b, cd_bound),
+                        )
+                    };
+                    EI::finite(min, max).into()
+                }
+            }
+            (ECat::NegPos, ECat::Neg(_)) => {
+                // [a<0, b>0] / [c=-inf, d<=0] => {b/d, a/d}
+                if cd_bound.value() == &T::zero() {
+                    EI::unbounded().into()
+                } else {
+                    let (min, max) = unsafe {
+                        (
+                            non_zero_div_unchecked(b, cd_bound.clone()),
+                            non_zero_div_unchecked(a, cd_bound),
+                        )
+                    };
+                    EI::finite(min, max).into()
+                }
+            }
+            (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
+                // [a>0, b>0] / [c<0, d>0] => (<-, a/c) U (a/d, ->)
+                if cd_bound.value() == &T::zero() {
+                    return all_except_zero();
+                }
+
+                match cd_side {
+                    Left => {
+                        // c < 0, d = +inf
+                        //(<-, a/c) U (0, ->)
+                        let left =
+                            EI::right_bounded(unsafe { non_zero_div_unchecked(a, cd_bound) });
+                        let right = EI::open_unbound(T::zero());
+                        (left, right).into()
+                    }
+                    Right => {
+                        // c = -inf, d > 0
+                        //(<-, 0) U (a/d, ->)
+                        let left = EI::unbound_open(T::zero());
+                        let right =
+                            EI::left_bounded(unsafe { non_zero_div_unchecked(a, cd_bound) });
+                        (left, right).into()
+                    }
+                }
+            }
+            (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
+                // [a<0, b<0] / [c<0, d>0] => (<-, b/d) U (b/c, ->)
+                // c = -inf OR d = +inf
+                if cd_bound.value() == &T::zero() {
+                    return all_except_zero();
+                }
+
+                match cd_side {
+                    Left => {
+                        // c < 0, d = +inf
+                        // (<-, 0) U (b/c, ->)
+                        let left = EI::unbound_open(T::zero());
+                        let right =
+                            EI::left_bounded(unsafe { non_zero_div_unchecked(b, cd_bound) });
+                        (left, right).into()
+                    }
+                    Right => {
+                        // c = -inf, d > 0
+                        // (<-, b/d) U (0, ->)
+                        let left =
+                            EI::right_bounded(unsafe { non_zero_div_unchecked(b, cd_bound) });
+                        let right = EI::open_unbound(T::zero());
+                        (left, right).into()
+                    }
+                }
+            }
+            (_, ECat::NegPos) => EI::unbounded().into(),
+            _ => unreachable!(),
+        }
     }
 
     pub fn half_by_finite<T>(ab: HalfInterval<T>, cd: FiniteInterval<T>) -> MaybeDisjoint<T>
