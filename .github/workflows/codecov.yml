@@ -3,6 +3,8 @@ name: codecov
 on:
   push: 
     branches: [ "main" ]
+    
+  workflow_dispatch:
 
 jobs:
   # Run code coverage using cargo-llvm-cov then upload to codecov.io
