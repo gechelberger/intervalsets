@@ -1,4 +1,5 @@
 use intervalsets_core::bound::ord::OrdBoundPair;
+use intervalsets_core::disjoint::MaybeDisjoint;
 use intervalsets_core::error::Error;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -121,6 +122,13 @@ interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeFrom<T>);
 interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeTo<T>);
 interval_set_delegate_w_domain_zero_from_impl!(core::ops::RangeToInclusive<T>);
 interval_set_delegate_from_impl!(core::ops::RangeFull);
+
+impl<T> From<MaybeDisjoint<T>> for IntervalSet<T> {
+    fn from(value: MaybeDisjoint<T>) -> Self {
+        // SAFETY: MaybeDisjoint requires the same invariants as IntervalSet.
+        unsafe { Self::new_unchecked(value.map(Interval::from)) }
+    }
+}
 
 impl<T: Element> TryFrom<OrdBoundPair<T>> for IntervalSet<T> {
     type Error = Error;
