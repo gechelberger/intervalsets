@@ -96,7 +96,7 @@ where
         };
 
         let (side, bound) = self.into_raw();
-        let offset = side.select(rhs_min, rhs_max);
+        let offset = side.select(rhs_max, rhs_min);
         EnumInterval::half_bounded(side, bound - offset)
     }
 }
@@ -178,10 +178,14 @@ mod tests {
 
         let y = EnumInterval::open_closed(100.0, 200.0);
         assert_eq!(x - y, EnumInterval::closed_open(-100.0, 100.0));
+
+        let e = EnumInterval::empty();
+        assert_eq!(x - e, e);
+        assert_eq!(e - x, e);
     }
 
     #[test]
-    fn test_half_finite_sub() {
+    fn test_half_sub() {
         let x = EnumInterval::closed_unbound(100.0);
         let y = EnumInterval::closed_unbound(100.0);
         assert_eq!(x - y, EnumInterval::unbounded());
@@ -189,6 +193,23 @@ mod tests {
 
         let y = EnumInterval::unbound_open(100.0);
         assert_eq!(x - y, EnumInterval::open_unbound(0.0));
+
+        let e = EnumInterval::empty();
+        assert_eq!(x - e, e);
+        assert_eq!(e - x, e);
+    }
+
+    #[test]
+    fn test_finite_half_sub() {
+        let x = EnumInterval::closed(0.0, 10.0);
+        let y = EnumInterval::closed_unbound(7.0);
+        assert_eq!(x - y, EnumInterval::unbound_closed(3.0));
+        assert_eq!(y - x, EnumInterval::closed_unbound(-3.0));
+
+        let x = EnumInterval::closed(-5.0, 5.0);
+        let y = EnumInterval::unbound_open(-7.0);
+        assert_eq!(x - y, EnumInterval::open_unbound(2.0));
+        assert_eq!(y - x, EnumInterval::unbound_open(-2.0));
     }
 
     #[test]
