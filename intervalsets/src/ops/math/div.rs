@@ -62,7 +62,6 @@ mod tests {
     #[test]
     fn test_foo() {
         let numer = IntervalSet::from_iter([[10.0, 12.0], [20.0, 22.0]]);
-
         let denom = IntervalSet::from_iter([[1.0, 2.0], [10.0, 11.0]]);
 
         let expected =
