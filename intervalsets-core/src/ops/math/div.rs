@@ -673,6 +673,33 @@ mod tests {
     }
 
     #[test]
+    fn test_finite_by_finite_closed() {
+        let fc = FiniteInterval::closed;
+        let uc = EnumInterval::unbound_closed;
+        let cu = EnumInterval::closed_unbound;
+
+        assert_eq!(fc(-50.0, 5.0) / fc(10.0, 20.0), fc(-5.0, 0.5).into());
+        assert_eq!(
+            fc(-10.0, -5.0) / fc(-20.0, -15.0),
+            fc(0.25, 2.0 / 3.0).into()
+        );
+
+        assert_eq!(fc(-10.0, -5.0) / fc(2.0, 3.0), fc(-5.0, -5.0 / 3.0).into());
+        assert_eq!(fc(5.0, 10.0) / fc(-3.0, -2.0), fc(-5.0, -5.0 / 3.0).into());
+
+        assert_eq!(fc(-10.0, 0.0) / fc(1.0, 2.0), fc(-10.0, 0.0).into());
+        assert_eq!(fc(-10.0, 0.0) / fc(0.0, 2.0), uc(0.0).into());
+        assert_eq!(fc(5.0, 10.0) / fc(0.0, 2.0), cu(2.5).into());
+        assert_eq!(fc(0.0, 10.0) / fc(0.0, 2.0), cu(0.0).into());
+
+        assert_eq!(
+            fc(0.0, 5.0) / fc(-1.0, 1.0),
+            EnumInterval::unbounded().into()
+        );
+        assert_eq!(fc(2.0, 5.0) / fc(-1.0, 1.0), (uc(-2.0), cu(2.0)).into());
+    }
+
+    #[test]
     fn test_half_by_half() {
         let cu = EnumInterval::closed_unbound;
         let ou = EnumInterval::open_unbound;
