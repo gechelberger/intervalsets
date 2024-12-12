@@ -1,5 +1,6 @@
 use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::EnumInterval;
+use num_traits::{One, Zero};
 
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, SetBounds, Side};
@@ -374,6 +375,44 @@ impl<T> MaybeEmpty for IntervalSet<T> {
     }
 }
 
+impl<T: Element + Clone + Zero> Zero for Interval<T> {
+    #[inline]
+    fn zero() -> Self {
+        Self::from(EnumInterval::zero())
+    }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+}
+
+impl<T: Element + Clone + Zero> Zero for IntervalSet<T> {
+    #[inline]
+    fn zero() -> Self {
+        Self::from(Interval::zero())
+    }
+
+    #[inline]
+    fn is_zero(&self) -> bool {
+        *self == Self::zero()
+    }
+}
+
+impl<T: Element + Clone + Zero + One> One for Interval<T> {
+    #[inline]
+    fn one() -> Self {
+        Self::from(EnumInterval::one())
+    }
+}
+
+impl<T: Element + Clone + Zero + One> One for IntervalSet<T> {
+    #[inline]
+    fn one() -> Self {
+        Self::from(Interval::one())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::hash::{Hash, Hasher};
@@ -494,6 +533,25 @@ mod tests {
     fn check_hash_stable_interval(a: i8, b: i8) {
         let interval = Interval::closed(-50, 50);
         check_hash(&interval, &Interval::closed(a, b));
+    }
+
+    #[test]
+    fn test_one_zero() {
+        let one_intv = Interval::<i32>::one();
+        assert!(one_intv.is_one());
+        assert_eq!(one_intv, Interval::singleton(1));
+
+        let one_iset = IntervalSet::<i32>::one();
+        assert!(one_iset.is_one());
+        assert_eq!(one_intv, one_iset.expect_interval());
+
+        let zero_intv = Interval::<i32>::zero();
+        assert!(zero_intv.is_zero());
+        assert_eq!(zero_intv, Interval::singleton(0));
+
+        let zero_iset = IntervalSet::<i32>::zero();
+        assert!(zero_iset.is_zero());
+        assert_eq!(zero_intv, zero_iset.expect_interval());
     }
 }
 
