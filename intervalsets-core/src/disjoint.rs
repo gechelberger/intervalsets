@@ -72,3 +72,39 @@ impl<T: Element> From<(EnumInterval<T>, EnumInterval<T>)> for MaybeDisjoint<T> {
         Self::Disjoint(value.0, value.1)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::factory::traits::*;
+
+    #[test]
+    fn test_from_raw() {
+        assert_eq!(
+            MaybeDisjoint::from(FiniteInterval::<i8>::empty()),
+            MaybeDisjoint::empty()
+        );
+
+        let x = FiniteInterval::closed(0.0, 10.0);
+        assert_eq!(
+            MaybeDisjoint::from(x).expect_interval(),
+            EnumInterval::from(x)
+        );
+
+        let x = HalfInterval::unbound_closed(0.0);
+        assert_eq!(
+            MaybeDisjoint::from(x).expect_interval(),
+            EnumInterval::from(x)
+        );
+
+        let x = EnumInterval::closed(0.0, 1.0);
+        assert_eq!(MaybeDisjoint::from(x).expect_interval(), x);
+
+        let y = EnumInterval::closed(10.0, 11.0);
+        let mut xy = MaybeDisjoint::from((x, y));
+
+        assert_eq!(xy.next(), Some(x));
+        assert_eq!(xy.next(), Some(y));
+        assert_eq!(xy.next(), None);
+    }
+}

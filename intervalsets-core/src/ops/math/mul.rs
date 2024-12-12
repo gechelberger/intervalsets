@@ -13,6 +13,7 @@ where
 {
     type Output = FiniteInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         impls::finite_x_finite_by_cat(self, rhs)
     }
@@ -25,6 +26,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         impls::half_x_half_by_cat(self, rhs)
     }
@@ -50,6 +52,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
         impls::finite_x_half(rhs, self)
     }
@@ -62,6 +65,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
         impls::enum_x_finite(self, rhs)
     }
@@ -74,6 +78,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
         impls::enum_x_half(self, rhs)
     }
@@ -86,6 +91,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
         match self {
             Self::Finite(lhs) => lhs * rhs,
@@ -106,6 +112,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
         impls::enum_x_finite(rhs, self)
     }
@@ -118,6 +125,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
         impls::enum_x_half(rhs, self)
     }
