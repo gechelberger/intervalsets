@@ -47,7 +47,7 @@ update:
     cargo install cargo-hack --locked
 
     # checks commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
-    cargo install commitlint-rs --locked
+    cargo install commitlint-rs@0.1.12 --locked
 
     # check codebase for loose ends
     cargo install ripgrep --locked
