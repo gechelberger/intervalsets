@@ -60,12 +60,14 @@ where
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use crate::factory::traits::*;
 
     #[test]
-    fn test_foo() {
-        let nz: f32 = -0.0;
-        let pz: f32 = 0.0;
-
-        assert_eq!(nz, pz);
+    fn test_finite_x_half() {
+        let x = Interval::closed(0.0, 10.0);
+        let y = Interval::closed_unbound(0.0);
+        assert_eq!(x * y, y);
+        assert_eq!(y * x, y);
     }
 }
