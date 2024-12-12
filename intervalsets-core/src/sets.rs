@@ -1,10 +1,13 @@
 use core::cmp::Ordering::{self, *};
 
+use num_traits::One;
+
 use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::Side::{self, Left, Right};
 use super::bound::{FiniteBound, SetBounds};
 use crate::bound::ord::FiniteOrdBound;
 use crate::error::{Error, TotalOrderError};
+use crate::factory::FiniteFactory;
 use crate::numeric::{Element, Zero};
 use crate::try_cmp::TryCmp;
 
@@ -328,14 +331,42 @@ impl<T> SetBounds<T> for EnumInterval<T> {
             Self::Unbounded => None,
         }
     }
+}
 
-    // fn into_bounds(self) -> Option<(Option<FiniteBound<T>>, Option<FiniteBound<T>>)> {
-    //     match self {
-    //         Self::Finite(inner) => inner.into_bounds(),
-    //         Self::Half(inner) => inner.into_bounds(),
-    //         Self::Unbounded => Some((None, None)),
-    //     }
-    // }
+impl<T: Element + Zero> Zero for FiniteInterval<T> {
+    fn zero() -> Self {
+        Self::closed(T::zero(), T::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        let zero = T::zero();
+        self.lval() == Some(&zero) && self.rval() == Some(&zero)
+    }
+}
+
+impl<T: Element + Zero> Zero for EnumInterval<T> {
+    fn zero() -> Self {
+        Self::from(FiniteInterval::<T>::zero())
+    }
+
+    fn is_zero(&self) -> bool {
+        match self {
+            Self::Finite(inner) => inner.is_zero(),
+            _ => false,
+        }
+    }
+}
+
+impl<T: Element + Clone + Zero + One> One for FiniteInterval<T> {
+    fn one() -> Self {
+        FiniteInterval::closed(T::one(), T::one())
+    }
+}
+
+impl<T: Element + Clone + Zero + One> One for EnumInterval<T> {
+    fn one() -> Self {
+        EnumInterval::from(FiniteInterval::one())
+    }
 }
 
 impl<T> Default for FiniteInterval<T> {
