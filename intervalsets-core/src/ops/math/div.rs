@@ -704,7 +704,7 @@ mod tests {
         let cu = EnumInterval::closed_unbound;
         let ou = EnumInterval::open_unbound;
         let uc = EnumInterval::unbound_closed;
-        //let uo = EnumInterval::unbound_open;
+        let uo = EnumInterval::unbound_open;
         //let u = EnumInterval::unbounded();
 
         assert_eq!(cu(10.0) / cu(10.0), ou(0.0).into());
@@ -716,6 +716,23 @@ mod tests {
         assert_eq!(cu(0.0) / uc(-10.0), uc(0.0).into());
 
         assert_eq!(uc(-10.0) / uc(-10.0), ou(0.0).into());
+
+        let expected = MaybeDisjoint::Disjoint(uo(0.0), ou(0.0));
+        assert_eq!(ou(0.0) / cu(-1.0), expected);
+        assert_eq!(ou(0.0) / uc(1.0), expected);
+
+        assert_eq!(uo(0.0) / cu(-1.0), expected);
+        assert_eq!(uo(0.0) / uc(1.0), expected);
+
+        assert_eq!(
+            cu(10.0) / cu(-1.0),
+            MaybeDisjoint::Disjoint(uc(-10.0), ou(0.0))
+        );
+
+        assert_eq!(
+            uc(-10.0) / cu(-1.0),
+            MaybeDisjoint::Disjoint(uo(0.0), cu(10.0))
+        );
     }
 
     #[test]
@@ -724,8 +741,18 @@ mod tests {
         let d = EnumInterval::closed(10.0, 100.0);
         assert_eq!(n / d, EnumInterval::closed_unbound(0.1).into());
 
+        assert_eq!(
+            n / EnumInterval::closed(-100.0, -10.0),
+            EnumInterval::unbound_closed(-0.1).into()
+        );
+
         let n = EnumInterval::unbound_closed(-10.0);
         assert_eq!(n / d, EnumInterval::unbound_closed(-0.1).into());
+
+        assert_eq!(
+            n / EnumInterval::closed(-100.0, -10.0),
+            EnumInterval::closed_unbound(0.1).into()
+        );
 
         assert_eq!(n / EnumInterval::empty(), EnumInterval::empty().into());
         assert_eq!(n / EnumInterval::zero(), EnumInterval::empty().into());
