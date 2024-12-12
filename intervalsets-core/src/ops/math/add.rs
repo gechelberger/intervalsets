@@ -138,6 +138,10 @@ mod tests {
 
         let y = EnumInterval::open_closed(100.0, 200.0);
         assert_eq!(x + y, EnumInterval::open_closed(200.0, 400.0));
+
+        let e = EnumInterval::empty();
+        assert_eq!(x + e, e);
+        assert_eq!(e + x, e);
     }
 
     #[test]
@@ -153,6 +157,21 @@ mod tests {
         let expected = EnumInterval::unbound_closed(300.0);
         assert_eq!(x + y, expected);
         assert_eq!(y + x, expected);
+
+        let e = EnumInterval::empty();
+        assert_eq!(x + e, e);
+        assert_eq!(e + x, e);
+    }
+
+    #[test]
+    fn test_half_bounded_add() {
+        let a = EnumInterval::closed_unbound(-10.0);
+        let b = EnumInterval::closed_unbound(10.0);
+        let expected = EnumInterval::closed_unbound(0.0);
+        assert_eq!(a + b, expected);
+
+        let c = EnumInterval::unbound_closed(10.0);
+        assert_eq!(a + c, EnumInterval::unbounded());
     }
 
     #[test]
