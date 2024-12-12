@@ -505,7 +505,7 @@ mod impls {
                 // [a=-inf, b<0] / [c<0, d>0] => {-inf, b/d} U {b/c, +inf}
                 let b = ab_bound;
                 let neg = EI::right_bounded(unsafe { non_zero_div_unchecked(b.clone(), d) });
-                let pos = EI::right_bounded(unsafe { non_zero_div_unchecked(b, c) });
+                let pos = EI::left_bounded(unsafe { non_zero_div_unchecked(b, c) });
                 (neg, pos).into()
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
@@ -716,5 +716,35 @@ mod tests {
         assert_eq!(cu(0.0) / uc(-10.0), uc(0.0).into());
 
         assert_eq!(uc(-10.0) / uc(-10.0), ou(0.0).into());
+    }
+
+    #[test]
+    fn test_half_by_finite() {
+        let n = EnumInterval::closed_unbound(10.0);
+        let d = EnumInterval::closed(10.0, 100.0);
+        assert_eq!(n / d, EnumInterval::closed_unbound(0.1).into());
+
+        let n = EnumInterval::unbound_closed(-10.0);
+        assert_eq!(n / d, EnumInterval::unbound_closed(-0.1).into());
+
+        assert_eq!(n / EnumInterval::empty(), EnumInterval::empty().into());
+        assert_eq!(n / EnumInterval::zero(), EnumInterval::empty().into());
+
+        let d = EnumInterval::closed(-10.0, 10.0);
+        assert_eq!(
+            EnumInterval::closed_unbound(10.0) / d,
+            MaybeDisjoint::Disjoint(
+                EnumInterval::unbound_closed(-1.0),
+                EnumInterval::closed_unbound(1.0)
+            )
+        );
+
+        assert_eq!(
+            EnumInterval::unbound_closed(-10.0) / d,
+            MaybeDisjoint::Disjoint(
+                EnumInterval::unbound_closed(-1.0),
+                EnumInterval::closed_unbound(1.0)
+            )
+        );
     }
 }
