@@ -6,9 +6,6 @@ on:
     
   workflow_dispatch:
 
-  workflow_dispatch:
-
-
 jobs:
   # Run code coverage using cargo-llvm-cov then upload to codecov.io
   job_code_coverage:
