@@ -4,3 +4,6 @@ Cargo.lock
 
 # the build directory for mdbook
 /book/book
+
+# Claude Code local settings
+.claude/settings.local.json
