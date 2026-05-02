@@ -1,8 +1,23 @@
 use core::ops::Div;
 
+use crate::error::Error;
 use crate::numeric::{Element, Zero};
-use crate::ops::Union;
+use crate::ops::{TryDiv, Union};
 use crate::{Interval, IntervalSet};
+
+impl<T> TryDiv for Interval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = IntervalSet<T>;
+    type Error = Error;
+
+    fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let divided = self.0.try_div(rhs.0)?;
+        // SAFETY: MaybeDisjoint guarantees sorted, disjoint, non-empty intervals.
+        Ok(unsafe { IntervalSet::new_unchecked(divided.map(Interval::from)) })
+    }
+}
 
 impl<T> Div for Interval<T>
 where
@@ -11,8 +26,21 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        let divided = self.0 / rhs.0;
-        unsafe { IntervalSet::new_unchecked(divided.map(Interval::from)) }
+        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+    }
+}
+
+impl<T> TryDiv<Interval<T>> for IntervalSet<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = IntervalSet<T>;
+    type Error = Error;
+
+    fn try_div(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
+        self.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
+            Ok(acc.union(subset.try_div(rhs.clone())?))
+        })
     }
 }
 
@@ -23,9 +51,21 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: Interval<T>) -> Self::Output {
-        self.into_iter()
-            .map(|subset| subset / rhs.clone())
-            .fold(IntervalSet::empty(), IntervalSet::union)
+        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+    }
+}
+
+impl<T> TryDiv<IntervalSet<T>> for Interval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = IntervalSet<T>;
+    type Error = Error;
+
+    fn try_div(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
+        rhs.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
+            Ok(acc.union(self.clone().try_div(subset)?))
+        })
     }
 }
 
@@ -36,9 +76,21 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: IntervalSet<T>) -> Self::Output {
-        rhs.into_iter()
-            .map(|subset| self.clone() / subset)
-            .fold(IntervalSet::empty(), IntervalSet::union)
+        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+    }
+}
+
+impl<T> TryDiv for IntervalSet<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = IntervalSet<T>;
+    type Error = Error;
+
+    fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        self.into_iter().try_fold(IntervalSet::empty(), |acc, l_subset| {
+            Ok(acc.union(l_subset.try_div(rhs.clone())?))
+        })
     }
 }
 
@@ -49,9 +101,26 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self.into_iter()
-            .map(|il| il / rhs.clone())
-            .fold(IntervalSet::empty(), IntervalSet::union)
+        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+    }
+}
+
+#[cfg(test)]
+mod try_tests {
+    use super::*;
+    use crate::factory::traits::*;
+
+    /// TryDiv does not require T: Ord, so raw f64 (which only impls
+    /// PartialOrd) can use the panic-free arithmetic path that the
+    /// infix Div operator rejects.
+    #[test]
+    fn test_try_div_raw_f64() {
+        let a = Interval::open(10.0_f64, 20.0);
+        let b = Interval::closed_unbound(10.0_f64);
+        assert_eq!(
+            a.try_div(b).unwrap(),
+            Interval::open(0.0_f64, 2.0).into()
+        );
     }
 }
 

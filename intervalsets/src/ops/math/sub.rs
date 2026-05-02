@@ -1,8 +1,23 @@
 use core::ops::Sub;
 
+use crate::error::Error;
 use crate::numeric::{Element, Zero};
-use crate::ops::Union;
+use crate::ops::{TrySub, Union};
 use crate::{Interval, IntervalSet};
+
+impl<T> TrySub for Interval<T>
+where
+    T: Sub,
+    <T as Sub>::Output: Element,
+{
+    type Output = Interval<<T as Sub>::Output>;
+    type Error = Error;
+
+    #[inline]
+    fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        self.0.try_sub(rhs.0).map(Interval::from)
+    }
+}
 
 impl<T> Sub for Interval<T>
 where
@@ -11,8 +26,26 @@ where
 {
     type Output = Interval<<T as Sub>::Output>;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
-        Interval::from(self.0 - rhs.0)
+        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+    }
+}
+
+impl<T> TrySub<Interval<T>> for IntervalSet<T>
+where
+    T: Sub + Element + Clone,
+    <T as Sub>::Output: Element,
+{
+    type Output = IntervalSet<<T as Sub>::Output>;
+    type Error = Error;
+
+    // Union-fold over already-valid subsets; bypasses IntervalSet::new's
+    // re-validation overhead.
+    fn try_sub(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
+        self.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
+            Ok(acc.union(subset.try_sub(rhs.clone())?))
+        })
     }
 }
 
@@ -24,7 +57,26 @@ where
     type Output = IntervalSet<<T as Sub>::Output>;
 
     fn sub(self, rhs: Interval<T>) -> Self::Output {
-        Self::Output::new(self.into_iter().map(|subset| subset - rhs.clone()))
+        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+    }
+}
+
+impl<T> TrySub<IntervalSet<T>> for Interval<T>
+where
+    T: Sub + Element + Clone,
+    <T as Sub>::Output: Element,
+{
+    type Output = IntervalSet<<T as Sub>::Output>;
+    type Error = Error;
+
+    // Sub doesn't commute, so we can't delegate -- iterate rhs directly.
+    // Union-fold maintains a sorted accumulator regardless of the order
+    // self - subset produces (descending: as subset grows, self - subset
+    // shrinks).
+    fn try_sub(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
+        rhs.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
+            Ok(acc.union(self.clone().try_sub(subset)?))
+        })
     }
 }
 
@@ -36,7 +88,29 @@ where
     type Output = IntervalSet<<T as Sub>::Output>;
 
     fn sub(self, rhs: IntervalSet<T>) -> Self::Output {
-        Self::Output::new(rhs.into_iter().map(|subset| self.clone() - subset))
+        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+    }
+}
+
+impl<T> TrySub for IntervalSet<T>
+where
+    T: Sub + Element + Clone,
+    <T as Sub>::Output: Element,
+{
+    type Output = IntervalSet<<T as Sub>::Output>;
+    type Error = Error;
+
+    // Cartesian product results are unsorted; union-fold incrementally maintains
+    // a sorted/disjoint accumulator without paying for IntervalSet::new's
+    // re-validation each step.
+    fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let mut result = IntervalSet::empty();
+        for a in self {
+            for b in rhs.iter() {
+                result = result.union(a.clone().try_sub(b.clone())?);
+            }
+        }
+        Ok(result)
     }
 }
 
@@ -48,19 +122,22 @@ where
     type Output = IntervalSet<<T as Sub>::Output>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        let mut res = IntervalSet::empty();
-        for a in self {
-            for b in rhs.iter() {
-                res = res.union(a.clone() - b.clone())
-            }
-        }
-        res
+        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+    }
+}
 
-        // self.into_iter().fold(IntervalSet::empty(), |res, l_subset| {
-        //     rhs.iter().fold(res, |res, r_subset| {
-        //         res.union(l_subset.clone() - r_subset.clone())
-        //     })
-        // })
+#[cfg(test)]
+mod try_tests {
+    use super::*;
+    use crate::factory::traits::*;
+
+    /// TrySub does not require T: Ord, so raw f64 (which only impls
+    /// PartialOrd) can use the panic-free arithmetic path that the
+    /// infix Sub operator rejects.
+    #[test]
+    fn test_try_sub_raw_f64() {
+        let a = Interval::open(0.0_f64, 10.0);
+        assert_eq!(a.try_sub(a).unwrap(), Interval::open(-10.0_f64, 10.0));
     }
 }
 

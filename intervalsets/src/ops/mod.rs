@@ -35,3 +35,4 @@ mod finite;
 pub use finite::IntoFinite;
 
 mod math;
+pub use math::{TryAdd, TryDiv, TryMul, TrySub};
