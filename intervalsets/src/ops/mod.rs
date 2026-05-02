@@ -5,7 +5,7 @@ mod contains;
 pub use contains::Contains;
 
 mod complement;
-pub use complement::Complement;
+pub use intervalsets_core::ops::Complement;
 
 mod intersects;
 pub use intersects::Intersects;

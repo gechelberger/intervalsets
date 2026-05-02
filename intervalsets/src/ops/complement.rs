@@ -1,73 +1,19 @@
-use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use intervalsets_core::ops::Complement;
 
-use crate::bound::Side::*;
 use crate::factory::UnboundedFactory;
 use crate::numeric::Element;
 use crate::ops::Intersection;
 use crate::{Interval, IntervalSet};
 
-/// Defines the complement of a Set.
-///
-/// ```text
-/// Let A  = { x | P(x) } =>
-///     A' = { x | x ∉ A } = { x | !P(x) }
-/// ```
-pub trait Complement {
-    type Output;
-
-    fn complement(self) -> Self::Output;
-}
-
-impl<T: Element> Complement for FiniteInterval<T> {
-    type Output = IntervalSet<T>;
-
-    fn complement(self) -> Self::Output {
-        match self.into_raw() {
-            None => IntervalSet::unbounded(),
-            Some((lhs, rhs)) => unsafe {
-                // SAFETY: Assuming FiniteInterval invariants are satisfied, then lhs <= rhs and
-                // new half intervals are properly sorted; bounds are comparable; manually renormalized.
-                IntervalSet::new_unchecked(vec![
-                    HalfInterval::new_assume_valid(Right, lhs.flip().normalized(Right)).into(),
-                    HalfInterval::new_assume_valid(Left, rhs.flip().normalized(Left)).into(),
-                ])
-            },
-        }
-    }
-}
-
-impl<T: Element> Complement for HalfInterval<T> {
-    type Output = IntervalSet<T>;
-
-    fn complement(self) -> Self::Output {
-        let (side, bound) = self.into_raw();
-        let side = side.flip();
-        // bound came from a valid HalfInterval; renormalized after the flip
-        // so HalfInterval invariants still hold for the new side.
-        HalfInterval::new_assume_valid(side, bound.flip().normalized(side)).into()
-    }
-}
-
-impl<T: Element> Complement for EnumInterval<T> {
-    type Output = IntervalSet<T>;
-
-    fn complement(self) -> Self::Output {
-        match self {
-            Self::Finite(inner) => inner.complement(),
-            Self::Half(inner) => inner.complement(),
-            Self::Unbounded => IntervalSet::empty(),
-        }
-    }
-}
-
 impl<T: Element> Complement for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
-        self.0.complement()
+        self.0.complement().into()
     }
 }
 
+/// IntervalSet complement uses De Morgan: (A ∪ B ∪ ...)' = A' ∩ B' ∩ ...
 impl<T: Element + Clone> Complement for IntervalSet<T> {
     type Output = Self;
 
@@ -75,14 +21,6 @@ impl<T: Element + Clone> Complement for IntervalSet<T> {
         self.into_iter()
             .map(|x| x.complement())
             .fold(Interval::unbounded().into(), Intersection::intersection)
-    }
-}
-
-impl<T: Complement + Clone> Complement for &T {
-    type Output = <T as Complement>::Output;
-
-    fn complement(self) -> Self::Output {
-        self.clone().complement()
     }
 }
 
