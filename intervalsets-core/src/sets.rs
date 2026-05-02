@@ -56,11 +56,11 @@ impl<T: Element> FiniteInterval<T> {
     ///
     /// Panics if lhs and rhs are not comparable
     pub fn new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        Self::new_strict(lhs, rhs).unwrap()
+        Self::try_new(lhs, rhs).unwrap()
     }
 
     /// Creates a new FiniteInterval or Error; Should never panic.
-    pub fn new_strict(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
+    pub fn try_new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
         let lhs = lhs.normalized(Left);
         let rhs = rhs.normalized(Right);
         let order = lhs.value().try_cmp(rhs.value())?;
@@ -102,7 +102,7 @@ impl<T: PartialOrd> FiniteInterval<T> {
     /// [`TryCmp`] but may not be correct if not normalized. No undefined
     /// behavior on violation.
     #[inline(always)]
-    pub fn new_strict_assume_normed(
+    pub fn try_new_assume_normed(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
     ) -> Result<Self, Error> {
@@ -204,10 +204,10 @@ impl<T> HalfInterval<T> {
 
 impl<T: Element + Zero> HalfInterval<T> {
     pub fn new(side: Side, bound: FiniteBound<T>) -> Self {
-        Self::new_strict(side, bound).expect("Bound should have been comparable")
+        Self::try_new(side, bound).expect("Bound should have been comparable")
     }
 
-    pub fn new_strict(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
+    pub fn try_new(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
         // make sure bound is comparable
         let _ = T::zero()
             .partial_cmp(bound.value())

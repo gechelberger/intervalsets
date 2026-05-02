@@ -279,12 +279,12 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Consume a and b, returning the min bound or Err if not comparable.
-    pub fn strict_take_min(
+    pub fn try_take_min(
         side: Side,
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> Result<FiniteBound<T>, TotalOrderError> {
-        if a.strict_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.finite_ord(side))? {
             Ok(side.select(a, b))
         } else {
             Ok(side.select(b, a))
@@ -311,12 +311,12 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Consumes a and b, returning the max bound or Err if not comparable.
-    pub fn strict_take_max(
+    pub fn try_take_max(
         side: Side,
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> Result<FiniteBound<T>, TotalOrderError> {
-        if a.strict_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.finite_ord(side))? {
             Ok(side.select(b, a))
         } else {
             Ok(side.select(a, b))
@@ -343,12 +343,12 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Return a ref to the min bound or Err if not comparable.
-    pub fn strict_min<'a>(
+    pub fn try_min<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
-        if a.strict_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.finite_ord(side))? {
             Ok(side.select(a, b))
         } else {
             Ok(side.select(b, a))
@@ -375,12 +375,12 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Return a reference to the max bound or Err if not comparable.
-    pub fn strict_max<'a>(
+    pub fn try_max<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
-        if a.strict_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.finite_ord(side))? {
             Ok(side.select(b, a))
         } else {
             Ok(side.select(a, b))
@@ -410,7 +410,7 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Test if self "sees" an element from a `Side` or Err if not comparable.
-    pub fn strict_contains(&self, side: Side, test: &T) -> Result<bool, TotalOrderError> {
+    pub fn try_contains(&self, side: Side, test: &T) -> Result<bool, TotalOrderError> {
         let lhs = self.finite_ord(side);
         let rhs = ord::FiniteOrdBound::closed(test);
         let order = lhs.partial_cmp(&rhs).ok_or(TotalOrderError)?;
@@ -438,7 +438,7 @@ impl<T: PartialOrd> FiniteBound<T> {
     }
 
     /// Test if self "sees" a bound from a `Side` or Err if not comparable.
-    pub fn strict_contains_bound(
+    pub fn try_contains_bound(
         &self,
         side: Side,
         test: ord::FiniteOrdBound<&T>,
@@ -868,30 +868,30 @@ mod test {
     }
 
     #[test]
-    pub fn test_strict_contains() {
+    pub fn test_try_contains() {
         let x = FiniteBound::closed(0.0);
 
-        assert_eq!(x.strict_contains(Left, &0.0).unwrap(), true);
-        assert_eq!(x.strict_contains(Left, &1.0).unwrap(), true);
-        assert_eq!(x.strict_contains(Left, &-1.0).unwrap(), false);
-        assert_eq!(x.strict_contains(Left, &f64::NAN).is_err(), true);
+        assert_eq!(x.try_contains(Left, &0.0).unwrap(), true);
+        assert_eq!(x.try_contains(Left, &1.0).unwrap(), true);
+        assert_eq!(x.try_contains(Left, &-1.0).unwrap(), false);
+        assert_eq!(x.try_contains(Left, &f64::NAN).is_err(), true);
 
-        assert_eq!(x.strict_contains(Right, &0.0).unwrap(), true);
-        assert_eq!(x.strict_contains(Right, &-1.0).unwrap(), true);
-        assert_eq!(x.strict_contains(Right, &1.0).unwrap(), false);
-        assert_eq!(x.strict_contains(Right, &f64::NAN).is_err(), true);
+        assert_eq!(x.try_contains(Right, &0.0).unwrap(), true);
+        assert_eq!(x.try_contains(Right, &-1.0).unwrap(), true);
+        assert_eq!(x.try_contains(Right, &1.0).unwrap(), false);
+        assert_eq!(x.try_contains(Right, &f64::NAN).is_err(), true);
 
         let open = FiniteBound::open(0.0);
 
-        assert_eq!(open.strict_contains(Left, &0.0).unwrap(), false);
-        assert_eq!(open.strict_contains(Left, &1.0).unwrap(), true);
-        assert_eq!(open.strict_contains(Left, &-1.0).unwrap(), false);
-        assert_eq!(open.strict_contains(Left, &f64::NAN).is_err(), true);
+        assert_eq!(open.try_contains(Left, &0.0).unwrap(), false);
+        assert_eq!(open.try_contains(Left, &1.0).unwrap(), true);
+        assert_eq!(open.try_contains(Left, &-1.0).unwrap(), false);
+        assert_eq!(open.try_contains(Left, &f64::NAN).is_err(), true);
 
-        assert_eq!(open.strict_contains(Right, &0.0).unwrap(), false);
-        assert_eq!(open.strict_contains(Right, &-1.0).unwrap(), true);
-        assert_eq!(open.strict_contains(Right, &1.0).unwrap(), false);
-        assert_eq!(open.strict_contains(Right, &f64::NAN).is_err(), true);
+        assert_eq!(open.try_contains(Right, &0.0).unwrap(), false);
+        assert_eq!(open.try_contains(Right, &-1.0).unwrap(), true);
+        assert_eq!(open.try_contains(Right, &1.0).unwrap(), false);
+        assert_eq!(open.try_contains(Right, &f64::NAN).is_err(), true);
     }
 
     #[test]
@@ -910,7 +910,7 @@ mod test {
 
     /*
     #[test]
-    fn test_strict_contains_bound() {
+    fn test_try_contains_bound() {
         let cl_0 = FiniteBound::closed(0.0);
         let cl_p1 = FiniteBound::closed(1.0);
         let cl_n1 = FiniteBound::closed(-1.0);
@@ -921,44 +921,44 @@ mod test {
         let op_n1 = FiniteBound::open(-1.0);
         let op_nan = FiniteBound::open(f64::NAN);
 
-        assert_eq!(cl_0.strict_contains_bound(Left, &cl_0).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Left, &cl_p1).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Left, &cl_n1).unwrap(), false);
-        assert_eq!(cl_0.strict_contains_bound(Left, &cl_nan).is_err(), true);
+        assert_eq!(cl_0.try_contains_bound(Left, &cl_0).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Left, &cl_p1).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Left, &cl_n1).unwrap(), false);
+        assert_eq!(cl_0.try_contains_bound(Left, &cl_nan).is_err(), true);
 
-        assert_eq!(cl_0.strict_contains_bound(Left, &op_0).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Left, &op_p1).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Left, &op_n1).unwrap(), false);
-        assert_eq!(cl_0.strict_contains_bound(Left, &op_nan).is_err(), true);
+        assert_eq!(cl_0.try_contains_bound(Left, &op_0).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Left, &op_p1).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Left, &op_n1).unwrap(), false);
+        assert_eq!(cl_0.try_contains_bound(Left, &op_nan).is_err(), true);
 
-        assert_eq!(op_0.strict_contains_bound(Left, &op_0).unwrap(), true);
-        assert_eq!(op_0.strict_contains_bound(Left, &op_p1).unwrap(), true);
-        assert_eq!(op_0.strict_contains_bound(Left, &op_n1).unwrap(), false);
-        assert_eq!(op_0.strict_contains_bound(Left, &op_nan).is_err(), true);
+        assert_eq!(op_0.try_contains_bound(Left, &op_0).unwrap(), true);
+        assert_eq!(op_0.try_contains_bound(Left, &op_p1).unwrap(), true);
+        assert_eq!(op_0.try_contains_bound(Left, &op_n1).unwrap(), false);
+        assert_eq!(op_0.try_contains_bound(Left, &op_nan).is_err(), true);
 
-        assert_eq!(op_0.strict_contains_bound(Left, &cl_0).unwrap(), false);
-        assert_eq!(op_0.strict_contains_bound(Left, &cl_p1).unwrap(), true);
-        assert_eq!(op_0.strict_contains_bound(Left, &cl_n1).unwrap(), false);
-        assert_eq!(op_0.strict_contains_bound(Left, &cl_nan).is_err(), true);
+        assert_eq!(op_0.try_contains_bound(Left, &cl_0).unwrap(), false);
+        assert_eq!(op_0.try_contains_bound(Left, &cl_p1).unwrap(), true);
+        assert_eq!(op_0.try_contains_bound(Left, &cl_n1).unwrap(), false);
+        assert_eq!(op_0.try_contains_bound(Left, &cl_nan).is_err(), true);
 
-        assert_eq!(cl_0.strict_contains_bound(Right, &cl_0).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Right, &cl_p1).unwrap(), false);
-        assert_eq!(cl_0.strict_contains_bound(Right, &cl_n1).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Right, &cl_nan).is_err(), true);
+        assert_eq!(cl_0.try_contains_bound(Right, &cl_0).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Right, &cl_p1).unwrap(), false);
+        assert_eq!(cl_0.try_contains_bound(Right, &cl_n1).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Right, &cl_nan).is_err(), true);
 
-        assert_eq!(cl_0.strict_contains_bound(Right, &op_0).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Right, &op_p1).unwrap(), false);
-        assert_eq!(cl_0.strict_contains_bound(Right, &op_n1).unwrap(), true);
-        assert_eq!(cl_0.strict_contains_bound(Right, &op_nan).is_err(), true);
+        assert_eq!(cl_0.try_contains_bound(Right, &op_0).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Right, &op_p1).unwrap(), false);
+        assert_eq!(cl_0.try_contains_bound(Right, &op_n1).unwrap(), true);
+        assert_eq!(cl_0.try_contains_bound(Right, &op_nan).is_err(), true);
 
-        assert_eq!(op_0.strict_contains_bound(Right, &op_0).unwrap(), true);
-        assert_eq!(op_0.strict_contains_bound(Right, &op_p1).unwrap(), false);
-        assert_eq!(op_0.strict_contains_bound(Right, &op_n1).unwrap(), true);
-        assert_eq!(op_0.strict_contains_bound(Right, &op_nan).is_err(), true);
+        assert_eq!(op_0.try_contains_bound(Right, &op_0).unwrap(), true);
+        assert_eq!(op_0.try_contains_bound(Right, &op_p1).unwrap(), false);
+        assert_eq!(op_0.try_contains_bound(Right, &op_n1).unwrap(), true);
+        assert_eq!(op_0.try_contains_bound(Right, &op_nan).is_err(), true);
 
-        assert_eq!(op_0.strict_contains_bound(Right, &cl_0).unwrap(), false);
-        assert_eq!(op_0.strict_contains_bound(Right, &cl_p1).unwrap(), false);
-        assert_eq!(op_0.strict_contains_bound(Right, &cl_n1).unwrap(), true);
-        assert_eq!(op_0.strict_contains_bound(Right, &cl_nan).is_err(), true);
+        assert_eq!(op_0.try_contains_bound(Right, &cl_0).unwrap(), false);
+        assert_eq!(op_0.try_contains_bound(Right, &cl_p1).unwrap(), false);
+        assert_eq!(op_0.try_contains_bound(Right, &cl_n1).unwrap(), true);
+        assert_eq!(op_0.try_contains_bound(Right, &cl_nan).is_err(), true);
     }*/
 }

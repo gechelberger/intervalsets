@@ -42,8 +42,8 @@ impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
             return false;
         };
 
-        lhs_min.strict_contains(Left, rhs).unwrap_or(false)
-            && lhs_max.strict_contains(Right, rhs).unwrap_or(false)
+        lhs_min.try_contains(Left, rhs).unwrap_or(false)
+            && lhs_max.try_contains(Right, rhs).unwrap_or(false)
     }
 }
 
@@ -51,7 +51,7 @@ impl<T: PartialOrd> Contains<&T> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {
         self.finite_bound()
-            .strict_contains(self.side(), rhs)
+            .try_contains(self.side(), rhs)
             .unwrap_or(false)
     }
 }

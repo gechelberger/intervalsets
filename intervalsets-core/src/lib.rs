@@ -75,7 +75,7 @@
 //! let rebound_right = a.with_right_closed(3);
 //! assert_eq!(rebound_right, EnumInterval::closed(0, 3));
 //!
-//! let hull = EnumInterval::strict_hull([10, 8, 0, 6, 4, 2]).unwrap();
+//! let hull = EnumInterval::try_hull([10, 8, 0, 6, 4, 2]).unwrap();
 //! assert_eq!(hull, a);
 //!
 //! let empty = a.intersection(EnumInterval::closed(20, 30));
@@ -105,7 +105,7 @@
 //!
 //! For an interval or set to be valid it must satisfy certain invariants.
 //! These are validated on construction and panic if violated (or return an
-//! error from the strict api).
+//! error from the fallible (try_*) api).
 //!
 //! 1. Discrete types are always normalized to closed form so that there is only
 //!     a single valid bit-pattern for each possible `Set`.
@@ -154,12 +154,11 @@
 //! * todo: "silent" failures
 //! * todo: ordering invariants/violations
 //! * todo: bounds violations
-//! * todo: strict apis
-//!     * FiniteInterval::new_strict
-//!     * ConvexHull
-//!     * TryMerge (rename StrictUnion?)
-//!     * todo: strict factory + break up factory trait into smaller ones.
-//!     * todo: StrictIntersection? StrictSplit? StrictRebound?
+//! * todo: fallible (try_*) apis
+//!     * FiniteInterval::try_new
+//!     * ConvexHull::try_hull
+//!     * TryMerge
+//!     * todo: try factory + break up factory trait into smaller ones.
 //!
 //! ```
 //! use intervalsets_core::prelude::*;
@@ -175,10 +174,10 @@
 //! });
 //! assert!(result.is_err());
 //!
-//! let x = FiniteInterval::strict_open(f32::NAN, 0.0);
+//! let x = FiniteInterval::try_open(f32::NAN, 0.0);
 //! assert_eq!(x.ok(), None);
 //!
-//! let x = FiniteInterval::strict_open(1.0, 0.0);
+//! let x = FiniteInterval::try_open(1.0, 0.0);
 //! assert_eq!(x.unwrap(), FiniteInterval::empty());
 //! ```
 //!

@@ -51,7 +51,7 @@ impl<T: Element + Clone + Arbitrary> Arbitrary for FiniteInterval<T> {
                     (b, a)
                 };
 
-                match FiniteInterval::new_strict(left, right) {
+                match FiniteInterval::try_new(left, right) {
                     Ok(interval) => interval,
                     Err(_) => Self::arbitrary(g),
                 }
@@ -65,7 +65,7 @@ impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for HalfInterval<T> {
         let side = Side::arbitrary(g);
         let bound = FiniteBound::<T>::arbitrary(g);
 
-        match HalfInterval::new_strict(side, bound) {
+        match HalfInterval::try_new(side, bound) {
             Ok(interval) => interval,
             Err(_) => Self::arbitrary(g),
         }
@@ -93,7 +93,7 @@ mod tests {
 
     #[quickcheck]
     fn check_qc_interval(interval: EnumInterval<f32>) {
-        let hull = EnumInterval::strict_hull([interval]).unwrap();
+        let hull = EnumInterval::try_hull([interval]).unwrap();
         assert_eq!(hull, interval);
     }
 

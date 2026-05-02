@@ -38,10 +38,10 @@ pub trait ConvexHull<T>: Sized {
     type Error: core::error::Error;
 
     /// Try to creates a convex hull of this `Set`
-    fn strict_hull<U: IntoIterator<Item = T>>(iter: U) -> Result<Self, Self::Error>;
+    fn try_hull<U: IntoIterator<Item = T>>(iter: U) -> Result<Self, Self::Error>;
 
     fn hull<U: IntoIterator<Item = T>>(iter: U) -> Self {
-        Self::strict_hull(iter).unwrap()
+        Self::try_hull(iter).unwrap()
     }
 }
 
@@ -51,7 +51,7 @@ macro_rules! convex_hull_t_impl {
             impl<T: Element + Clone + TryMin + TryMax> ConvexHull<T> for $t<T> {
                 type Error = $crate::error::Error;
 
-                fn strict_hull<U: IntoIterator<Item = T>>(iter: U) -> Result<Self, Self::Error> {
+                fn try_hull<U: IntoIterator<Item = T>>(iter: U) -> Result<Self, Self::Error> {
                     let mut iter = iter.into_iter();
 
                     let (mut left, mut right) = match iter.next() {
@@ -64,7 +64,7 @@ macro_rules! convex_hull_t_impl {
                         (_, right) = try_ord_tuple(right, candidate)?;
                     }
 
-                    Self::strict_closed(left, right)
+                    Self::try_closed(left, right)
                 }
             }
         )+
@@ -79,7 +79,7 @@ macro_rules! convex_hull_ref_t_impl {
             impl<'a, T: Element + Clone + TryMin + TryMax> ConvexHull<&'a T> for $t<T> {
                 type Error = $crate::error::Error;
 
-                fn strict_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Result<Self, Self::Error> {
+                fn try_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Result<Self, Self::Error> {
                     let mut iter = iter.into_iter();
 
                     let (mut left, mut right) = match iter.next() {
@@ -92,7 +92,7 @@ macro_rules! convex_hull_ref_t_impl {
                         right = <&T>::try_max(right, candidate)?;
                     }
 
-                    Self::strict_closed(left.clone(), right.clone())
+                    Self::try_closed(left.clone(), right.clone())
                 }
             }
         )+
@@ -104,7 +104,7 @@ convex_hull_ref_t_impl!(FiniteInterval, EnumInterval);
 impl<T: Element> ConvexHull<Self> for FiniteInterval<T> {
     type Error = core::convert::Infallible;
 
-    fn strict_hull<U>(iter: U) -> Result<Self, Self::Error>
+    fn try_hull<U>(iter: U) -> Result<Self, Self::Error>
     where
         U: IntoIterator<Item = FiniteInterval<T>>,
     {
@@ -139,7 +139,7 @@ impl<T: Element> ConvexHull<Self> for FiniteInterval<T> {
 impl<'a, T: Element + Clone> ConvexHull<&'a Self> for FiniteInterval<T> {
     type Error = core::convert::Infallible;
 
-    fn strict_hull<U: IntoIterator<Item = &'a Self>>(iter: U) -> Result<Self, Self::Error> {
+    fn try_hull<U: IntoIterator<Item = &'a Self>>(iter: U) -> Result<Self, Self::Error> {
         let mut iter = iter.into_iter();
 
         let (mut left, mut right) = loop {
@@ -258,7 +258,7 @@ where
 impl<T: Element> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
     type Error = Error;
 
-    fn strict_hull<U>(iter: U) -> Result<Self, Self::Error>
+    fn try_hull<U>(iter: U) -> Result<Self, Self::Error>
     where
         U: IntoIterator<Item = FiniteInterval<T>>,
     {
@@ -269,17 +269,17 @@ impl<T: Element> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
 impl<'a, T: Element + Clone> ConvexHull<&'a FiniteInterval<T>> for EnumInterval<T> {
     type Error = core::convert::Infallible;
 
-    fn strict_hull<U: IntoIterator<Item = &'a FiniteInterval<T>>>(
+    fn try_hull<U: IntoIterator<Item = &'a FiniteInterval<T>>>(
         iter: U,
     ) -> Result<Self, Self::Error> {
-        FiniteInterval::strict_hull(iter).map(EnumInterval::from)
+        FiniteInterval::try_hull(iter).map(EnumInterval::from)
     }
 }
 
 impl<T: Element> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
     type Error = Error;
 
-    fn strict_hull<U>(iter: U) -> Result<Self, Self::Error>
+    fn try_hull<U>(iter: U) -> Result<Self, Self::Error>
     where
         U: IntoIterator<Item = EnumInterval<T>>,
     {
@@ -290,7 +290,7 @@ impl<T: Element> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
 impl<'a, T: Element + Clone> ConvexHull<&'a EnumInterval<T>> for EnumInterval<T> {
     type Error = Error;
 
-    fn strict_hull<U: IntoIterator<Item = &'a EnumInterval<T>>>(
+    fn try_hull<U: IntoIterator<Item = &'a EnumInterval<T>>>(
         iter: U,
     ) -> Result<Self, Self::Error> {
         convex_hull_ord_bounded_impl(iter)
@@ -304,20 +304,20 @@ mod tests {
 
     #[test]
     fn test_hull_t() {
-        let x = FiniteInterval::strict_hull([f32::NAN]);
+        let x = FiniteInterval::try_hull([f32::NAN]);
         assert_eq!(x, Err(Error::TotalOrderError(TotalOrderError)));
 
-        let x = FiniteInterval::strict_hull([&f32::NAN]);
+        let x = FiniteInterval::try_hull([&f32::NAN]);
         assert_eq!(x, Err(Error::TotalOrderError(TotalOrderError)));
 
         let data = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
 
         // by ref
-        let x = FiniteInterval::strict_hull(data.iter());
+        let x = FiniteInterval::try_hull(data.iter());
         assert_eq!(x.unwrap(), FiniteInterval::closed(0.0, 5.0));
 
         // by val
-        let x = FiniteInterval::strict_hull(data);
+        let x = FiniteInterval::try_hull(data);
         assert_eq!(x.unwrap(), FiniteInterval::closed(0.0, 5.0));
     }
 
@@ -330,12 +330,12 @@ mod tests {
         ];
 
         assert_eq!(
-            FiniteInterval::strict_hull(intervals.iter()).unwrap(),
+            FiniteInterval::try_hull(intervals.iter()).unwrap(),
             FiniteInterval::open(0, 100)
         );
 
         assert_eq!(
-            FiniteInterval::strict_hull(intervals).unwrap(),
+            FiniteInterval::try_hull(intervals).unwrap(),
             FiniteInterval::open(0, 100)
         );
     }
@@ -349,12 +349,12 @@ mod tests {
         ];
 
         assert_eq!(
-            EnumInterval::strict_hull(intervals.iter()).unwrap(),
+            EnumInterval::try_hull(intervals.iter()).unwrap(),
             EnumInterval::unbounded()
         );
 
         assert_eq!(
-            EnumInterval::strict_hull(intervals).unwrap(),
+            EnumInterval::try_hull(intervals).unwrap(),
             EnumInterval::unbounded()
         );
 
@@ -364,12 +364,12 @@ mod tests {
         ];
 
         assert_eq!(
-            EnumInterval::strict_hull(intervals.iter()).unwrap(),
+            EnumInterval::try_hull(intervals.iter()).unwrap(),
             EnumInterval::closed_open(0.0, 10.0)
         );
 
         assert_eq!(
-            EnumInterval::strict_hull(intervals).unwrap(),
+            EnumInterval::try_hull(intervals).unwrap(),
             EnumInterval::closed_open(0.0, 10.0)
         );
     }

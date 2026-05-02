@@ -146,7 +146,7 @@ where
     /// The type that this factory produces
     type Output;
 
-    /// The error type for strict factory fns
+    /// The error type for fallible (try_*) factory fns
     type Error;
 }
 
@@ -213,7 +213,7 @@ where
     /// Creates a new finite interval if invariants are satifsied, otherwise `None`.
     ///
     /// todo...
-    fn strict_finite(
+    fn try_finite(
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
     ) -> Result<Self::Output, Self::Error>;
@@ -240,8 +240,8 @@ where
         )
     }
 
-    fn strict_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_finite(
+    fn try_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_finite(
             FiniteBound::closed(C::convert(lhs)),
             FiniteBound::closed(C::convert(rhs)),
         )
@@ -267,11 +267,11 @@ where
         Self::closed(value.clone(), value)
     }
 
-    fn strict_singleton(value: T) -> Result<Self::Output, Self::Error>
+    fn try_singleton(value: T) -> Result<Self::Output, Self::Error>
     where
         T: Clone,
     {
-        Self::strict_closed(value.clone(), value)
+        Self::try_closed(value.clone(), value)
     }
 
     /// Returns a new open finite interval or Empty
@@ -301,8 +301,8 @@ where
         )
     }
 
-    fn strict_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_finite(
+    fn try_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_finite(
             FiniteBound::open(C::convert(lhs)),
             FiniteBound::open(C::convert(rhs)),
         )
@@ -318,8 +318,8 @@ where
         )
     }
 
-    fn strict_open_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_finite(
+    fn try_open_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_finite(
             FiniteBound::open(C::convert(lhs)),
             FiniteBound::closed(C::convert(rhs)),
         )
@@ -335,8 +335,8 @@ where
         )
     }
 
-    fn strict_closed_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_finite(
+    fn try_closed_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_finite(
             FiniteBound::closed(C::convert(lhs)),
             FiniteBound::open(C::convert(rhs)),
         )
@@ -364,7 +364,7 @@ where
     /// Creates a new half bounded interval if invariants are satisfied else `None`.
     ///
     /// todo...
-    fn strict_half_bounded(
+    fn try_half_bounded(
         side: Side,
         bound: FiniteBound<C::To>,
     ) -> Result<Self::Output, Self::Error>;
@@ -377,12 +377,12 @@ where
         Self::half_bounded(Side::Left, bound)
     }
 
-    fn strict_left_bounded(bound: FiniteBound<C::To>) -> Result<Self::Output, Self::Error> {
-        Self::strict_half_bounded(Side::Left, bound)
+    fn try_left_bounded(bound: FiniteBound<C::To>) -> Result<Self::Output, Self::Error> {
+        Self::try_half_bounded(Side::Left, bound)
     }
 
-    fn strict_right_bounded(bound: FiniteBound<C::To>) -> Result<Self::Output, Self::Error> {
-        Self::strict_half_bounded(Side::Right, bound)
+    fn try_right_bounded(bound: FiniteBound<C::To>) -> Result<Self::Output, Self::Error> {
+        Self::try_half_bounded(Side::Right, bound)
     }
 
     /// Returns a new open, right-unbound interval
@@ -392,8 +392,8 @@ where
         Self::left_bounded(FiniteBound::open(C::convert(left)))
     }
 
-    fn strict_open_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_left_bounded(FiniteBound::open(C::convert(lhs)))
+    fn try_open_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_left_bounded(FiniteBound::open(C::convert(lhs)))
     }
 
     /// Returns a new closed, right-unbound interval
@@ -403,8 +403,8 @@ where
         Self::half_bounded(Side::Left, FiniteBound::closed(C::convert(left)))
     }
 
-    fn strict_closed_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_left_bounded(FiniteBound::closed(C::convert(lhs)))
+    fn try_closed_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_left_bounded(FiniteBound::closed(C::convert(lhs)))
     }
 
     /// Returns a new open, left-unbound interval
@@ -414,8 +414,8 @@ where
         Self::half_bounded(Side::Right, FiniteBound::open(C::convert(right)))
     }
 
-    fn strict_unbound_open(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_right_bounded(FiniteBound::open(C::convert(rhs)))
+    fn try_unbound_open(rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_right_bounded(FiniteBound::open(C::convert(rhs)))
     }
 
     /// Returns a new closed, left-unbound interval
@@ -425,8 +425,8 @@ where
         Self::half_bounded(Side::Right, FiniteBound::closed(C::convert(right)))
     }
 
-    fn strict_unbound_closed(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::strict_right_bounded(FiniteBound::closed(C::convert(rhs)))
+    fn try_unbound_closed(rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_right_bounded(FiniteBound::closed(C::convert(rhs)))
     }
 }
 
@@ -470,11 +470,11 @@ impl<T: Element> FiniteFactory<T, Identity> for FiniteInterval<T> {
         Self::new(lhs, rhs)
     }
 
-    fn strict_finite(
+    fn try_finite(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
     ) -> Result<Self::Output, Self::Error> {
-        Self::new_strict(lhs, rhs)
+        Self::try_new(lhs, rhs)
     }
 }
 
@@ -488,8 +488,8 @@ impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
         Self::new(side, bound)
     }
 
-    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
-        Self::new_strict(side, bound)
+    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
+        Self::try_new(side, bound)
     }
 }
 
@@ -509,11 +509,11 @@ impl<T: Element> FiniteFactory<T, Identity> for EnumInterval<T> {
         FiniteInterval::finite(lhs, rhs).into()
     }
 
-    fn strict_finite(
+    fn try_finite(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
     ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::strict_finite(lhs, rhs).map(Self::Output::from)
+        FiniteInterval::try_finite(lhs, rhs).map(Self::Output::from)
     }
 }
 
@@ -522,8 +522,8 @@ impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
         HalfInterval::new(side, bound).into()
     }
 
-    fn strict_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
-        HalfInterval::new_strict(side, bound).map(Self::Output::from)
+    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
+        HalfInterval::try_new(side, bound).map(Self::Output::from)
     }
 }
 
@@ -566,11 +566,11 @@ where
         FiniteInterval::new(lhs, rhs).into()
     }
 
-    fn strict_finite(
+    fn try_finite(
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
     ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::new_strict(lhs, rhs).map(EnumInterval::from)
+        FiniteInterval::try_new(lhs, rhs).map(EnumInterval::from)
     }
 }
 
@@ -583,11 +583,11 @@ where
         HalfInterval::new(side, bound).into()
     }
 
-    fn strict_half_bounded(
+    fn try_half_bounded(
         side: Side,
         bound: FiniteBound<C::To>,
     ) -> Result<Self::Output, Self::Error> {
-        HalfInterval::new_strict(side, bound).map(EnumInterval::from)
+        HalfInterval::try_new(side, bound).map(EnumInterval::from)
     }
 }
 
@@ -613,15 +613,15 @@ mod tests {
     }
 
     #[test]
-    fn test_strict_factory() {
-        assert_eq!(EnumInterval::strict_singleton(f32::NAN).ok(), None);
+    fn test_try_factory() {
+        assert_eq!(EnumInterval::try_singleton(f32::NAN).ok(), None);
         assert_eq!(
-            EnumInterval::strict_open(10.0, 0.0).unwrap(),
+            EnumInterval::try_open(10.0, 0.0).unwrap(),
             EnumInterval::empty()
         );
-        assert_eq!(EnumInterval::strict_unbound_open(f32::NAN).ok(), None);
+        assert_eq!(EnumInterval::try_unbound_open(f32::NAN).ok(), None);
         assert_eq!(
-            EnumInterval::strict_closed_unbound(0.0).ok(),
+            EnumInterval::try_closed_unbound(0.0).ok(),
             Some(EnumInterval::closed_unbound(0.0))
         );
     }

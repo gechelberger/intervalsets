@@ -39,7 +39,7 @@ impl<'a, T: Arbitrary<'a>> Arbitrary<'a> for FiniteBound<T> {
 impl<'a, T: Element + Arbitrary<'a>> Arbitrary<'a> for FiniteInterval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
         let interval =
-            FiniteInterval::new_strict(FiniteBound::arbitrary(u)?, FiniteBound::arbitrary(u)?)
+            FiniteInterval::try_new(FiniteBound::arbitrary(u)?, FiniteBound::arbitrary(u)?)
                 .unwrap_or(Self::empty());
 
         Ok(interval)
@@ -48,7 +48,7 @@ impl<'a, T: Element + Arbitrary<'a>> Arbitrary<'a> for FiniteInterval<T> {
 
 impl<'a, T: Element + Zero + Arbitrary<'a>> Arbitrary<'a> for HalfInterval<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
-        let interval = HalfInterval::new_strict(Side::arbitrary(u)?, FiniteBound::arbitrary(u)?);
+        let interval = HalfInterval::try_new(Side::arbitrary(u)?, FiniteBound::arbitrary(u)?);
 
         match interval {
             Ok(inner) => Ok(inner),
