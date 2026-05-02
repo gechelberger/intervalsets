@@ -1,4 +1,5 @@
 use super::Measurement;
+use crate::error::Error;
 use crate::numeric::{Element, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -24,7 +25,20 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 pub trait Count {
     type Output;
 
-    fn count(&self) -> Measurement<Self::Output>;
+    /// Compute the counting measure of this set.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the count cannot be represented in `Self::Output`
+    /// (e.g. counting `[i32::MIN, i32::MAX]` overflows `i32`). For
+    /// panic-free counting, use [`try_count`](Count::try_count).
+    fn count(&self) -> Measurement<Self::Output> {
+        self.try_count().unwrap()
+    }
+
+    /// Compute the counting measure of this set, returning `Err` if
+    /// the count cannot be represented in `Self::Output`.
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Error>;
 }
 
 /// Defines whether a set of type T is countable.
@@ -109,7 +123,9 @@ macro_rules! default_countable_impl {
                     return Some(right.clone() - lower);
                 }
 
-                panic!("Countable type overflow; or Element adjacent not implemented for Countable type.");
+                // Both adjacents overflow (e.g. [MIN, MAX]). The count
+                // mathematically exists but cannot fit in Self::Output.
+                None
             }
         }
     }
@@ -136,14 +152,15 @@ where
 {
     type Output = T::Output;
 
-    fn count(&self) -> crate::measure::Measurement<Self::Output> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
         match self.view_raw() {
-            Some((left, right)) => {
-                let count = T::count_inclusive(left.value(), right.value())
-                    .expect("Count should be Some since interval is FullyBounded");
-                Measurement::Finite(count)
-            }
-            None => Measurement::Finite(Self::Output::zero()),
+            Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
+                Some(count) => Ok(Measurement::Finite(count)),
+                None => Err(Error::InvariantError(
+                    "count overflows the Countable Output type",
+                )),
+            },
+            None => Ok(Measurement::Finite(Self::Output::zero())),
         }
     }
 }
@@ -151,8 +168,8 @@ where
 impl<T> Count for HalfInterval<T> {
     type Output = ();
 
-    fn count(&self) -> Measurement<Self::Output> {
-        Measurement::Infinite
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
+        Ok(Measurement::Infinite)
     }
 }
 
@@ -163,10 +180,10 @@ where
 {
     type Output = T::Output;
 
-    fn count(&self) -> crate::measure::Measurement<Self::Output> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
         match self {
-            Self::Finite(inner) => inner.count(),
-            _ => Measurement::Infinite,
+            Self::Finite(inner) => inner.try_count(),
+            _ => Ok(Measurement::Infinite),
         }
     }
 }
@@ -180,5 +197,21 @@ mod tests {
     fn test_count() {
         let x = EnumInterval::closed(0, 10);
         assert_eq!(x.count().finite(), 11);
+    }
+
+    #[test]
+    fn test_try_count_overflow() {
+        // [i32::MIN, i32::MAX] has 2^32 elements which doesn't fit in i32.
+        let x = EnumInterval::closed(i32::MIN, i32::MAX);
+        assert!(x.try_count().is_err());
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_count_overflow_panics() {
+        // count() is the panicking sibling of try_count() and is
+        // documented to panic when the count overflows Self::Output.
+        let x = EnumInterval::closed(i32::MIN, i32::MAX);
+        let _ = x.count();
     }
 }
