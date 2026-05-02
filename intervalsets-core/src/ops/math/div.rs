@@ -15,112 +15,30 @@ use crate::{EnumInterval, FiniteInterval, HalfInterval};
 // and the .unwrap() can never panic. Float users without an Ord
 // wrapper (e.g. OrderedFloat) must use TryDiv::try_div directly.
 
-impl<T> Div for FiniteInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: Self) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
+macro_rules! div_via_try {
+    ($lhs:ty, $rhs:ty) => {
+        impl<T> Div<$rhs> for $lhs
+        where
+            T: Div<Output = T> + Element + Ord + Zero + Clone,
+        {
+            type Output = MaybeDisjoint<T>;
+            #[inline(always)]
+            fn div(self, rhs: $rhs) -> Self::Output {
+                self.try_div(rhs).unwrap()
+            }
+        }
+    };
 }
 
-impl<T> Div for HalfInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: Self) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
-
-impl<T> Div<HalfInterval<T>> for FiniteInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: HalfInterval<T>) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
-
-impl<T> Div<FiniteInterval<T>> for HalfInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
-
-impl<T> Div<FiniteInterval<T>> for EnumInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
-
-impl<T> Div<HalfInterval<T>> for EnumInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: HalfInterval<T>) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
-
-impl<T> Div<EnumInterval<T>> for EnumInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: EnumInterval<T>) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
-
-impl<T> Div<EnumInterval<T>> for FiniteInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    #[inline(always)]
-    fn div(self, rhs: EnumInterval<T>) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
-
-impl<T> Div<EnumInterval<T>> for HalfInterval<T>
-where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
-{
-    type Output = MaybeDisjoint<T>;
-
-    fn div(self, rhs: EnumInterval<T>) -> Self::Output {
-        self.try_div(rhs).unwrap()
-    }
-}
+div_via_try!(FiniteInterval<T>, FiniteInterval<T>);
+div_via_try!(HalfInterval<T>, HalfInterval<T>);
+div_via_try!(FiniteInterval<T>, HalfInterval<T>);
+div_via_try!(HalfInterval<T>, FiniteInterval<T>);
+div_via_try!(EnumInterval<T>, FiniteInterval<T>);
+div_via_try!(EnumInterval<T>, HalfInterval<T>);
+div_via_try!(EnumInterval<T>, EnumInterval<T>);
+div_via_try!(FiniteInterval<T>, EnumInterval<T>);
+div_via_try!(HalfInterval<T>, EnumInterval<T>);
 
 impl<T> TryDiv for FiniteInterval<T>
 where

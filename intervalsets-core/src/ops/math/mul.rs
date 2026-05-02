@@ -13,123 +13,35 @@ use crate::{EnumInterval, FiniteInterval, HalfInterval};
 // total, so try_mul is provably infallible and the .unwrap() can never
 // panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
 // use TryMul::try_mul directly.
+//
+// All bodies are `self.try_mul(rhs).unwrap()`; the unified bound
+// requires Clone everywhere so a single macro produces every impl.
 
-impl<T> Mul for FiniteInterval<T>
-where
-    T: Mul + Element + Ord + Clone + Zero,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = FiniteInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: Self) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
+macro_rules! mul_via_try {
+    ($lhs:ty, $rhs:ty, $out:ty) => {
+        impl<T> Mul<$rhs> for $lhs
+        where
+            T: Mul + Element + Ord + Zero + Clone,
+            <T as Mul>::Output: Element + Ord + Zero + Clone,
+        {
+            type Output = $out;
+            #[inline]
+            fn mul(self, rhs: $rhs) -> Self::Output {
+                self.try_mul(rhs).unwrap()
+            }
+        }
+    };
 }
 
-impl<T> Mul for HalfInterval<T>
-where
-    T: Mul + Element + Ord + Zero + Clone,
-    <T as Mul>::Output: Element + Ord + Zero,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: Self) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
-
-impl<T> Mul<HalfInterval<T>> for FiniteInterval<T>
-where
-    T: Mul + Element + Ord + Zero,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
-
-impl<T> Mul<FiniteInterval<T>> for HalfInterval<T>
-where
-    T: Mul + Element + Ord + Zero,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
-
-impl<T> Mul<FiniteInterval<T>> for EnumInterval<T>
-where
-    T: Mul + Element + Ord + Zero + Clone,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
-
-impl<T> Mul<HalfInterval<T>> for EnumInterval<T>
-where
-    T: Mul + Element + Ord + Zero + Clone,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
-
-impl<T> Mul<EnumInterval<T>> for EnumInterval<T>
-where
-    T: Mul + Element + Ord + Zero + Clone,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
-
-impl<T> Mul<EnumInterval<T>> for FiniteInterval<T>
-where
-    T: Mul + Element + Ord + Zero + Clone,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
-
-impl<T> Mul<EnumInterval<T>> for HalfInterval<T>
-where
-    T: Mul + Element + Ord + Zero + Clone,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
-{
-    type Output = EnumInterval<<T as Mul>::Output>;
-
-    #[inline]
-    fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
-        self.try_mul(rhs).unwrap()
-    }
-}
+mul_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<<T as Mul>::Output>);
+mul_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
 
 impl<T> TryMul for FiniteInterval<T>
 where

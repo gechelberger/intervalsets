@@ -13,86 +13,31 @@ use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 // panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
 // use TryAdd::try_add directly.
 
-impl<T> Add for FiniteInterval<T>
-where
-    T: Add + Ord,
-    <T as Add>::Output: Element + Ord,
-{
-    type Output = FiniteInterval<<T as Add>::Output>;
-
-    #[inline]
-    fn add(self, rhs: Self) -> Self::Output {
-        self.try_add(rhs).unwrap()
-    }
-}
-
-impl<T> Add for HalfInterval<T>
-where
-    T: Add + Ord,
-    <T as Add>::Output: Element + Ord,
-{
-    type Output = EnumInterval<<T as Add>::Output>;
-
-    #[inline]
-    fn add(self, rhs: Self) -> Self::Output {
-        self.try_add(rhs).unwrap()
-    }
-}
-
-impl<T> Add<FiniteInterval<T>> for HalfInterval<T>
-where
-    T: Add + Ord,
-    <T as Add>::Output: Element + Ord,
-{
-    type Output = EnumInterval<<T as Add>::Output>;
-
-    #[inline]
-    fn add(self, rhs: FiniteInterval<T>) -> Self::Output {
-        self.try_add(rhs).unwrap()
-    }
-}
-
-macro_rules! dispatch_add_impl {
-    ($t_rhs:ty) => {
-        impl<T> Add<$t_rhs> for EnumInterval<T>
+macro_rules! add_via_try {
+    ($lhs:ty, $rhs:ty, $out:ty) => {
+        impl<T> Add<$rhs> for $lhs
         where
             T: Add + Ord,
             <T as Add>::Output: Element + Ord,
         {
-            type Output = EnumInterval<<T as Add>::Output>;
-
+            type Output = $out;
             #[inline]
-            fn add(self, rhs: $t_rhs) -> Self::Output {
+            fn add(self, rhs: $rhs) -> Self::Output {
                 self.try_add(rhs).unwrap()
             }
         }
     };
 }
 
-dispatch_add_impl!(FiniteInterval<T>);
-dispatch_add_impl!(HalfInterval<T>);
-dispatch_add_impl!(EnumInterval<T>);
-
-macro_rules! commutative_add_impl {
-    ($t_lhs:ty, $t_rhs:ty) => {
-        impl<T> Add<$t_rhs> for $t_lhs
-        where
-            T: Add + Ord,
-            <T as Add>::Output: Element + Ord,
-        {
-            type Output = EnumInterval<<T as Add>::Output>;
-
-            #[inline]
-            fn add(self, rhs: $t_rhs) -> Self::Output {
-                self.try_add(rhs).unwrap()
-            }
-        }
-    };
-}
-
-commutative_add_impl!(FiniteInterval<T>, HalfInterval<T>);
-commutative_add_impl!(FiniteInterval<T>, EnumInterval<T>);
-commutative_add_impl!(HalfInterval<T>, EnumInterval<T>);
+add_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<<T as Add>::Output>);
+add_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<<T as Add>::Output>);
 
 impl<T> TryAdd for FiniteInterval<T>
 where

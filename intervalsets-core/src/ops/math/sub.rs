@@ -23,98 +23,31 @@ impl<T: Sub> Sub for FiniteBound<T> {
 // panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
 // use TrySub::try_sub directly.
 
-impl<T> Sub for FiniteInterval<T>
-where
-    T: Sub + Ord,
-    <T as Sub>::Output: Element + Ord,
-{
-    type Output = FiniteInterval<<T as Sub>::Output>;
-
-    #[inline]
-    fn sub(self, rhs: Self) -> Self::Output {
-        self.try_sub(rhs).unwrap()
-    }
-}
-
-impl<T> Sub for HalfInterval<T>
-where
-    T: Sub + Ord,
-    <T as Sub>::Output: Element + Ord,
-{
-    type Output = EnumInterval<<T as Sub>::Output>;
-
-    #[inline]
-    fn sub(self, rhs: Self) -> Self::Output {
-        self.try_sub(rhs).unwrap()
-    }
-}
-
-impl<T> Sub<HalfInterval<T>> for FiniteInterval<T>
-where
-    T: Sub + Ord,
-    <T as Sub>::Output: Element + Ord,
-{
-    type Output = EnumInterval<<T as Sub>::Output>;
-
-    #[inline]
-    fn sub(self, rhs: HalfInterval<T>) -> Self::Output {
-        self.try_sub(rhs).unwrap()
-    }
-}
-
-impl<T> Sub<FiniteInterval<T>> for HalfInterval<T>
-where
-    T: Sub + Ord,
-    <T as Sub>::Output: Element + Ord,
-{
-    type Output = EnumInterval<<T as Sub>::Output>;
-
-    #[inline]
-    fn sub(self, rhs: FiniteInterval<T>) -> Self::Output {
-        self.try_sub(rhs).unwrap()
-    }
-}
-
-macro_rules! dispatch_lhs_sub_impl {
-    ($t_rhs:ty) => {
-        impl<T> Sub<$t_rhs> for EnumInterval<T>
+macro_rules! sub_via_try {
+    ($lhs:ty, $rhs:ty, $out:ty) => {
+        impl<T> Sub<$rhs> for $lhs
         where
             T: Sub + Ord,
             <T as Sub>::Output: Element + Ord,
         {
-            type Output = EnumInterval<<T as Sub>::Output>;
-
+            type Output = $out;
             #[inline]
-            fn sub(self, rhs: $t_rhs) -> Self::Output {
+            fn sub(self, rhs: $rhs) -> Self::Output {
                 self.try_sub(rhs).unwrap()
             }
         }
     };
 }
 
-dispatch_lhs_sub_impl!(FiniteInterval<T>);
-dispatch_lhs_sub_impl!(HalfInterval<T>);
-dispatch_lhs_sub_impl!(EnumInterval<T>);
-
-macro_rules! dispatch_rhs_sub_impl {
-    ($t_lhs:ty) => {
-        impl<T> Sub<EnumInterval<T>> for $t_lhs
-        where
-            T: Sub + Ord,
-            <T as Sub>::Output: Element + Ord,
-        {
-            type Output = EnumInterval<<T as Sub>::Output>;
-
-            #[inline]
-            fn sub(self, rhs: EnumInterval<T>) -> Self::Output {
-                self.try_sub(rhs).unwrap()
-            }
-        }
-    };
-}
-
-dispatch_rhs_sub_impl!(FiniteInterval<T>);
-dispatch_rhs_sub_impl!(HalfInterval<T>);
+sub_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<<T as Sub>::Output>);
+sub_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<<T as Sub>::Output>);
 
 impl<T> TrySub for FiniteInterval<T>
 where
