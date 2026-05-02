@@ -1,9 +1,13 @@
 //! traits for set operations.
 
+mod complement;
+pub use complement::Complement;
 mod connects;
 pub use connects::{are_bounds_connected, Connects};
 mod contains;
 pub use contains::Contains;
+mod difference;
+pub use difference::Difference;
 mod intersects;
 pub use intersects::Intersects;
 
@@ -17,6 +21,8 @@ mod rebound;
 pub use rebound::Rebound;
 mod split;
 pub use split::Split;
+mod union;
+pub use union::Union;
 
 mod finite;
 pub use finite::IntoFinite;
