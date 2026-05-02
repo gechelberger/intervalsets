@@ -150,7 +150,7 @@ where
     type Error;
 }
 
-/// todo
+/// Constructs the empty set.
 pub trait EmptyFactory<T, C>: ConvertingFactory<T, C>
 where
     C: Converter<T>,
@@ -210,9 +210,9 @@ where
     /// ```
     fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output;
 
-    /// Creates a new finite interval if invariants are satifsied, otherwise `None`.
-    ///
-    /// todo...
+    /// Creates a new finite interval, returning `Err` if the bounds
+    /// are not comparable (e.g. NaN). The panic-free counterpart of
+    /// [`finite`](Self::finite).
     fn try_finite(
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
@@ -361,9 +361,9 @@ where
     /// ```
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;
 
-    /// Creates a new half bounded interval if invariants are satisfied else `None`.
-    ///
-    /// todo...
+    /// Creates a new half-bounded interval, returning `Err` if the
+    /// bound is not comparable (e.g. NaN). The panic-free counterpart
+    /// of [`half_bounded`](Self::half_bounded).
     fn try_half_bounded(
         side: Side,
         bound: FiniteBound<C::To>,

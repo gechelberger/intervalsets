@@ -8,8 +8,7 @@
 //! this crate for additional functionality in an std environment.
 //!
 //! An **interval** is defined as a connected set of numbers with no gaps, of which
-//! there are 5 general cases for the Reals. (todo: footnote about unsigned/whole
-//! numbers but don't distract with that diatribe here...)
+//! there are 5 general cases for the Reals.
 //!
 //! | Case          | Base Implementation | Set Notation (Closed) | [`Range`](core::ops::Range) Equivalents |
 //! |---------------|---------------------|-----------------------|------------------|
@@ -151,19 +150,28 @@
 //!
 //! ## Fallibility
 //!
-//! * todo: "silent" failures
-//! * todo: ordering invariants/violations
-//! * todo: bounds violations
-//! * todo: fallible (try_*) apis
-//!     * FiniteInterval::try_new
-//!     * ConvexHull::try_hull
-//!     * TryMerge
-//!     * todo: try factory + break up factory trait into smaller ones.
+//! Every fallible operation has both a panicking and a `try_*` form.
+//! The panicking forms exist for ergonomics on properly-ordered types;
+//! the `try_*` forms return `Result<_, Error>` and never panic.
+//!
+//! | Concern | Panicking | Fallible |
+//! |---|---|---|
+//! | Constructing an interval | `FiniteInterval::new`, factory methods like `closed`/`open` | [`FiniteInterval::try_new`], `try_closed`/`try_open` |
+//! | Arithmetic operators | `+` `-` `*` `/` (require `T: Ord`) | [`TryAdd`], [`TrySub`], [`TryMul`], [`TryDiv`] |
+//! | Convex hull | [`ConvexHull::hull`] | [`ConvexHull::try_hull`] |
+//! | Splitting | [`Split::split`] | [`Split::try_split`] |
+//! | Rebounding | [`Rebound::with_left`]/[`Rebound::with_right`] | [`Rebound::try_with_left`]/[`Rebound::try_with_right`] |
+//! | Counting | [`Count::count`] | [`Count::try_count`] |
+//! | Categorizing | [`FiniteInterval::category`] | [`FiniteInterval::try_category`] |
+//!
+//! Bounds violations during construction silently produce
+//! [`FiniteInterval::empty()`]. This is by design (a valid empty
+//! result) but can hide logic errors:
 //!
 //! ```
 //! use intervalsets_core::prelude::*;
 //!
-//! // bounds violation -> silent failure
+//! // bounds violation -> silent empty
 //! let x = FiniteInterval::open(1.0, 0.0);
 //! assert_eq!(x, FiniteInterval::empty());
 //!
@@ -205,8 +213,7 @@
 //! ## testing
 //!
 //! * arbitrary: implement the [`Arbitrary`](::arbitrary::Arbitrary) trait
-//! * quickcheck: implement tho [`Arbitrary`](::quickcheck::Arbitrary) trait
-//!     * todo: proptest
+//! * quickcheck: implement the [`Arbitrary`](::quickcheck::Arbitrary) trait
 //!
 //! ## storage
 //!

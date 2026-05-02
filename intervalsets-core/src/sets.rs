@@ -11,7 +11,8 @@ use crate::factory::FiniteFactory;
 use crate::numeric::{Element, Zero};
 use crate::try_cmp::TryCmp;
 
-/// todo
+/// Internal storage for [`FiniteInterval`]: either empty or a pair
+/// of finite bounds `(lhs, rhs)` with `lhs <= rhs`.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
@@ -173,7 +174,8 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     }
 }
 
-/// todo...
+/// An interval bounded on exactly one side. The `side` field marks
+/// which end is finite; the other end is implicitly unbounded.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
