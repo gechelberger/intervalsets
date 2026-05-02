@@ -93,6 +93,21 @@ difference_via_complement!(EnumInterval<T>, EnumInterval<T>);
 difference_via_complement!(FiniteInterval<T>, EnumInterval<T>);
 difference_via_complement!(HalfInterval<T>, EnumInterval<T>);
 
+/// By-ref blanket: any `(&X, &Y)` whose owned forms have a
+/// `Difference<Y>` impl on `X` gets a `Difference<&Y>` impl on
+/// `&X` that clones and forwards.
+impl<X, Y> Difference<&Y> for &X
+where
+    X: Difference<Y> + Clone,
+    Y: Clone,
+{
+    type Output = <X as Difference<Y>>::Output;
+
+    fn difference(self, rhs: &Y) -> Self::Output {
+        self.clone().difference(rhs.clone())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -167,6 +182,20 @@ mod tests {
         assert_eq!(iter.next(), Some(EnumInterval::closed_open(0.0, 3.0)));
         assert_eq!(iter.next(), Some(EnumInterval::open_unbound(7.0)));
         assert_eq!(iter.next(), None);
+    }
+
+    #[test]
+    fn test_difference_by_ref() {
+        let a = EnumInterval::closed(0, 100);
+        let b = EnumInterval::closed(40, 60);
+        let result = (&a).difference(&b);
+        let mut iter = result.into_iter();
+        assert_eq!(iter.next(), Some(EnumInterval::closed(0, 39)));
+        assert_eq!(iter.next(), Some(EnumInterval::closed(61, 100)));
+        assert_eq!(iter.next(), None);
+        // originals still usable
+        assert_eq!(a, EnumInterval::closed(0, 100));
+        assert_eq!(b, EnumInterval::closed(40, 60));
     }
 
     #[test]

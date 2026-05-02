@@ -78,6 +78,22 @@ union_via_merge!(EnumInterval<T>, EnumInterval<T>);
 union_via_merge!(FiniteInterval<T>, EnumInterval<T>);
 union_via_merge!(HalfInterval<T>, EnumInterval<T>);
 
+/// By-ref blanket: any `(&X, &Y)` whose owned forms have a `Union<Y>`
+/// impl on `X` gets a `Union<&Y>` impl on `&X` that clones and
+/// forwards. Each clone is shallow (intervals are tagged enums of
+/// two `FiniteBound`s).
+impl<X, Y> Union<&Y> for &X
+where
+    X: Union<Y> + Clone,
+    Y: Clone,
+{
+    type Output = <X as Union<Y>>::Output;
+
+    fn union(self, rhs: &Y) -> Self::Output {
+        self.clone().union(rhs.clone())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -141,6 +157,17 @@ mod tests {
         let u = EnumInterval::<i32>::unbounded();
         let a = EnumInterval::closed(0, 10);
         assert_eq!(u.union(a).into_interval(), Some(EnumInterval::unbounded()));
+    }
+
+    #[test]
+    fn test_union_by_ref() {
+        let a = EnumInterval::closed(0, 10);
+        let b = EnumInterval::closed(5, 15);
+        let result = (&a).union(&b);
+        assert_eq!(result.into_interval(), Some(EnumInterval::closed(0, 15)));
+        // originals still usable
+        assert_eq!(a, EnumInterval::closed(0, 10));
+        assert_eq!(b, EnumInterval::closed(5, 15));
     }
 
     #[test]

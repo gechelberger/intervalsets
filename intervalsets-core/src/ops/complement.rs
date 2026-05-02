@@ -85,6 +85,17 @@ impl<T: Element> Complement for EnumInterval<T> {
     }
 }
 
+/// By-ref blanket: any `&X` whose owned form implements `Complement`
+/// gets a `Complement` impl that clones and forwards. The clone is
+/// shallow (the interval is two `FiniteBound`s plus a tag).
+impl<X: Complement + Clone> Complement for &X {
+    type Output = <X as Complement>::Output;
+
+    fn complement(self) -> Self::Output {
+        self.clone().complement()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -159,6 +170,19 @@ mod tests {
         // applying complement to a multi-piece set, which needs IntervalSet
         // (alloc). But we can at least confirm an Unbounded round-trip:
         let _ = double; // placeholder; see test_complement_round_trip_unbounded
+    }
+
+    #[test]
+    fn test_complement_by_ref() {
+        // by-ref blanket: (&interval).complement() works without consuming.
+        let interval = EnumInterval::closed(0, 10);
+        let result = (&interval).complement();
+        let mut iter = result.into_iter();
+        assert_eq!(iter.next(), Some(EnumInterval::unbound_closed(-1)));
+        assert_eq!(iter.next(), Some(EnumInterval::closed_unbound(11)));
+        assert_eq!(iter.next(), None);
+        // original is still usable
+        assert_eq!(interval, EnumInterval::closed(0, 10));
     }
 
     #[test]
