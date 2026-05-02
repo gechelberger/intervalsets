@@ -23,5 +23,6 @@ pub use finite::IntoFinite;
 
 #[doc(hidden)]
 pub mod math;
+pub use math::{TryAdd, TryDiv, TryMul, TrySub};
 
 mod util;

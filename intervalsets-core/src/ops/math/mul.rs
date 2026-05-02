@@ -1,7 +1,9 @@
 use core::ops::Mul;
 
+use super::TryMul;
 use crate::bound::FiniteBound;
 use crate::bound::Side::{Left, Right};
+use crate::error::Error;
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
@@ -14,7 +16,7 @@ where
     type Output = FiniteInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        impls::finite_x_finite_by_cat(self, rhs)
+        impls::finite_x_finite_by_cat(self, rhs).unwrap()
     }
 }
 
@@ -26,7 +28,7 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        impls::half_x_half_by_cat(self, rhs)
+        impls::half_x_half_by_cat(self, rhs).unwrap()
     }
 }
 
@@ -39,7 +41,7 @@ where
 
     #[inline]
     fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
-        impls::finite_x_half(self, rhs)
+        impls::finite_x_half(self, rhs).unwrap()
     }
 }
 
@@ -51,7 +53,7 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
-        impls::finite_x_half(rhs, self)
+        impls::finite_x_half(rhs, self).unwrap()
     }
 }
 
@@ -63,7 +65,7 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
-        impls::enum_x_finite(self, rhs)
+        impls::enum_x_finite(self, rhs).unwrap()
     }
 }
 
@@ -75,7 +77,7 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
-        impls::enum_x_half(self, rhs)
+        impls::enum_x_half(self, rhs).unwrap()
     }
 }
 
@@ -107,7 +109,7 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
-        impls::enum_x_finite(rhs, self)
+        impls::enum_x_finite(rhs, self).unwrap()
     }
 }
 
@@ -119,6 +121,131 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
+        impls::enum_x_half(rhs, self).unwrap()
+    }
+}
+
+impl<T> TryMul for FiniteInterval<T>
+where
+    T: Mul + Clone + PartialOrd + Zero,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = FiniteInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        impls::finite_x_finite_by_cat(self, rhs)
+    }
+}
+
+impl<T> TryMul for HalfInterval<T>
+where
+    T: Mul + Element + Zero + Clone,
+    <T as Mul>::Output: Element + Zero,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        impls::half_x_half_by_cat(self, rhs)
+    }
+}
+
+impl<T> TryMul<HalfInterval<T>> for FiniteInterval<T>
+where
+    T: Mul + PartialOrd + Zero,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        impls::finite_x_half(self, rhs)
+    }
+}
+
+impl<T> TryMul<FiniteInterval<T>> for HalfInterval<T>
+where
+    T: Mul + PartialOrd + Zero,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
+        impls::finite_x_half(rhs, self)
+    }
+}
+
+impl<T> TryMul<FiniteInterval<T>> for EnumInterval<T>
+where
+    T: Mul + PartialOrd + Zero + Clone,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
+        impls::enum_x_finite(self, rhs)
+    }
+}
+
+impl<T> TryMul<HalfInterval<T>> for EnumInterval<T>
+where
+    T: Mul + Element + Zero + Clone,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        impls::enum_x_half(self, rhs)
+    }
+}
+
+impl<T> TryMul<EnumInterval<T>> for EnumInterval<T>
+where
+    T: Mul + Element + Zero + Clone,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
+        match self {
+            Self::Finite(lhs) => lhs.try_mul(rhs),
+            Self::Half(lhs) => lhs.try_mul(rhs),
+            Self::Unbounded => match rhs {
+                Self::Finite(rhs) => self.try_mul(rhs),
+                Self::Half(rhs) => self.try_mul(rhs),
+                Self::Unbounded => Ok(EnumInterval::Unbounded),
+            },
+        }
+    }
+}
+
+impl<T> TryMul<EnumInterval<T>> for FiniteInterval<T>
+where
+    T: Mul + PartialOrd + Zero + Clone,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
+        impls::enum_x_finite(rhs, self)
+    }
+}
+
+impl<T> TryMul<EnumInterval<T>> for HalfInterval<T>
+where
+    T: Mul + Element + Zero + Clone,
+    <T as Mul>::Output: Element + Zero + Clone,
+{
+    type Output = EnumInterval<<T as Mul>::Output>;
+    type Error = Error;
+
+    fn try_mul(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::enum_x_half(rhs, self)
     }
 }
@@ -148,7 +275,7 @@ pub mod impls {
     pub fn finite_x_finite_by_cat<T>(
         a: FiniteInterval<T>,
         b: FiniteInterval<T>,
-    ) -> FiniteInterval<<T as Mul>::Output>
+    ) -> Result<FiniteInterval<<T as Mul>::Output>, Error>
     where
         T: Mul + PartialOrd + Clone + Zero,
         <T as Mul>::Output: Element + Zero + Clone,
@@ -157,11 +284,11 @@ pub mod impls {
         let bcat = b.category();
 
         let Some((amin, amax)) = a.into_raw() else {
-            return FiniteInterval::empty();
+            return Ok(FiniteInterval::empty());
         };
 
         let Some((bmin, bmax)) = b.into_raw() else {
-            return FiniteInterval::empty();
+            return Ok(FiniteInterval::empty());
         };
 
         match (acat, bcat) {
@@ -169,65 +296,65 @@ pub mod impls {
                 // [a=0?, b>0] x [c=0?, d>0]
                 let max = mul_assume_nonzero(amax, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    FiniteInterval::new(FiniteBound::zero(), max)
+                    FiniteInterval::try_new(FiniteBound::zero(), max)
                 } else {
                     let min = mul_assume_nonzero(amin, bmin);
-                    FiniteInterval::new(min, max)
+                    FiniteInterval::try_new(min, max)
                 }
             }
             (ECat::Pos(_), ECat::NegPos) => {
                 // [a=0?, b>0] x [c<0, d>0] => a produces intermediate values
                 let min = mul_assume_nonzero(amax.clone(), bmin);
                 let max = mul_assume_nonzero(amax, bmax);
-                FiniteInterval::new(min, max)
+                FiniteInterval::try_new(min, max)
             }
             (ECat::Pos(az), ECat::Neg(bz)) => {
                 // [a=0?, b>0] x [c<0, d=0?]
                 let min = mul_assume_nonzero(amax, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    FiniteInterval::new(min, FiniteBound::zero())
+                    FiniteInterval::try_new(min, FiniteBound::zero())
                 } else {
                     let max = mul_assume_nonzero(amin, bmax);
-                    FiniteInterval::new(min, max)
+                    FiniteInterval::try_new(min, max)
                 }
             }
             (ECat::Neg(az), ECat::Pos(bz)) => {
                 // [a<0, b=0?] x [c=0?, d>0]
                 let min = mul_assume_nonzero(amin, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    FiniteInterval::new(min, FiniteBound::zero())
+                    FiniteInterval::try_new(min, FiniteBound::zero())
                 } else {
                     let max = mul_assume_nonzero(amax, bmin);
-                    FiniteInterval::new(min, max)
+                    FiniteInterval::try_new(min, max)
                 }
             }
             (ECat::Neg(_), ECat::NegPos) => {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
                 let min = mul_assume_nonzero(amin.clone(), bmax);
                 let max = mul_assume_nonzero(amin, bmin);
-                FiniteInterval::new(min, max)
+                FiniteInterval::try_new(min, max)
             }
             (ECat::Neg(az), ECat::Neg(bz)) => {
                 // [a<0, b=0?] x [c<0, d=0?]
                 let max = mul_assume_nonzero(amin, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    FiniteInterval::new(FiniteBound::zero(), max)
+                    FiniteInterval::try_new(FiniteBound::zero(), max)
                 } else {
                     let min = mul_assume_nonzero(amax, bmax);
-                    FiniteInterval::new(min, max)
+                    FiniteInterval::try_new(min, max)
                 }
             }
             (ECat::NegPos, ECat::Pos(_)) => {
                 // [a<0, b>0] x [c=0?, d>0] => c produces intermediate values
                 let min = mul_assume_nonzero(amin, bmax.clone());
                 let max = mul_assume_nonzero(amax, bmax);
-                FiniteInterval::new(min, max)
+                FiniteInterval::try_new(min, max)
             }
             (ECat::NegPos, ECat::Neg(_)) => {
                 // [a<0, b>0] x [c<0, d=0?] => d produces intermediate values
                 let min = mul_assume_nonzero(amax, bmin.clone());
                 let max = mul_assume_nonzero(amin, bmin);
-                FiniteInterval::new(min, max)
+                FiniteInterval::try_new(min, max)
             }
             (ECat::NegPos, ECat::NegPos) => {
                 // NegPos category can not have an end bound of Closed(0), so
@@ -238,10 +365,10 @@ pub mod impls {
                 let c2_max = mul_assume_nonzero(amax, bmax);
                 let min = FiniteBound::take_min_assume_valid(Left, c1_min, c2_min);
                 let max = FiniteBound::take_max_assume_valid(Right, c1_max, c2_max);
-                FiniteInterval::new(min, max)
+                FiniteInterval::try_new(min, max)
             }
             (ECat::Zero, _) | (_, ECat::Zero) => {
-                FiniteInterval::singleton(<T as Mul>::Output::zero())
+                FiniteInterval::try_singleton(<T as Mul>::Output::zero())
             }
             _ => unreachable!(),
         }
@@ -250,7 +377,7 @@ pub mod impls {
     pub fn half_x_half_by_cat<T>(
         a: HalfInterval<T>,
         b: HalfInterval<T>,
-    ) -> EnumInterval<<T as Mul>::Output>
+    ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
     where
         T: Mul + PartialOrd + Zero,
         <T as Mul>::Output: Element + Zero,
@@ -262,23 +389,23 @@ pub mod impls {
         let (_, bbound) = b.into_raw();
 
         match (acat, bcat) {
-            (ECat::NegPos, _) | (_, ECat::NegPos) => EnumInterval::unbounded(),
+            (ECat::NegPos, _) | (_, ECat::NegPos) => Ok(EnumInterval::unbounded()),
             (ECat::Pos(az), ECat::Pos(bz)) | (ECat::Neg(az), ECat::Neg(bz)) => {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    EnumInterval::closed_unbound(<T as Mul>::Output::zero())
+                    EnumInterval::try_closed_unbound(<T as Mul>::Output::zero())
                 } else {
                     // (a > 0 && b > 0) || (a < 0 && b < 0) -> neither is Closed(0)
                     let min = mul_assume_nonzero(abound, bbound);
-                    EnumInterval::half_bounded(Left, min)
+                    EnumInterval::try_half_bounded(Left, min)
                 }
             }
             (ECat::Pos(az), ECat::Neg(bz)) | (ECat::Neg(az), ECat::Pos(bz)) => {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    EnumInterval::unbound_closed(<T as Mul>::Output::zero())
+                    EnumInterval::try_unbound_closed(<T as Mul>::Output::zero())
                 } else {
                     // (a > 0 && b < 0) || (a < 0 && b > 0) -> neither is Closed(0)
                     let max = mul_assume_nonzero(abound, bbound);
-                    EnumInterval::half_bounded(Right, max)
+                    EnumInterval::try_half_bounded(Right, max)
                 }
             }
             _ => unreachable!(), // zero, empty should be unreachable
@@ -288,14 +415,14 @@ pub mod impls {
     pub fn finite_x_half<T>(
         a: FiniteInterval<T>,
         b: HalfInterval<T>,
-    ) -> EnumInterval<<T as Mul>::Output>
+    ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
     where
         T: Mul + PartialOrd + Zero,
         <T as Mul>::Output: Element + Zero + Clone,
     {
         let fcat = a.category();
         let Some((fmin, fmax)) = a.into_raw() else {
-            return EnumInterval::empty();
+            return Ok(EnumInterval::empty());
         };
 
         let hcat = b.category();
@@ -305,10 +432,10 @@ pub mod impls {
             (ECat::Pos(az), ECat::Pos(bz)) => {
                 // [a=0?, b>0] x [c=0? d=inf]
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    EnumInterval::closed_unbound(<T as Mul>::Output::zero())
+                    EnumInterval::try_closed_unbound(<T as Mul>::Output::zero())
                 } else {
                     // zeros handled above -> neither operand is Closed(0)
-                    EnumInterval::half_bounded(Left, mul_assume_nonzero(fmin, hbound))
+                    EnumInterval::try_half_bounded(Left, mul_assume_nonzero(fmin, hbound))
                 }
             }
             (ECat::Pos(_), ECat::NegPos) => {
@@ -316,16 +443,16 @@ pub mod impls {
                 // Case 1: [a=0?, b>0] x [c<0, d=+inf] => |ac<=0, ad>=0, bc<0, bd=+inf| => (bc, ->)
                 // Case 2: [a=0?, b>0] x [c=-inf, d>0] => |ac<=0, ad>=0, bc=-inf, bd>0| -> (<-, bd)
                 // b > 0 always produces an intermediate value
-                EnumInterval::half_bounded(side, mul_assume_nonzero(fmax, hbound))
+                EnumInterval::try_half_bounded(side, mul_assume_nonzero(fmax, hbound))
             }
             (ECat::Pos(az), ECat::Neg(bz)) | (ECat::Neg(az), ECat::Pos(bz)) => {
                 // Case 1: [a=0?, b>0] x [c=-inf, d=0?]
                 // Case 2: [a<0, b=0?] x [c=0?, d=+inf]
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    EnumInterval::unbound_closed(<T as Mul>::Output::zero())
+                    EnumInterval::try_unbound_closed(<T as Mul>::Output::zero())
                 } else {
                     // zeros handled above -> neither operand is Closed(0)
-                    EnumInterval::half_bounded(Right, mul_assume_nonzero(fmax, hbound))
+                    EnumInterval::try_half_bounded(Right, mul_assume_nonzero(fmax, hbound))
                 }
             }
             (ECat::Neg(_), ECat::NegPos) => {
@@ -333,19 +460,19 @@ pub mod impls {
                 // Case 1: [a<0, b=0?] x [c<0, d=+inf] => |ac>0, ad=-inf, bc>=0, bd<=0| => (<-, ac>0)
                 // Case 2: [a<0, b=0?] x [c=-inf, d>0] => |ac=+inf, ad<0, bc>=0, bd<=0| => (ad<0, ->)
                 // a < 0 always produces an intermediate value
-                EnumInterval::half_bounded(side.flip(), mul_assume_nonzero(fmin, hbound))
+                EnumInterval::try_half_bounded(side.flip(), mul_assume_nonzero(fmin, hbound))
             }
             (ECat::Neg(az), ECat::Neg(bz)) => {
                 // [a<0, b<=0?] x [c=-inf, d<=0?] => |ac=+inf, ad>=0, bc>=0, bd>=0
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
-                    EnumInterval::closed_unbound(<T as Mul>::Output::zero())
+                    EnumInterval::try_closed_unbound(<T as Mul>::Output::zero())
                 } else {
                     // zeros handled above -> neither operand is Closed(0)
-                    EnumInterval::half_bounded(Left, mul_assume_nonzero(fmax, hbound))
+                    EnumInterval::try_half_bounded(Left, mul_assume_nonzero(fmax, hbound))
                 }
             }
-            (ECat::NegPos, _) => EnumInterval::unbounded(),
-            (ECat::Zero, _) => EnumInterval::singleton(<T as Mul>::Output::zero()),
+            (ECat::NegPos, _) => Ok(EnumInterval::unbounded()),
+            (ECat::Zero, _) => EnumInterval::try_singleton(<T as Mul>::Output::zero()),
             _ => unreachable!(),
         }
     }
@@ -354,18 +481,18 @@ pub mod impls {
     pub fn enum_x_finite<T>(
         a: EnumInterval<T>,
         b: FiniteInterval<T>,
-    ) -> EnumInterval<<T as Mul>::Output>
+    ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
     where
         T: Mul + PartialOrd + Clone + Zero,
         <T as Mul>::Output: Element + Zero + Clone,
     {
         match a {
-            EnumInterval::Finite(inner) => (inner * b).into(),
-            EnumInterval::Half(inner) => inner * b,
+            EnumInterval::Finite(inner) => finite_x_finite_by_cat(inner, b).map(EnumInterval::from),
+            EnumInterval::Half(inner) => finite_x_half(b, inner),
             EnumInterval::Unbounded => match b.category() {
-                ECat::Empty => EnumInterval::empty(),
-                ECat::Zero => EnumInterval::singleton(<T as Mul>::Output::zero()),
-                _ => EnumInterval::Unbounded,
+                ECat::Empty => Ok(EnumInterval::empty()),
+                ECat::Zero => EnumInterval::try_singleton(<T as Mul>::Output::zero()),
+                _ => Ok(EnumInterval::Unbounded),
             },
         }
     }
@@ -374,15 +501,15 @@ pub mod impls {
     pub fn enum_x_half<T>(
         a: EnumInterval<T>,
         b: HalfInterval<T>,
-    ) -> EnumInterval<<T as Mul>::Output>
+    ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
     where
         T: Mul + Element + Clone + Zero,
         <T as Mul>::Output: Element + Zero + Clone,
     {
         match a {
-            EnumInterval::Finite(inner) => inner * b,
+            EnumInterval::Finite(inner) => finite_x_half(inner, b),
             EnumInterval::Half(inner) => half_x_half_by_cat(inner, b),
-            EnumInterval::Unbounded => EnumInterval::Unbounded,
+            EnumInterval::Unbounded => Ok(EnumInterval::Unbounded),
         }
     }
 }

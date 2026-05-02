@@ -1,6 +1,8 @@
 use core::ops::Sub;
 
+use super::TrySub;
 use crate::bound::FiniteBound;
+use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
@@ -165,6 +167,152 @@ macro_rules! dispatch_rhs_sub_impl {
 
 dispatch_rhs_sub_impl!(FiniteInterval<T>);
 dispatch_rhs_sub_impl!(HalfInterval<T>);
+
+impl<T> TrySub for FiniteInterval<T>
+where
+    T: Sub,
+    <T as Sub>::Output: Element,
+{
+    type Output = FiniteInterval<<T as Sub>::Output>;
+    type Error = Error;
+
+    fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let Some((lhs_min, lhs_max)) = self.into_raw() else {
+            return Ok(FiniteInterval::empty());
+        };
+
+        let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+            return Ok(FiniteInterval::empty());
+        };
+
+        FiniteInterval::try_new(lhs_min - rhs_max, lhs_max - rhs_min)
+    }
+}
+
+impl<T> TrySub for HalfInterval<T>
+where
+    T: Sub,
+    <T as Sub>::Output: Element,
+{
+    type Output = EnumInterval<<T as Sub>::Output>;
+    type Error = Error;
+
+    fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let (l_side, l_bound) = self.into_raw();
+        let (r_side, r_bound) = rhs.into_raw();
+        if l_side == r_side {
+            Ok(EnumInterval::unbounded())
+        } else {
+            EnumInterval::try_half_bounded(l_side, l_bound - r_bound)
+        }
+    }
+}
+
+impl<T> TrySub<HalfInterval<T>> for FiniteInterval<T>
+where
+    T: Sub,
+    <T as Sub>::Output: Element,
+{
+    type Output = EnumInterval<<T as Sub>::Output>;
+    type Error = Error;
+
+    fn try_sub(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        // (a, b) - (c, ->) => (<-, b - c)
+        // (a, b) - (<-, c) => (a - c, ->)
+        let Some((lhs_min, lhs_max)) = self.into_raw() else {
+            return Ok(EnumInterval::empty());
+        };
+
+        let (side, bound) = rhs.into_raw();
+        let side = side.flip();
+        let anchor = side.select(lhs_min, lhs_max);
+        EnumInterval::try_half_bounded(side, anchor - bound)
+    }
+}
+
+impl<T> TrySub<FiniteInterval<T>> for HalfInterval<T>
+where
+    T: Sub,
+    <T as Sub>::Output: Element,
+{
+    type Output = EnumInterval<<T as Sub>::Output>;
+    type Error = Error;
+
+    fn try_sub(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
+        // (<-, c) - (a, b) => (<-, c - a)
+        // (c, ->) - (a, b) => (c - b, ->)
+        let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+            return Ok(EnumInterval::empty());
+        };
+
+        let (side, bound) = self.into_raw();
+        let offset = side.select(rhs_max, rhs_min);
+        EnumInterval::try_half_bounded(side, bound - offset)
+    }
+}
+
+macro_rules! dispatch_lhs_try_sub_impl {
+    ($t_rhs:ty) => {
+        impl<T> TrySub<$t_rhs> for EnumInterval<T>
+        where
+            T: Sub,
+            <T as Sub>::Output: Element,
+        {
+            type Output = EnumInterval<<T as Sub>::Output>;
+            type Error = Error;
+
+            #[inline]
+            fn try_sub(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
+                match self {
+                    Finite(inner) => inner.try_sub(rhs).map(EnumInterval::from),
+                    Half(inner) => inner.try_sub(rhs).map(EnumInterval::from),
+                    Unbounded => {
+                        if rhs.is_empty() {
+                            Ok(EnumInterval::empty())
+                        } else {
+                            Ok(Unbounded)
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+dispatch_lhs_try_sub_impl!(FiniteInterval<T>);
+dispatch_lhs_try_sub_impl!(HalfInterval<T>);
+dispatch_lhs_try_sub_impl!(EnumInterval<T>);
+
+macro_rules! dispatch_rhs_try_sub_impl {
+    ($t_lhs:ty) => {
+        impl<T> TrySub<EnumInterval<T>> for $t_lhs
+        where
+            T: Sub,
+            <T as Sub>::Output: Element,
+        {
+            type Output = EnumInterval<<T as Sub>::Output>;
+            type Error = Error;
+
+            #[inline]
+            fn try_sub(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
+                match rhs {
+                    Finite(rhs) => self.try_sub(rhs).map(EnumInterval::from),
+                    Half(rhs) => self.try_sub(rhs).map(EnumInterval::from),
+                    Unbounded => {
+                        if self.is_empty() {
+                            Ok(EnumInterval::empty())
+                        } else {
+                            Ok(Unbounded)
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+dispatch_rhs_try_sub_impl!(FiniteInterval<T>);
+dispatch_rhs_try_sub_impl!(HalfInterval<T>);
 
 #[cfg(test)]
 mod tests {

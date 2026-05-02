@@ -2,8 +2,10 @@
 
 use core::ops::Div;
 
+use super::TryDiv;
 use crate::category::ECat;
 use crate::disjoint::MaybeDisjoint;
+use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
@@ -16,7 +18,7 @@ where
 
     #[inline(always)]
     fn div(self, rhs: Self) -> Self::Output {
-        impls::finite_by_finite(self, rhs)
+        impls::finite_by_finite(self, rhs).unwrap()
     }
 }
 
@@ -28,7 +30,7 @@ where
 
     #[inline(always)]
     fn div(self, rhs: Self) -> Self::Output {
-        impls::half_by_half(self, rhs)
+        impls::half_by_half(self, rhs).unwrap()
     }
 }
 
@@ -40,7 +42,7 @@ where
 
     #[inline(always)]
     fn div(self, rhs: HalfInterval<T>) -> Self::Output {
-        impls::finite_by_half(self, rhs)
+        impls::finite_by_half(self, rhs).unwrap()
     }
 }
 
@@ -52,7 +54,7 @@ where
 
     #[inline(always)]
     fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
-        impls::half_by_finite(self, rhs)
+        impls::half_by_finite(self, rhs).unwrap()
     }
 }
 
@@ -67,7 +69,7 @@ where
         match self {
             Self::Finite(lhs) => lhs / rhs,
             Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => impls::unbounded_by_cat(rhs.category()),
+            Self::Unbounded => impls::unbounded_by_cat(rhs.category()).unwrap(),
         }
     }
 }
@@ -99,7 +101,7 @@ where
         match self {
             Self::Finite(lhs) => lhs / rhs,
             Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => impls::unbounded_by_cat(rhs.category()),
+            Self::Unbounded => impls::unbounded_by_cat(rhs.category()).unwrap(),
         }
     }
 }
@@ -136,6 +138,147 @@ where
             EnumInterval::Finite(rhs) => self / rhs,
             EnumInterval::Half(rhs) => self / rhs,
             EnumInterval::Unbounded => EnumInterval::Unbounded.into(),
+        }
+    }
+}
+
+impl<T> TryDiv for FiniteInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        impls::finite_by_finite(self, rhs)
+    }
+}
+
+impl<T> TryDiv for HalfInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        impls::half_by_half(self, rhs)
+    }
+}
+
+impl<T> TryDiv<HalfInterval<T>> for FiniteInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        impls::finite_by_half(self, rhs)
+    }
+}
+
+impl<T> TryDiv<FiniteInterval<T>> for HalfInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
+        impls::half_by_finite(self, rhs)
+    }
+}
+
+impl<T> TryDiv<FiniteInterval<T>> for EnumInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
+        match self {
+            Self::Finite(lhs) => lhs.try_div(rhs),
+            Self::Half(lhs) => lhs.try_div(rhs),
+            Self::Unbounded => impls::unbounded_by_cat(rhs.category()),
+        }
+    }
+}
+
+impl<T> TryDiv<HalfInterval<T>> for EnumInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        match self {
+            Self::Finite(lhs) => lhs.try_div(rhs),
+            Self::Half(lhs) => lhs.try_div(rhs),
+            Self::Unbounded => Ok(Self::Unbounded.into()),
+        }
+    }
+}
+
+impl<T> TryDiv<EnumInterval<T>> for EnumInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
+        match self {
+            Self::Finite(lhs) => lhs.try_div(rhs),
+            Self::Half(lhs) => lhs.try_div(rhs),
+            Self::Unbounded => impls::unbounded_by_cat(rhs.category()),
+        }
+    }
+}
+
+impl<T> TryDiv<EnumInterval<T>> for FiniteInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    #[inline(always)]
+    fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
+        match rhs {
+            EnumInterval::Finite(rhs) => self.try_div(rhs),
+            EnumInterval::Half(rhs) => self.try_div(rhs),
+            EnumInterval::Unbounded => Ok(match self.category() {
+                ECat::Empty => EnumInterval::empty(),
+                ECat::Zero => EnumInterval::try_singleton(T::zero())?,
+                _ => EnumInterval::Unbounded,
+            }
+            .into()),
+        }
+    }
+}
+
+impl<T> TryDiv<EnumInterval<T>> for HalfInterval<T>
+where
+    T: Div<Output = T> + Element + Zero + Clone,
+{
+    type Output = MaybeDisjoint<T>;
+    type Error = Error;
+
+    fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
+        match rhs {
+            EnumInterval::Finite(rhs) => self.try_div(rhs),
+            EnumInterval::Half(rhs) => self.try_div(rhs),
+            EnumInterval::Unbounded => Ok(EnumInterval::Unbounded.into()),
         }
     }
 }
@@ -177,27 +320,30 @@ mod impls {
     }
 
     #[inline(always)]
-    fn zero_by_non_zero<T: Zero + Element + Clone>() -> MaybeDisjoint<T> {
-        EI::singleton(T::zero()).into()
+    fn zero_by_non_zero<T: Zero + Element + Clone>() -> Result<MaybeDisjoint<T>, Error> {
+        EI::try_singleton(T::zero()).map(MaybeDisjoint::from)
     }
 
     #[inline(always)]
-    fn all_except_zero<T: Zero + Element>() -> MaybeDisjoint<T> {
-        let neg = EI::right_bounded(FB::open(T::zero()));
-        let pos = EI::left_bounded(FB::open(T::zero()));
-        (neg, pos).into()
+    fn all_except_zero<T: Zero + Element>() -> Result<MaybeDisjoint<T>, Error> {
+        let neg = EI::try_right_bounded(FB::open(T::zero()))?;
+        let pos = EI::try_left_bounded(FB::open(T::zero()))?;
+        Ok((neg, pos).into())
     }
 
     #[inline(always)]
-    pub fn unbounded_by_cat<T>(denom_cat: ECat) -> MaybeDisjoint<T> {
-        match denom_cat {
+    pub fn unbounded_by_cat<T>(denom_cat: ECat) -> Result<MaybeDisjoint<T>, Error> {
+        Ok(match denom_cat {
             ECat::Empty => FiniteInterval::empty().into(),
             ECat::Zero => any_by_zero(),
             _ => EI::Unbounded.into(),
-        }
+        })
     }
 
-    pub fn finite_by_finite<T>(ab: FiniteInterval<T>, cd: FiniteInterval<T>) -> MaybeDisjoint<T>
+    pub fn finite_by_finite<T>(
+        ab: FiniteInterval<T>,
+        cd: FiniteInterval<T>,
+    ) -> Result<MaybeDisjoint<T>, Error>
     where
         T: Div<Output = T> + Element + Clone + Zero,
     {
@@ -205,15 +351,15 @@ mod impls {
         let cd_cat = cd.category();
 
         let Some((a, b)) = ab.into_raw() else {
-            return MaybeDisjoint::empty();
+            return Ok(MaybeDisjoint::empty());
         };
 
         let Some((c, d)) = cd.into_raw() else {
-            return MaybeDisjoint::empty();
+            return Ok(MaybeDisjoint::empty());
         };
 
         match (ab_cat, cd_cat) {
-            (_, ECat::Zero) => any_by_zero(),
+            (_, ECat::Zero) => Ok(any_by_zero()),
             (ECat::Zero, _) => zero_by_non_zero(),
             (ECat::Pos(lz), ECat::Pos(_)) => {
                 // [a>=0, +e<b<+inf] / [c>=0, +e<d<+inf] => {a/d, b/c}
@@ -235,17 +381,17 @@ mod impls {
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // c < -e && d > +e && a != Closed(0)
-                let left = EI::right_bounded(div_assume_nonzero(a.clone(), c));
-                let right = EI::left_bounded(div_assume_nonzero(a, d));
-                (left, right).into()
+                let left = EI::try_right_bounded(div_assume_nonzero(a.clone(), c))?;
+                let right = EI::try_left_bounded(div_assume_nonzero(a, d))?;
+                Ok((left, right).into())
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // c < -e && d > +e && b != Closed(0)
-                let left = EI::right_bounded(div_assume_nonzero(b.clone(), d));
-                let right = EI::left_bounded(div_assume_nonzero(b, c));
-                (left, right).into()
+                let left = EI::try_right_bounded(div_assume_nonzero(b.clone(), d))?;
+                let right = EI::try_left_bounded(div_assume_nonzero(b, c))?;
+                Ok((left, right).into())
             }
-            (_, ECat::NegPos) => EI::unbounded().into(),
+            (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             (ECat::Pos(lz), ECat::Neg(_)) => {
                 // cd Neg(_) => c < -e
                 let max = div_assume_denom_nonzero(lz, a, c);
@@ -267,7 +413,10 @@ mod impls {
         }
     }
 
-    pub fn half_by_half<T>(ab: HalfInterval<T>, cd: HalfInterval<T>) -> MaybeDisjoint<T>
+    pub fn half_by_half<T>(
+        ab: HalfInterval<T>,
+        cd: HalfInterval<T>,
+    ) -> Result<MaybeDisjoint<T>, Error>
     where
         T: Div<Output = T> + Element + Clone + Zero,
     {
@@ -281,23 +430,23 @@ mod impls {
             (ECat::Pos(nz), ECat::Pos(_)) | (ECat::Neg(nz), ECat::Neg(_)) => {
                 // CASE 0: [a>=0, b>+e] / [c>=0, d>+e] = {0, +inf}
                 // CASE 1: [a<-e, b<=0] / [c<-e, d<=0] = {0, +inf}
-                EI::left_bounded(div_inf_bound(nz)).into()
+                EI::try_left_bounded(div_inf_bound(nz)).map(MaybeDisjoint::from)
             }
             (ECat::Neg(nz), ECat::Pos(_)) | (ECat::Pos(nz), ECat::Neg(_)) => {
                 // CASE 0: [a<-e, b<=0] / [c>=0, d>+e] = {-inf, 0}
                 // CASE 1: [a>=0, b>+e] / [c<-e, d<=0] = {-inf, 0}
-                EI::right_bounded(div_inf_bound(nz)).into()
+                EI::try_right_bounded(div_inf_bound(nz)).map(MaybeDisjoint::from)
             }
             (ECat::NegPos, ECat::Pos(_)) => {
                 // CASE 0: [a<0, b>0] / [0<=c<+e, d=inf] = {-inf, +inf}
                 // CASE 1: [a<0, b=+inf] / [c>+e, d=inf] = {a/c, +inf},
                 // CASE 2: [a=-inf, b>0] / [c>+e, d=inf] = {-inf, b/c}
                 if cd_bound.value() == &T::zero() {
-                    EnumInterval::unbounded().into()
+                    Ok(EnumInterval::unbounded().into())
                 } else {
                     // numer != Closed(0) because NegPos; denom > +e checked above
-                    EnumInterval::half_bounded(ab_side, div_assume_nonzero(ab_bound, cd_bound))
-                        .into()
+                    EnumInterval::try_half_bounded(ab_side, div_assume_nonzero(ab_bound, cd_bound))
+                        .map(MaybeDisjoint::from)
                 }
             }
             (ECat::NegPos, ECat::Neg(_)) => {
@@ -305,14 +454,14 @@ mod impls {
                 // CASE 1: [a<0, b=+inf] / [c=-inf, d<-e] => {-inf, a/d}
                 // CASE 2: [a=-inf, b>0] / [c=-inf, d<-e] => {b/d, +inf}
                 if cd_bound.value() == &T::zero() {
-                    EnumInterval::unbounded().into()
+                    Ok(EnumInterval::unbounded().into())
                 } else {
                     // numer != Closed(0) because NegPos; denom < -e checked above
-                    EnumInterval::half_bounded(
+                    EnumInterval::try_half_bounded(
                         ab_side.flip(),
                         div_assume_nonzero(ab_bound, cd_bound),
                     )
-                    .into()
+                    .map(MaybeDisjoint::from)
                 }
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
@@ -326,11 +475,17 @@ mod impls {
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
-                    Left => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                    Left => (
+                        EI::try_right_bounded(non_zero)?,
+                        EI::try_left_bounded(zero)?,
+                    ),
                     // ab / [c=-inf, d>0] = {-inf, 0} U {a/d, +inf}
-                    Right => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                    Right => (
+                        EI::try_right_bounded(zero)?,
+                        EI::try_left_bounded(non_zero)?,
+                    ),
                 };
-                pair.into()
+                Ok(pair.into())
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] = {-inf, b/d} U {b/c, +inf}
@@ -343,21 +498,30 @@ mod impls {
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
-                    Left => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                    Left => (
+                        EI::try_right_bounded(zero)?,
+                        EI::try_left_bounded(non_zero)?,
+                    ),
                     // ab / [c=-inf, d>0] = {-inf, b/d} U {0, +inf}
-                    Right => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                    Right => (
+                        EI::try_right_bounded(non_zero)?,
+                        EI::try_left_bounded(zero)?,
+                    ),
                 };
 
-                pair.into()
+                Ok(pair.into())
             }
-            (_, ECat::NegPos) => EI::unbounded().into(),
+            (_, ECat::NegPos) => Ok(EI::unbounded().into()),
 
             // half intervals can not be empty or zero
             _ => unreachable!(),
         }
     }
 
-    pub fn finite_by_half<T>(ab: FiniteInterval<T>, cd: HalfInterval<T>) -> MaybeDisjoint<T>
+    pub fn finite_by_half<T>(
+        ab: FiniteInterval<T>,
+        cd: HalfInterval<T>,
+    ) -> Result<MaybeDisjoint<T>, Error>
     where
         T: Div<Output = T> + Element + Clone + Zero,
     {
@@ -365,7 +529,7 @@ mod impls {
         let cd_cat = cd.category();
 
         let Some((a, b)) = ab.into_raw() else {
-            return EnumInterval::empty().into();
+            return Ok(EnumInterval::empty().into());
         };
 
         let (cd_side, cd_bound) = cd.into_raw();
@@ -415,12 +579,18 @@ mod impls {
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
-                    Left => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                    Left => (
+                        EI::try_right_bounded(non_zero)?,
+                        EI::try_left_bounded(zero)?,
+                    ),
                     // ab / [c=-inf, d>0] = {-inf, 0} U {a/d, +inf}
-                    Right => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                    Right => (
+                        EI::try_right_bounded(zero)?,
+                        EI::try_left_bounded(non_zero)?,
+                    ),
                 };
 
-                pair.into()
+                Ok(pair.into())
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a<0, b<0] / [c<0, d>0] => (<-, b/d) U (b/c, ->)
@@ -434,19 +604,28 @@ mod impls {
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
-                    Left => (EI::right_bounded(zero), EI::left_bounded(non_zero)),
+                    Left => (
+                        EI::try_right_bounded(zero)?,
+                        EI::try_left_bounded(non_zero)?,
+                    ),
                     // ab / [c=-inf, d>0] = {-inf, b/d} U {0, +inf}
-                    Right => (EI::right_bounded(non_zero), EI::left_bounded(zero)),
+                    Right => (
+                        EI::try_right_bounded(non_zero)?,
+                        EI::try_left_bounded(zero)?,
+                    ),
                 };
 
-                pair.into()
+                Ok(pair.into())
             }
-            (_, ECat::NegPos) => EI::unbounded().into(),
+            (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             _ => unreachable!(),
         }
     }
 
-    pub fn half_by_finite<T>(ab: HalfInterval<T>, cd: FiniteInterval<T>) -> MaybeDisjoint<T>
+    pub fn half_by_finite<T>(
+        ab: HalfInterval<T>,
+        cd: FiniteInterval<T>,
+    ) -> Result<MaybeDisjoint<T>, Error>
     where
         T: Div<Output = T> + Element + Clone + Zero,
     {
@@ -455,70 +634,72 @@ mod impls {
 
         let (ab_side, ab_bound) = ab.into_raw();
         let Some((c, d)) = cd.into_raw() else {
-            return MaybeDisjoint::Consumed;
+            return Ok(MaybeDisjoint::Consumed);
         };
 
         match (ab_cat, cd_cat) {
-            (_, ECat::Zero) => any_by_zero(),
+            (_, ECat::Zero) => Ok(any_by_zero()),
             (ECat::Pos(nz), ECat::Pos(_)) => {
                 //[a>=0, b=inf] / [c>=0, +e<d<inf] => {a/d, inf}
                 let a = ab_bound;
                 // cd Pos(_) => d > +e
                 let min = div_assume_denom_nonzero(nz, a, d);
-                EI::left_bounded(min).into()
+                EI::try_left_bounded(min).map(MaybeDisjoint::from)
             }
             (ECat::Neg(nz), ECat::Neg(_)) => {
                 // [a=-inf, b<=0] / [-inf<c<-e, d<=0] => {b/c, inf}
                 let b = ab_bound;
                 // cd Neg(_) => c < -e
                 let min = div_assume_denom_nonzero(nz, b, c);
-                EI::left_bounded(min).into()
+                EI::try_left_bounded(min).map(MaybeDisjoint::from)
             }
             (ECat::Pos(nz), ECat::Neg(_)) => {
                 // [a>=0, b=inf] / [-inf<c<-e, d<=0] => {-inf, a/c}
                 let a = ab_bound;
                 // cd Neg(_) => c < -e
                 let max = div_assume_denom_nonzero(nz, a, c);
-                EI::right_bounded(max).into()
+                EI::try_right_bounded(max).map(MaybeDisjoint::from)
             }
             (ECat::Neg(nz), ECat::Pos(_)) => {
                 // [a=-inf, b<=0] / [c>=0, +e<d<+inf] = {-inf, b/d}
                 let b = ab_bound;
                 // cd Pos(_) => d > +e
                 let max = div_assume_denom_nonzero(nz, b, d);
-                EI::right_bounded(max).into()
+                EI::try_right_bounded(max).map(MaybeDisjoint::from)
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a>0, b=inf] / [c<0, d>0] => {-inf, a/c} U {a/d, +inf}
                 let a = ab_bound;
-                let neg = EI::right_bounded(div_assume_nonzero(a.clone(), c));
-                let pos = EI::left_bounded(div_assume_nonzero(a, d));
-                (neg, pos).into()
+                let neg = EI::try_right_bounded(div_assume_nonzero(a.clone(), c))?;
+                let pos = EI::try_left_bounded(div_assume_nonzero(a, d))?;
+                Ok((neg, pos).into())
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] => {-inf, b/d} U {b/c, +inf}
                 let b = ab_bound;
-                let neg = EI::right_bounded(div_assume_nonzero(b.clone(), d));
-                let pos = EI::right_bounded(div_assume_nonzero(b, c));
-                (neg, pos).into()
+                let neg = EI::try_right_bounded(div_assume_nonzero(b.clone(), d))?;
+                let pos = EI::try_right_bounded(div_assume_nonzero(b, c))?;
+                Ok((neg, pos).into())
             }
-            (_, ECat::NegPos) => EI::unbounded().into(),
+            (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             (ECat::NegPos, ECat::Pos(_)) => {
                 // CASE 1: [a<0, b=+inf] / [c>=0, d>e] = {a/c, +inf}
                 // CASE 2: [a=-inf, b>0] / [c>=0, d>e] = {-inf, b/c}
                 if c.value() == &T::zero() {
-                    EI::unbounded().into()
+                    Ok(EI::unbounded().into())
                 } else {
-                    EI::half_bounded(ab_side, div_assume_nonzero(ab_bound, c)).into()
+                    EI::try_half_bounded(ab_side, div_assume_nonzero(ab_bound, c))
+                        .map(MaybeDisjoint::from)
                 }
             }
             (ECat::NegPos, ECat::Neg(_)) => {
                 // CASE 1: [a<0, b=+inf] / [c<-e, d<=0] = {-inf, a/d}
                 // CASE 2: [a=-inf, b>0] / [c<-e, d<=0] = {b/d, +inf}
                 if d.value() == &T::zero() {
-                    EI::unbounded().into()
+                    Ok(EI::unbounded().into())
                 } else {
-                    EI::half_bounded(ab_side.flip(), div_assume_nonzero(ab_bound, d)).into()
+                    EI::try_half_bounded(ab_side.flip(), div_assume_nonzero(ab_bound, d))
+                        .map(MaybeDisjoint::from)
                 }
             }
             _ => unreachable!(),
@@ -548,16 +729,20 @@ mod impls {
     ///
     /// Violating these yields incorrect results but no undefined behavior.
     #[inline(always)]
-    fn div_same_sign_max<T>(min: FB<T>, numer: FB<T>, denom: FB<T>) -> MaybeDisjoint<T>
+    fn div_same_sign_max<T>(
+        min: FB<T>,
+        numer: FB<T>,
+        denom: FB<T>,
+    ) -> Result<MaybeDisjoint<T>, Error>
     where
         T: Div<Output = T> + Element + Zero,
     {
         if denom.value() == &T::zero() {
             // denom = (0 or +e) | (-e or 0)
-            EI::left_bounded(min).into()
+            EI::try_left_bounded(min).map(MaybeDisjoint::from)
         } else {
             let max = div_assume_nonzero(numer, denom);
-            EI::finite(min, max).into()
+            EI::try_finite(min, max).map(MaybeDisjoint::from)
         }
     }
 
@@ -572,16 +757,20 @@ mod impls {
     ///
     /// Violating these yields incorrect results but no undefined behavior.
     #[inline(always)]
-    fn div_opp_sign_min<T>(max: FB<T>, numer: FB<T>, denom: FB<T>) -> MaybeDisjoint<T>
+    fn div_opp_sign_min<T>(
+        max: FB<T>,
+        numer: FB<T>,
+        denom: FB<T>,
+    ) -> Result<MaybeDisjoint<T>, Error>
     where
         T: Div<Output = T> + Element + Zero,
     {
         if denom.value() == &T::zero() {
             // denom = (0 or +e) | (0 or -e)
-            EI::right_bounded(max).into()
+            EI::try_right_bounded(max).map(MaybeDisjoint::from)
         } else {
             let min = div_assume_nonzero(numer, denom);
-            EI::finite(min, max).into()
+            EI::try_finite(min, max).map(MaybeDisjoint::from)
         }
     }
 
@@ -615,18 +804,18 @@ mod impls {
         num_to_min: FB<T>,
         num_to_max: FB<T>,
         denom: FB<T>,
-    ) -> MaybeDisjoint<T>
+    ) -> Result<MaybeDisjoint<T>, Error>
     where
         T: Div<Output = T> + Element + Zero + Clone,
     {
         if denom.value() == &T::zero() {
-            EI::unbounded().into()
+            Ok(EI::unbounded().into())
         } else {
-            EI::finite(
+            EI::try_finite(
                 div_assume_nonzero(num_to_min, denom.clone()),
                 div_assume_nonzero(num_to_max, denom),
             )
-            .into()
+            .map(MaybeDisjoint::from)
         }
     }
 }

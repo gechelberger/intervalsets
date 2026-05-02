@@ -1,5 +1,7 @@
 use core::ops::Add;
 
+use super::TryAdd;
+use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
@@ -120,6 +122,122 @@ macro_rules! commutative_add_impl {
 commutative_add_impl!(FiniteInterval<T>, HalfInterval<T>);
 commutative_add_impl!(FiniteInterval<T>, EnumInterval<T>);
 commutative_add_impl!(HalfInterval<T>, EnumInterval<T>);
+
+impl<T> TryAdd for FiniteInterval<T>
+where
+    T: Add,
+    <T as Add>::Output: Element,
+{
+    type Output = FiniteInterval<<T as Add>::Output>;
+    type Error = Error;
+
+    #[inline]
+    fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let Some((lhs_min, lhs_max)) = self.into_raw() else {
+            return Ok(FiniteInterval::empty());
+        };
+
+        let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+            return Ok(FiniteInterval::empty());
+        };
+
+        FiniteInterval::try_new(lhs_min + rhs_min, lhs_max + rhs_max)
+    }
+}
+
+impl<T> TryAdd for HalfInterval<T>
+where
+    T: Add,
+    <T as Add>::Output: Element,
+{
+    type Output = EnumInterval<<T as Add>::Output>;
+    type Error = Error;
+
+    #[inline]
+    fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        let (l_side, l_bound) = self.into_raw();
+        let (r_side, r_bound) = rhs.into_raw();
+        if l_side == r_side {
+            EnumInterval::try_half_bounded(l_side, l_bound + r_bound)
+        } else {
+            Ok(EnumInterval::unbounded())
+        }
+    }
+}
+
+impl<T> TryAdd<FiniteInterval<T>> for HalfInterval<T>
+where
+    T: Add,
+    <T as Add>::Output: Element,
+{
+    type Output = EnumInterval<<T as Add>::Output>;
+    type Error = Error;
+
+    #[inline]
+    fn try_add(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
+        let Some((min, max)) = rhs.into_raw() else {
+            return Ok(EnumInterval::empty());
+        };
+
+        let offset = self.side().select(min, max);
+        let (side, bound) = self.into_raw();
+        EnumInterval::try_half_bounded(side, bound + offset)
+    }
+}
+
+macro_rules! dispatch_try_add_impl {
+    ($t_rhs:ty) => {
+        impl<T> TryAdd<$t_rhs> for EnumInterval<T>
+        where
+            T: Add,
+            <T as Add>::Output: Element,
+        {
+            type Output = EnumInterval<<T as Add>::Output>;
+            type Error = Error;
+
+            #[inline]
+            fn try_add(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
+                match self {
+                    Finite(inner) => inner.try_add(rhs).map(EnumInterval::from),
+                    Half(inner) => inner.try_add(rhs).map(EnumInterval::from),
+                    Unbounded => {
+                        if rhs.is_empty() {
+                            Ok(EnumInterval::empty())
+                        } else {
+                            Ok(Unbounded)
+                        }
+                    }
+                }
+            }
+        }
+    };
+}
+
+dispatch_try_add_impl!(FiniteInterval<T>);
+dispatch_try_add_impl!(HalfInterval<T>);
+dispatch_try_add_impl!(EnumInterval<T>);
+
+macro_rules! commutative_try_add_impl {
+    ($t_lhs:ty, $t_rhs:ty) => {
+        impl<T> TryAdd<$t_rhs> for $t_lhs
+        where
+            T: Add,
+            <T as Add>::Output: $crate::numeric::Element,
+        {
+            type Output = EnumInterval<<T as Add>::Output>;
+            type Error = Error;
+
+            #[inline]
+            fn try_add(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
+                rhs.try_add(self)
+            }
+        }
+    };
+}
+
+commutative_try_add_impl!(FiniteInterval<T>, HalfInterval<T>);
+commutative_try_add_impl!(FiniteInterval<T>, EnumInterval<T>);
+commutative_try_add_impl!(HalfInterval<T>, EnumInterval<T>);
 
 #[cfg(test)]
 mod tests {
