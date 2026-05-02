@@ -38,11 +38,7 @@ impl<T: Element> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
                 let rhs = FiniteBound::from(rhs);
                 Self::Finite(FiniteInterval::new_assume_valid(lhs, rhs))
             }
-            _ => {
-                return Err(Error::InvariantError(
-                    "EnumInterval::TryFrom<OrdBoundPair> did not match a valid bitpattern",
-                ))
-            }
+            _ => return Err(Error::InvalidBoundPair),
         };
 
         Ok(interval)

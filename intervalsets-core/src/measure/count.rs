@@ -156,9 +156,7 @@ where
         match self.view_raw() {
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
                 Some(count) => Ok(Measurement::Finite(count)),
-                None => Err(Error::InvariantError(
-                    "count overflows the Countable Output type",
-                )),
+                None => Err(Error::CountOverflow),
             },
             None => Ok(Measurement::Finite(Self::Output::zero())),
         }
