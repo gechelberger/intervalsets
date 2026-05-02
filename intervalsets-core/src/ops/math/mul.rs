@@ -230,7 +230,8 @@ pub mod impls {
                 FiniteInterval::new(min, max)
             }
             (ECat::NegPos, ECat::NegPos) => {
-                // NegPos category can not have an end bound of Closed(0)
+                // NegPos category can not have an end bound of Closed(0), so
+                // every product below avoids the Closed(0) precondition.
                 let c1_min = non_zero_mul_assume(amin.clone(), bmax.clone());
                 let c2_min = non_zero_mul_assume(amax.clone(), bmin.clone());
                 let c1_max = non_zero_mul_assume(amin, bmin);
@@ -266,6 +267,7 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
+                    // (a > 0 && b > 0) || (a < 0 && b < 0) -> neither is Closed(0)
                     let min = non_zero_mul_assume(abound, bbound);
                     EnumInterval::half_bounded(Left, min)
                 }
@@ -274,6 +276,7 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
+                    // (a > 0 && b < 0) || (a < 0 && b > 0) -> neither is Closed(0)
                     let max = non_zero_mul_assume(abound, bbound);
                     EnumInterval::half_bounded(Right, max)
                 }
@@ -304,6 +307,7 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
+                    // zeros handled above -> neither operand is Closed(0)
                     EnumInterval::half_bounded(Left, non_zero_mul_assume(fmin, hbound))
                 }
             }
@@ -311,6 +315,7 @@ pub mod impls {
                 // [a=0?, b>0] x [c<0, d>0]
                 // Case 1: [a=0?, b>0] x [c<0, d=+inf] => |ac<=0, ad>=0, bc<0, bd=+inf| => (bc, ->)
                 // Case 2: [a=0?, b>0] x [c=-inf, d>0] => |ac<=0, ad>=0, bc=-inf, bd>0| -> (<-, bd)
+                // b > 0 always produces an intermediate value
                 EnumInterval::half_bounded(side, non_zero_mul_assume(fmax, hbound))
             }
             (ECat::Pos(az), ECat::Neg(bz)) | (ECat::Neg(az), ECat::Pos(bz)) => {
@@ -319,6 +324,7 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
+                    // zeros handled above -> neither operand is Closed(0)
                     EnumInterval::half_bounded(Right, non_zero_mul_assume(fmax, hbound))
                 }
             }
@@ -326,6 +332,7 @@ pub mod impls {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
                 // Case 1: [a<0, b=0?] x [c<0, d=+inf] => |ac>0, ad=-inf, bc>=0, bd<=0| => (<-, ac>0)
                 // Case 2: [a<0, b=0?] x [c=-inf, d>0] => |ac=+inf, ad<0, bc>=0, bd<=0| => (ad<0, ->)
+                // a < 0 always produces an intermediate value
                 EnumInterval::half_bounded(side.flip(), non_zero_mul_assume(fmin, hbound))
             }
             (ECat::Neg(az), ECat::Neg(bz)) => {
@@ -333,6 +340,7 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
+                    // zeros handled above -> neither operand is Closed(0)
                     EnumInterval::half_bounded(Left, non_zero_mul_assume(fmax, hbound))
                 }
             }

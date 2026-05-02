@@ -126,10 +126,12 @@ impl<T: Element> ConvexHull<Self> for FiniteInterval<T> {
                 Some(pair) => pair,
             };
 
+            // input intervals satisfy invariants -> bounds are comparable
             left = FiniteBound::take_assume_min(Side::Left, left, c_left);
             right = FiniteBound::take_assume_max(Side::Right, right, c_right);
         }
 
+        // hull satisfies invariants (left <= right)
         Ok(Self::new_assume_valid(left, right))
     }
 }
@@ -155,10 +157,12 @@ impl<'a, T: Element + Clone> ConvexHull<&'a Self> for FiniteInterval<T> {
                 continue;
             };
 
+            // input intervals satisfy invariants -> bounds are comparable
             left = FiniteBound::assume_min(Left, left, c_left);
             right = FiniteBound::assume_max(Right, right, c_right);
         }
 
+        // hull satisfies invariants (left <= right)
         Ok(Self::new_assume_valid(left.clone(), right.clone()))
     }
 }

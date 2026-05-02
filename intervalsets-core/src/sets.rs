@@ -66,6 +66,7 @@ impl<T: Element> FiniteInterval<T> {
         let order = lhs.value().try_cmp(rhs.value())?;
 
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
+            // normalized & comparable & lhs <= rhs
             Ok(Self::new_assume_valid(lhs, rhs))
         } else {
             Ok(Self::empty())

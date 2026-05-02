@@ -68,10 +68,13 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
             };
 
             let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
+                // repacking
                 let lhs = Self::new_assume_valid(lhs_min, lhs_max);
                 return Some(lhs);
             };
 
+            // lhs and rhs satisfy invariants -> bounds are normalized, comparable,
+            // and min(left, right) <= max(left, right)
             let merged = FiniteInterval::new_assume_valid(
                 FiniteBound::take_assume_min(Side::Left, lhs_min, rhs_min),
                 FiniteBound::take_assume_max(Side::Right, lhs_max, rhs_max),
@@ -95,10 +98,13 @@ impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
             };
 
             let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
+                // just putting it back together
                 let lhs = FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone());
                 return Some(lhs);
             };
 
+            // lhs and rhs satisfy invariants -> bounds are normalized, comparable,
+            // and min(left, right) <= max(left, right)
             let merged = FiniteInterval::new_assume_valid(
                 FiniteBound::assume_min(Side::Left, lhs_min, rhs_min).clone(),
                 FiniteBound::assume_max(Side::Right, lhs_max, rhs_max).clone(),
@@ -169,6 +175,7 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
                 Some(self)
             } else {
                 let bound = self.side().select(rhs_min, rhs_max);
+                // bound is stolen from existing FiniteInterval -> already comparable
                 Some(HalfInterval::new_assume_valid(self.side(), bound))
             }
         } else {
@@ -193,6 +200,7 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
                 Some(self.clone())
             } else {
                 let bound = self.side().select(rhs_min, rhs_max).clone();
+                // bound is taken from existing FiniteInterval -> already comparable
                 Some(HalfInterval::new_assume_valid(self.side(), bound))
             }
         } else {

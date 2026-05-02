@@ -50,6 +50,7 @@ impl<T: Element> Intersection<Self> for FiniteInterval<T> {
             return Self::empty();
         };
 
+        // self and rhs already satisfy invariants -> bounds are normalized & comparable
         FiniteInterval::new_assume_normed(
             FiniteBound::take_assume_max(Left, lhs_min, rhs_min),
             FiniteBound::take_assume_min(Right, lhs_max, rhs_max),
@@ -70,6 +71,7 @@ impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
             return Self::Output::empty();
         };
 
+        // self and rhs already satisfy invariants -> bounds are normalized & comparable
         FiniteInterval::new_assume_normed(
             FiniteBound::assume_max(Left, lhs_min, rhs_min).clone(),
             FiniteBound::assume_min(Right, lhs_max, rhs_max).clone(),
@@ -92,9 +94,11 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
             .count();
 
         if n == 2 {
+            // both self bounds are inside rhs -> self is the intersection unchanged
             FiniteInterval::new_assume_valid(lhs_min, lhs_max)
         } else if n == 1 {
             let (rhs_side, rhs_bound) = rhs.into_raw();
+            // self and rhs already satisfy invariants
             match rhs_side {
                 Left => FiniteInterval::new_assume_normed(rhs_bound, lhs_max),
                 Right => FiniteInterval::new_assume_normed(lhs_min, rhs_bound),
@@ -120,8 +124,10 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
             .count();
 
         if n == 2 {
+            // both self bounds are inside rhs -> self is the intersection unchanged
             FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone())
         } else if n == 1 {
+            // self and rhs already satisfy invariants
             match rhs.side() {
                 Left => FiniteInterval::new_assume_normed(
                     rhs.finite_bound().clone(),
@@ -153,6 +159,7 @@ impl<T: Element> Intersection<Self> for HalfInterval<T> {
             let (lhs_side, lhs_bound) = self.into_raw();
             let (_, rhs_bound) = rhs.into_raw();
 
+            // self and rhs already satisfy invariants
             let finite = match lhs_side {
                 Side::Left => FiniteInterval::new_assume_normed(lhs_bound, rhs_bound),
                 Side::Right => FiniteInterval::new_assume_normed(rhs_bound, lhs_bound),
@@ -178,6 +185,7 @@ impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
             let lhs = self.finite_bound().clone();
             let rhs = rhs.finite_bound().clone();
 
+            // self and rhs already satisfy invariants
             let result = match self.side() {
                 Left => FiniteInterval::new_assume_normed(lhs, rhs),
                 Right => FiniteInterval::new_assume_normed(rhs, lhs),

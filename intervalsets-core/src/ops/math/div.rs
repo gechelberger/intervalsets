@@ -217,7 +217,9 @@ mod impls {
             (ECat::Zero, _) => zero_by_non_zero(),
             (ECat::Pos(lz), ECat::Pos(_)) => {
                 // [a>=0, +e<b<+inf] / [c>=0, +e<d<+inf] => {a/d, b/c}
+                // cd Pos(_) => d > +e (never 0 or epsilon)
                 let min = div_denom_assume(lz, a, d);
+                // ab Pos => b > +e (never Closed(0))
                 div_same_sign_max(min, b, c)
             }
             (ECat::NegPos, ECat::Pos(_)) => {
@@ -226,22 +228,28 @@ mod impls {
                 div_non_zero_bounds_by_bound(a, b, c)
             }
             (ECat::Neg(lz), ECat::Pos(_)) => {
+                // cd Pos(_) => d > +e
                 let max = div_denom_assume(lz, b, d);
+                // ab Neg => a < -e (never Closed(0))
                 div_opp_sign_min(max, a, c)
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
+                // c < -e && d > +e && a != Closed(0)
                 let left = EI::right_bounded(non_zero_div_assume(a.clone(), c));
                 let right = EI::left_bounded(non_zero_div_assume(a, d));
                 (left, right).into()
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
+                // c < -e && d > +e && b != Closed(0)
                 let left = EI::right_bounded(non_zero_div_assume(b.clone(), d));
                 let right = EI::left_bounded(non_zero_div_assume(b, c));
                 (left, right).into()
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
             (ECat::Pos(lz), ECat::Neg(_)) => {
+                // cd Neg(_) => c < -e
                 let max = div_denom_assume(lz, a, c);
+                // ab Pos(_) => b > +e (never Closed(0))
                 div_opp_sign_min(max, b, d)
             }
             (ECat::NegPos, ECat::Neg(_)) => {
@@ -250,7 +258,9 @@ mod impls {
                 div_non_zero_bounds_by_bound(b, a, d)
             }
             (ECat::Neg(lz), ECat::Neg(_)) => {
+                // cd Neg(_) => c < -e
                 let min = div_denom_assume(lz, b, c);
+                // ab Neg [a<0, b<=0] => a is never Closed(0)
                 div_same_sign_max(min, a, d)
             }
             _ => unreachable!(),
@@ -285,6 +295,7 @@ mod impls {
                 if cd_bound.value() == &T::zero() {
                     EnumInterval::unbounded().into()
                 } else {
+                    // numer != Closed(0) because NegPos; denom > +e checked above
                     EnumInterval::half_bounded(ab_side, non_zero_div_assume(ab_bound, cd_bound))
                         .into()
                 }
@@ -296,6 +307,7 @@ mod impls {
                 if cd_bound.value() == &T::zero() {
                     EnumInterval::unbounded().into()
                 } else {
+                    // numer != Closed(0) because NegPos; denom < -e checked above
                     EnumInterval::half_bounded(
                         ab_side.flip(),
                         non_zero_div_assume(ab_bound, cd_bound),
@@ -362,20 +374,24 @@ mod impls {
             (ECat::Zero, _) => zero_by_non_zero(),
             (ECat::Pos(nz), ECat::Pos(_)) => {
                 let min = div_inf_bound(nz);
+                // ab Pos => [a>=0, b>0] => b is not Closed(0)
                 div_same_sign_max(min, b, cd_bound)
             }
             (ECat::Neg(nz), ECat::Neg(_)) => {
                 let min = div_inf_bound(nz);
+                // ab Neg => [a<0, b<=0] => a is not Closed(0)
                 div_same_sign_max(min, a, cd_bound)
             }
             (ECat::Pos(nz), ECat::Neg(_)) => {
                 // [a>=0, b>0] / [c=-inf, d<=0] => {b/d, a/c} => {b/d, 0}
                 let max = div_inf_bound(nz);
+                // ab Pos => b is never Closed(0)
                 div_opp_sign_min(max, b, cd_bound)
             }
             (ECat::Neg(nz), ECat::Pos(_)) => {
                 // [a<0, b<=0] / [c>=0, d=+inf] => {a/c, b/d} => {a/c, 0}
                 let max = div_inf_bound(nz);
+                // ab Neg => a is never Closed(0)
                 div_opp_sign_min(max, a, cd_bound)
             }
             (ECat::NegPos, ECat::Pos(_)) => {
@@ -447,24 +463,28 @@ mod impls {
             (ECat::Pos(nz), ECat::Pos(_)) => {
                 //[a>=0, b=inf] / [c>=0, +e<d<inf] => {a/d, inf}
                 let a = ab_bound;
+                // cd Pos(_) => d > +e
                 let min = div_denom_assume(nz, a, d);
                 EI::left_bounded(min).into()
             }
             (ECat::Neg(nz), ECat::Neg(_)) => {
                 // [a=-inf, b<=0] / [-inf<c<-e, d<=0] => {b/c, inf}
                 let b = ab_bound;
+                // cd Neg(_) => c < -e
                 let min = div_denom_assume(nz, b, c);
                 EI::left_bounded(min).into()
             }
             (ECat::Pos(nz), ECat::Neg(_)) => {
                 // [a>=0, b=inf] / [-inf<c<-e, d<=0] => {-inf, a/c}
                 let a = ab_bound;
+                // cd Neg(_) => c < -e
                 let max = div_denom_assume(nz, a, c);
                 EI::right_bounded(max).into()
             }
             (ECat::Neg(nz), ECat::Pos(_)) => {
                 // [a=-inf, b<=0] / [c>=0, +e<d<+inf] = {-inf, b/d}
                 let b = ab_bound;
+                // cd Pos(_) => d > +e
                 let max = div_denom_assume(nz, b, d);
                 EI::right_bounded(max).into()
             }

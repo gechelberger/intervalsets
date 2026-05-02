@@ -23,6 +23,7 @@ impl<T: Element> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
     type Error = Error;
 
     fn try_from(value: OrdBoundPair<T>) -> Result<Self, Self::Error> {
+        // Interval invariants <=> OrdBoundPair invariants
         let interval = match value.into_raw() {
             (OrdBound::LeftUnbounded, OrdBound::LeftUnbounded) => Self::empty(),
             (OrdBound::LeftUnbounded, OrdBound::RightUnbounded) => Self::Unbounded,
