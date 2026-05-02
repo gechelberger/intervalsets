@@ -42,8 +42,9 @@ impl<T: Element> Complement for HalfInterval<T> {
     fn complement(self) -> Self::Output {
         let (side, bound) = self.into_raw();
         let side = side.flip();
-        // Safety: Assume bound satisfies invariants; manually re-normalize after flip;
-        unsafe { HalfInterval::new_assume_valid(side, bound.flip().normalized(side)).into() }
+        // bound came from a valid HalfInterval; renormalized after the flip
+        // so HalfInterval invariants still hold for the new side.
+        HalfInterval::new_assume_valid(side, bound.flip().normalized(side)).into()
     }
 }
 

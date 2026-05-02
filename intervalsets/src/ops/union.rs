@@ -58,18 +58,17 @@ mod icore {
                 };
 
                 let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-                    // SAFETY: putting it back together
-                    return IntervalSet::from(unsafe { Self::new_assume_valid(lhs_min, lhs_max) });
+                    // rhs was empty; reconstruct self from its raw parts.
+                    return IntervalSet::from(Self::new_assume_valid(lhs_min, lhs_max));
                 };
 
-                // SAFETY: if self and rhs satisfy invariants then new interval
-                // is normalized and min(left, right) <= max(left, right)
-                let merged = unsafe {
-                    FiniteInterval::new_assume_valid(
-                        FiniteBound::take_min_assume_valid(Side::Left, lhs_min, rhs_min),
-                        FiniteBound::take_max_assume_valid(Side::Right, lhs_max, rhs_max),
-                    )
-                };
+                // self and rhs are connected and inhabited; min/max of their
+                // bounds preserves left <= right and the normalized form,
+                // so FiniteInterval invariants hold.
+                let merged = FiniteInterval::new_assume_valid(
+                    FiniteBound::take_min_assume_valid(Side::Left, lhs_min, rhs_min),
+                    FiniteBound::take_max_assume_valid(Side::Right, lhs_max, rhs_max),
+                );
 
                 IntervalSet::from(merged)
             } else {
@@ -92,20 +91,18 @@ mod icore {
                 };
 
                 let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
-                    // SAFETY: just reconstructing a clone of self
-                    let lhs =
-                        unsafe { FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone()) };
+                    // rhs was empty; reconstruct a clone of self from its bounds.
+                    let lhs = FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone());
                     return IntervalSet::from(lhs);
                 };
 
-                // SAFETY: if self and rhs satisfy invariants then new interval
-                // is normalized and min(left, right) <= max(left, right)
-                let merged = unsafe {
-                    FiniteInterval::new_assume_valid(
-                        FiniteBound::min_assume_valid(Side::Left, lhs_min, rhs_min).clone(),
-                        FiniteBound::max_assume_valid(Side::Right, lhs_max, rhs_max).clone(),
-                    )
-                };
+                // self and rhs are connected and inhabited; min/max of their
+                // bounds preserves left <= right and the normalized form,
+                // so FiniteInterval invariants hold.
+                let merged = FiniteInterval::new_assume_valid(
+                    FiniteBound::min_assume_valid(Side::Left, lhs_min, rhs_min).clone(),
+                    FiniteBound::max_assume_valid(Side::Right, lhs_max, rhs_max).clone(),
+                );
 
                 IntervalSet::from(merged)
             } else {
@@ -174,8 +171,9 @@ mod icore {
                     IntervalSet::from(rhs)
                 } else {
                     let bound = rhs.side().select(lhs_min, lhs_max);
-                    // SAFETY: bound stolen from existing FiniteInterval
-                    let merged = unsafe { HalfInterval::new_assume_valid(rhs.side(), bound) };
+                    // bound came from a valid FiniteInterval, so HalfInterval
+                    // invariants hold for the new side.
+                    let merged = HalfInterval::new_assume_valid(rhs.side(), bound);
                     IntervalSet::from(merged)
                 }
             } else {
@@ -203,8 +201,9 @@ mod icore {
                     IntervalSet::from(rhs.clone())
                 } else {
                     let bound = rhs.side().select(lhs_min, lhs_max).clone();
-                    // SAFETY: bound stolen from existing FiniteInterval
-                    let merged = unsafe { HalfInterval::new_assume_valid(rhs.side(), bound) };
+                    // bound came from a valid FiniteInterval, so HalfInterval
+                    // invariants hold for the new side.
+                    let merged = HalfInterval::new_assume_valid(rhs.side(), bound);
                     IntervalSet::from(merged)
                 }
             } else {
