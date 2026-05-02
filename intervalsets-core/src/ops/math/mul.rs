@@ -518,6 +518,41 @@ mod tests {
         assert_eq!(b.try_mul(a).unwrap(), expected);
     }
 
+    /// Closed(0) interacting with Open bounds is the longstanding bug
+    /// fixed in the FiniteBound::Mul impl. Verify the fix holds at
+    /// every layer:
+    /// - direct FiniteBound::Mul (the path that was buggy)
+    /// - interval-level via the categorical analysis (which never
+    ///   passes Closed(0) to mul_assume_nonzero, so the bug couldn't
+    ///   reach this path even before the fix - but verify anyway).
+    #[test]
+    fn test_closed_zero_propagation() {
+        // direct FiniteBound: was Closed(0) * Open(5) -> Open(0) (wrong)
+        // now: Closed(0) * Open(5) -> Closed(0)
+        let cl_0: crate::bound::FiniteBound<i32> = crate::bound::FiniteBound::closed(0);
+        let op_5: crate::bound::FiniteBound<i32> = crate::bound::FiniteBound::open(5);
+        assert_eq!(cl_0 * op_5, crate::bound::FiniteBound::closed(0));
+
+        // interval-level: singleton {0} * any non-empty positive set = {0}
+        assert_eq!(
+            FiniteInterval::singleton(0)
+                .try_mul(FiniteInterval::open(0, 5))
+                .unwrap(),
+            FiniteInterval::singleton(0)
+        );
+
+        // interval-level: [0, 1] * (0.0, 5.0) for OrderedFloat -> [0.0, 5.0)
+        // closed lower bound at 0 is preserved (0 is reachable via x=0)
+        // open upper bound at 5 is preserved (5 is not reachable, since rhs upper is open)
+        use ordered_float::OrderedFloat as O;
+        assert_eq!(
+            FiniteInterval::closed(O(0.0_f64), O(1.0))
+                .try_mul(FiniteInterval::open(O(0.0_f64), O(5.0)))
+                .unwrap(),
+            FiniteInterval::closed_open(O(0.0), O(5.0))
+        );
+    }
+
     #[test]
     fn test_enum_x_finite() {
         assert_eq!(
