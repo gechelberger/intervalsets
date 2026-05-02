@@ -243,13 +243,13 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn assume_min_max(
+    pub fn min_max_assume_valid(
         side: Side,
         mut a: FiniteBound<T>,
         mut b: FiniteBound<T>,
     ) -> (FiniteBound<T>, FiniteBound<T>) {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.assume_contains_bound(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
             if side == Side::Right {
                 core::mem::swap(&mut a, &mut b);
             }
@@ -265,13 +265,13 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn take_assume_min(
+    pub fn take_min_assume_valid(
         side: Side,
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.assume_contains_bound(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
             side.select(a, b)
         } else {
             side.select(b, a)
@@ -297,13 +297,13 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn take_assume_max(
+    pub fn take_max_assume_valid(
         side: Side,
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.assume_contains_bound(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
             side.select(b, a)
         } else {
             side.select(a, b)
@@ -329,13 +329,13 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn assume_min<'a>(
+    pub fn min_assume_valid<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> &'a FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.assume_contains_bound(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
             side.select(a, b)
         } else {
             side.select(b, a)
@@ -361,13 +361,13 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn assume_max<'a>(
+    pub fn max_assume_valid<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> &'a FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.assume_contains_bound(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
             side.select(b, a)
         } else {
             side.select(a, b)
@@ -395,7 +395,7 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// `self` and `value` must be comparable. Violating this yields
     /// incorrect results but no undefined behavior.
-    pub fn assume_contains(&self, side: Side, value: &T) -> bool {
+    pub fn contains_assume_valid(&self, side: Side, value: &T) -> bool {
         debug_assert!(self.value().partial_cmp(value).is_some());
         match side {
             Side::Left => match self.0 {
@@ -424,7 +424,7 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn assume_contains_bound(
+    pub fn contains_bound_assume_valid(
         &self,
         side: Side,
         test: ord::FiniteOrdBound<&T>,
@@ -769,7 +769,7 @@ mod test {
     #[test]
     fn test_bound_min_max() {
         assert_eq!(
-            FiniteBound::assume_min(
+            FiniteBound::min_assume_valid(
                 Side::Left,
                 &FiniteBound::closed(0),
                 &FiniteBound::closed(10)
@@ -778,7 +778,7 @@ mod test {
         );
 
         assert_eq!(
-            FiniteBound::assume_min(
+            FiniteBound::min_assume_valid(
                 Side::Left,
                 &FiniteBound::closed(0),
                 &FiniteBound::open(0)
@@ -787,7 +787,7 @@ mod test {
         );
 
         assert_eq!(
-            FiniteBound::assume_max(
+            FiniteBound::max_assume_valid(
                 Side::Left,
                 &FiniteBound::closed(0),
                 &FiniteBound::closed(10)
@@ -796,7 +796,7 @@ mod test {
         );
 
         assert_eq!(
-            FiniteBound::assume_max(
+            FiniteBound::max_assume_valid(
                 Side::Left,
                 &FiniteBound::closed(0),
                 &FiniteBound::open(0)
@@ -805,7 +805,7 @@ mod test {
         );
 
         assert_eq!(
-            FiniteBound::assume_min(
+            FiniteBound::min_assume_valid(
                 Side::Right,
                 &FiniteBound::closed(0),
                 &FiniteBound::closed(10)
@@ -814,7 +814,7 @@ mod test {
         );
 
         assert_eq!(
-            FiniteBound::assume_min(
+            FiniteBound::min_assume_valid(
                 Side::Right,
                 &FiniteBound::closed(0),
                 &FiniteBound::open(0)
@@ -823,7 +823,7 @@ mod test {
         );
 
         assert_eq!(
-            FiniteBound::assume_max(
+            FiniteBound::max_assume_valid(
                 Side::Right,
                 &FiniteBound::closed(0),
                 &FiniteBound::closed(10)
@@ -832,7 +832,7 @@ mod test {
         );
 
         assert_eq!(
-            FiniteBound::assume_max(
+            FiniteBound::max_assume_valid(
                 Side::Right,
                 &FiniteBound::closed(0),
                 &FiniteBound::open(0)
@@ -899,13 +899,13 @@ mod test {
         let a = FiniteBound::closed(0.0);
         let b = FiniteBound::open(0.0);
 
-        assert_eq!(FiniteBound::assume_min_max(Side::Left, a, b), (a, b));
+        assert_eq!(FiniteBound::min_max_assume_valid(Side::Left, a, b), (a, b));
 
-        assert_eq!(FiniteBound::assume_min_max(Side::Left, b, a), (a, b));
+        assert_eq!(FiniteBound::min_max_assume_valid(Side::Left, b, a), (a, b));
 
-        assert_eq!(FiniteBound::assume_min_max(Side::Right, a, b), (b, a));
+        assert_eq!(FiniteBound::min_max_assume_valid(Side::Right, a, b), (b, a));
 
-        assert_eq!(FiniteBound::assume_min_max(Side::Right, b, a), (b, a))
+        assert_eq!(FiniteBound::min_max_assume_valid(Side::Right, b, a), (b, a))
     }
 
     /*

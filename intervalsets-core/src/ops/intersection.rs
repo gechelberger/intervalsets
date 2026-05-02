@@ -52,8 +52,8 @@ impl<T: Element> Intersection<Self> for FiniteInterval<T> {
 
         // self and rhs already satisfy invariants -> bounds are normalized & comparable
         FiniteInterval::new_assume_normed(
-            FiniteBound::take_assume_max(Left, lhs_min, rhs_min),
-            FiniteBound::take_assume_min(Right, lhs_max, rhs_max),
+            FiniteBound::take_max_assume_valid(Left, lhs_min, rhs_min),
+            FiniteBound::take_min_assume_valid(Right, lhs_max, rhs_max),
         )
     }
 }
@@ -73,8 +73,8 @@ impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
 
         // self and rhs already satisfy invariants -> bounds are normalized & comparable
         FiniteInterval::new_assume_normed(
-            FiniteBound::assume_max(Left, lhs_min, rhs_min).clone(),
-            FiniteBound::assume_min(Right, lhs_max, rhs_max).clone(),
+            FiniteBound::max_assume_valid(Left, lhs_min, rhs_min).clone(),
+            FiniteBound::min_assume_valid(Right, lhs_max, rhs_max).clone(),
         )
     }
 }

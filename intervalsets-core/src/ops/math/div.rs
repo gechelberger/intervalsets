@@ -160,7 +160,7 @@ mod impls {
     ///
     /// Violating these yields incorrect results but no undefined behavior.
     #[inline(always)]
-    fn non_zero_div_assume<T>(numer: FB<T>, denom: FB<T>) -> FB<T>
+    fn div_assume_nonzero<T>(numer: FB<T>, denom: FB<T>) -> FB<T>
     where
         T: Div<Output = T>,
     {
@@ -218,7 +218,7 @@ mod impls {
             (ECat::Pos(lz), ECat::Pos(_)) => {
                 // [a>=0, +e<b<+inf] / [c>=0, +e<d<+inf] => {a/d, b/c}
                 // cd Pos(_) => d > +e (never 0 or epsilon)
-                let min = div_denom_assume(lz, a, d);
+                let min = div_assume_denom_nonzero(lz, a, d);
                 // ab Pos => b > +e (never Closed(0))
                 div_same_sign_max(min, b, c)
             }
@@ -229,26 +229,26 @@ mod impls {
             }
             (ECat::Neg(lz), ECat::Pos(_)) => {
                 // cd Pos(_) => d > +e
-                let max = div_denom_assume(lz, b, d);
+                let max = div_assume_denom_nonzero(lz, b, d);
                 // ab Neg => a < -e (never Closed(0))
                 div_opp_sign_min(max, a, c)
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // c < -e && d > +e && a != Closed(0)
-                let left = EI::right_bounded(non_zero_div_assume(a.clone(), c));
-                let right = EI::left_bounded(non_zero_div_assume(a, d));
+                let left = EI::right_bounded(div_assume_nonzero(a.clone(), c));
+                let right = EI::left_bounded(div_assume_nonzero(a, d));
                 (left, right).into()
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // c < -e && d > +e && b != Closed(0)
-                let left = EI::right_bounded(non_zero_div_assume(b.clone(), d));
-                let right = EI::left_bounded(non_zero_div_assume(b, c));
+                let left = EI::right_bounded(div_assume_nonzero(b.clone(), d));
+                let right = EI::left_bounded(div_assume_nonzero(b, c));
                 (left, right).into()
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
             (ECat::Pos(lz), ECat::Neg(_)) => {
                 // cd Neg(_) => c < -e
-                let max = div_denom_assume(lz, a, c);
+                let max = div_assume_denom_nonzero(lz, a, c);
                 // ab Pos(_) => b > +e (never Closed(0))
                 div_opp_sign_min(max, b, d)
             }
@@ -259,7 +259,7 @@ mod impls {
             }
             (ECat::Neg(lz), ECat::Neg(_)) => {
                 // cd Neg(_) => c < -e
-                let min = div_denom_assume(lz, b, c);
+                let min = div_assume_denom_nonzero(lz, b, c);
                 // ab Neg [a<0, b<=0] => a is never Closed(0)
                 div_same_sign_max(min, a, d)
             }
@@ -296,7 +296,7 @@ mod impls {
                     EnumInterval::unbounded().into()
                 } else {
                     // numer != Closed(0) because NegPos; denom > +e checked above
-                    EnumInterval::half_bounded(ab_side, non_zero_div_assume(ab_bound, cd_bound))
+                    EnumInterval::half_bounded(ab_side, div_assume_nonzero(ab_bound, cd_bound))
                         .into()
                 }
             }
@@ -310,7 +310,7 @@ mod impls {
                     // numer != Closed(0) because NegPos; denom < -e checked above
                     EnumInterval::half_bounded(
                         ab_side.flip(),
-                        non_zero_div_assume(ab_bound, cd_bound),
+                        div_assume_nonzero(ab_bound, cd_bound),
                     )
                     .into()
                 }
@@ -322,7 +322,7 @@ mod impls {
                 }
 
                 let zero = FB::open(T::zero());
-                let non_zero = non_zero_div_assume(ab_bound, cd_bound);
+                let non_zero = div_assume_nonzero(ab_bound, cd_bound);
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
@@ -339,7 +339,7 @@ mod impls {
                 }
 
                 let zero = FB::open(T::zero());
-                let non_zero = non_zero_div_assume(ab_bound, cd_bound);
+                let non_zero = div_assume_nonzero(ab_bound, cd_bound);
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
@@ -411,7 +411,7 @@ mod impls {
                 }
 
                 let zero = FB::open(T::zero());
-                let non_zero = non_zero_div_assume(a, cd_bound);
+                let non_zero = div_assume_nonzero(a, cd_bound);
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
@@ -430,7 +430,7 @@ mod impls {
                 }
 
                 let zero = FB::open(T::zero());
-                let non_zero = non_zero_div_assume(b, cd_bound);
+                let non_zero = div_assume_nonzero(b, cd_bound);
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
@@ -464,42 +464,42 @@ mod impls {
                 //[a>=0, b=inf] / [c>=0, +e<d<inf] => {a/d, inf}
                 let a = ab_bound;
                 // cd Pos(_) => d > +e
-                let min = div_denom_assume(nz, a, d);
+                let min = div_assume_denom_nonzero(nz, a, d);
                 EI::left_bounded(min).into()
             }
             (ECat::Neg(nz), ECat::Neg(_)) => {
                 // [a=-inf, b<=0] / [-inf<c<-e, d<=0] => {b/c, inf}
                 let b = ab_bound;
                 // cd Neg(_) => c < -e
-                let min = div_denom_assume(nz, b, c);
+                let min = div_assume_denom_nonzero(nz, b, c);
                 EI::left_bounded(min).into()
             }
             (ECat::Pos(nz), ECat::Neg(_)) => {
                 // [a>=0, b=inf] / [-inf<c<-e, d<=0] => {-inf, a/c}
                 let a = ab_bound;
                 // cd Neg(_) => c < -e
-                let max = div_denom_assume(nz, a, c);
+                let max = div_assume_denom_nonzero(nz, a, c);
                 EI::right_bounded(max).into()
             }
             (ECat::Neg(nz), ECat::Pos(_)) => {
                 // [a=-inf, b<=0] / [c>=0, +e<d<+inf] = {-inf, b/d}
                 let b = ab_bound;
                 // cd Pos(_) => d > +e
-                let max = div_denom_assume(nz, b, d);
+                let max = div_assume_denom_nonzero(nz, b, d);
                 EI::right_bounded(max).into()
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a>0, b=inf] / [c<0, d>0] => {-inf, a/c} U {a/d, +inf}
                 let a = ab_bound;
-                let neg = EI::right_bounded(non_zero_div_assume(a.clone(), c));
-                let pos = EI::left_bounded(non_zero_div_assume(a, d));
+                let neg = EI::right_bounded(div_assume_nonzero(a.clone(), c));
+                let pos = EI::left_bounded(div_assume_nonzero(a, d));
                 (neg, pos).into()
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] => {-inf, b/d} U {b/c, +inf}
                 let b = ab_bound;
-                let neg = EI::right_bounded(non_zero_div_assume(b.clone(), d));
-                let pos = EI::right_bounded(non_zero_div_assume(b, c));
+                let neg = EI::right_bounded(div_assume_nonzero(b.clone(), d));
+                let pos = EI::right_bounded(div_assume_nonzero(b, c));
                 (neg, pos).into()
             }
             (_, ECat::NegPos) => EI::unbounded().into(),
@@ -509,7 +509,7 @@ mod impls {
                 if c.value() == &T::zero() {
                     EI::unbounded().into()
                 } else {
-                    EI::half_bounded(ab_side, non_zero_div_assume(ab_bound, c)).into()
+                    EI::half_bounded(ab_side, div_assume_nonzero(ab_bound, c)).into()
                 }
             }
             (ECat::NegPos, ECat::Neg(_)) => {
@@ -518,7 +518,7 @@ mod impls {
                 if d.value() == &T::zero() {
                     EI::unbounded().into()
                 } else {
-                    EI::half_bounded(ab_side.flip(), non_zero_div_assume(ab_bound, d)).into()
+                    EI::half_bounded(ab_side.flip(), div_assume_nonzero(ab_bound, d)).into()
                 }
             }
             _ => unreachable!(),
@@ -556,7 +556,7 @@ mod impls {
             // denom = (0 or +e) | (-e or 0)
             EI::left_bounded(min).into()
         } else {
-            let max = non_zero_div_assume(numer, denom);
+            let max = div_assume_nonzero(numer, denom);
             EI::finite(min, max).into()
         }
     }
@@ -580,7 +580,7 @@ mod impls {
             // denom = (0 or +e) | (0 or -e)
             EI::right_bounded(max).into()
         } else {
-            let min = non_zero_div_assume(numer, denom);
+            let min = div_assume_nonzero(numer, denom);
             EI::finite(min, max).into()
         }
     }
@@ -593,13 +593,13 @@ mod impls {
     ///
     /// Violating these yields incorrect results but no undefined behavior.
     #[inline(always)]
-    fn div_denom_assume<T>(nz: MaybeZero, numer: FB<T>, denom: FB<T>) -> FB<T>
+    fn div_assume_denom_nonzero<T>(nz: MaybeZero, numer: FB<T>, denom: FB<T>) -> FB<T>
     where
         T: Div<Output = T> + Element + Zero,
     {
         match nz {
             MaybeZero::Zero => FB::closed(T::zero()),
-            MaybeZero::NonZero => non_zero_div_assume(numer, denom),
+            MaybeZero::NonZero => div_assume_nonzero(numer, denom),
         }
     }
 
@@ -623,8 +623,8 @@ mod impls {
             EI::unbounded().into()
         } else {
             EI::finite(
-                non_zero_div_assume(num_to_min, denom.clone()),
-                non_zero_div_assume(num_to_max, denom),
+                div_assume_nonzero(num_to_min, denom.clone()),
+                div_assume_nonzero(num_to_max, denom),
             )
             .into()
         }

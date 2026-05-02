@@ -76,8 +76,8 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
             // lhs and rhs satisfy invariants -> bounds are normalized, comparable,
             // and min(left, right) <= max(left, right)
             let merged = FiniteInterval::new_assume_valid(
-                FiniteBound::take_assume_min(Side::Left, lhs_min, rhs_min),
-                FiniteBound::take_assume_max(Side::Right, lhs_max, rhs_max),
+                FiniteBound::take_min_assume_valid(Side::Left, lhs_min, rhs_min),
+                FiniteBound::take_max_assume_valid(Side::Right, lhs_max, rhs_max),
             );
 
             Some(merged)
@@ -106,8 +106,8 @@ impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
             // lhs and rhs satisfy invariants -> bounds are normalized, comparable,
             // and min(left, right) <= max(left, right)
             let merged = FiniteInterval::new_assume_valid(
-                FiniteBound::assume_min(Side::Left, lhs_min, rhs_min).clone(),
-                FiniteBound::assume_max(Side::Right, lhs_max, rhs_max).clone(),
+                FiniteBound::min_assume_valid(Side::Left, lhs_min, rhs_min).clone(),
+                FiniteBound::max_assume_valid(Side::Right, lhs_max, rhs_max).clone(),
             );
 
             Some(merged)

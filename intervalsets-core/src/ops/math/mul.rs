@@ -139,7 +139,7 @@ pub mod impls {
     /// returns Open(5) which is wrong. Violating this yields incorrect
     /// results but no undefined behavior.
     #[inline(always)]
-    fn non_zero_mul_assume<T: Mul>(a: FB<T>, b: FB<T>) -> FB<<T as Mul>::Output> {
+    fn mul_assume_nonzero<T: Mul>(a: FB<T>, b: FB<T>) -> FB<<T as Mul>::Output> {
         let (akind, aval) = a.into_raw();
         let (bkind, bval) = b.into_raw();
         FiniteBound::new(akind.combine(bkind), aval * bval)
@@ -167,77 +167,77 @@ pub mod impls {
         match (acat, bcat) {
             (ECat::Pos(az), ECat::Pos(bz)) => {
                 // [a=0?, b>0] x [c=0?, d>0]
-                let max = non_zero_mul_assume(amax, bmax);
+                let max = mul_assume_nonzero(amax, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(FiniteBound::zero(), max)
                 } else {
-                    let min = non_zero_mul_assume(amin, bmin);
+                    let min = mul_assume_nonzero(amin, bmin);
                     FiniteInterval::new(min, max)
                 }
             }
             (ECat::Pos(_), ECat::NegPos) => {
                 // [a=0?, b>0] x [c<0, d>0] => a produces intermediate values
-                let min = non_zero_mul_assume(amax.clone(), bmin);
-                let max = non_zero_mul_assume(amax, bmax);
+                let min = mul_assume_nonzero(amax.clone(), bmin);
+                let max = mul_assume_nonzero(amax, bmax);
                 FiniteInterval::new(min, max)
             }
             (ECat::Pos(az), ECat::Neg(bz)) => {
                 // [a=0?, b>0] x [c<0, d=0?]
-                let min = non_zero_mul_assume(amax, bmin);
+                let min = mul_assume_nonzero(amax, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(min, FiniteBound::zero())
                 } else {
-                    let max = non_zero_mul_assume(amin, bmax);
+                    let max = mul_assume_nonzero(amin, bmax);
                     FiniteInterval::new(min, max)
                 }
             }
             (ECat::Neg(az), ECat::Pos(bz)) => {
                 // [a<0, b=0?] x [c=0?, d>0]
-                let min = non_zero_mul_assume(amin, bmax);
+                let min = mul_assume_nonzero(amin, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(min, FiniteBound::zero())
                 } else {
-                    let max = non_zero_mul_assume(amax, bmin);
+                    let max = mul_assume_nonzero(amax, bmin);
                     FiniteInterval::new(min, max)
                 }
             }
             (ECat::Neg(_), ECat::NegPos) => {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
-                let min = non_zero_mul_assume(amin.clone(), bmax);
-                let max = non_zero_mul_assume(amin, bmin);
+                let min = mul_assume_nonzero(amin.clone(), bmax);
+                let max = mul_assume_nonzero(amin, bmin);
                 FiniteInterval::new(min, max)
             }
             (ECat::Neg(az), ECat::Neg(bz)) => {
                 // [a<0, b=0?] x [c<0, d=0?]
-                let max = non_zero_mul_assume(amin, bmin);
+                let max = mul_assume_nonzero(amin, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(FiniteBound::zero(), max)
                 } else {
-                    let min = non_zero_mul_assume(amax, bmax);
+                    let min = mul_assume_nonzero(amax, bmax);
                     FiniteInterval::new(min, max)
                 }
             }
             (ECat::NegPos, ECat::Pos(_)) => {
                 // [a<0, b>0] x [c=0?, d>0] => c produces intermediate values
-                let min = non_zero_mul_assume(amin, bmax.clone());
-                let max = non_zero_mul_assume(amax, bmax);
+                let min = mul_assume_nonzero(amin, bmax.clone());
+                let max = mul_assume_nonzero(amax, bmax);
                 FiniteInterval::new(min, max)
             }
             (ECat::NegPos, ECat::Neg(_)) => {
                 // [a<0, b>0] x [c<0, d=0?] => d produces intermediate values
-                let min = non_zero_mul_assume(amax, bmin.clone());
-                let max = non_zero_mul_assume(amin, bmin);
+                let min = mul_assume_nonzero(amax, bmin.clone());
+                let max = mul_assume_nonzero(amin, bmin);
                 FiniteInterval::new(min, max)
             }
             (ECat::NegPos, ECat::NegPos) => {
                 // NegPos category can not have an end bound of Closed(0), so
                 // every product below avoids the Closed(0) precondition.
-                let c1_min = non_zero_mul_assume(amin.clone(), bmax.clone());
-                let c2_min = non_zero_mul_assume(amax.clone(), bmin.clone());
-                let c1_max = non_zero_mul_assume(amin, bmin);
-                let c2_max = non_zero_mul_assume(amax, bmax);
-                let min = FiniteBound::take_assume_min(Left, c1_min, c2_min);
-                let max = FiniteBound::take_assume_max(Right, c1_max, c2_max);
+                let c1_min = mul_assume_nonzero(amin.clone(), bmax.clone());
+                let c2_min = mul_assume_nonzero(amax.clone(), bmin.clone());
+                let c1_max = mul_assume_nonzero(amin, bmin);
+                let c2_max = mul_assume_nonzero(amax, bmax);
+                let min = FiniteBound::take_min_assume_valid(Left, c1_min, c2_min);
+                let max = FiniteBound::take_max_assume_valid(Right, c1_max, c2_max);
                 FiniteInterval::new(min, max)
             }
             (ECat::Zero, _) | (_, ECat::Zero) => {
@@ -268,7 +268,7 @@ pub mod impls {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
                     // (a > 0 && b > 0) || (a < 0 && b < 0) -> neither is Closed(0)
-                    let min = non_zero_mul_assume(abound, bbound);
+                    let min = mul_assume_nonzero(abound, bbound);
                     EnumInterval::half_bounded(Left, min)
                 }
             }
@@ -277,7 +277,7 @@ pub mod impls {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
                     // (a > 0 && b < 0) || (a < 0 && b > 0) -> neither is Closed(0)
-                    let max = non_zero_mul_assume(abound, bbound);
+                    let max = mul_assume_nonzero(abound, bbound);
                     EnumInterval::half_bounded(Right, max)
                 }
             }
@@ -308,7 +308,7 @@ pub mod impls {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
                     // zeros handled above -> neither operand is Closed(0)
-                    EnumInterval::half_bounded(Left, non_zero_mul_assume(fmin, hbound))
+                    EnumInterval::half_bounded(Left, mul_assume_nonzero(fmin, hbound))
                 }
             }
             (ECat::Pos(_), ECat::NegPos) => {
@@ -316,7 +316,7 @@ pub mod impls {
                 // Case 1: [a=0?, b>0] x [c<0, d=+inf] => |ac<=0, ad>=0, bc<0, bd=+inf| => (bc, ->)
                 // Case 2: [a=0?, b>0] x [c=-inf, d>0] => |ac<=0, ad>=0, bc=-inf, bd>0| -> (<-, bd)
                 // b > 0 always produces an intermediate value
-                EnumInterval::half_bounded(side, non_zero_mul_assume(fmax, hbound))
+                EnumInterval::half_bounded(side, mul_assume_nonzero(fmax, hbound))
             }
             (ECat::Pos(az), ECat::Neg(bz)) | (ECat::Neg(az), ECat::Pos(bz)) => {
                 // Case 1: [a=0?, b>0] x [c=-inf, d=0?]
@@ -325,7 +325,7 @@ pub mod impls {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
                     // zeros handled above -> neither operand is Closed(0)
-                    EnumInterval::half_bounded(Right, non_zero_mul_assume(fmax, hbound))
+                    EnumInterval::half_bounded(Right, mul_assume_nonzero(fmax, hbound))
                 }
             }
             (ECat::Neg(_), ECat::NegPos) => {
@@ -333,7 +333,7 @@ pub mod impls {
                 // Case 1: [a<0, b=0?] x [c<0, d=+inf] => |ac>0, ad=-inf, bc>=0, bd<=0| => (<-, ac>0)
                 // Case 2: [a<0, b=0?] x [c=-inf, d>0] => |ac=+inf, ad<0, bc>=0, bd<=0| => (ad<0, ->)
                 // a < 0 always produces an intermediate value
-                EnumInterval::half_bounded(side.flip(), non_zero_mul_assume(fmin, hbound))
+                EnumInterval::half_bounded(side.flip(), mul_assume_nonzero(fmin, hbound))
             }
             (ECat::Neg(az), ECat::Neg(bz)) => {
                 // [a<0, b<=0?] x [c=-inf, d<=0?] => |ac=+inf, ad>=0, bc>=0, bd>=0
@@ -341,7 +341,7 @@ pub mod impls {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
                     // zeros handled above -> neither operand is Closed(0)
-                    EnumInterval::half_bounded(Left, non_zero_mul_assume(fmax, hbound))
+                    EnumInterval::half_bounded(Left, mul_assume_nonzero(fmax, hbound))
                 }
             }
             (ECat::NegPos, _) => EnumInterval::unbounded(),
