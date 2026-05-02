@@ -279,4 +279,40 @@ mod tests {
         assert_eq!(u + x, x);
         assert_eq!(x + u, x);
     }
+
+    /// Verify that OrderedFloat<f64> satisfies the infix Add operator
+    /// bounds. Confirms wrapping floats with OrderedFloat restores
+    /// access to the infix arithmetic operators.
+    #[cfg(feature = "ordered-float")]
+    #[test]
+    fn test_ord_float_add() {
+        use ordered_float::OrderedFloat as O;
+
+        // finite + finite
+        let x = EnumInterval::closed(O(100.0), O(200.0));
+        let y = EnumInterval::closed(O(100.0), O(200.0));
+        assert_eq!(x + y, EnumInterval::closed(O(200.0), O(400.0)));
+
+        let y = EnumInterval::open(O(100.0), O(200.0));
+        assert_eq!(x + y, EnumInterval::open(O(200.0), O(400.0)));
+
+        // half + finite
+        let h = EnumInterval::closed_unbound(O(100.0));
+        let f = EnumInterval::closed(O(100.0), O(200.0));
+        assert_eq!(h + f, EnumInterval::closed_unbound(O(200.0)));
+        assert_eq!(f + h, EnumInterval::closed_unbound(O(200.0)));
+
+        // half + half: same side = half-bounded, opposite = unbounded
+        let a = EnumInterval::closed_unbound(O(-10.0));
+        let b = EnumInterval::closed_unbound(O(10.0));
+        assert_eq!(a + b, EnumInterval::closed_unbound(O(0.0)));
+
+        let c = EnumInterval::unbound_closed(O(10.0));
+        assert_eq!(a + c, EnumInterval::unbounded());
+
+        // empty propagation
+        let e = EnumInterval::empty();
+        assert_eq!(x + e, e);
+        assert_eq!(e + x, e);
+    }
 }

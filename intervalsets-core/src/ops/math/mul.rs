@@ -620,4 +620,36 @@ mod tests {
             EnumInterval::open(25.0, 100.0)
         );
     }
+
+    /// Verify that OrderedFloat<f64> satisfies the infix Mul operator
+    /// bounds: Mul + Element + Ord + Zero + Clone (and Output: same).
+    /// This confirms the user-facing claim that wrapping floats with
+    /// OrderedFloat restores access to the infix arithmetic operators.
+    #[cfg(feature = "ordered-float")]
+    #[test]
+    fn test_ord_float_mul() {
+        use ordered_float::OrderedFloat as O;
+
+        // strict-positive bounds
+        let x = FiniteInterval::closed(O(0.0), O(10.0));
+        assert_eq!(x * x, FiniteInterval::closed(O(0.0), O(100.0)));
+
+        let y = FiniteInterval::closed(O(5.0), O(10.0));
+        assert_eq!(y * y, FiniteInterval::closed(O(25.0), O(100.0)));
+
+        // negative × negative
+        let z = FiniteInterval::closed(O(-10.0), O(-5.0));
+        assert_eq!(y * z, FiniteInterval::closed(O(-100.0), O(-25.0)));
+        assert_eq!(z * z, FiniteInterval::closed(O(25.0), O(100.0)));
+
+        // open zero-crossing
+        let a = FiniteInterval::open(O(-10.0), O(0.0));
+        let b = FiniteInterval::open(O(0.0), O(10.0));
+        assert_eq!(a * b, FiniteInterval::open(O(-100.0), O(0.0)));
+
+        // half × half
+        let h = HalfInterval::closed_unbound(O(-1.0));
+        let u: EnumInterval<O<f64>> = EnumInterval::unbounded();
+        assert_eq!(h * h, u);
+    }
 }

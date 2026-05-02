@@ -895,4 +895,33 @@ mod tests {
 
         assert_eq!(d(uc(-10.0), uc(-10.0)), ou(0.0).into());
     }
+
+    /// Verify that OrderedFloat<f64> satisfies the infix Div operator
+    /// bounds: Div<Output = T> + Element + Ord + Zero + Clone. Confirms
+    /// the user-facing claim that wrapping floats with OrderedFloat
+    /// restores access to the infix arithmetic operators.
+    #[cfg(feature = "ordered-float")]
+    #[test]
+    fn test_ord_float_div() {
+        use ordered_float::OrderedFloat as O;
+
+        let fc = |a, b| FiniteInterval::closed(O(a), O(b));
+        let fo = |a, b| FiniteInterval::open(O(a), O(b));
+        let cu = |a| EnumInterval::closed_unbound(O(a));
+        let uc = |a| EnumInterval::unbound_closed(O(a));
+
+        // strict pos / strict pos
+        assert_eq!(fc(10.0, 100.0) / fc(1.0, 2.0), fc(5.0, 100.0).into());
+        assert_eq!(fo(10.0, 100.0) / fo(1.0, 2.0), fo(5.0, 100.0).into());
+
+        // closed-zero pos numer, closed-zero pos denom -> [0, +inf)
+        assert_eq!(fc(0.0, 10.0) / fc(0.0, 5.0), cu(0.0).into());
+
+        // mixed-sign denominator -> disjoint result
+        assert_eq!(fc(2.0, 5.0) / fc(-1.0, 1.0), (uc(-2.0), cu(2.0)).into());
+
+        // half / half
+        let cu_pos = EnumInterval::closed_unbound(O(10.0));
+        assert_eq!(cu_pos / cu_pos, EnumInterval::open_unbound(O(0.0)).into());
+    }
 }

@@ -325,4 +325,39 @@ mod tests {
         assert_eq!(x - u, x);
         assert_eq!(u - x, x);
     }
+
+    /// Verify that OrderedFloat<f64> satisfies the infix Sub operator
+    /// bounds. Confirms wrapping floats with OrderedFloat restores
+    /// access to the infix arithmetic operators.
+    #[cfg(feature = "ordered-float")]
+    #[test]
+    fn test_ord_float_sub() {
+        use ordered_float::OrderedFloat as O;
+
+        // finite - finite
+        let x = EnumInterval::closed(O(100.0), O(200.0));
+        let y = EnumInterval::closed(O(100.0), O(200.0));
+        assert_eq!(x - y, EnumInterval::closed(O(-100.0), O(100.0)));
+
+        let y = EnumInterval::open_closed(O(100.0), O(200.0));
+        assert_eq!(x - y, EnumInterval::closed_open(O(-100.0), O(100.0)));
+
+        // half - half: same side = unbounded, opposite = half-bounded
+        let cu = EnumInterval::closed_unbound(O(100.0));
+        assert_eq!(cu - cu, EnumInterval::unbounded());
+
+        let uo = EnumInterval::unbound_open(O(100.0));
+        assert_eq!(cu - uo, EnumInterval::open_unbound(O(0.0)));
+
+        // finite - half (and reverse)
+        let x = EnumInterval::closed(O(0.0), O(10.0));
+        let y = EnumInterval::closed_unbound(O(7.0));
+        assert_eq!(x - y, EnumInterval::unbound_closed(O(3.0)));
+        assert_eq!(y - x, EnumInterval::closed_unbound(O(-3.0)));
+
+        // empty propagation
+        let e = EnumInterval::empty();
+        assert_eq!(x - e, e);
+        assert_eq!(e - x, e);
+    }
 }
