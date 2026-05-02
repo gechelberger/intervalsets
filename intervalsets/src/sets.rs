@@ -375,6 +375,10 @@ impl<T> MaybeEmpty for IntervalSet<T> {
     }
 }
 
+// The Ord bound on T is transitive only: num_traits::Zero / One require
+// Self: Add<Self> / Mul<Self> as super-traits, and our infix Add / Mul
+// require T: Ord. The bodies themselves never inspect ordering -- T: Ord
+// is a tax for num_traits interop, not a semantic requirement of zero / one.
 impl<T: Element + Ord + Clone + Zero> Zero for Interval<T> {
     #[inline]
     fn zero() -> Self {
