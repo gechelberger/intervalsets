@@ -10,135 +10,115 @@ use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
+// The infix Div operators below all require T: Ord. For Ord types,
+// partial_cmp on bounds is total, so try_div is provably infallible
+// and the .unwrap() can never panic. Float users without an Ord
+// wrapper (e.g. OrderedFloat) must use TryDiv::try_div directly.
+
 impl<T> Div for FiniteInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: Self) -> Self::Output {
-        impls::finite_by_finite(self, rhs).unwrap()
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div for HalfInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: Self) -> Self::Output {
-        impls::half_by_half(self, rhs).unwrap()
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div<HalfInterval<T>> for FiniteInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: HalfInterval<T>) -> Self::Output {
-        impls::finite_by_half(self, rhs).unwrap()
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div<FiniteInterval<T>> for HalfInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
-        impls::half_by_finite(self, rhs).unwrap()
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div<FiniteInterval<T>> for EnumInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: FiniteInterval<T>) -> Self::Output {
-        match self {
-            Self::Finite(lhs) => lhs / rhs,
-            Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => impls::unbounded_by_cat(rhs.category()).unwrap(),
-        }
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div<HalfInterval<T>> for EnumInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: HalfInterval<T>) -> Self::Output {
-        match self {
-            Self::Finite(lhs) => lhs / rhs,
-            Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => Self::Unbounded.into(),
-        }
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div<EnumInterval<T>> for EnumInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: EnumInterval<T>) -> Self::Output {
-        match self {
-            Self::Finite(lhs) => lhs / rhs,
-            Self::Half(lhs) => lhs / rhs,
-            Self::Unbounded => impls::unbounded_by_cat(rhs.category()).unwrap(),
-        }
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div<EnumInterval<T>> for FiniteInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     #[inline(always)]
     fn div(self, rhs: EnumInterval<T>) -> Self::Output {
-        match rhs {
-            EnumInterval::Finite(rhs) => self / rhs,
-            EnumInterval::Half(rhs) => self / rhs,
-            EnumInterval::Unbounded => match self.category() {
-                ECat::Empty => EnumInterval::empty(),
-                ECat::Zero => EnumInterval::singleton(T::zero()),
-                _ => EnumInterval::Unbounded,
-            }
-            .into(),
-        }
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> Div<EnumInterval<T>> for HalfInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Div<Output = T> + Element + Ord + Zero + Clone,
 {
     type Output = MaybeDisjoint<T>;
 
     fn div(self, rhs: EnumInterval<T>) -> Self::Output {
-        match rhs {
-            EnumInterval::Finite(rhs) => self / rhs,
-            EnumInterval::Half(rhs) => self / rhs,
-            EnumInterval::Unbounded => EnumInterval::Unbounded.into(),
-        }
+        self.try_div(rhs).unwrap()
     }
 }
 
@@ -825,6 +805,16 @@ mod tests {
     use super::*;
     use crate::factory::traits::*;
 
+    // f64 is not Ord, so the infix `/` operator is not available on
+    // float intervals. Tests use try_div(rhs).unwrap() to exercise
+    // the same arithmetic semantics through the panic-free entry point.
+    fn d<L, R>(lhs: L, rhs: R) -> MaybeDisjoint<f64>
+    where
+        L: TryDiv<R, Output = MaybeDisjoint<f64>, Error = Error>,
+    {
+        lhs.try_div(rhs).unwrap()
+    }
+
     #[test]
     fn test_finite_by_finite_non_neg() {
         let fc = FiniteInterval::closed;
@@ -838,26 +828,26 @@ mod tests {
         let euo = EnumInterval::unbound_open;
 
         // open/closed non-zero, strict pos / strict pos
-        assert_eq!(fc(10.0, 100.0) / fc(1.0, 2.0), fc(5.0, 100.0).into());
-        assert_eq!(fo(10.0, 100.0) / fc(1.0, 2.0), fo(5.0, 100.0).into());
-        assert_eq!(fc(10.0, 100.0) / fo(1.0, 2.0), fo(5.0, 100.0).into());
-        assert_eq!(fo(10.0, 100.0) / fo(1.0, 2.0), fo(5.0, 100.0).into());
+        assert_eq!(d(fc(10.0, 100.0), fc(1.0, 2.0)), fc(5.0, 100.0).into());
+        assert_eq!(d(fo(10.0, 100.0), fc(1.0, 2.0)), fo(5.0, 100.0).into());
+        assert_eq!(d(fc(10.0, 100.0), fo(1.0, 2.0)), fo(5.0, 100.0).into());
+        assert_eq!(d(fo(10.0, 100.0), fo(1.0, 2.0)), fo(5.0, 100.0).into());
 
         // closed/open pos numer, strict-pos denom
-        assert_eq!(fc(0.0, 10.0) / fc(1.0, 5.0), fc(0.0, 10.0).into());
-        assert_eq!(fo(0.0, 10.0) / fc(1.0, 5.0), fo(0.0, 10.0).into());
+        assert_eq!(d(fc(0.0, 10.0), fc(1.0, 5.0)), fc(0.0, 10.0).into());
+        assert_eq!(d(fo(0.0, 10.0), fc(1.0, 5.0)), fo(0.0, 10.0).into());
 
-        assert_eq!(fc(0.0, 10.0) / fo(1.0, 5.0), fco(0.0, 10.0).into());
-        assert_eq!(fo(0.0, 10.0) / fo(1.0, 5.0), fo(0.0, 10.0).into());
+        assert_eq!(d(fc(0.0, 10.0), fo(1.0, 5.0)), fco(0.0, 10.0).into());
+        assert_eq!(d(fo(0.0, 10.0), fo(1.0, 5.0)), fo(0.0, 10.0).into());
 
         // strict pos numer, zero pos denom
-        assert_eq!(fc(0.5, 10.0) / fc(0.0, 2.0), ecu(0.5 / 2.0).into());
+        assert_eq!(d(fc(0.5, 10.0), fc(0.0, 2.0)), ecu(0.5 / 2.0).into());
 
         // closed-zero pos numer, closed-zero pos denom
-        assert_eq!(fc(0.0, 10.0) / fc(0.0, 5.0), ecu(0.0).into());
+        assert_eq!(d(fc(0.0, 10.0), fc(0.0, 5.0)), ecu(0.0).into());
 
         // (+e, 1.0) / [-1.0, 1.0] => (<-, 0.0) U (0.0, ->)
-        assert_eq!(fo(0.0, 1.0) / fc(-1.0, 1.0), (euo(0.0), eou(0.0)).into());
+        assert_eq!(d(fo(0.0, 1.0), fc(-1.0, 1.0)), (euo(0.0), eou(0.0)).into());
     }
 
     #[test]
@@ -866,25 +856,25 @@ mod tests {
         let uc = EnumInterval::unbound_closed;
         let cu = EnumInterval::closed_unbound;
 
-        assert_eq!(fc(-50.0, 5.0) / fc(10.0, 20.0), fc(-5.0, 0.5).into());
+        assert_eq!(d(fc(-50.0, 5.0), fc(10.0, 20.0)), fc(-5.0, 0.5).into());
         assert_eq!(
-            fc(-10.0, -5.0) / fc(-20.0, -15.0),
+            d(fc(-10.0, -5.0), fc(-20.0, -15.0)),
             fc(0.25, 2.0 / 3.0).into()
         );
 
-        assert_eq!(fc(-10.0, -5.0) / fc(2.0, 3.0), fc(-5.0, -5.0 / 3.0).into());
-        assert_eq!(fc(5.0, 10.0) / fc(-3.0, -2.0), fc(-5.0, -5.0 / 3.0).into());
+        assert_eq!(d(fc(-10.0, -5.0), fc(2.0, 3.0)), fc(-5.0, -5.0 / 3.0).into());
+        assert_eq!(d(fc(5.0, 10.0), fc(-3.0, -2.0)), fc(-5.0, -5.0 / 3.0).into());
 
-        assert_eq!(fc(-10.0, 0.0) / fc(1.0, 2.0), fc(-10.0, 0.0).into());
-        assert_eq!(fc(-10.0, 0.0) / fc(0.0, 2.0), uc(0.0).into());
-        assert_eq!(fc(5.0, 10.0) / fc(0.0, 2.0), cu(2.5).into());
-        assert_eq!(fc(0.0, 10.0) / fc(0.0, 2.0), cu(0.0).into());
+        assert_eq!(d(fc(-10.0, 0.0), fc(1.0, 2.0)), fc(-10.0, 0.0).into());
+        assert_eq!(d(fc(-10.0, 0.0), fc(0.0, 2.0)), uc(0.0).into());
+        assert_eq!(d(fc(5.0, 10.0), fc(0.0, 2.0)), cu(2.5).into());
+        assert_eq!(d(fc(0.0, 10.0), fc(0.0, 2.0)), cu(0.0).into());
 
         assert_eq!(
-            fc(0.0, 5.0) / fc(-1.0, 1.0),
+            d(fc(0.0, 5.0), fc(-1.0, 1.0)),
             EnumInterval::unbounded().into()
         );
-        assert_eq!(fc(2.0, 5.0) / fc(-1.0, 1.0), (uc(-2.0), cu(2.0)).into());
+        assert_eq!(d(fc(2.0, 5.0), fc(-1.0, 1.0)), (uc(-2.0), cu(2.0)).into());
     }
 
     #[test]
@@ -895,14 +885,14 @@ mod tests {
         //let uo = EnumInterval::unbound_open;
         //let u = EnumInterval::unbounded();
 
-        assert_eq!(cu(10.0) / cu(10.0), ou(0.0).into());
-        assert_eq!(cu(0.0) / cu(10.0), cu(0.0).into());
-        assert_eq!(cu(-10.0) / cu(10.0), cu(-1.0).into());
-        assert_eq!(cu(-100.0) / cu(10.0), cu(-10.0).into());
+        assert_eq!(d(cu(10.0), cu(10.0)), ou(0.0).into());
+        assert_eq!(d(cu(0.0), cu(10.0)), cu(0.0).into());
+        assert_eq!(d(cu(-10.0), cu(10.0)), cu(-1.0).into());
+        assert_eq!(d(cu(-100.0), cu(10.0)), cu(-10.0).into());
 
-        assert_eq!(uc(0.0) / cu(10.0), uc(0.0).into());
-        assert_eq!(cu(0.0) / uc(-10.0), uc(0.0).into());
+        assert_eq!(d(uc(0.0), cu(10.0)), uc(0.0).into());
+        assert_eq!(d(cu(0.0), uc(-10.0)), uc(0.0).into());
 
-        assert_eq!(uc(-10.0) / uc(-10.0), ou(0.0).into());
+        assert_eq!(d(uc(-10.0), uc(-10.0)), ou(0.0).into());
     }
 }

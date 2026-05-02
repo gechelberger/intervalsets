@@ -343,7 +343,11 @@ impl<T> SetBounds<T> for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Zero> Zero for FiniteInterval<T> {
+// num_traits::Zero requires Self: Add<Self, Output = Self>; the infix
+// Add impls on FiniteInterval/EnumInterval require T: Ord. Likewise One
+// requires Self: Mul<Self, Output = Self>, so T must satisfy the Mul
+// bounds too (Ord + Clone + Zero).
+impl<T: Element + Ord + Zero> Zero for FiniteInterval<T> {
     fn zero() -> Self {
         Self::closed(T::zero(), T::zero())
     }
@@ -354,7 +358,7 @@ impl<T: Element + Zero> Zero for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Zero> Zero for EnumInterval<T> {
+impl<T: Element + Ord + Zero> Zero for EnumInterval<T> {
     fn zero() -> Self {
         Self::from(FiniteInterval::<T>::zero())
     }
@@ -367,13 +371,13 @@ impl<T: Element + Zero> Zero for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for FiniteInterval<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for FiniteInterval<T> {
     fn one() -> Self {
         FiniteInterval::closed(T::one(), T::one())
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for EnumInterval<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for EnumInterval<T> {
     fn one() -> Self {
         EnumInterval::from(FiniteInterval::one())
     }

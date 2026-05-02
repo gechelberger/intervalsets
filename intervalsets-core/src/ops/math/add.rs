@@ -7,65 +7,48 @@ use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
+// The infix Add operators below all require T: Ord (and the arithmetic
+// output type to also be Ord). For Ord types, partial_cmp on bounds is
+// total, so try_add is provably infallible and the .unwrap() can never
+// panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
+// use TryAdd::try_add directly.
+
 impl<T> Add for FiniteInterval<T>
 where
-    T: Add,
-    <T as Add>::Output: Element,
+    T: Add + Ord,
+    <T as Add>::Output: Element + Ord,
 {
     type Output = FiniteInterval<<T as Add>::Output>;
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        let Some((lhs_min, lhs_max)) = self.into_raw() else {
-            return FiniteInterval::empty();
-        };
-
-        let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-            return FiniteInterval::empty();
-        };
-
-        let min = lhs_min + rhs_min;
-        let max = lhs_max + rhs_max;
-
-        FiniteInterval::new(min, max)
+        self.try_add(rhs).unwrap()
     }
 }
 
 impl<T> Add for HalfInterval<T>
 where
-    T: Add,
-    <T as Add>::Output: Element,
+    T: Add + Ord,
+    <T as Add>::Output: Element + Ord,
 {
     type Output = EnumInterval<<T as Add>::Output>;
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        let (l_side, l_bound) = self.into_raw();
-        let (r_side, r_bound) = rhs.into_raw();
-        if l_side == r_side {
-            EnumInterval::half_bounded(l_side, l_bound + r_bound)
-        } else {
-            EnumInterval::unbounded()
-        }
+        self.try_add(rhs).unwrap()
     }
 }
 
 impl<T> Add<FiniteInterval<T>> for HalfInterval<T>
 where
-    T: Add,
-    <T as Add>::Output: Element,
+    T: Add + Ord,
+    <T as Add>::Output: Element + Ord,
 {
     type Output = EnumInterval<<T as Add>::Output>;
 
     #[inline]
     fn add(self, rhs: FiniteInterval<T>) -> Self::Output {
-        let Some((min, max)) = rhs.into_raw() else {
-            return EnumInterval::empty();
-        };
-
-        let offset = self.side().select(min, max);
-        let (side, bound) = self.into_raw();
-        EnumInterval::half_bounded(side, bound + offset)
+        self.try_add(rhs).unwrap()
     }
 }
 
@@ -73,28 +56,16 @@ macro_rules! dispatch_add_impl {
     ($t_rhs:ty) => {
         impl<T> Add<$t_rhs> for EnumInterval<T>
         where
-            T: Add,
-            <T as Add>::Output: Element,
+            T: Add + Ord,
+            <T as Add>::Output: Element + Ord,
         {
             type Output = EnumInterval<<T as Add>::Output>;
 
             #[inline]
             fn add(self, rhs: $t_rhs) -> Self::Output {
-                match self {
-                    Finite(inner) => (inner + rhs).into(),
-                    Half(inner) => (inner + rhs).into(),
-                    Unbounded => {
-                        if rhs.is_empty() {
-                            EnumInterval::empty()
-                        } else {
-                            Unbounded
-                        }
-                    }
-                }
+                self.try_add(rhs).unwrap()
             }
         }
-
-        // by ref?
     };
 }
 
@@ -106,14 +77,14 @@ macro_rules! commutative_add_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
         impl<T> Add<$t_rhs> for $t_lhs
         where
-            T: Add,
-            <T as Add>::Output: $crate::numeric::Element,
+            T: Add + Ord,
+            <T as Add>::Output: Element + Ord,
         {
             type Output = EnumInterval<<T as Add>::Output>;
 
             #[inline]
             fn add(self, rhs: $t_rhs) -> Self::Output {
-                rhs + self
+                self.try_add(rhs).unwrap()
             }
         }
     };
@@ -245,16 +216,16 @@ mod tests {
 
     #[test]
     fn test_finite_add() {
-        let x = EnumInterval::closed(100.0, 200.0);
-        let y = EnumInterval::closed(100.0, 200.0);
+        let x = EnumInterval::closed(100, 200);
+        let y = EnumInterval::closed(100, 200);
 
-        assert_eq!(x + y, EnumInterval::closed(200.0, 400.0));
+        assert_eq!(x + y, EnumInterval::closed(200, 400));
 
-        let y = EnumInterval::open(100.0, 200.0);
-        assert_eq!(x + y, EnumInterval::open(200.0, 400.0));
+        let y = EnumInterval::open(100, 200);
+        assert_eq!(x + y, EnumInterval::open(200, 400));
 
-        let y = EnumInterval::open_closed(100.0, 200.0);
-        assert_eq!(x + y, EnumInterval::open_closed(200.0, 400.0));
+        let y = EnumInterval::open_closed(100, 200);
+        assert_eq!(x + y, EnumInterval::open_closed(200, 400));
 
         let e = EnumInterval::empty();
         assert_eq!(x + e, e);
@@ -263,15 +234,15 @@ mod tests {
 
     #[test]
     fn test_half_finite_add() {
-        let x = EnumInterval::closed_unbound(100.0);
-        let y = EnumInterval::closed(100.0, 200.0);
-        let expected = EnumInterval::closed_unbound(200.0);
+        let x = EnumInterval::closed_unbound(100);
+        let y = EnumInterval::closed(100, 200);
+        let expected = EnumInterval::closed_unbound(200);
         assert_eq!(x + y, expected);
         assert_eq!(y + x, expected);
 
-        let x = EnumInterval::unbound_closed(100.0);
-        let y = EnumInterval::closed(100.0, 200.0);
-        let expected = EnumInterval::unbound_closed(300.0);
+        let x = EnumInterval::unbound_closed(100);
+        let y = EnumInterval::closed(100, 200);
+        let expected = EnumInterval::unbound_closed(300);
         assert_eq!(x + y, expected);
         assert_eq!(y + x, expected);
 
@@ -282,25 +253,25 @@ mod tests {
 
     #[test]
     fn test_half_bounded_add() {
-        let a = EnumInterval::closed_unbound(-10.0);
-        let b = EnumInterval::closed_unbound(10.0);
-        let expected = EnumInterval::closed_unbound(0.0);
+        let a = EnumInterval::closed_unbound(-10);
+        let b = EnumInterval::closed_unbound(10);
+        let expected = EnumInterval::closed_unbound(0);
         assert_eq!(a + b, expected);
 
-        let c = EnumInterval::unbound_closed(10.0);
+        let c = EnumInterval::unbound_closed(10);
         assert_eq!(a + c, EnumInterval::unbounded());
     }
 
     #[test]
     fn test_unbounded_add() {
-        let u = EnumInterval::unbounded();
+        let u = EnumInterval::<i32>::unbounded();
         assert_eq!(u + u, u);
 
-        let x = EnumInterval::closed(100.0, 200.0);
+        let x = EnumInterval::closed(100, 200);
         assert_eq!(x + u, u);
         assert_eq!(u + x, u);
 
-        let x = EnumInterval::closed_unbound(100.0);
+        let x = EnumInterval::closed_unbound(100);
         assert_eq!(x + u, u);
         assert_eq!(u + x, u);
 

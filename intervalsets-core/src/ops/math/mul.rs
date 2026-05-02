@@ -8,120 +8,118 @@ use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
+// The infix Mul operators below all require T: Ord (and the arithmetic
+// output type to also be Ord). For Ord types, partial_cmp on bounds is
+// total, so try_mul is provably infallible and the .unwrap() can never
+// panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
+// use TryMul::try_mul directly.
+
 impl<T> Mul for FiniteInterval<T>
 where
-    T: Mul + Clone + PartialOrd + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Clone + Zero,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = FiniteInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        impls::finite_x_finite_by_cat(self, rhs).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul for HalfInterval<T>
 where
-    T: Mul + Element + Zero + Clone,
-    <T as Mul>::Output: Element + Zero,
+    T: Mul + Element + Ord + Zero + Clone,
+    <T as Mul>::Output: Element + Ord + Zero,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: Self) -> Self::Output {
-        impls::half_x_half_by_cat(self, rhs).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul<HalfInterval<T>> for FiniteInterval<T>
 where
-    T: Mul + PartialOrd + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Zero,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     #[inline]
     fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
-        impls::finite_x_half(self, rhs).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul<FiniteInterval<T>> for HalfInterval<T>
 where
-    T: Mul + PartialOrd + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Zero,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
-        impls::finite_x_half(rhs, self).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul<FiniteInterval<T>> for EnumInterval<T>
 where
-    T: Mul + PartialOrd + Zero + Clone,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Zero + Clone,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
-        impls::enum_x_finite(self, rhs).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul<HalfInterval<T>> for EnumInterval<T>
 where
-    T: Mul + Element + Zero + Clone,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Zero + Clone,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
-        impls::enum_x_half(self, rhs).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul<EnumInterval<T>> for EnumInterval<T>
 where
-    T: Mul + Element + Zero + Clone,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Zero + Clone,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
-        match self {
-            Self::Finite(lhs) => lhs * rhs,
-            Self::Half(lhs) => lhs * rhs,
-            Self::Unbounded => match rhs {
-                Self::Finite(rhs) => self * rhs,
-                Self::Half(rhs) => self * rhs,
-                Self::Unbounded => EnumInterval::Unbounded,
-            },
-        }
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul<EnumInterval<T>> for FiniteInterval<T>
 where
-    T: Mul + PartialOrd + Zero + Clone,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Zero + Clone,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
-        impls::enum_x_finite(rhs, self).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> Mul<EnumInterval<T>> for HalfInterval<T>
 where
-    T: Mul + Element + Zero + Clone,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Zero + Clone,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
-        impls::enum_x_half(rhs, self).unwrap()
+        self.try_mul(rhs).unwrap()
     }
 }
 
@@ -518,97 +516,107 @@ pub mod impls {
 mod tests {
     use super::*;
 
+    // float tests use try_mul since f32/f64 are not Ord. The infix `*`
+    // path is exercised by the test_enum_x_enum_ord case below.
+
     #[test]
     fn test_finite_x_finite() {
         let x = FiniteInterval::closed(0.0, 10.0);
-        assert_eq!(x * x, FiniteInterval::closed(0.0, 100.0));
+        assert_eq!(x.try_mul(x).unwrap(), FiniteInterval::closed(0.0, 100.0));
 
         let x = FiniteInterval::closed(5.0, 10.0);
-        assert_eq!(x * x, FiniteInterval::closed(25.0, 100.0));
+        assert_eq!(x.try_mul(x).unwrap(), FiniteInterval::closed(25.0, 100.0));
 
         let y = FiniteInterval::closed(-10.0, -5.0);
-        assert_eq!(x * y, FiniteInterval::closed(-100.0, -25.0));
-        assert_eq!(y * y, FiniteInterval::closed(25.0, 100.0));
+        assert_eq!(x.try_mul(y).unwrap(), FiniteInterval::closed(-100.0, -25.0));
+        assert_eq!(y.try_mul(y).unwrap(), FiniteInterval::closed(25.0, 100.0));
 
         let a = FiniteInterval::open(-10.0, 0.0);
         let b = FiniteInterval::open(0.0, 10.0);
-        assert_eq!(a * b, FiniteInterval::open(-100.0, 0.0));
+        assert_eq!(a.try_mul(b).unwrap(), FiniteInterval::open(-100.0, 0.0));
 
         let a = FiniteInterval::closed(-10.0, 10.0);
-        assert_eq!(a * a, FiniteInterval::closed(-100.0, 100.0));
+        assert_eq!(a.try_mul(a).unwrap(), FiniteInterval::closed(-100.0, 100.0));
     }
 
     #[test]
     fn test_half_x_half() {
-        let u = EnumInterval::unbounded();
+        let u: EnumInterval<f64> = EnumInterval::unbounded();
 
         let x = HalfInterval::closed_unbound(-1.0);
-        assert_eq!(x * x, u);
+        assert_eq!(x.try_mul(x).unwrap(), u);
 
         let x = HalfInterval::unbound_closed(1.0);
-        assert_eq!(x * x, u);
+        assert_eq!(x.try_mul(x).unwrap(), u);
 
         let xno = HalfInterval::unbound_open(-10.0);
         let xpo = HalfInterval::open_unbound(10.0);
         let expected = EnumInterval::open_unbound(100.0);
-        assert_eq!(xno * xno, expected);
-        assert_eq!(xpo * xpo, expected);
+        assert_eq!(xno.try_mul(xno).unwrap(), expected);
+        assert_eq!(xpo.try_mul(xpo).unwrap(), expected);
 
         let xnc = HalfInterval::unbound_closed(0.0);
         let xpc = HalfInterval::closed_unbound(0.0);
-        assert_eq!(xnc * xnc, xpc.into());
-        assert_eq!(xpc * xpc, xpc.into());
-        assert_eq!(xnc * xpc, xnc.into());
-        assert_eq!(xpc * xnc, xnc.into());
+        assert_eq!(xnc.try_mul(xnc).unwrap(), xpc.into());
+        assert_eq!(xpc.try_mul(xpc).unwrap(), xpc.into());
+        assert_eq!(xnc.try_mul(xpc).unwrap(), xnc.into());
+        assert_eq!(xpc.try_mul(xnc).unwrap(), xnc.into());
 
-        assert_eq!(xno * xnc, xpc.into());
-        assert_eq!(xnc * xno, xpc.into());
-        assert_eq!(xpo * xpc, xpc.into());
-        assert_eq!(xpc * xpo, xpc.into());
+        assert_eq!(xno.try_mul(xnc).unwrap(), xpc.into());
+        assert_eq!(xnc.try_mul(xno).unwrap(), xpc.into());
+        assert_eq!(xpo.try_mul(xpc).unwrap(), xpc.into());
+        assert_eq!(xpc.try_mul(xpo).unwrap(), xpc.into());
 
-        assert_eq!(xpc * xno, xnc.into());
-        assert_eq!(xno * xpc, xnc.into());
-        assert_eq!(xpo * xnc, xnc.into());
-        assert_eq!(xnc * xpo, xnc.into());
+        assert_eq!(xpc.try_mul(xno).unwrap(), xnc.into());
+        assert_eq!(xno.try_mul(xpc).unwrap(), xnc.into());
+        assert_eq!(xpo.try_mul(xnc).unwrap(), xnc.into());
+        assert_eq!(xnc.try_mul(xpo).unwrap(), xnc.into());
 
         assert_eq!(
-            HalfInterval::unbound_closed(-5.0) * HalfInterval::closed_unbound(10.0),
+            HalfInterval::unbound_closed(-5.0)
+                .try_mul(HalfInterval::closed_unbound(10.0))
+                .unwrap(),
             EnumInterval::unbound_closed(-50.0)
         );
 
         let a = HalfInterval::unbound_open(0.0);
         let b = HalfInterval::open_unbound(0.0);
         let expected = EnumInterval::unbound_open(0.0);
-        assert_eq!(a * b, expected);
-        assert_eq!(b * a, expected);
+        assert_eq!(a.try_mul(b).unwrap(), expected);
+        assert_eq!(b.try_mul(a).unwrap(), expected);
 
         let a = HalfInterval::unbound_open(0.0);
         let b = HalfInterval::closed_unbound(0.0);
         let expected = EnumInterval::unbound_closed(0.0);
-        assert_eq!(a * b, expected);
-        assert_eq!(b * a, expected);
+        assert_eq!(a.try_mul(b).unwrap(), expected);
+        assert_eq!(b.try_mul(a).unwrap(), expected);
 
         let a = HalfInterval::unbound_closed(0.0);
         let b = HalfInterval::open_unbound(0.0);
         let expected = EnumInterval::unbound_closed(0.0);
-        assert_eq!(a * b, expected);
-        assert_eq!(b * a, expected);
+        assert_eq!(a.try_mul(b).unwrap(), expected);
+        assert_eq!(b.try_mul(a).unwrap(), expected);
     }
 
     #[test]
     fn test_enum_x_finite() {
         assert_eq!(
-            EnumInterval::unbounded() * FiniteInterval::singleton(0.0),
+            EnumInterval::<f64>::unbounded()
+                .try_mul(FiniteInterval::singleton(0.0))
+                .unwrap(),
             EnumInterval::singleton(0.0)
         );
 
+        // i32 is Ord; the infix `*` operator is available.
         assert_eq!(
             EnumInterval::closed(0, 5) * EnumInterval::closed(0, 5),
             EnumInterval::closed(0, 25)
         );
 
         assert_eq!(
-            EnumInterval::open(-10.0, -5.0) * EnumInterval::open(-10.0, -5.0),
+            EnumInterval::open(-10.0, -5.0)
+                .try_mul(EnumInterval::open(-10.0, -5.0))
+                .unwrap(),
             EnumInterval::open(25.0, 100.0)
         );
     }
