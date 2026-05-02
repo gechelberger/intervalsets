@@ -68,19 +68,14 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
             };
 
             let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-                // SAFETY: repacking
-                let lhs = unsafe { Self::new_unchecked(lhs_min, lhs_max) };
+                let lhs = Self::new_assume_valid(lhs_min, lhs_max);
                 return Some(lhs);
             };
 
-            // SAFETY: if lhs and rhs satisfy invariants, then bounds are
-            // normalized, comparable, and min(left, right) <= max(left, right).
-            let merged = unsafe {
-                FiniteInterval::new_unchecked(
-                    FiniteBound::take_min_unchecked(Side::Left, lhs_min, rhs_min),
-                    FiniteBound::take_max_unchecked(Side::Right, lhs_max, rhs_max),
-                )
-            };
+            let merged = FiniteInterval::new_assume_valid(
+                FiniteBound::take_assume_min(Side::Left, lhs_min, rhs_min),
+                FiniteBound::take_assume_max(Side::Right, lhs_max, rhs_max),
+            );
 
             Some(merged)
         } else {
@@ -100,20 +95,14 @@ impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
             };
 
             let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
-                // SAFETY: just putting it back together
-                let lhs =
-                    unsafe { FiniteInterval::new_unchecked(lhs_min.clone(), lhs_max.clone()) };
+                let lhs = FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone());
                 return Some(lhs);
             };
 
-            // SAFETY: if lhs and rhs satisfy invariants, bounds are normalized,
-            // and min(left, right) <= max(left, right).
-            let merged = unsafe {
-                FiniteInterval::new_unchecked(
-                    FiniteBound::min_unchecked(Side::Left, lhs_min, rhs_min).clone(),
-                    FiniteBound::max_unchecked(Side::Right, lhs_max, rhs_max).clone(),
-                )
-            };
+            let merged = FiniteInterval::new_assume_valid(
+                FiniteBound::assume_min(Side::Left, lhs_min, rhs_min).clone(),
+                FiniteBound::assume_max(Side::Right, lhs_max, rhs_max).clone(),
+            );
 
             Some(merged)
         } else {
@@ -180,8 +169,7 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
                 Some(self)
             } else {
                 let bound = self.side().select(rhs_min, rhs_max);
-                // SAFETY: bound is stolen from existing FiniteInterval
-                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
+                Some(HalfInterval::new_assume_valid(self.side(), bound))
             }
         } else {
             None
@@ -205,7 +193,7 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
                 Some(self.clone())
             } else {
                 let bound = self.side().select(rhs_min, rhs_max).clone();
-                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
+                Some(HalfInterval::new_assume_valid(self.side(), bound))
             }
         } else {
             None

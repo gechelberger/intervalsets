@@ -26,29 +26,16 @@ impl<T: Element> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
         let interval = match value.into_raw() {
             (OrdBound::LeftUnbounded, OrdBound::LeftUnbounded) => Self::empty(),
             (OrdBound::LeftUnbounded, OrdBound::RightUnbounded) => Self::Unbounded,
-            (OrdBound::LeftUnbounded, OrdBound::Finite(rhs)) => {
-                // SAFETY: Interval invariants <=> OrdBoundPair invariants
-                unsafe {
-                    Self::Half(HalfInterval::new_unchecked(
-                        Side::Right,
-                        FiniteBound::from(rhs),
-                    ))
-                }
-            }
-            (OrdBound::Finite(lhs), OrdBound::RightUnbounded) => {
-                // SAFETY: Interval invariants <=> OrdBoundPair invariants
-                unsafe {
-                    Self::Half(HalfInterval::new_unchecked(
-                        Side::Left,
-                        FiniteBound::from(lhs),
-                    ))
-                }
-            }
+            (OrdBound::LeftUnbounded, OrdBound::Finite(rhs)) => Self::Half(
+                HalfInterval::new_assume_valid(Side::Right, FiniteBound::from(rhs)),
+            ),
+            (OrdBound::Finite(lhs), OrdBound::RightUnbounded) => Self::Half(
+                HalfInterval::new_assume_valid(Side::Left, FiniteBound::from(lhs)),
+            ),
             (OrdBound::Finite(lhs), OrdBound::Finite(rhs)) => {
                 let lhs = FiniteBound::from(lhs);
                 let rhs = FiniteBound::from(rhs);
-                // SAFETY: FiniteInterval invariants <=> OrdBoundPair invariants
-                unsafe { Self::Finite(FiniteInterval::new_unchecked(lhs, rhs)) }
+                Self::Finite(FiniteInterval::new_assume_valid(lhs, rhs))
             }
             _ => {
                 return Err(Error::InvariantError(

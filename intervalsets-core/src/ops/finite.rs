@@ -37,12 +37,12 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
     fn into_finite(self) -> Self::Output {
         let (side, bound) = self.into_raw();
         match side {
-            Side::Left => unsafe {
+            Side::Left => {
                 FiniteInterval::new_assume_normed(bound, FiniteBound::closed(T::max_value()))
-            },
-            Side::Right => unsafe {
+            }
+            Side::Right => {
                 FiniteInterval::new_assume_normed(FiniteBound::closed(T::min_value()), bound)
-            },
+            }
         }
     }
 }
@@ -55,12 +55,10 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for EnumInterval<T> {
         match self {
             Self::Finite(inner) => inner.into_finite(),
             Self::Half(inner) => inner.into_finite(),
-            Self::Unbounded => unsafe {
-                FiniteInterval::new_unchecked(
-                    FiniteBound::closed(T::min_value()),
-                    FiniteBound::closed(T::max_value()),
-                )
-            },
+            Self::Unbounded => FiniteInterval::new_assume_valid(
+                FiniteBound::closed(T::min_value()),
+                FiniteBound::closed(T::max_value()),
+            ),
         }
     }
 }

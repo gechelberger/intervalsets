@@ -239,15 +239,17 @@ impl<T> FiniteBound<T> {
 impl<T: PartialOrd> FiniteBound<T> {
     /// Return a and b ordered.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring both bounds are comparable.
-    pub unsafe fn min_max_unchecked(
+    /// Both bounds must be comparable. Violating this yields incorrect
+    /// results but no undefined behavior.
+    pub fn assume_min_max(
         side: Side,
         mut a: FiniteBound<T>,
         mut b: FiniteBound<T>,
     ) -> (FiniteBound<T>, FiniteBound<T>) {
-        if a.contains_bound_unchecked(side, b.finite_ord(side)) {
+        debug_assert!(a.value().partial_cmp(b.value()).is_some());
+        if a.assume_contains_bound(side, b.finite_ord(side)) {
             if side == Side::Right {
                 core::mem::swap(&mut a, &mut b);
             }
@@ -259,15 +261,17 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Consume a and b, returning the minimum bound.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring both bounds are comparable.
-    pub unsafe fn take_min_unchecked(
+    /// Both bounds must be comparable. Violating this yields incorrect
+    /// results but no undefined behavior.
+    pub fn take_assume_min(
         side: Side,
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> FiniteBound<T> {
-        if a.contains_bound_unchecked(side, b.finite_ord(side)) {
+        debug_assert!(a.value().partial_cmp(b.value()).is_some());
+        if a.assume_contains_bound(side, b.finite_ord(side)) {
             side.select(a, b)
         } else {
             side.select(b, a)
@@ -289,15 +293,17 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Consume a and b, returning the maximum bound.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring that both bounds are comparable.
-    pub unsafe fn take_max_unchecked(
+    /// Both bounds must be comparable. Violating this yields incorrect
+    /// results but no undefined behavior.
+    pub fn take_assume_max(
         side: Side,
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> FiniteBound<T> {
-        if a.contains_bound_unchecked(side, b.finite_ord(side)) {
+        debug_assert!(a.value().partial_cmp(b.value()).is_some());
+        if a.assume_contains_bound(side, b.finite_ord(side)) {
             side.select(b, a)
         } else {
             side.select(a, b)
@@ -319,15 +325,17 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Return a reference to the minimum bound.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring bounds are comparable.
-    pub unsafe fn min_unchecked<'a>(
+    /// Both bounds must be comparable. Violating this yields incorrect
+    /// results but no undefined behavior.
+    pub fn assume_min<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> &'a FiniteBound<T> {
-        if a.contains_bound_unchecked(side, b.finite_ord(side)) {
+        debug_assert!(a.value().partial_cmp(b.value()).is_some());
+        if a.assume_contains_bound(side, b.finite_ord(side)) {
             side.select(a, b)
         } else {
             side.select(b, a)
@@ -349,15 +357,17 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Return a reference to the maximum bound.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring both bounds are comparable.
-    pub unsafe fn max_unchecked<'a>(
+    /// Both bounds must be comparable. Violating this yields incorrect
+    /// results but no undefined behavior.
+    pub fn assume_max<'a>(
         side: Side,
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> &'a FiniteBound<T> {
-        if a.contains_bound_unchecked(side, b.finite_ord(side)) {
+        debug_assert!(a.value().partial_cmp(b.value()).is_some());
+        if a.assume_contains_bound(side, b.finite_ord(side)) {
             side.select(b, a)
         } else {
             side.select(a, b)
@@ -381,10 +391,12 @@ impl<T: PartialOrd> FiniteBound<T> {
 impl<T: PartialOrd> FiniteBound<T> {
     /// Test if this partitions an element to be contained by the `Set`.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring bound and value are comparable.
-    pub unsafe fn contains_unchecked(&self, side: Side, value: &T) -> bool {
+    /// `self` and `value` must be comparable. Violating this yields
+    /// incorrect results but no undefined behavior.
+    pub fn assume_contains(&self, side: Side, value: &T) -> bool {
+        debug_assert!(self.value().partial_cmp(value).is_some());
         match side {
             Side::Left => match self.0 {
                 BoundType::Open => self.value() < value,
@@ -408,15 +420,17 @@ impl<T: PartialOrd> FiniteBound<T> {
 
     /// Test if self "sees" a bound from a `Side`.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for making sure that both bounds are comparable.
-    pub unsafe fn contains_bound_unchecked(
+    /// Both bounds must be comparable. Violating this yields incorrect
+    /// results but no undefined behavior.
+    pub fn assume_contains_bound(
         &self,
         side: Side,
         test: ord::FiniteOrdBound<&T>,
     ) -> bool {
         let lhs = self.finite_ord(side);
+        debug_assert!(lhs.partial_cmp(&test).is_some());
         match side {
             Side::Left => lhs <= test,
             Side::Right => test <= lhs,
@@ -754,79 +768,77 @@ mod test {
 
     #[test]
     fn test_bound_min_max() {
-        unsafe {
-            assert_eq!(
-                FiniteBound::min_unchecked(
-                    Side::Left,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::closed(10)
-                ),
-                &FiniteBound::closed(0)
-            );
-
-            assert_eq!(
-                FiniteBound::min_unchecked(
-                    Side::Left,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::open(0)
-                ),
-                &FiniteBound::closed(0)
-            );
-
-            assert_eq!(
-                FiniteBound::max_unchecked(
-                    Side::Left,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::closed(10)
-                ),
+        assert_eq!(
+            FiniteBound::assume_min(
+                Side::Left,
+                &FiniteBound::closed(0),
                 &FiniteBound::closed(10)
-            );
+            ),
+            &FiniteBound::closed(0)
+        );
 
-            assert_eq!(
-                FiniteBound::max_unchecked(
-                    Side::Left,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::open(0)
-                ),
+        assert_eq!(
+            FiniteBound::assume_min(
+                Side::Left,
+                &FiniteBound::closed(0),
                 &FiniteBound::open(0)
-            );
+            ),
+            &FiniteBound::closed(0)
+        );
 
-            assert_eq!(
-                FiniteBound::min_unchecked(
-                    Side::Right,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::closed(10)
-                ),
-                &FiniteBound::closed(0)
-            );
-
-            assert_eq!(
-                FiniteBound::min_unchecked(
-                    Side::Right,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::open(0)
-                ),
-                &FiniteBound::open(0)
-            );
-
-            assert_eq!(
-                FiniteBound::max_unchecked(
-                    Side::Right,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::closed(10)
-                ),
+        assert_eq!(
+            FiniteBound::assume_max(
+                Side::Left,
+                &FiniteBound::closed(0),
                 &FiniteBound::closed(10)
-            );
+            ),
+            &FiniteBound::closed(10)
+        );
 
-            assert_eq!(
-                FiniteBound::max_unchecked(
-                    Side::Right,
-                    &FiniteBound::closed(0),
-                    &FiniteBound::open(0)
-                ),
-                &FiniteBound::closed(0)
-            )
-        }
+        assert_eq!(
+            FiniteBound::assume_max(
+                Side::Left,
+                &FiniteBound::closed(0),
+                &FiniteBound::open(0)
+            ),
+            &FiniteBound::open(0)
+        );
+
+        assert_eq!(
+            FiniteBound::assume_min(
+                Side::Right,
+                &FiniteBound::closed(0),
+                &FiniteBound::closed(10)
+            ),
+            &FiniteBound::closed(0)
+        );
+
+        assert_eq!(
+            FiniteBound::assume_min(
+                Side::Right,
+                &FiniteBound::closed(0),
+                &FiniteBound::open(0)
+            ),
+            &FiniteBound::open(0)
+        );
+
+        assert_eq!(
+            FiniteBound::assume_max(
+                Side::Right,
+                &FiniteBound::closed(0),
+                &FiniteBound::closed(10)
+            ),
+            &FiniteBound::closed(10)
+        );
+
+        assert_eq!(
+            FiniteBound::assume_max(
+                Side::Right,
+                &FiniteBound::closed(0),
+                &FiniteBound::open(0)
+            ),
+            &FiniteBound::closed(0)
+        )
     }
 
     #[test]
@@ -887,15 +899,13 @@ mod test {
         let a = FiniteBound::closed(0.0);
         let b = FiniteBound::open(0.0);
 
-        unsafe {
-            assert_eq!(FiniteBound::min_max_unchecked(Side::Left, a, b), (a, b));
+        assert_eq!(FiniteBound::assume_min_max(Side::Left, a, b), (a, b));
 
-            assert_eq!(FiniteBound::min_max_unchecked(Side::Left, b, a), (a, b));
+        assert_eq!(FiniteBound::assume_min_max(Side::Left, b, a), (a, b));
 
-            assert_eq!(FiniteBound::min_max_unchecked(Side::Right, a, b), (b, a));
+        assert_eq!(FiniteBound::assume_min_max(Side::Right, a, b), (b, a));
 
-            assert_eq!(FiniteBound::min_max_unchecked(Side::Right, b, a), (b, a))
-        }
+        assert_eq!(FiniteBound::assume_min_max(Side::Right, b, a), (b, a))
     }
 
     /*

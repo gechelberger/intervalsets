@@ -108,8 +108,7 @@ impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
                 Some(inner) => EnumInterval::strict_left_bounded(inner),
             },
             Side::Right => match bound {
-                // SAFETY: just repacking
-                None => unsafe { Ok(EnumInterval::from(Self::new_unchecked(side, current_bound))) },
+                None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
                 Some(inner) => EnumInterval::strict_finite(inner, current_bound),
             },
         }
@@ -123,10 +122,7 @@ impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
                 Some(inner) => EnumInterval::strict_right_bounded(inner),
             },
             Side::Left => match bound {
-                None => unsafe {
-                    // SAFETY: just putting it back together
-                    Ok(EnumInterval::from(Self::new_unchecked(side, current_bound)))
-                },
+                None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
                 Some(inner) => EnumInterval::strict_finite(current_bound, inner),
             },
         }

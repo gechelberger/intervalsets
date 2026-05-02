@@ -66,8 +66,7 @@ impl<T: Element> FiniteInterval<T> {
         let order = lhs.value().try_cmp(rhs.value())?;
 
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
-            // SAFETY: normalized & comparable & lhs <= rhs
-            unsafe { Ok(Self::new_unchecked(lhs, rhs)) }
+            Ok(Self::new_assume_valid(lhs, rhs))
         } else {
             Ok(Self::empty())
         }
@@ -77,15 +76,18 @@ impl<T: Element> FiniteInterval<T> {
 impl<T: PartialOrd> FiniteInterval<T> {
     /// Creates a FiniteInterval; assuming normalized & comparable.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring that invariants are satisfied.
+    /// Both bounds must be normalized (discrete types in closed form) and
+    /// comparable. Violating this yields incorrect results but no
+    /// undefined behavior.
     #[inline]
-    pub unsafe fn new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+    pub fn new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+        debug_assert!(lhs.value().partial_cmp(rhs.value()).is_some());
         if lhs.value() < rhs.value()
             || (lhs.value() == rhs.value() && lhs.is_closed() && rhs.is_closed())
         {
-            Self::new_unchecked(lhs, rhs)
+            Self::new_assume_valid(lhs, rhs)
         } else {
             Self::empty()
         }
@@ -93,18 +95,19 @@ impl<T: PartialOrd> FiniteInterval<T> {
 
     /// Creates a FiniteInterval; assumes normalized.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring that bounds are normed.
-    /// Bounds checking is done but may not be correct if not normed.
+    /// Both bounds must be normalized. Bounds checking is done via
+    /// [`TryCmp`] but may not be correct if not normalized. No undefined
+    /// behavior on violation.
     #[inline(always)]
-    pub unsafe fn new_strict_assume_normed(
+    pub fn new_strict_assume_normed(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
     ) -> Result<Self, Error> {
         let order = lhs.value().try_cmp(rhs.value())?;
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
-            Ok(Self::new_unchecked(lhs, rhs))
+            Ok(Self::new_assume_valid(lhs, rhs))
         } else {
             Ok(Self::empty())
         }
@@ -117,13 +120,16 @@ impl<T> FiniteInterval<T> {
         Self(FiniteIntervalInner::Empty)
     }
 
-    /// # Safety
+    /// Constructs without checking invariants.
     ///
-    /// The user must ensure invariants are satisfied:
+    /// # Preconditions
+    ///
     /// 1. lhs <= rhs
     /// 2. discrete bounds are normalized to closed form.
+    ///
+    /// Violating either yields incorrect results but no undefined behavior.
     #[inline]
-    pub const unsafe fn new_unchecked(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+    pub const fn new_assume_valid(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
         Self(FiniteIntervalInner::Bounded(lhs, rhs))
     }
 
@@ -185,11 +191,12 @@ pub struct HalfInterval<T> {
 impl<T> HalfInterval<T> {
     /// Creates a new half interval without checking invariants.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring that `bound` is comparable. This
-    /// is assumed if the bound is taken from an existing set.
-    pub const unsafe fn new_unchecked(side: Side, bound: FiniteBound<T>) -> Self {
+    /// `bound` must be comparable (e.g., a non-NaN float). This is
+    /// assumed if the bound is taken from an existing set. Violating
+    /// this yields incorrect results but no undefined behavior.
+    pub const fn new_assume_valid(side: Side, bound: FiniteBound<T>) -> Self {
         Self { side, bound }
     }
 }

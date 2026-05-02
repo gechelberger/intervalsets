@@ -126,15 +126,11 @@ impl<T: Element> ConvexHull<Self> for FiniteInterval<T> {
                 Some(pair) => pair,
             };
 
-            // SAFETY: if input intervals satisfy invariants then this is safe.
-            unsafe {
-                left = FiniteBound::take_min_unchecked(Side::Left, left, c_left);
-                right = FiniteBound::take_max_unchecked(Side::Right, right, c_right);
-            }
+            left = FiniteBound::take_assume_min(Side::Left, left, c_left);
+            right = FiniteBound::take_assume_max(Side::Right, right, c_right);
         }
 
-        // SAFETY: hull should satisfy invariants (left <= right)
-        unsafe { Ok(Self::new_unchecked(left, right)) }
+        Ok(Self::new_assume_valid(left, right))
     }
 }
 
@@ -159,13 +155,11 @@ impl<'a, T: Element + Clone> ConvexHull<&'a Self> for FiniteInterval<T> {
                 continue;
             };
 
-            unsafe {
-                left = FiniteBound::min_unchecked(Left, left, c_left);
-                right = FiniteBound::max_unchecked(Right, right, c_right);
-            }
+            left = FiniteBound::assume_min(Left, left, c_left);
+            right = FiniteBound::assume_max(Right, right, c_right);
         }
 
-        unsafe { Ok(Self::new_unchecked(left.clone(), right.clone())) }
+        Ok(Self::new_assume_valid(left.clone(), right.clone()))
     }
 }
 

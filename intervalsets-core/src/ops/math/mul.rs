@@ -133,12 +133,13 @@ pub mod impls {
 
     /// Multiply two non-zero bounds together.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user must ensure that a Closed(Zero) bound is not passed.
-    /// Closed(0) * Open(5) will return Open(5) which is wrong.
+    /// A Closed(Zero) bound must not be passed. Closed(0) * Open(5)
+    /// returns Open(5) which is wrong. Violating this yields incorrect
+    /// results but no undefined behavior.
     #[inline(always)]
-    unsafe fn non_zero_mul_unchecked<T: Mul>(a: FB<T>, b: FB<T>) -> FB<<T as Mul>::Output> {
+    fn non_zero_mul_assume<T: Mul>(a: FB<T>, b: FB<T>) -> FB<<T as Mul>::Output> {
         let (akind, aval) = a.into_raw();
         let (bkind, bval) = b.into_raw();
         FiniteBound::new(akind.combine(bkind), aval * bval)
@@ -164,80 +165,80 @@ pub mod impls {
         };
 
         match (acat, bcat) {
-            (ECat::Pos(az), ECat::Pos(bz)) => unsafe {
+            (ECat::Pos(az), ECat::Pos(bz)) => {
                 // [a=0?, b>0] x [c=0?, d>0]
-                let max = non_zero_mul_unchecked(amax, bmax);
+                let max = non_zero_mul_assume(amax, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(FiniteBound::zero(), max)
                 } else {
-                    let min = non_zero_mul_unchecked(amin, bmin);
+                    let min = non_zero_mul_assume(amin, bmin);
                     FiniteInterval::new(min, max)
                 }
-            },
-            (ECat::Pos(_), ECat::NegPos) => unsafe {
+            }
+            (ECat::Pos(_), ECat::NegPos) => {
                 // [a=0?, b>0] x [c<0, d>0] => a produces intermediate values
-                let min = non_zero_mul_unchecked(amax.clone(), bmin);
-                let max = non_zero_mul_unchecked(amax, bmax);
+                let min = non_zero_mul_assume(amax.clone(), bmin);
+                let max = non_zero_mul_assume(amax, bmax);
                 FiniteInterval::new(min, max)
-            },
-            (ECat::Pos(az), ECat::Neg(bz)) => unsafe {
+            }
+            (ECat::Pos(az), ECat::Neg(bz)) => {
                 // [a=0?, b>0] x [c<0, d=0?]
-                let min = non_zero_mul_unchecked(amax, bmin);
+                let min = non_zero_mul_assume(amax, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(min, FiniteBound::zero())
                 } else {
-                    let max = non_zero_mul_unchecked(amin, bmax);
+                    let max = non_zero_mul_assume(amin, bmax);
                     FiniteInterval::new(min, max)
                 }
-            },
-            (ECat::Neg(az), ECat::Pos(bz)) => unsafe {
+            }
+            (ECat::Neg(az), ECat::Pos(bz)) => {
                 // [a<0, b=0?] x [c=0?, d>0]
-                let min = non_zero_mul_unchecked(amin, bmax);
+                let min = non_zero_mul_assume(amin, bmax);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(min, FiniteBound::zero())
                 } else {
-                    let max = non_zero_mul_unchecked(amax, bmin);
+                    let max = non_zero_mul_assume(amax, bmin);
                     FiniteInterval::new(min, max)
                 }
-            },
-            (ECat::Neg(_), ECat::NegPos) => unsafe {
+            }
+            (ECat::Neg(_), ECat::NegPos) => {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
-                let min = non_zero_mul_unchecked(amin.clone(), bmax);
-                let max = non_zero_mul_unchecked(amin, bmin);
+                let min = non_zero_mul_assume(amin.clone(), bmax);
+                let max = non_zero_mul_assume(amin, bmin);
                 FiniteInterval::new(min, max)
-            },
-            (ECat::Neg(az), ECat::Neg(bz)) => unsafe {
+            }
+            (ECat::Neg(az), ECat::Neg(bz)) => {
                 // [a<0, b=0?] x [c<0, d=0?]
-                let max = non_zero_mul_unchecked(amin, bmin);
+                let max = non_zero_mul_assume(amin, bmin);
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     FiniteInterval::new(FiniteBound::zero(), max)
                 } else {
-                    let min = non_zero_mul_unchecked(amax, bmax);
+                    let min = non_zero_mul_assume(amax, bmax);
                     FiniteInterval::new(min, max)
                 }
-            },
-            (ECat::NegPos, ECat::Pos(_)) => unsafe {
+            }
+            (ECat::NegPos, ECat::Pos(_)) => {
                 // [a<0, b>0] x [c=0?, d>0] => c produces intermediate values
-                let min = non_zero_mul_unchecked(amin, bmax.clone());
-                let max = non_zero_mul_unchecked(amax, bmax);
+                let min = non_zero_mul_assume(amin, bmax.clone());
+                let max = non_zero_mul_assume(amax, bmax);
                 FiniteInterval::new(min, max)
-            },
-            (ECat::NegPos, ECat::Neg(_)) => unsafe {
+            }
+            (ECat::NegPos, ECat::Neg(_)) => {
                 // [a<0, b>0] x [c<0, d=0?] => d produces intermediate values
-                let min = non_zero_mul_unchecked(amax, bmin.clone());
-                let max = non_zero_mul_unchecked(amin, bmin);
+                let min = non_zero_mul_assume(amax, bmin.clone());
+                let max = non_zero_mul_assume(amin, bmin);
                 FiniteInterval::new(min, max)
-            },
-            (ECat::NegPos, ECat::NegPos) => unsafe {
-                // SAFETY: NegPos category can not have an end bound of Closed(0)
-                let c1_min = non_zero_mul_unchecked(amin.clone(), bmax.clone());
-                let c2_min = non_zero_mul_unchecked(amax.clone(), bmin.clone());
-                let c1_max = non_zero_mul_unchecked(amin, bmin);
-                let c2_max = non_zero_mul_unchecked(amax, bmax);
-                let min = FiniteBound::take_min_unchecked(Left, c1_min, c2_min);
-                let max = FiniteBound::take_max_unchecked(Right, c1_max, c2_max);
+            }
+            (ECat::NegPos, ECat::NegPos) => {
+                // NegPos category can not have an end bound of Closed(0)
+                let c1_min = non_zero_mul_assume(amin.clone(), bmax.clone());
+                let c2_min = non_zero_mul_assume(amax.clone(), bmin.clone());
+                let c1_max = non_zero_mul_assume(amin, bmin);
+                let c2_max = non_zero_mul_assume(amax, bmax);
+                let min = FiniteBound::take_assume_min(Left, c1_min, c2_min);
+                let max = FiniteBound::take_assume_max(Right, c1_max, c2_max);
                 FiniteInterval::new(min, max)
-            },
+            }
             (ECat::Zero, _) | (_, ECat::Zero) => {
                 FiniteInterval::singleton(<T as Mul>::Output::zero())
             }
@@ -265,8 +266,7 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
-                    // SAFETY: (a > 0 && b > 0) || (a < 0 && b < 0)
-                    let min = unsafe { non_zero_mul_unchecked(abound, bbound) };
+                    let min = non_zero_mul_assume(abound, bbound);
                     EnumInterval::half_bounded(Left, min)
                 }
             }
@@ -274,8 +274,7 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
-                    // SAFETY: (a > 0 && b < 0) or (a < 0 && b > 0)
-                    let max = unsafe { non_zero_mul_unchecked(abound, bbound) };
+                    let max = non_zero_mul_assume(abound, bbound);
                     EnumInterval::half_bounded(Right, max)
                 }
             }
@@ -305,18 +304,14 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
-                    // SAFETY: zeros handled ^^^
-                    EnumInterval::half_bounded(Left, unsafe {
-                        non_zero_mul_unchecked(fmin, hbound)
-                    })
+                    EnumInterval::half_bounded(Left, non_zero_mul_assume(fmin, hbound))
                 }
             }
             (ECat::Pos(_), ECat::NegPos) => {
                 // [a=0?, b>0] x [c<0, d>0]
                 // Case 1: [a=0?, b>0] x [c<0, d=+inf] => |ac<=0, ad>=0, bc<0, bd=+inf| => (bc, ->)
                 // Case 2: [a=0?, b>0] x [c=-inf, d>0] => |ac<=0, ad>=0, bc=-inf, bd>0| -> (<-, bd)
-                // SAFETY: a always produces an intermediate value
-                EnumInterval::half_bounded(side, unsafe { non_zero_mul_unchecked(fmax, hbound) })
+                EnumInterval::half_bounded(side, non_zero_mul_assume(fmax, hbound))
             }
             (ECat::Pos(az), ECat::Neg(bz)) | (ECat::Neg(az), ECat::Pos(bz)) => {
                 // Case 1: [a=0?, b>0] x [c=-inf, d=0?]
@@ -324,29 +319,21 @@ pub mod impls {
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::unbound_closed(<T as Mul>::Output::zero())
                 } else {
-                    // SAFETY: zeros handled ^^^
-                    EnumInterval::half_bounded(Right, unsafe {
-                        non_zero_mul_unchecked(fmax, hbound)
-                    })
+                    EnumInterval::half_bounded(Right, non_zero_mul_assume(fmax, hbound))
                 }
             }
             (ECat::Neg(_), ECat::NegPos) => {
                 // [a<0, b=0?] x [c<0, d>0] => b produces intermediate values
                 // Case 1: [a<0, b=0?] x [c<0, d=+inf] => |ac>0, ad=-inf, bc>=0, bd<=0| => (<-, ac>0)
                 // Case 2: [a<0, b=0?] x [c=-inf, d>0] => |ac=+inf, ad<0, bc>=0, bd<=0| => (ad<0, ->)
-                EnumInterval::half_bounded(side.flip(), unsafe {
-                    non_zero_mul_unchecked(fmin, hbound)
-                })
+                EnumInterval::half_bounded(side.flip(), non_zero_mul_assume(fmin, hbound))
             }
             (ECat::Neg(az), ECat::Neg(bz)) => {
                 // [a<0, b<=0?] x [c=-inf, d<=0?] => |ac=+inf, ad>=0, bc>=0, bd>=0
                 if az == MaybeZero::Zero || bz == MaybeZero::Zero {
                     EnumInterval::closed_unbound(<T as Mul>::Output::zero())
                 } else {
-                    // SAFETY: checked zeros ^^^
-                    EnumInterval::half_bounded(Left, unsafe {
-                        non_zero_mul_unchecked(fmax, hbound)
-                    })
+                    EnumInterval::half_bounded(Left, non_zero_mul_assume(fmax, hbound))
                 }
             }
             (ECat::NegPos, _) => EnumInterval::unbounded(),

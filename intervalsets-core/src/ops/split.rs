@@ -58,12 +58,12 @@ impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
         };
 
         if !min.strict_contains(Side::Left, &at)? {
-            let repacked = unsafe { Self::new_unchecked(min, max) };
+            let repacked = Self::new_assume_valid(min, max);
             return Ok((Self::empty(), repacked));
         }
 
         if !max.strict_contains(Side::Right, &at)? {
-            let repacked = unsafe { Self::new_unchecked(min, max) };
+            let repacked = Self::new_assume_valid(min, max);
             return Ok((repacked, Self::empty()));
         }
 
