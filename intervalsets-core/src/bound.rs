@@ -478,14 +478,22 @@ mod math {
         }
     }
 
-    impl<T: Mul> Mul for FiniteBound<T> {
+    impl<T: Mul + Zero> Mul for FiniteBound<T> {
         type Output = FiniteBound<<T as Mul>::Output>;
 
         fn mul(self, rhs: Self) -> Self::Output {
-            // fixme!
-            // if either lhs or rhs is Closed(0) -> output must be Closed(0)
-            // as written Closed(0) * Open(5) -> Open(0)
-            FiniteBound::new(self.0.combine(rhs.0), self.1 * rhs.1)
+            // Closed(0) absorbs: 0 * x = 0, the value 0 is achieved
+            // regardless of the other operand's openness, so the result
+            // bound is Closed even if the other operand is Open.
+            let absorbing =
+                (self.0 == BoundType::Closed && self.1.is_zero())
+                    || (rhs.0 == BoundType::Closed && rhs.1.is_zero());
+            let kind = if absorbing {
+                BoundType::Closed
+            } else {
+                self.0.combine(rhs.0)
+            };
+            FiniteBound::new(kind, self.1 * rhs.1)
         }
     }
 
@@ -499,7 +507,10 @@ mod math {
         }
     }
 
-    impl<T: One + PartialEq> One for FiniteBound<T> {
+    // One requires Self: Mul<Self, Output = Self>; the FiniteBound Mul
+    // impl now requires T: Zero (for Closed(0) absorption), so the One
+    // and ConstOne impls pick up T: Zero too.
+    impl<T: One + Zero + PartialEq> One for FiniteBound<T> {
         fn one() -> Self {
             FiniteBound::closed(T::one())
         }
@@ -509,7 +520,7 @@ mod math {
         const ZERO: Self = FiniteBound::closed(T::ZERO);
     }
 
-    impl<T: ConstOne + PartialEq> ConstOne for FiniteBound<T> {
+    impl<T: ConstOne + Zero + PartialEq> ConstOne for FiniteBound<T> {
         const ONE: Self = FiniteBound::closed(T::ONE);
     }
 
@@ -546,6 +557,30 @@ mod math {
             assert_eq!(c10 * o10, o100);
             assert_eq!(o10 * c10, o100);
             assert_eq!(o10 * o10, o100);
+        }
+
+        #[test]
+        fn test_mul_closed_zero_absorbs() {
+            // Closed(0) * x = 0 with the value 0 always achieved, so the
+            // result bound is Closed(0) regardless of x's openness.
+            let c0 = FiniteBound::closed(0);
+            let c5 = FiniteBound::closed(5);
+            let o5 = FiniteBound::open(5);
+            let o0 = FiniteBound::open(0);
+
+            // Closed(0) absorbs on either side
+            assert_eq!(c0 * c5, FiniteBound::closed(0));
+            assert_eq!(c5 * c0, FiniteBound::closed(0));
+            assert_eq!(c0 * o5, FiniteBound::closed(0));
+            assert_eq!(o5 * c0, FiniteBound::closed(0));
+            assert_eq!(c0 * c0, FiniteBound::closed(0));
+
+            // Open(0) does NOT absorb: 0 is not in the input bound
+            // semantically, so the output is Open(0).
+            assert_eq!(o0 * c5, FiniteBound::open(0));
+            assert_eq!(c5 * o0, FiniteBound::open(0));
+            assert_eq!(o0 * o5, FiniteBound::open(0));
+            assert_eq!(o0 * o0, FiniteBound::open(0));
         }
     }
 }
