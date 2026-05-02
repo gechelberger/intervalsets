@@ -21,6 +21,7 @@ where
 {
     type Output = FiniteInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }
@@ -33,6 +34,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }
@@ -58,6 +60,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }
@@ -70,6 +73,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: FiniteInterval<T>) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }
@@ -82,6 +86,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: HalfInterval<T>) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }
@@ -94,6 +99,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }
@@ -106,6 +112,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }
@@ -118,6 +125,7 @@ where
 {
     type Output = EnumInterval<<T as Mul>::Output>;
 
+    #[inline]
     fn mul(self, rhs: EnumInterval<T>) -> Self::Output {
         self.try_mul(rhs).unwrap()
     }

@@ -30,6 +30,7 @@ where
 {
     type Output = FiniteInterval<<T as Sub>::Output>;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         self.try_sub(rhs).unwrap()
     }
@@ -42,6 +43,7 @@ where
 {
     type Output = EnumInterval<<T as Sub>::Output>;
 
+    #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
         self.try_sub(rhs).unwrap()
     }
@@ -54,6 +56,7 @@ where
 {
     type Output = EnumInterval<<T as Sub>::Output>;
 
+    #[inline]
     fn sub(self, rhs: HalfInterval<T>) -> Self::Output {
         self.try_sub(rhs).unwrap()
     }
@@ -66,6 +69,7 @@ where
 {
     type Output = EnumInterval<<T as Sub>::Output>;
 
+    #[inline]
     fn sub(self, rhs: FiniteInterval<T>) -> Self::Output {
         self.try_sub(rhs).unwrap()
     }
