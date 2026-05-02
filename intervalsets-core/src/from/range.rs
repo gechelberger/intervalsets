@@ -1,7 +1,7 @@
 use core::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
 use crate::bound::FiniteBound;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T: Element> From<Range<T>> for FiniteInterval<T> {
@@ -20,19 +20,19 @@ impl<T: Element> From<RangeInclusive<T>> for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Zero> From<RangeFrom<T>> for HalfInterval<T> {
+impl<T: Element> From<RangeFrom<T>> for HalfInterval<T> {
     fn from(value: RangeFrom<T>) -> Self {
         HalfInterval::left(FiniteBound::closed(value.start))
     }
 }
 
-impl<T: Element + Zero> From<RangeTo<T>> for HalfInterval<T> {
+impl<T: Element> From<RangeTo<T>> for HalfInterval<T> {
     fn from(value: RangeTo<T>) -> Self {
         HalfInterval::right(FiniteBound::open(value.end))
     }
 }
 
-impl<T: Element + Zero> From<RangeToInclusive<T>> for HalfInterval<T> {
+impl<T: Element> From<RangeToInclusive<T>> for HalfInterval<T> {
     fn from(value: RangeToInclusive<T>) -> Self {
         HalfInterval::right(FiniteBound::closed(value.end))
     }
@@ -56,19 +56,19 @@ impl<T: Element> From<RangeInclusive<T>> for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Zero> From<RangeFrom<T>> for EnumInterval<T> {
+impl<T: Element> From<RangeFrom<T>> for EnumInterval<T> {
     fn from(value: RangeFrom<T>) -> Self {
         Self::from(HalfInterval::from(value))
     }
 }
 
-impl<T: Element + Zero> From<RangeTo<T>> for EnumInterval<T> {
+impl<T: Element> From<RangeTo<T>> for EnumInterval<T> {
     fn from(value: RangeTo<T>) -> Self {
         Self::from(HalfInterval::from(value))
     }
 }
 
-impl<T: Element + Zero> From<RangeToInclusive<T>> for EnumInterval<T> {
+impl<T: Element> From<RangeToInclusive<T>> for EnumInterval<T> {
     fn from(value: RangeToInclusive<T>) -> Self {
         Self::from(HalfInterval::from(value))
     }

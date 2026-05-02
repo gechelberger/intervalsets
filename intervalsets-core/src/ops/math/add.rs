@@ -1,7 +1,7 @@
 use core::ops::Add;
 
 use crate::factory::traits::*;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
@@ -32,7 +32,7 @@ where
 impl<T> Add for HalfInterval<T>
 where
     T: Add,
-    <T as Add>::Output: Element + Zero,
+    <T as Add>::Output: Element,
 {
     type Output = EnumInterval<<T as Add>::Output>;
 
@@ -51,7 +51,7 @@ where
 impl<T> Add<FiniteInterval<T>> for HalfInterval<T>
 where
     T: Add,
-    <T as Add>::Output: Element + Zero,
+    <T as Add>::Output: Element,
 {
     type Output = EnumInterval<<T as Add>::Output>;
 
@@ -72,7 +72,7 @@ macro_rules! dispatch_add_impl {
         impl<T> Add<$t_rhs> for EnumInterval<T>
         where
             T: Add,
-            <T as Add>::Output: Element + Zero,
+            <T as Add>::Output: Element,
         {
             type Output = EnumInterval<<T as Add>::Output>;
 
@@ -106,7 +106,6 @@ macro_rules! commutative_add_impl {
         where
             T: Add,
             <T as Add>::Output: $crate::numeric::Element,
-            <T as Add>::Output: $crate::numeric::Zero,
         {
             type Output = EnumInterval<<T as Add>::Output>;
 

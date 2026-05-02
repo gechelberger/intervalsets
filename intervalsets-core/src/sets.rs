@@ -202,14 +202,16 @@ impl<T> HalfInterval<T> {
     }
 }
 
-impl<T: Element + Zero> HalfInterval<T> {
+impl<T: Element> HalfInterval<T> {
     pub fn new(side: Side, bound: FiniteBound<T>) -> Self {
         Self::try_new(side, bound).expect("Bound should have been comparable")
     }
 
     pub fn try_new(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
-        // make sure bound is comparable
-        let _ = T::zero()
+        // probe comparability without requiring T: Zero - a value compared to
+        // itself is Some(Equal) for any properly-ordered type and None for NaN.
+        let _ = bound
+            .value()
             .partial_cmp(bound.value())
             .ok_or(TotalOrderError)?;
         let bound = bound.normalized(side);

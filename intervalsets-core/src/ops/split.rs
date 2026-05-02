@@ -1,5 +1,3 @@
-use num_traits::Zero;
-
 use super::Contains;
 use crate::bound::{FiniteBound, Side};
 use crate::numeric::Element;
@@ -74,7 +72,7 @@ impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Clone + Zero> Split<T> for HalfInterval<T> {
+impl<T: Element + Clone> Split<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
@@ -107,7 +105,7 @@ impl<T: Element + Clone + Zero> Split<T> for HalfInterval<T> {
     }
 }
 
-impl<T: Element + Clone + Zero> Split<T> for EnumInterval<T> {
+impl<T: Element + Clone> Split<T> for EnumInterval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 

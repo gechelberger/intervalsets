@@ -2,7 +2,7 @@ use core::ops::Sub;
 
 use crate::bound::FiniteBound;
 use crate::factory::traits::*;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
@@ -41,7 +41,7 @@ where
 impl<T> Sub for HalfInterval<T>
 where
     T: Sub,
-    <T as Sub>::Output: Element + Zero,
+    <T as Sub>::Output: Element,
 {
     type Output = EnumInterval<<T as Sub>::Output>;
 
@@ -63,7 +63,7 @@ where
 impl<T> Sub<HalfInterval<T>> for FiniteInterval<T>
 where
     T: Sub,
-    <T as Sub>::Output: Element + Zero,
+    <T as Sub>::Output: Element,
 {
     type Output = EnumInterval<<T as Sub>::Output>;
 
@@ -84,7 +84,7 @@ where
 impl<T> Sub<FiniteInterval<T>> for HalfInterval<T>
 where
     T: Sub,
-    <T as Sub>::Output: Element + Zero,
+    <T as Sub>::Output: Element,
 {
     type Output = EnumInterval<<T as Sub>::Output>;
 
@@ -106,7 +106,7 @@ macro_rules! dispatch_lhs_sub_impl {
         impl<T> Sub<$t_rhs> for EnumInterval<T>
         where
             T: Sub,
-            <T as Sub>::Output: Element + Zero,
+            <T as Sub>::Output: Element,
         {
             type Output = EnumInterval<<T as Sub>::Output>;
 
@@ -139,7 +139,7 @@ macro_rules! dispatch_rhs_sub_impl {
         impl<T> Sub<EnumInterval<T>> for $t_lhs
         where
             T: Sub,
-            <T as Sub>::Output: Element + Zero,
+            <T as Sub>::Output: Element,
         {
             type Output = EnumInterval<<T as Sub>::Output>;
 

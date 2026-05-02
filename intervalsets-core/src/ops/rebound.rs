@@ -1,5 +1,3 @@
-use num_traits::Zero;
-
 use crate::bound::{FiniteBound, Side};
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::Element;
@@ -69,7 +67,7 @@ pub trait Rebound<T>: Sized {
     }
 }
 
-impl<T: Element + Zero> Rebound<T> for FiniteInterval<T> {
+impl<T: Element> Rebound<T> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
@@ -96,7 +94,7 @@ impl<T: Element + Zero> Rebound<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
+impl<T: Element> Rebound<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
@@ -131,7 +129,7 @@ impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
     }
 }
 
-impl<T: Element + Zero> Rebound<T> for EnumInterval<T> {
+impl<T: Element> Rebound<T> for EnumInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 

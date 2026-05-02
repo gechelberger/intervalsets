@@ -42,7 +42,7 @@
 
 use crate::bound::{FiniteBound, Side};
 use crate::error::Error;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Can be used instead of the prelude to pull in all factory traits.
@@ -91,7 +91,7 @@ pub mod traits {
 /// let b = Timestamp{ seconds: 10, nanos: 0};
 ///
 /// impl Converter<Timestamp> for u64 {
-///     type To = u64; // impl Element & Zero
+///     type To = u64; // impl Element
 ///     fn convert(value: Timestamp) -> Self::To {
 ///         (value.seconds as u64) << 32 | value.nanos as u64
 ///     }
@@ -346,7 +346,7 @@ where
 pub trait HalfBoundedFactory<T, C>: ConvertingFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Element + Zero,
+    C::To: Element,
 {
     /// Returns a new half bounded interval.
     ///
@@ -483,7 +483,7 @@ impl<T: Element> ConvertingFactory<T, Identity> for HalfInterval<T> {
     type Error = Error;
 }
 
-impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
+impl<T: Element> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
         Self::new(side, bound)
     }
@@ -517,7 +517,7 @@ impl<T: Element> FiniteFactory<T, Identity> for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
         HalfInterval::new(side, bound).into()
     }
@@ -577,7 +577,7 @@ where
 impl<T, C> HalfBoundedFactory<T, C> for EIFactory<T, C>
 where
     C: Converter<T>,
-    C::To: Element + Zero,
+    C::To: Element,
 {
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
         HalfInterval::new(side, bound).into()

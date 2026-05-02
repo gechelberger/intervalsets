@@ -390,8 +390,6 @@ pub mod impls {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::bound::Side::{Left, Right};
-    use crate::factory::traits::*;
 
     #[test]
     fn test_finite_x_finite() {
