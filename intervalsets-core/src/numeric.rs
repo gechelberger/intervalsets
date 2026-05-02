@@ -147,11 +147,6 @@ pub trait Element: Sized + PartialEq + PartialOrd {
 /// struct MyFloat(f64);
 ///
 /// continuous_domain_impl!(MyFloat);
-///
-/// //todo: num_traits::Zero required
-///
-/// //let x = FiniteInterval::closed(MyFloat(0.0), MyFloat(10.0));
-/// //assert_eq!(x.contains(&MyFloat(5.0)), true);
 /// ```
 #[macro_export]
 macro_rules! continuous_domain_impl {

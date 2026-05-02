@@ -171,10 +171,6 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     fn bound(&self, side: Side) -> Option<&FiniteBound<T>> {
         self.0.bound(side)
     }
-
-    // fn into_bounds(self) -> Option<(Option<FiniteBound<T>>, Option<FiniteBound<T>>)> {
-    //     self.map(|lhs, rhs| (Some(lhs), Some(rhs))).ok()
-    // }
 }
 
 /// todo...
@@ -284,14 +280,6 @@ impl<T> SetBounds<T> for HalfInterval<T> {
             None
         }
     }
-
-    // fn into_bounds(self) -> Option<(Option<FiniteBound<T>>, Option<FiniteBound<T>>)> {
-    //     let bounds = match self.side {
-    //         Side::Left => (Some(self.bound), None),
-    //         Side::Right => (None, Some(self.bound)),
-    //     };
-    //     Some(bounds)
-    // }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
