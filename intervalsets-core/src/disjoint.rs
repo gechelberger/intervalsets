@@ -32,12 +32,26 @@ impl<T> MaybeDisjoint<T> {
         Self::Consumed
     }
 
-    pub fn expect_interval(self) -> EnumInterval<T> {
+    /// Returns the interval if this is empty or a single connected
+    /// interval; returns `None` if this is two disjoint intervals.
+    pub fn into_interval(self) -> Option<EnumInterval<T>> {
         match self {
-            Self::Consumed => EnumInterval::empty(),
-            Self::Connected(interval) => interval,
-            Self::Disjoint(_, _) => panic!("expcted a single connected interval"),
+            Self::Consumed => Some(EnumInterval::empty()),
+            Self::Connected(interval) => Some(interval),
+            Self::Disjoint(_, _) => None,
         }
+    }
+
+    /// Returns the interval if this is empty or a single connected
+    /// interval; panics otherwise.
+    ///
+    /// # Panics
+    ///
+    /// Panics if this is two disjoint intervals. Use
+    /// [`into_interval`](Self::into_interval) for a panic-free alternative.
+    pub fn expect_interval(self) -> EnumInterval<T> {
+        self.into_interval()
+            .expect("expected a single connected interval")
     }
 }
 
