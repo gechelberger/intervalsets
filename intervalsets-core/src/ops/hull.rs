@@ -170,7 +170,7 @@ impl<'a, T: Element + Clone> ConvexHull<&'a Self> for FiniteInterval<T> {
 /// Try to create a hull from elements that can be converted into `OrdBoundPair<T>`.
 ///
 /// Returns `None` if input elements violate ordering requirements.
-pub fn convex_hull_into_ord_bound_impl<T, B, I>(iter: I) -> Result<EnumInterval<T>, Error>
+pub(crate) fn convex_hull_into_ord_bound_impl<T, B, I>(iter: I) -> Result<EnumInterval<T>, Error>
 where
     T: Element,
     B: Into<OrdBoundPair<T>>,
@@ -213,7 +213,7 @@ where
 /// Try to create a hull from `OrdBounded<T>` elements.
 ///
 /// Returns `None` if input elements violate ordering requirements.
-pub fn convex_hull_ord_bounded_impl<'a, T, B, I>(iter: I) -> Result<EnumInterval<T>, Error>
+pub(crate) fn convex_hull_ord_bounded_impl<'a, T, B, I>(iter: I) -> Result<EnumInterval<T>, Error>
 where
     T: Element + Clone,
     B: 'a + OrdBounded<T>,

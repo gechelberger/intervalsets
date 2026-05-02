@@ -8,7 +8,7 @@ mod intersects;
 pub use intersects::Intersects;
 
 mod hull;
-pub use hull::{convex_hull_into_ord_bound_impl, convex_hull_ord_bounded_impl, ConvexHull};
+pub use hull::ConvexHull;
 mod intersection;
 pub use intersection::{Intersection, SetSetIntersection};
 mod merged;
