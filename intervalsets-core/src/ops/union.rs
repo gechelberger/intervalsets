@@ -78,21 +78,45 @@ union_via_merge!(EnumInterval<T>, EnumInterval<T>);
 union_via_merge!(FiniteInterval<T>, EnumInterval<T>);
 union_via_merge!(HalfInterval<T>, EnumInterval<T>);
 
-/// By-ref blanket: any `(&X, &Y)` whose owned forms have a `Union<Y>`
-/// impl on `X` gets a `Union<&Y>` impl on `&X` that clones and
-/// forwards. Each clone is shallow (intervals are tagged enums of
-/// two `FiniteBound`s).
-impl<X, Y> Union<&Y> for &X
-where
-    X: Union<Y> + Clone,
-    Y: Clone,
-{
-    type Output = <X as Union<Y>>::Output;
+// By-ref Union: specialized per LHS x RHS pair so the connected case
+// avoids cloning entirely (the by-ref TryMerge returns an owned merged
+// value). Clones only happen when falling into the disjoint branch,
+// which needs owned EnumInterval values for MaybeDisjoint::Disjoint.
+macro_rules! union_via_merge_ref {
+    ($lhs:ty, $rhs:ty) => {
+        impl<T> Union<&$rhs> for &$lhs
+        where
+            T: Element + Ord + Clone,
+        {
+            type Output = MaybeDisjoint<T>;
 
-    fn union(self, rhs: &Y) -> Self::Output {
-        self.clone().union(rhs.clone())
-    }
+            fn union(self, rhs: &$rhs) -> Self::Output {
+                match self.try_merge(rhs) {
+                    Some(merged) => EnumInterval::from(merged).into(),
+                    None => {
+                        let lhs: EnumInterval<T> = self.clone().into();
+                        let rhs: EnumInterval<T> = rhs.clone().into();
+                        if lhs <= rhs {
+                            (lhs, rhs).into()
+                        } else {
+                            (rhs, lhs).into()
+                        }
+                    }
+                }
+            }
+        }
+    };
 }
+
+union_via_merge_ref!(FiniteInterval<T>, FiniteInterval<T>);
+union_via_merge_ref!(HalfInterval<T>, HalfInterval<T>);
+union_via_merge_ref!(FiniteInterval<T>, HalfInterval<T>);
+union_via_merge_ref!(HalfInterval<T>, FiniteInterval<T>);
+union_via_merge_ref!(EnumInterval<T>, FiniteInterval<T>);
+union_via_merge_ref!(EnumInterval<T>, HalfInterval<T>);
+union_via_merge_ref!(EnumInterval<T>, EnumInterval<T>);
+union_via_merge_ref!(FiniteInterval<T>, EnumInterval<T>);
+union_via_merge_ref!(HalfInterval<T>, EnumInterval<T>);
 
 #[cfg(test)]
 mod tests {
