@@ -6,8 +6,8 @@ use crate::{Interval, IntervalSet};
 
 impl<T> Sub for Interval<T>
 where
-    T: Sub,
-    <T as Sub>::Output: Element + Zero,
+    T: Sub + Ord,
+    <T as Sub>::Output: Element + Ord + Zero,
 {
     type Output = Interval<<T as Sub>::Output>;
 
@@ -18,8 +18,8 @@ where
 
 impl<T> Sub<Interval<T>> for IntervalSet<T>
 where
-    T: Sub + Element + Clone,
-    <T as Sub>::Output: Element + Zero,
+    T: Sub + Element + Ord + Clone,
+    <T as Sub>::Output: Element + Ord + Zero,
 {
     type Output = IntervalSet<<T as Sub>::Output>;
 
@@ -30,8 +30,8 @@ where
 
 impl<T> Sub<IntervalSet<T>> for Interval<T>
 where
-    T: Sub + Element + Clone,
-    <T as Sub>::Output: Element + Zero,
+    T: Sub + Element + Ord + Clone,
+    <T as Sub>::Output: Element + Ord + Zero,
 {
     type Output = IntervalSet<<T as Sub>::Output>;
 
@@ -42,8 +42,8 @@ where
 
 impl<T> Sub for IntervalSet<T>
 where
-    T: Sub + Element + Clone,
-    <T as Sub>::Output: Element + Zero,
+    T: Sub + Element + Ord + Clone,
+    <T as Sub>::Output: Element + Ord + Zero,
 {
     type Output = IntervalSet<<T as Sub>::Output>;
 
@@ -64,14 +64,18 @@ where
     }
 }
 
-#[cfg(test)]
+// Float arithmetic tests use OrderedFloat<f64> because the infix Sub
+// operator now requires T: Ord and raw f64 doesn't satisfy that.
+#[cfg(all(test, feature = "ordered-float"))]
 mod tests {
+    use ordered_float::OrderedFloat as O;
+
     use super::*;
     use crate::factory::traits::*;
 
     #[test]
     fn test_sub_interval() {
-        let a = Interval::open(0.0, 10.0);
-        assert_eq!(a - a, Interval::open(-10.0, 10.0));
+        let a = Interval::open(O(0.0), O(10.0));
+        assert_eq!(a - a, Interval::open(O(-10.0), O(10.0)));
     }
 }

@@ -6,8 +6,8 @@ use crate::sets::{Interval, IntervalSet};
 
 impl<T> Mul for Interval<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Clone + Zero,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = Interval<<T as Mul>::Output>;
 
@@ -18,8 +18,8 @@ where
 
 impl<T> Mul<IntervalSet<T>> for Interval<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Clone + Zero,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = IntervalSet<<T as Mul>::Output>;
 
@@ -30,8 +30,8 @@ where
 
 impl<T> Mul<Interval<T>> for IntervalSet<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Clone + Zero,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = IntervalSet<<T as Mul>::Output>;
 
@@ -42,8 +42,8 @@ where
 
 impl<T> Mul<IntervalSet<T>> for IntervalSet<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Mul + Element + Ord + Clone + Zero,
+    <T as Mul>::Output: Element + Ord + Zero + Clone,
 {
     type Output = IntervalSet<<T as Mul>::Output>;
 

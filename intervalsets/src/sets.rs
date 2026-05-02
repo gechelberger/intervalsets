@@ -375,7 +375,7 @@ impl<T> MaybeEmpty for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Clone + Zero> Zero for Interval<T> {
+impl<T: Element + Ord + Clone + Zero> Zero for Interval<T> {
     #[inline]
     fn zero() -> Self {
         Self::from(EnumInterval::zero())
@@ -387,7 +387,7 @@ impl<T: Element + Clone + Zero> Zero for Interval<T> {
     }
 }
 
-impl<T: Element + Clone + Zero> Zero for IntervalSet<T> {
+impl<T: Element + Ord + Clone + Zero> Zero for IntervalSet<T> {
     #[inline]
     fn zero() -> Self {
         Self::from(Interval::zero())
@@ -399,14 +399,14 @@ impl<T: Element + Clone + Zero> Zero for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for Interval<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for Interval<T> {
     #[inline]
     fn one() -> Self {
         Self::from(EnumInterval::one())
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for IntervalSet<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for IntervalSet<T> {
     #[inline]
     fn one() -> Self {
         Self::from(Interval::one())
