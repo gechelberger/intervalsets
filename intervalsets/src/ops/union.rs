@@ -59,15 +59,15 @@ mod icore {
 
                 let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
                     // SAFETY: putting it back together
-                    return IntervalSet::from(unsafe { Self::new_unchecked(lhs_min, lhs_max) });
+                    return IntervalSet::from(unsafe { Self::new_assume_valid(lhs_min, lhs_max) });
                 };
 
                 // SAFETY: if self and rhs satisfy invariants then new interval
                 // is normalized and min(left, right) <= max(left, right)
                 let merged = unsafe {
-                    FiniteInterval::new_unchecked(
-                        FiniteBound::take_min_unchecked(Side::Left, lhs_min, rhs_min),
-                        FiniteBound::take_max_unchecked(Side::Right, lhs_max, rhs_max),
+                    FiniteInterval::new_assume_valid(
+                        FiniteBound::take_min_assume_valid(Side::Left, lhs_min, rhs_min),
+                        FiniteBound::take_max_assume_valid(Side::Right, lhs_max, rhs_max),
                     )
                 };
 
@@ -94,16 +94,16 @@ mod icore {
                 let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
                     // SAFETY: just reconstructing a clone of self
                     let lhs =
-                        unsafe { FiniteInterval::new_unchecked(lhs_min.clone(), lhs_max.clone()) };
+                        unsafe { FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone()) };
                     return IntervalSet::from(lhs);
                 };
 
                 // SAFETY: if self and rhs satisfy invariants then new interval
                 // is normalized and min(left, right) <= max(left, right)
                 let merged = unsafe {
-                    FiniteInterval::new_unchecked(
-                        FiniteBound::min_unchecked(Side::Left, lhs_min, rhs_min).clone(),
-                        FiniteBound::max_unchecked(Side::Right, lhs_max, rhs_max).clone(),
+                    FiniteInterval::new_assume_valid(
+                        FiniteBound::min_assume_valid(Side::Left, lhs_min, rhs_min).clone(),
+                        FiniteBound::max_assume_valid(Side::Right, lhs_max, rhs_max).clone(),
                     )
                 };
 
@@ -175,7 +175,7 @@ mod icore {
                 } else {
                     let bound = rhs.side().select(lhs_min, lhs_max);
                     // SAFETY: bound stolen from existing FiniteInterval
-                    let merged = unsafe { HalfInterval::new_unchecked(rhs.side(), bound) };
+                    let merged = unsafe { HalfInterval::new_assume_valid(rhs.side(), bound) };
                     IntervalSet::from(merged)
                 }
             } else {
@@ -204,7 +204,7 @@ mod icore {
                 } else {
                     let bound = rhs.side().select(lhs_min, lhs_max).clone();
                     // SAFETY: bound stolen from existing FiniteInterval
-                    let merged = unsafe { HalfInterval::new_unchecked(rhs.side(), bound) };
+                    let merged = unsafe { HalfInterval::new_assume_valid(rhs.side(), bound) };
                     IntervalSet::from(merged)
                 }
             } else {

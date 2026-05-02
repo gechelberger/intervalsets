@@ -8,12 +8,12 @@ impl<T: Element + Zero> Rebound<T> for Interval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
-        self.0.with_left_strict(bound).map(Interval::from)
+    fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+        self.0.try_with_left(bound).map(Interval::from)
     }
 
-    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
-        self.0.with_right_strict(bound).map(Interval::from)
+    fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+        self.0.try_with_right(bound).map(Interval::from)
     }
 }
 

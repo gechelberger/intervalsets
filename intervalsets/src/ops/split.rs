@@ -9,13 +9,13 @@ impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn strict_split(
+    fn try_split(
         self,
         at: T,
         closed: Side,
     ) -> Result<(Self::Output, Self::Output), Self::Error> {
         self.0
-            .strict_split(at, closed)
+            .try_split(at, closed)
             .map(|(l, r)| (l.into(), r.into()))
     }
 }
@@ -24,7 +24,7 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn strict_split(
+    fn try_split(
         self,
         at: T,
         closed: Side,
@@ -39,7 +39,7 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
         // iter is faster than a binary search for small (typical) N.
         for subset in self.into_iter() {
             if subset.contains(&at) {
-                let split = subset.strict_split(at.clone(), closed)?;
+                let split = subset.try_split(at.clone(), closed)?;
                 if !split.0.is_empty() {
                     left.push(split.0);
                 }
@@ -47,7 +47,7 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
                     right.push(split.1);
                 }
             } else if let Some(rbound) = subset.right() {
-                if !rbound.strict_contains(Side::Right, &at)? {
+                if !rbound.try_contains(Side::Right, &at)? {
                     left.push(subset);
                 } else {
                     right.push(subset);
@@ -185,11 +185,11 @@ mod tests {
             Interval::closed(50, 60),
         ]);
 
-        let (left, right) = iset.clone().strict_split(30, Side::Right).unwrap();
+        let (left, right) = iset.clone().try_split(30, Side::Right).unwrap();
         assert_eq!(left, IntervalSet::from_iter([[10, 20]]));
         assert_eq!(right, IntervalSet::from_iter([[30, 40], [50, 60]]));
 
-        let (left, right) = iset.strict_split(40, Side::Left).unwrap();
+        let (left, right) = iset.try_split(40, Side::Left).unwrap();
         assert_eq!(left, IntervalSet::from_iter([[10, 20], [30, 40]]));
         assert_eq!(right, IntervalSet::from_iter([[50, 60]]));
     }

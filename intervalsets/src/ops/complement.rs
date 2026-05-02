@@ -28,8 +28,8 @@ impl<T: Element> Complement for FiniteInterval<T> {
                 // SAFETY: Assuming FiniteInterval invariants are satisfied, then lhs <= rhs and
                 // new half intervals are properly sorted; bounds are comparable; manually renormalized.
                 IntervalSet::new_unchecked(vec![
-                    HalfInterval::new_unchecked(Right, lhs.flip().normalized(Right)).into(),
-                    HalfInterval::new_unchecked(Left, rhs.flip().normalized(Left)).into(),
+                    HalfInterval::new_assume_valid(Right, lhs.flip().normalized(Right)).into(),
+                    HalfInterval::new_assume_valid(Left, rhs.flip().normalized(Left)).into(),
                 ])
             },
         }
@@ -43,7 +43,7 @@ impl<T: Element> Complement for HalfInterval<T> {
         let (side, bound) = self.into_raw();
         let side = side.flip();
         // Safety: Assume bound satisfies invariants; manually re-normalize after flip;
-        unsafe { HalfInterval::new_unchecked(side, bound.flip().normalized(side)).into() }
+        unsafe { HalfInterval::new_assume_valid(side, bound.flip().normalized(side)).into() }
     }
 }
 
