@@ -1,6 +1,7 @@
 use core::ops::Add;
 
 use super::{Count, Countable, Measurement};
+use crate::error::Error;
 use crate::numeric::Zero;
 use crate::{Interval, IntervalSet};
 
@@ -11,8 +12,8 @@ where
 {
     type Output = T::Output;
 
-    fn count(&self) -> Measurement<Self::Output> {
-        self.0.count()
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
+        self.0.try_count()
     }
 }
 
@@ -23,10 +24,11 @@ where
 {
     type Output = Out;
 
-    fn count(&self) -> Measurement<Self::Output> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
         self.iter()
-            .map(|subset| subset.count())
-            .fold(Measurement::Finite(Out::zero()), |accum, item| accum + item)
+            .try_fold(Measurement::Finite(Out::zero()), |accum, subset| {
+                Ok(accum + subset.try_count()?)
+            })
     }
 }
 
