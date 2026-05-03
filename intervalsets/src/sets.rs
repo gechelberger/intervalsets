@@ -1,3 +1,4 @@
+use intervalsets_core::error::Error;
 use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::EnumInterval;
 use num_traits::{One, Zero};
@@ -170,12 +171,32 @@ impl<T> OrdBounded<T> for Interval<T> {
 /// * All stored intervals are unconnected subsets of T.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawIntervalSet<T>"))]
 #[cfg_attr(
     feature = "serde",
     serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
 )]
 pub struct IntervalSet<T> {
     intervals: Vec<Interval<T>>,
+}
+
+/// Wire-format mirror of [`IntervalSet`] used to drive validation
+/// during `Deserialize`.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "IntervalSet")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
+struct RawIntervalSet<T> {
+    intervals: Vec<Interval<T>>,
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawIntervalSet<T>> for IntervalSet<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawIntervalSet<T>) -> Result<Self, Self::Error> {
+        Self::try_new(raw.intervals)
+    }
 }
 
 impl<T: Element> IntervalSet<T> {
@@ -197,6 +218,30 @@ impl<T: Element> IntervalSet<T> {
 
         let intervals: Vec<_> = MergeSortedByValue::new(intervals).collect();
         Self { intervals }
+    }
+
+    /// Create a new `IntervalSet`, returning `Err` if the input violates
+    /// any invariant. Unlike [`new`](Self::new), this does **not** repair
+    /// or normalize the input — it is the strict counterpart used by
+    /// the `Deserialize` path and by callers that want to reject
+    /// malformed data outright.
+    ///
+    /// Rejects:
+    /// - any stored empty interval;
+    /// - intervals not in strict ascending order;
+    /// - two consecutive intervals that connect (and would have been
+    ///   merged in canonical form).
+    pub fn try_new<I>(intervals: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = Interval<T>>,
+    {
+        let intervals: Vec<_> = intervals.into_iter().collect();
+        // satisfies_invariants catches empty stored intervals as a side
+        // effect of the strict-ascending check (empty compares <= empty).
+        if !Self::satisfies_invariants(&intervals) {
+            return Err(Error::InvalidIntervalSet);
+        }
+        Ok(Self { intervals })
     }
 }
 
@@ -588,3 +633,86 @@ mod decimal_tests {
     }
 }
 */
+
+/// Negative tests for `IntervalSet`'s strict `Deserialize` path. Round-trip
+/// of valid input is exercised by other tests; these confirm malformed
+/// input is rejected. We hand-craft payloads by serializing valid sets
+/// and editing the JSON, since a well-formed serializer never emits
+/// these shapes.
+#[cfg(all(test, feature = "serde"))]
+mod malformed_deserialize {
+    use super::*;
+    use crate::prelude::*;
+
+    #[test]
+    fn rejects_unsorted_intervals() {
+        // Build a sorted set, serialize, then swap the two intervals on
+        // the wire so the resulting payload has them in descending order.
+        let valid = IntervalSet::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
+        let json = serde_json::to_string(&valid).unwrap();
+        // Sanity: confirm both endpoints survived serialization.
+        assert!(json.contains("10") && json.contains("20"), "unexpected: {json}");
+        let swapped = json
+            .replacen("0", "X1", 1)
+            .replacen("10", "X2", 1)
+            .replacen("20", "0", 1)
+            .replacen("30", "10", 1)
+            .replacen("X1", "20", 1)
+            .replacen("X2", "30", 1);
+
+        let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&swapped);
+        assert!(
+            result.is_err(),
+            "expected error for unsorted intervals, got: {:?}\npayload: {swapped}",
+            result
+        );
+    }
+
+    #[test]
+    fn rejects_connecting_intervals() {
+        // Two adjacent intervals that should have been merged. For i32
+        // with closed-form normalization, [0,10] and [11,20] are
+        // connected and would collapse to [0,20] in canonical form.
+        let valid = IntervalSet::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
+        let json = serde_json::to_string(&valid).unwrap();
+        let connecting = json
+            .replacen("20", "11", 1)
+            .replacen("30", "20", 1);
+
+        let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&connecting);
+        assert!(
+            result.is_err(),
+            "expected error for connecting intervals, got: {:?}\npayload: {connecting}",
+            result
+        );
+    }
+
+    #[test]
+    fn rejects_stored_empty_interval() {
+        // Graft an Empty variant into a valid set's intervals array.
+        let nonempty = IntervalSet::<i32>::new([Interval::closed(0, 10)]);
+        let nonempty_json = serde_json::to_string(&nonempty).unwrap();
+        let empty_repr = r#"{"Finite":"Empty"}"#;
+        let with_empty = nonempty_json.replacen(
+            "[",
+            &format!("[{empty_repr},"),
+            1,
+        );
+
+        let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&with_empty);
+        assert!(
+            result.is_err(),
+            "expected error for stored empty interval, got: {:?}\npayload: {with_empty}",
+            result
+        );
+    }
+
+    #[test]
+    fn accepts_valid_set_round_trip() {
+        // Sanity: valid input still round-trips cleanly.
+        let valid = IntervalSet::<i32>::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
+        let json = serde_json::to_string(&valid).unwrap();
+        let parsed: IntervalSet<i32> = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, valid);
+    }
+}
