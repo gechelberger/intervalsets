@@ -2,12 +2,13 @@
 name = "benchmarks"
 version = "0.1.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 arbitrary = "1.4.1"
 criterion = "0.5.1"
-intervalsets = { version = "0.1.0-alpha.2", path = "../intervalsets", features = ["arbitrary"]}
-intervalsets-core = { version = "0.1.0-alpha.2", path = "../intervalsets-core", features = ["arbitrary"] }
+intervalsets = { path = "../intervalsets", features = ["arbitrary"]}
+intervalsets-core = { path = "../intervalsets-core", features = ["arbitrary"] }
 rand = "0.8.5"
 
 [[bench]]
