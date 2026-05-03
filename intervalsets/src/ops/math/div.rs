@@ -14,8 +14,8 @@ where
 
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let divided = self.0.try_div(rhs.0)?;
-        // SAFETY: MaybeDisjoint guarantees sorted, disjoint, non-empty intervals.
-        Ok(unsafe { IntervalSet::new_unchecked(divided.map(Interval::from)) })
+        // MaybeDisjoint guarantees sorted, disjoint, non-empty intervals.
+        Ok(IntervalSet::new_assume_valid(divided.map(Interval::from)))
     }
 }
 

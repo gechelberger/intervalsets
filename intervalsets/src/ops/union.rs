@@ -73,10 +73,9 @@ mod icore {
                 IntervalSet::from(merged)
             } else {
                 let ordpair = ordered_pair(self.into(), rhs.into());
-                // SAFETY:
                 // 2. intervals are sorted here
                 // 1+3. Just checked that the two sets are not connected
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -107,7 +106,9 @@ mod icore {
                 IntervalSet::from(merged)
             } else {
                 let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                // 2. intervals are sorted here
+                // 1+3. Just checked that the two sets are not connected
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -126,10 +127,9 @@ mod icore {
                 IntervalSet::unbounded()
             } else {
                 let ordpair = ordered_pair(self.into(), rhs.into());
-                // SAFETY:
                 // 2: intervals are sorted here
                 // 1+3: intervals are not connected (and therefore also non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -148,10 +148,9 @@ mod icore {
                 IntervalSet::unbounded()
             } else {
                 let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
-                // SAFETY:
                 // 2: intervals are sorted here
                 // 1+3: intervals are not connected (and therefore also non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -178,10 +177,9 @@ mod icore {
                 }
             } else {
                 let ordpair = ordered_pair(self.into(), rhs.into());
-                // SAFETY:
                 // 2. intervals are sorted here
                 // 1+3. intervals not connected (and therefore non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -208,10 +206,9 @@ mod icore {
                 }
             } else {
                 let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
-                // SAFETY:
                 // 2. intervals are sorted here
                 // 1+3. intervals not connected (and therefore non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -299,11 +296,10 @@ impl<T: Element> Union<Self> for IntervalSet<T> {
 
     fn union(self, rhs: Self) -> Self::Output {
         let sorted = itertools::merge(self, rhs);
-        // SAFETY:
         // 1. Neither operand may produce the empty set per invariants.
         // 2. Operands are sorted per invariants.
         // 3. MergSortedByValue merged connected intervals if properly sorted.
-        unsafe { Self::new_unchecked(MergeSortedByValue::new(sorted)) }
+        Self::new_assume_valid(MergeSortedByValue::new(sorted))
     }
 }
 
@@ -313,11 +309,10 @@ impl<T: Element + Clone> Union<Self> for &IntervalSet<T> {
     fn union(self, rhs: Self) -> Self::Output {
         let sorted = itertools::merge(self.iter(), rhs.iter());
         let merged = MergeSortedByRef::new(sorted.into_iter().map(|x| &x.0));
-        // SAFETY:
         // 1. Neither operand may produce the empty set per invariants
         // 2. Operands are sorted per invariants.
         // 3. MergeSortedByRef merges connected intervals if sorted.
-        unsafe { IntervalSet::new_unchecked(merged.map(Interval::from)) }
+        IntervalSet::new_assume_valid(merged.map(Interval::from))
     }
 }
 
@@ -326,11 +321,10 @@ impl<T: Element> Union<Interval<T>> for IntervalSet<T> {
 
     fn union(self, rhs: Interval<T>) -> Self::Output {
         let sorted = itertools::merge(self, once(rhs));
-        // SAFETY:
         // 1. MergeSortedByValue strips empty sets from the head of its input.
         // 2. values are sorted if self invariants are satisfied.
         // 3. MergeSortedByValue merges connected intervals if properly sorted.
-        unsafe { Self::new_unchecked(MergeSortedByValue::new(sorted)) }
+        Self::new_assume_valid(MergeSortedByValue::new(sorted))
     }
 }
 
@@ -340,11 +334,10 @@ impl<T: Element + Clone> Union<&Interval<T>> for &IntervalSet<T> {
     fn union(self, rhs: &Interval<T>) -> Self::Output {
         let sorted = itertools::merge(self.iter(), once(rhs));
         let merged = MergeSortedByRef::new(sorted.into_iter().map(|x| &x.0));
-        // SAFETY:
         // 1. Neither operand may produce the empty set per invariants
         // 2. Operands are sorted per invariants.
         // 3. MergeSortedByRef merges connected intervals if sorted.
-        unsafe { IntervalSet::new_unchecked(merged.map(Interval::from)) }
+        IntervalSet::new_assume_valid(merged.map(Interval::from))
     }
 }
 

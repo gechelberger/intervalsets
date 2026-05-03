@@ -73,10 +73,9 @@ impl<T> From<Interval<T>> for IntervalSet<T> {
         if value.is_empty() {
             IntervalSet::empty()
         } else {
-            // SAFETY:
             // 1. the empty set is explicitly excluded.
             // 2+3. only one interval -> sorted/connected are not applicable
-            unsafe { IntervalSet::new_unchecked([value]) }
+            IntervalSet::new_assume_valid([value])
         }
     }
 }
@@ -125,8 +124,8 @@ interval_set_delegate_from_impl!(core::ops::RangeFull);
 
 impl<T> From<MaybeDisjoint<T>> for IntervalSet<T> {
     fn from(value: MaybeDisjoint<T>) -> Self {
-        // SAFETY: MaybeDisjoint requires the same invariants as IntervalSet.
-        unsafe { Self::new_unchecked(value.map(Interval::from)) }
+        // MaybeDisjoint requires the same invariants as IntervalSet.
+        Self::new_assume_valid(value.map(Interval::from))
     }
 }
 

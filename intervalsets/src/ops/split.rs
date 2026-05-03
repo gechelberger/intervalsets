@@ -57,16 +57,13 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
             }
         }
 
-        // SAFETY:
         // 1. no input subsets may be empty. split subsets are checked for empty.
         // 2. original subset order is maintained
         // 3. if intervals were unconnected in original set then that is preserved
         //    in split child sets.
-        unsafe {
-            let left_set = Self::Output::new_unchecked(left);
-            let right_set = Self::Output::new_unchecked(right);
-            Ok((left_set, right_set))
-        }
+        let left_set = Self::Output::new_assume_valid(left);
+        let right_set = Self::Output::new_assume_valid(right);
+        Ok((left_set, right_set))
     }
 }
 

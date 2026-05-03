@@ -21,7 +21,7 @@
 //!
 //! `Union`, by contrast, is the right operation both semantically (we're
 //! combining interval sets) and structurally: its body goes straight through
-//! `unsafe { IntervalSet::new_unchecked(MergeSortedByValue::new(...)) }` over
+//! `IntervalSet::new_assume_valid(MergeSortedByValue::new(...))` over
 //! already-sorted inputs. No re-validation, no panic path.
 
 mod add;

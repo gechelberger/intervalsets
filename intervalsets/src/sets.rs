@@ -224,13 +224,14 @@ impl<T: Element> IntervalSet<T> {
 impl<T> IntervalSet<T> {
     /// Creates a new IntervalSet without checking invariants.
     ///
-    /// # Safety
-    ///
-    /// User is responsible for enforcing invariants:
+    /// Caller is responsible for enforcing invariants:
     /// 1. provided intervals do not include the empty set.
     /// 2. provided intervals are sorted ascendingly.
     /// 3. provided intervals are not connected to each other.
-    pub unsafe fn new_unchecked<I>(intervals: I) -> Self
+    ///
+    /// Violations are not memory-unsafe but produce a logically invalid
+    /// `IntervalSet` whose set-algebraic operations may misbehave.
+    pub fn new_assume_valid<I>(intervals: I) -> Self
     where
         I: IntoIterator<Item = Interval<T>>,
     {

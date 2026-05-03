@@ -48,11 +48,10 @@ impl<T: Element + Clone> Intersection<Interval<T>> for IntervalSet<T> {
             .map(|subset| (subset).intersection(rhs.clone()))
             .filter(|iv| !iv.is_empty());
 
-        // SAFETY:
         // 1. empty intervals are explicity filtered out
         // 2. inputs are sorted per invariants
         // 3. inputs are unconnected per invariants so intersection will be too.
-        unsafe { IntervalSet::new_unchecked(intervals) }
+        IntervalSet::new_assume_valid(intervals)
     }
 }
 
@@ -72,12 +71,11 @@ impl<T: Element + Clone> Intersection<Self> for IntervalSet<T> {
         let rhs = rhs.into_iter().map(|x| x.0);
         let intervals = SetSetIntersection::new(lhs, rhs).map(Interval::from);
 
-        // SAFETY:
         // 1. SetSetIntersection never returns empty (just stops iteration)
         // 2. lhs & rhs should be sorted per invariants and SetSetI maintains.
         // 3. if lhs intervals are unconnected and rhs intervals are unconnected
         //    then the intervals of their intersection should be unconnected.
-        unsafe { Self::Output::new_unchecked(intervals) }
+        Self::Output::new_assume_valid(intervals)
     }
 }
 
@@ -89,12 +87,11 @@ impl<T: Element + Clone> Intersection<Self> for &IntervalSet<T> {
         let rhs = rhs.iter().map(|x| &x.0);
         let intervals = SetSetIntersection::new(lhs, rhs).map(Interval::from);
 
-        // SAFETY:
         // 1. SetSetIntersection never returns empty (just stops iteration)
         // 2. lhs & rhs should be sorted per invariants and SetSetI maintains.
         // 3. if lhs intervals are unconnected and rhs intervals are unconnected
         //    then the intervals of their intersection should be unconnected.
-        unsafe { Self::Output::new_unchecked(intervals) }
+        Self::Output::new_assume_valid(intervals)
     }
 }
 
@@ -107,11 +104,10 @@ impl<T: Element + Clone> Intersection<&Interval<T>> for &IntervalSet<T> {
             .map(|subset| subset.intersection(rhs))
             .filter(|iv| !iv.is_empty());
 
-        // SAFETY:
         // 1. empty intervals are explicity filtered out
         // 2. inputs are sorted per invariants
         // 3. inputs are unconnected per invariants so intersection will be too.
-        unsafe { IntervalSet::new_unchecked(intervals) }
+        IntervalSet::new_assume_valid(intervals)
     }
 }
 
