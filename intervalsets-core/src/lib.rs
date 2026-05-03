@@ -224,7 +224,14 @@
 //!
 //! ## serialization
 //! * serde: implement [`Serialize`](::serde::Serialize), [`Deserialize`](::serde::Deserialize).
+//!   `Deserialize` requires `T: Element` and rejects NaN, swapped-order
+//!   `Bounded` pairs, and other invariant violations on the interval types
+//!   ([`FiniteInterval`](sets::FiniteInterval),
+//!   [`HalfInterval`](sets::HalfInterval),
+//!   [`EnumInterval`](sets::EnumInterval)). The `bound::ord::*` helper
+//!   types do not derive serde traits.
 //! * rkyv: implement [`Archive`](::rkyv::Archive), [`Serialize`](::rkyv::Serialize), [`Deserialize`](::rkyv::Deserialize).
+//!   The `bound::ord::*` helper types do not derive rkyv traits.
 //!
 //! # Diving Deeper
 //! * [Implement custom storage data types](numeric)

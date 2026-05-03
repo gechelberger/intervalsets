@@ -210,7 +210,10 @@ where
         right = right.try_max(c_right)?;
     }
 
-    OrdBoundPair::new(left, right).try_into()
+    // try_min/try_max have rejected NaN; left came from min-of-lefts and right
+    // from max-of-rights of valid OrdBoundPairs, so structural and value-level
+    // invariants both hold.
+    OrdBoundPair::new_assume_valid(left, right).try_into()
 }
 
 /// Try to create a hull from `OrdBounded<T>` elements.
@@ -258,7 +261,8 @@ where
 
     let left = left.cloned();
     let right = right.cloned();
-    OrdBoundPair::new(left, right).try_into()
+    // Same reasoning as the by-value version: invariants already hold.
+    OrdBoundPair::new_assume_valid(left, right).try_into()
 }
 
 impl<T: Element> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {

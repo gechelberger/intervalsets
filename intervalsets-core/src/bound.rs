@@ -587,7 +587,11 @@ mod math {
 
 /// Helpers that define a total order for `Set` bounds.
 pub mod ord {
+    use core::cmp::Ordering::Greater;
+
     use super::{BoundType, FiniteBound};
+    use crate::error::Error;
+    use crate::try_cmp::TryCmp;
 
     /// Any type with left and right bounds, following the standard total order.
     pub trait OrdBounded<T> {
@@ -603,11 +607,6 @@ pub mod ord {
     /// LeftUnbound < RightOpen(x) < Closed(x) < LeftOpen(x) < RightUnbound
     /// ```
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(
-        feature = "rkyv",
-        derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-    )]
     #[allow(missing_docs)]
     pub enum OrdBound<T> {
         LeftUnbounded,
@@ -683,17 +682,10 @@ pub mod ord {
     ///
     /// For a given finite value x, RightOpen(x) < Closed(x) < LeftOpen(x).
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(
-        feature = "rkyv",
-        derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-    )]
     pub enum FiniteOrdBoundKind {
         RightOpen,
         Closed,
         LeftOpen,
-        // As of rkyv-0.8.9 enum discriminants may only be unsigned and do
-        // not respect #[repr(i32)].
     }
 
     use FiniteOrdBoundKind::*;
@@ -708,11 +700,6 @@ pub mod ord {
 
     /// Finite bound with a total ordering
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(
-        feature = "rkyv",
-        derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-    )]
     pub struct FiniteOrdBound<T>(pub T, pub FiniteOrdBoundKind);
 
     impl<T> FiniteOrdBound<T> {
@@ -752,11 +739,6 @@ pub mod ord {
     ///
     /// The empty set is represented by (-inf, -inf).
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
-    #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-    #[cfg_attr(
-        feature = "rkyv",
-        derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-    )]
     pub struct OrdBoundPair<T>(OrdBound<T>, OrdBound<T>);
 
     impl<T: PartialEq> OrdBoundPair<T> {
@@ -772,24 +754,75 @@ pub mod ord {
             Self(LeftUnbounded, LeftUnbounded)
         }
 
-        /// Creates a new totally ordered bound pair.
-        pub fn new(left: OrdBound<T>, right: OrdBound<T>) -> Self {
-            match (left, right) {
-                // use (LU, LU) to represent EMPTY and make it the lowest element
-                (LeftUnbounded, LeftUnbounded) => Self::empty(),
-                (left, right) => {
-                    debug_assert!(!matches!(&left, RightUnbounded));
-                    debug_assert!(!matches!(&right, LeftUnbounded));
-                    debug_assert!(!matches!(&left, Finite(FiniteOrdBound(_, RightOpen))));
-                    debug_assert!(!matches!(&right, Finite(FiniteOrdBound(_, LeftOpen))));
-                    Self(left, right)
-                }
-            }
+        /// Creates an `OrdBoundPair` without validating its invariants.
+        ///
+        /// # Preconditions
+        ///
+        /// 1. `left` is not `RightUnbounded`.
+        /// 2. `right` is not `LeftUnbounded`, except in the canonical empty
+        ///    pair `(LeftUnbounded, LeftUnbounded)`.
+        /// 3. If `left` is `Finite`, its kind is not `RightOpen`.
+        /// 4. If `right` is `Finite`, its kind is not `LeftOpen`.
+        /// 5. When both ends are `Finite`, `left.value() <= right.value()`
+        ///    in total order (no NaN, not swapped).
+        ///
+        /// Violating any precondition yields incorrect results downstream
+        /// but no undefined behavior.
+        #[inline]
+        pub const fn new_assume_valid(left: OrdBound<T>, right: OrdBound<T>) -> Self {
+            Self(left, right)
         }
 
         /// Decompose into the pair of OrdBounds
         pub fn into_raw(self) -> (OrdBound<T>, OrdBound<T>) {
             (self.0, self.1)
+        }
+    }
+
+    impl<T: PartialOrd> OrdBoundPair<T> {
+        /// Creates a new totally ordered bound pair.
+        ///
+        /// # Panics
+        ///
+        /// Panics if the inputs violate `OrdBoundPair` invariants. Use
+        /// [`try_new`](Self::try_new) for the fallible variant.
+        pub fn new(left: OrdBound<T>, right: OrdBound<T>) -> Self {
+            Self::try_new(left, right).expect("OrdBoundPair invariants violated")
+        }
+
+        /// Creates a new totally ordered bound pair, returning `Err` on
+        /// any structural or value-level invariant violation.
+        ///
+        /// Rejects:
+        /// - `RightUnbounded` on the left;
+        /// - `LeftUnbounded` on the right (except canonical empty);
+        /// - finite-left with `RightOpen` kind;
+        /// - finite-right with `LeftOpen` kind;
+        /// - incomparable values (NaN) → [`TotalOrderError`](crate::error::TotalOrderError);
+        /// - swapped value order (`left.value() > right.value()`).
+        pub fn try_new(left: OrdBound<T>, right: OrdBound<T>) -> Result<Self, Error> {
+            match (left, right) {
+                // (LU, LU) is the canonical empty marker and the lowest element.
+                (LeftUnbounded, LeftUnbounded) => Ok(Self::empty()),
+                (left, right) => {
+                    if matches!(&left, RightUnbounded)
+                        || matches!(&right, LeftUnbounded)
+                        || matches!(&left, Finite(FiniteOrdBound(_, RightOpen)))
+                        || matches!(&right, Finite(FiniteOrdBound(_, LeftOpen)))
+                    {
+                        return Err(Error::InvalidBoundPair);
+                    }
+                    if let (Finite(FiniteOrdBound(lv, _)), Finite(FiniteOrdBound(rv, _))) =
+                        (&left, &right)
+                    {
+                        // try_cmp raises TotalOrderError on NaN.
+                        if lv.try_cmp(rv)? == Greater {
+                            return Err(Error::InvalidBoundPair);
+                        }
+                    }
+                    Ok(Self::new_assume_valid(left, right))
+                }
+            }
         }
     }
 }
@@ -800,6 +833,83 @@ mod test {
     use super::Side::*;
     use super::*;
     use crate::try_cmp::{TryMax, TryMin};
+
+    mod ord_bound_pair {
+        use crate::bound::ord::{
+            FiniteOrdBound, FiniteOrdBoundKind::*, OrdBound, OrdBound::*, OrdBoundPair,
+        };
+        use crate::error::Error;
+
+        #[test]
+        fn empty_round_trips_via_try_new() {
+            let pair = OrdBoundPair::<i32>::try_new(LeftUnbounded, LeftUnbounded).unwrap();
+            assert_eq!(pair, OrdBoundPair::<i32>::empty());
+        }
+
+        #[test]
+        fn unbounded_pair_accepted() {
+            OrdBoundPair::<i32>::try_new(LeftUnbounded, RightUnbounded).unwrap();
+        }
+
+        #[test]
+        fn closed_equal_values_accepted() {
+            OrdBoundPair::<i32>::try_new(OrdBound::closed(5), OrdBound::closed(5)).unwrap();
+        }
+
+        #[test]
+        fn rejects_right_unbounded_on_left() {
+            let err =
+                OrdBoundPair::<i32>::try_new(RightUnbounded, OrdBound::closed(0)).unwrap_err();
+            assert!(matches!(err, Error::InvalidBoundPair));
+        }
+
+        #[test]
+        fn rejects_left_unbounded_on_right() {
+            let err =
+                OrdBoundPair::<i32>::try_new(OrdBound::closed(0), LeftUnbounded).unwrap_err();
+            assert!(matches!(err, Error::InvalidBoundPair));
+        }
+
+        #[test]
+        fn rejects_right_open_kind_on_left() {
+            let left = Finite(FiniteOrdBound(0_i32, RightOpen));
+            let right = OrdBound::closed(10);
+            let err = OrdBoundPair::try_new(left, right).unwrap_err();
+            assert!(matches!(err, Error::InvalidBoundPair));
+        }
+
+        #[test]
+        fn rejects_left_open_kind_on_right() {
+            let left = OrdBound::closed(0);
+            let right = Finite(FiniteOrdBound(10_i32, LeftOpen));
+            let err = OrdBoundPair::try_new(left, right).unwrap_err();
+            assert!(matches!(err, Error::InvalidBoundPair));
+        }
+
+        #[test]
+        fn rejects_swapped_value_order() {
+            let err =
+                OrdBoundPair::<i32>::try_new(OrdBound::closed(10), OrdBound::closed(0))
+                    .unwrap_err();
+            assert!(matches!(err, Error::InvalidBoundPair));
+        }
+
+        #[test]
+        fn rejects_nan_value() {
+            let err = OrdBoundPair::<f32>::try_new(
+                OrdBound::closed(f32::NAN),
+                OrdBound::closed(f32::NAN),
+            )
+            .unwrap_err();
+            assert!(matches!(err, Error::TotalOrderError(_)));
+        }
+
+        #[test]
+        #[should_panic(expected = "OrdBoundPair invariants violated")]
+        fn new_panics_on_malformed() {
+            let _ = OrdBoundPair::<i32>::new(OrdBound::closed(10), OrdBound::closed(0));
+        }
+    }
 
     #[test]
     fn test_bound_min_max() {

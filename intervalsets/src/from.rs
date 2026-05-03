@@ -162,7 +162,8 @@ impl<T> From<IntervalSet<T>> for OrdBoundPair<T> {
                 let last = intervals.swap_remove(0);
                 let (min, _) = OrdBoundPair::from(first).into_raw();
                 let (_, max) = OrdBoundPair::from(last).into_raw();
-                OrdBoundPair::new(min, max)
+                // IntervalSet invariants give first.left <= last.right.
+                OrdBoundPair::new_assume_valid(min, max)
             }
         }
     }
@@ -179,7 +180,7 @@ impl<'a, T> From<&'a IntervalSet<T>> for OrdBoundPair<&'a T> {
                 let last = intervals.last().unwrap();
                 let (min, _) = OrdBoundPair::from(first).into_raw();
                 let (_, max) = OrdBoundPair::from(last).into_raw();
-                OrdBoundPair::new(min, max)
+                OrdBoundPair::new_assume_valid(min, max)
             }
         }
     }

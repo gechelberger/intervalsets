@@ -74,13 +74,17 @@ impl<T> From<HalfInterval<T>> for EnumInterval<T> {
     }
 }
 
+// All conversions below take a validated interval as input, so the resulting
+// `OrdBoundPair` already satisfies the invariants and can skip re-validation.
+
 impl<T> From<FiniteInterval<T>> for OrdBoundPair<T> {
     fn from(value: FiniteInterval<T>) -> Self {
         match value.into_raw() {
             None => OrdBoundPair::empty(),
-            Some((lhs, rhs)) => {
-                OrdBoundPair::new(lhs.into_ord(Side::Left), rhs.into_ord(Side::Right))
-            }
+            Some((lhs, rhs)) => OrdBoundPair::new_assume_valid(
+                lhs.into_ord(Side::Left),
+                rhs.into_ord(Side::Right),
+            ),
         }
     }
 }
@@ -89,7 +93,9 @@ impl<'a, T> From<&'a FiniteInterval<T>> for OrdBoundPair<&'a T> {
     fn from(value: &'a FiniteInterval<T>) -> Self {
         match value.view_raw() {
             None => OrdBoundPair::empty(),
-            Some((lhs, rhs)) => OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right)),
+            Some((lhs, rhs)) => {
+                OrdBoundPair::new_assume_valid(lhs.ord(Side::Left), rhs.ord(Side::Right))
+            }
         }
     }
 }
@@ -97,8 +103,12 @@ impl<'a, T> From<&'a FiniteInterval<T>> for OrdBoundPair<&'a T> {
 impl<T> From<HalfInterval<T>> for OrdBoundPair<T> {
     fn from(value: HalfInterval<T>) -> Self {
         match value.side() {
-            Side::Left => OrdBoundPair::new(value.into_ord_bound(), OrdBound::RightUnbounded),
-            Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, value.into_ord_bound()),
+            Side::Left => {
+                OrdBoundPair::new_assume_valid(value.into_ord_bound(), OrdBound::RightUnbounded)
+            }
+            Side::Right => {
+                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, value.into_ord_bound())
+            }
         }
     }
 }
@@ -107,8 +117,8 @@ impl<'a, T> From<&'a HalfInterval<T>> for OrdBoundPair<&'a T> {
     fn from(value: &'a HalfInterval<T>) -> Self {
         let ord_bound = value.ord_bound();
         match value.side() {
-            Side::Left => OrdBoundPair::new(ord_bound, OrdBound::RightUnbounded),
-            Side::Right => OrdBoundPair::new(OrdBound::LeftUnbounded, ord_bound),
+            Side::Left => OrdBoundPair::new_assume_valid(ord_bound, OrdBound::RightUnbounded),
+            Side::Right => OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, ord_bound),
         }
     }
 }
@@ -118,9 +128,10 @@ impl<T> From<EnumInterval<T>> for OrdBoundPair<T> {
         match value {
             EnumInterval::Finite(inner) => inner.into(),
             EnumInterval::Half(inner) => inner.into(),
-            EnumInterval::Unbounded => {
-                OrdBoundPair::new(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
-            }
+            EnumInterval::Unbounded => OrdBoundPair::new_assume_valid(
+                OrdBound::LeftUnbounded,
+                OrdBound::RightUnbounded,
+            ),
         }
     }
 }
@@ -130,9 +141,10 @@ impl<'a, T> From<&'a EnumInterval<T>> for OrdBoundPair<&'a T> {
         match value {
             EnumInterval::Finite(inner) => inner.into(),
             EnumInterval::Half(inner) => inner.into(),
-            EnumInterval::Unbounded => {
-                OrdBoundPair::new(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
-            }
+            EnumInterval::Unbounded => OrdBoundPair::new_assume_valid(
+                OrdBound::LeftUnbounded,
+                OrdBound::RightUnbounded,
+            ),
         }
     }
 }

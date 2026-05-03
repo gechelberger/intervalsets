@@ -13,8 +13,13 @@ use crate::try_cmp::TryCmp;
 
 /// Internal storage for [`FiniteInterval`]: either empty or a pair
 /// of finite bounds `(lhs, rhs)` with `lhs <= rhs`.
+///
+/// `Deserialize` is intentionally **not** derived: validation is performed
+/// by [`FiniteInterval`]'s `try_from` proxy so that no path produces an
+/// unvalidated inner. `Serialize`/`rkyv::*` are derived because the
+/// outer type's writer path delegates here.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
@@ -28,7 +33,10 @@ impl<T> OrdBounded<T> for FiniteIntervalInner<T> {
     fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
         match self {
             Self::Empty => OrdBoundPair::empty(),
-            Self::Bounded(lhs, rhs) => OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right)),
+            Self::Bounded(lhs, rhs) => {
+                // Bounded is a validated FiniteInterval pair: invariants hold.
+                OrdBoundPair::new_assume_valid(lhs.ord(Side::Left), rhs.ord(Side::Right))
+            }
         }
     }
 }
@@ -44,11 +52,49 @@ impl<T> SetBounds<T> for FiniteIntervalInner<T> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawFiniteInterval<T>"))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 pub struct FiniteInterval<T>(FiniteIntervalInner<T>);
+
+/// Wire-format mirror of [`FiniteInterval`] used to drive validation
+/// during `Deserialize`. Identical layout, no invariants.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "FiniteInterval")]
+struct RawFiniteInterval<T>(RawFiniteIntervalInner<T>);
+
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "FiniteIntervalInner")]
+enum RawFiniteIntervalInner<T> {
+    Empty,
+    Bounded(FiniteBound<T>, FiniteBound<T>),
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawFiniteInterval<T>> for FiniteInterval<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawFiniteInterval<T>) -> Result<Self, Self::Error> {
+        match raw.0 {
+            RawFiniteIntervalInner::Empty => Ok(Self::empty()),
+            RawFiniteIntervalInner::Bounded(lhs, rhs) => {
+                let result = Self::try_new(lhs, rhs)?;
+                if result.is_empty() {
+                    // try_new normalizes a swapped-order pair to empty;
+                    // deserialize is strict and rejects malformed input.
+                    Err(Error::InvalidBoundPair)
+                } else {
+                    Ok(result)
+                }
+            }
+        }
+    }
+}
 
 impl<T: Element> FiniteInterval<T> {
     /// Creates a FiniteInterval.
@@ -178,6 +224,8 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
 /// which end is finite; the other end is implicitly unbounded.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawHalfInterval<T>"))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
@@ -185,6 +233,25 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
 pub struct HalfInterval<T> {
     side: Side,
     bound: FiniteBound<T>,
+}
+
+/// Wire-format mirror of [`HalfInterval`] used to drive validation
+/// during `Deserialize`.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "HalfInterval")]
+struct RawHalfInterval<T> {
+    side: Side,
+    bound: FiniteBound<T>,
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawHalfInterval<T>> for HalfInterval<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawHalfInterval<T>) -> Result<Self, Self::Error> {
+        Self::try_new(raw.side, raw.bound)
+    }
 }
 
 impl<T> HalfInterval<T> {
@@ -264,11 +331,11 @@ impl<T> OrdBounded<T> for HalfInterval<T> {
         match self.side {
             Side::Left => {
                 let left = OrdBound::left(&self.bound);
-                OrdBoundPair::new(left, OrdBound::RightUnbounded)
+                OrdBoundPair::new_assume_valid(left, OrdBound::RightUnbounded)
             }
             Side::Right => {
                 let right = OrdBound::right(&self.bound);
-                OrdBoundPair::new(OrdBound::LeftUnbounded, right)
+                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, right)
             }
         }
     }
@@ -286,6 +353,8 @@ impl<T> SetBounds<T> for HalfInterval<T> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawEnumInterval<T>"))]
+#[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
@@ -295,6 +364,29 @@ pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
     Half(HalfInterval<T>),
     Unbounded,
+}
+
+/// Wire-format mirror of [`EnumInterval`]. The variants hold the
+/// already-validated public types, so the `TryFrom` is total.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "EnumInterval")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
+enum RawEnumInterval<T> {
+    Finite(FiniteInterval<T>),
+    Half(HalfInterval<T>),
+    Unbounded,
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> From<RawEnumInterval<T>> for EnumInterval<T> {
+    fn from(raw: RawEnumInterval<T>) -> Self {
+        match raw {
+            RawEnumInterval::Finite(inner) => Self::Finite(inner),
+            RawEnumInterval::Half(inner) => Self::Half(inner),
+            RawEnumInterval::Unbounded => Self::Unbounded,
+        }
+    }
 }
 
 impl<T> EnumInterval<T> {
@@ -318,7 +410,9 @@ impl<T> OrdBounded<T> for EnumInterval<T> {
         match self {
             Self::Finite(inner) => inner.ord_bound_pair(),
             Self::Half(inner) => inner.ord_bound_pair(),
-            Self::Unbounded => OrdBoundPair::new(OrdBound::LeftUnbounded, OrdBound::RightUnbounded),
+            Self::Unbounded => {
+                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
+            }
         }
     }
 }

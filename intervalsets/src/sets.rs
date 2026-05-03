@@ -24,6 +24,10 @@ use crate::MaybeEmpty;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
+#[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
@@ -171,6 +175,10 @@ impl<T> OrdBounded<T> for Interval<T> {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
+#[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
@@ -270,7 +278,8 @@ impl<T: Clone + Element> IntervalSet<T> {
                 let last = self.intervals.last().unwrap();
                 let (min, _) = first.ord_bound_pair().into_raw();
                 let (_, max) = last.ord_bound_pair().into_raw();
-                let hull = OrdBoundPair::new(min.cloned(), max.cloned());
+                // The IntervalSet invariants give us first.left <= last.right.
+                let hull = OrdBoundPair::new_assume_valid(min.cloned(), max.cloned());
                 hull.try_into().expect("intervalset invariants violated")
             }
         }
