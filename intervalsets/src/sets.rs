@@ -27,10 +27,6 @@ use crate::MaybeEmpty;
     feature = "serde",
     serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
 )]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 pub struct Interval<T>(pub(crate) EnumInterval<T>);
 
 impl<T> Interval<T> {
@@ -177,10 +173,6 @@ impl<T> OrdBounded<T> for Interval<T> {
 #[cfg_attr(
     feature = "serde",
     serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
-)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 pub struct IntervalSet<T> {
     intervals: Vec<Interval<T>>,

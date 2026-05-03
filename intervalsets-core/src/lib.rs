@@ -230,8 +230,6 @@
 //!   [`HalfInterval`](sets::HalfInterval),
 //!   [`EnumInterval`](sets::EnumInterval)). The `bound::ord::*` helper
 //!   types do not derive serde traits.
-//! * rkyv: implement [`Archive`](::rkyv::Archive), [`Serialize`](::rkyv::Serialize), [`Deserialize`](::rkyv::Deserialize).
-//!   The `bound::ord::*` helper types do not derive rkyv traits.
 //!
 //! # Diving Deeper
 //! * [Implement custom storage data types](numeric)
@@ -273,12 +271,6 @@ mod from;
 mod empty;
 pub use empty::MaybeEmpty;
 
-#[cfg(feature = "rkyv")]
-pub mod rkyv {
-    pub use crate::bound::{ArchivedBoundType, ArchivedFiniteBound, ArchivedSide};
-    pub use crate::sets::{ArchivedEnumInterval, ArchivedFiniteInterval, ArchivedHalfInterval};
-}
-
 /// commonly used imports
 #[allow(unused_imports)]
 pub mod prelude {
@@ -288,7 +280,5 @@ pub mod prelude {
     pub use crate::factory::traits::*;
     pub use crate::measure::{Count, Measurement, Width};
     pub use crate::ops::*;
-    #[cfg(feature = "rkyv")]
-    pub use crate::rkyv::*;
     pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 }

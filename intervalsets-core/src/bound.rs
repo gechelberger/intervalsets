@@ -51,10 +51,6 @@ pub trait SetBounds<T> {
 /// Side( Left | Right ) on the number line.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 pub enum Side {
     /// Generally the lower bound
     Left,
@@ -85,10 +81,6 @@ impl Side {
 /// The BoundType determines the inclusivity of the constraining element in a set.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 pub enum BoundType {
     /// An Open BoundType excludes the limit element from the `Set`.
     Open = 0,
@@ -124,10 +116,6 @@ impl BoundType {
 /// a function of this bound **and** which side of the interval it constrains.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 pub struct FiniteBound<T>(BoundType, T);
 
 impl<T> FiniteBound<T> {

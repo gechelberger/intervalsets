@@ -16,14 +16,10 @@ use crate::try_cmp::TryCmp;
 ///
 /// `Deserialize` is intentionally **not** derived: validation is performed
 /// by [`FiniteInterval`]'s `try_from` proxy so that no path produces an
-/// unvalidated inner. `Serialize`/`rkyv::*` are derived because the
-/// outer type's writer path delegates here.
+/// unvalidated inner. `Serialize` is derived because the outer type's
+/// writer path delegates here.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 enum FiniteIntervalInner<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
@@ -54,10 +50,6 @@ impl<T> SetBounds<T> for FiniteIntervalInner<T> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(try_from = "RawFiniteInterval<T>"))]
 #[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 pub struct FiniteInterval<T>(FiniteIntervalInner<T>);
 
 /// Wire-format mirror of [`FiniteInterval`] used to drive validation
@@ -226,10 +218,6 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(try_from = "RawHalfInterval<T>"))]
 #[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 pub struct HalfInterval<T> {
     side: Side,
     bound: FiniteBound<T>,
@@ -355,10 +343,6 @@ impl<T> SetBounds<T> for HalfInterval<T> {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(try_from = "RawEnumInterval<T>"))]
 #[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
 #[allow(missing_docs)]
 pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
