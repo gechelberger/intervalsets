@@ -178,14 +178,19 @@ where
 {
     /// Creates a new finite interval of the factory's associated type.
     ///
-    /// If there are no elements that satisfy both left and right bounds
-    /// then an `Empty` interval is returned. Otherwise the result will
-    /// be fully bounded.
+    /// **Coercive.** Bounds that describe an empty set (crossed values
+    /// after normalization, or open-at-the-same-point) silently produce
+    /// `Empty`. NaN / incomparable values panic.
+    ///
+    /// For strict validation that distinguishes "crossed bounds" from
+    /// "bounds describe empty," call
+    /// [`FiniteInterval::try_new`](crate::sets::FiniteInterval::try_new)
+    /// directly.
     ///
     /// # Panics
     ///
-    /// lhs and rhs must form an ordered pair such that lhs <= rhs. If they are
-    /// not comparable then this routine should panic.
+    /// Panics if either bound is incomparable (e.g. NaN). Use
+    /// [`try_finite`](Self::try_finite) to surface that as an `Err`.
     ///
     /// # Example
     ///
@@ -199,20 +204,29 @@ where
     /// );
     /// assert_eq!(y, EnumInterval::closed(100, 200));
     ///
+    /// // Same-point open bounds describe an empty set.
     /// let x = EnumInterval::open(10, 10);
+    /// assert_eq!(x, EnumInterval::empty());
+    ///
+    /// // Crossed bounds also describe an empty set.
+    /// let x = EnumInterval::open(10, 0);
     /// assert_eq!(x, EnumInterval::empty());
     /// ```
     ///
     /// ```should_panic
     /// use intervalsets_core::prelude::*;
-    ///
-    /// let x = EnumInterval::closed(f32::NAN, 0.0);
+    /// // NaN still panics.
+    /// let _ = EnumInterval::closed(f32::NAN, 0.0);
     /// ```
     fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output;
 
-    /// Creates a new finite interval, returning `Err` if the bounds
-    /// are not comparable (e.g. NaN). The panic-free counterpart of
-    /// [`finite`](Self::finite).
+    /// Creates a new finite interval. **Coercive** — bounds that
+    /// describe an empty set produce `Ok(Empty)`; only NaN /
+    /// incomparable values surface as `Err`.
+    ///
+    /// For strict validation that errors on crossed bounds, use
+    /// [`FiniteInterval::try_new`](crate::sets::FiniteInterval::try_new)
+    /// directly.
     fn try_finite(
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
@@ -467,14 +481,15 @@ impl<T: Element> EmptyFactory<T, Identity> for FiniteInterval<T> {
 
 impl<T: Element> FiniteFactory<T, Identity> for FiniteInterval<T> {
     fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        Self::new(lhs, rhs)
+        // Coercive: crossed bounds → empty, NaN → panic.
+        Self::try_new_or_empty(lhs, rhs).unwrap()
     }
 
     fn try_finite(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
     ) -> Result<Self::Output, Self::Error> {
-        Self::try_new(lhs, rhs)
+        Self::try_new_or_empty(lhs, rhs)
     }
 }
 
@@ -563,14 +578,15 @@ where
     C::To: Element,
 {
     fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
-        FiniteInterval::new(lhs, rhs).into()
+        // Coercive: crossed bounds → empty, NaN → panic.
+        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
     }
 
     fn try_finite(
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
     ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new(lhs, rhs).map(EnumInterval::from)
+        FiniteInterval::try_new_or_empty(lhs, rhs).map(EnumInterval::from)
     }
 }
 
@@ -615,6 +631,8 @@ mod tests {
     #[test]
     fn test_try_factory() {
         assert_eq!(EnumInterval::try_singleton(f32::NAN).ok(), None);
+        // Factory is coercive: crossed bounds → Ok(empty).
+        // Use FiniteInterval::try_new directly for strict validation.
         assert_eq!(
             EnumInterval::try_open(10.0, 0.0).unwrap(),
             EnumInterval::empty()

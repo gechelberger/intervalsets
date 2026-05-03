@@ -6,17 +6,25 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T: Element> From<Range<T>> for FiniteInterval<T> {
     fn from(value: Range<T>) -> Self {
-        FiniteInterval::new(
+        // try_new_or_empty: a reversed Range (start > end) is treated as
+        // empty, matching Rust's stdlib semantic for iterating reversed
+        // ranges. NaN bounds still panic via .unwrap().
+        FiniteInterval::try_new_or_empty(
             FiniteBound::closed(value.start),
             FiniteBound::open(value.end),
         )
+        .unwrap()
     }
 }
 
 impl<T: Element> From<RangeInclusive<T>> for FiniteInterval<T> {
     fn from(value: RangeInclusive<T>) -> Self {
         let (start, end) = value.into_inner();
-        FiniteInterval::new(FiniteBound::closed(start), FiniteBound::closed(end))
+        FiniteInterval::try_new_or_empty(
+            FiniteBound::closed(start),
+            FiniteBound::closed(end),
+        )
+        .unwrap()
     }
 }
 

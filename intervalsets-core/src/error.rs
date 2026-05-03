@@ -10,13 +10,23 @@ pub enum Error {
     #[error("count overflows the Countable Output type")]
     CountOverflow,
 
-    /// An [`OrdBoundPair`](crate::bound::ord::OrdBoundPair) or
-    /// deserialized interval did not match a valid bit pattern.
-    /// Raised by [`OrdBoundPair::try_new`](crate::bound::ord::OrdBoundPair::try_new)
-    /// for structural or value-order violations, and by the
-    /// `Deserialize` paths on the interval types when malformed input
-    /// (e.g. swapped-order `Bounded`) is rejected.
-    #[error("OrdBoundPair did not match a valid bit pattern")]
+    /// Bound-pair invariants violated. Covers two related conditions:
+    ///
+    /// 1. **Crossed bounds in a `FiniteInterval`** — `lhs > rhs` after
+    ///    normalization. Raised by
+    ///    [`FiniteInterval::try_new`](crate::sets::FiniteInterval::try_new)
+    ///    and the interval types' `Deserialize` paths.
+    /// 2. **Structural `OrdBoundPair` violations** — an `OrdBound` of
+    ///    the wrong kind for its position (e.g. `RightUnbounded` on
+    ///    the left), an unmatched empty marker, or `left.value() > right.value()`.
+    ///    Raised by
+    ///    [`OrdBoundPair::try_new`](crate::bound::ord::OrdBoundPair::try_new).
+    ///
+    /// Both contexts share this variant because callers rarely need to
+    /// distinguish them in error handling. If a future use case
+    /// requires distinguishing, this variant can be split additively
+    /// (the enum is `#[non_exhaustive]`).
+    #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
 
     /// An interval-set's stored intervals violated its invariants:

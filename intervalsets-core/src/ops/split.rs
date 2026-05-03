@@ -66,8 +66,12 @@ impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
         }
 
         let (lhs_max, rhs_min) = split_bounds_at(at, closed);
-        let split_left = Self::try_new(min, lhs_max)?;
-        let split_right = Self::try_new(rhs_min, max)?;
+        // try_new_or_empty: splitting at a boundary value with the
+        // boundary kind on one side produces a degenerate empty side
+        // (e.g. [min, min) when closed = Right and at = min). That's
+        // the correct answer, not an error.
+        let split_left = Self::try_new_or_empty(min, lhs_max)?;
+        let split_right = Self::try_new_or_empty(rhs_min, max)?;
         Ok((split_left, split_right))
     }
 }
@@ -90,15 +94,18 @@ impl<T: Element + Clone> Split<T> for HalfInterval<T> {
 
         let (lhs_max, rhs_min) = split_bounds_at(at, closed);
         let (side, bound) = self.into_raw();
+        // try_new_or_empty: a split exactly at the half-bounded interval's
+        // own boundary produces a degenerate empty side, which is the
+        // correct answer (not an error).
         match side {
             Side::Left => {
-                let left = FiniteInterval::try_new(bound, lhs_max)?;
+                let left = FiniteInterval::try_new_or_empty(bound, lhs_max)?;
                 let right = HalfInterval::try_new(side, rhs_min)?;
                 Ok((left.into(), right.into()))
             }
             Side::Right => {
                 let left = HalfInterval::try_new(side, lhs_max)?;
-                let right = FiniteInterval::try_new(rhs_min, bound)?;
+                let right = FiniteInterval::try_new_or_empty(rhs_min, bound)?;
                 Ok((left.into(), right.into()))
             }
         }

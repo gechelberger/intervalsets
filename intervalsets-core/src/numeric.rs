@@ -122,6 +122,25 @@ use crate::bound::Side;
 ///
 /// `try_adjacent` determines whether the elements are
 /// treated as continuous or discrete data.
+///
+/// # Design: `PartialOrd`, not `Ord`
+///
+/// `Element` deliberately requires only `PartialOrd`, **not** `Ord`.
+/// Tightening this bound to `Ord` would exclude `f32` and `f64` (which
+/// are `!Ord` because of NaN), and float support is one of the crate's
+/// core value propositions — much of the crate's complexity exists to
+/// keep floats in the domain. Don't tighten this.
+///
+/// The crate handles NaN at runtime via [`TryCmp`](crate::try_cmp::TryCmp)
+/// (a blanket impl over `T: PartialOrd` that returns
+/// [`TotalOrderError`](crate::error::TotalOrderError) when
+/// `partial_cmp` returns `None`). Validating constructors (`new`,
+/// `try_new`, `Deserialize`) call `try_cmp` and reject NaN. Operations
+/// that benefit from a stronger guarantee (set-op traits like `Union`)
+/// add `T: Ord` as a separate per-trait bound, so callers using
+/// integer-only types pay no NaN-checking cost while float users still
+/// get a working API. The verbose `T: Element + Ord + Clone + Zero`-style
+/// bounds elsewhere are deliberate; that's the cost of the split.
 pub trait Element: Sized + PartialEq + PartialOrd {
     fn try_adjacent(&self, side: Side) -> Option<Self>;
 }

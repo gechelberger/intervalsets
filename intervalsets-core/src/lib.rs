@@ -164,33 +164,40 @@
 //! | Counting | [`Count::count`] | [`Count::try_count`] |
 //! | Categorizing | [`FiniteInterval::category`] | [`FiniteInterval::try_category`] |
 //!
-//! Bounds violations during construction silently produce
-//! [`FiniteInterval::empty()`]. This is by design (a valid empty
-//! result) but can hide logic errors:
-//!
 //! ```
 //! use intervalsets_core::prelude::*;
+//! use intervalsets_core::bound::FiniteBound;
 //!
-//! // bounds violation -> silent empty
+//! // The factory `open` / `try_open` are coercive: crossed bounds and
+//! // empty-by-construction inputs both produce empty silently.
 //! let x = FiniteInterval::open(1.0, 0.0);
 //! assert_eq!(x, FiniteInterval::empty());
 //!
-//! // ordering violation -> panic
-//! // should be infallible for properly implemented [`Ord`] types.
+//! let x = FiniteInterval::try_open(1.0, 0.0).unwrap();
+//! assert_eq!(x, FiniteInterval::empty());
+//!
+//! // NaN panics on the panicking path, errors on the fallible path.
 //! let result = std::panic::catch_unwind(|| {
 //!     FiniteInterval::open(f32::NAN, 0.0);
 //! });
 //! assert!(result.is_err());
 //!
 //! let x = FiniteInterval::try_open(f32::NAN, 0.0);
-//! assert_eq!(x.ok(), None);
+//! assert!(x.is_err());
 //!
-//! let x = FiniteInterval::try_open(1.0, 0.0);
-//! assert_eq!(x.unwrap(), FiniteInterval::empty());
+//! // The strict primitives (FiniteInterval::new / try_new) reject
+//! // crossed bounds outright. Use them when malformed input should be
+//! // a hard error rather than coerced.
+//! let x = FiniteInterval::try_new(
+//!     FiniteBound::closed(10),
+//!     FiniteBound::closed(0),
+//! );
+//! assert!(x.is_err());
 //! ```
 //!
-//! Silent failures can make it difficult to isolate logic errors as they are
-//! able to propogate further from their source before detection.
+//! Silent failures can still occur in operations that have a defensible
+//! "empty set" interpretation for crossed bounds (e.g. `with_left`).
+//! These are documented per-operation:
 //!
 //! ```
 //! use intervalsets_core::prelude::*;
@@ -205,6 +212,69 @@
 //! let fixed = interval.with_right(None).with_left_closed(20);
 //! assert_eq!(fixed, EnumInterval::closed_unbound(20));
 //! ```
+//!
+//! # Construction at boundaries
+//!
+//! Construction comes in two flavors at the user-facing API surface:
+//! the **factory methods** (`Interval::open`, `try_closed`, etc.) are
+//! **coercive** — they treat crossed bounds and empty-by-construction
+//! inputs as `Empty`, only surfacing NaN as an error / panic. The
+//! **primitive constructors** ([`FiniteInterval::new`],
+//! [`FiniteInterval::try_new`]) are **strict** — they reject crossed
+//! bounds outright with `InvalidBoundPair`. The strict primitives are
+//! what `Deserialize` routes through (a well-formed serializer never
+//! legitimately produces crossed bounds, so an error signals malformed
+//! input); the coercive factories preserve ergonomics for the common
+//! "give me the interval these bounds describe; empty if they don't
+//! describe one" case.
+//!
+//! In full, the constructors form a layered escape hatch:
+//!
+//! - **Strict primitives** ([`FiniteInterval::new`],
+//!   [`FiniteInterval::try_new`]): reject anything that isn't a
+//!   well-formed `Bounded`. NaN → `Err(TotalOrderError)` (or panic).
+//!   Crossed bounds → `Err(InvalidBoundPair)` (or panic). Used by
+//!   `Deserialize`.
+//!
+//! - **Coercive factories**
+//!   (`Interval::open`/`closed`/etc, `try_open`/`try_closed`/etc,
+//!   [`FiniteInterval::try_new_or_empty`]): crossed bounds and
+//!   empty-by-construction inputs → `Empty`, NaN still propagates.
+//!   This is the user-facing default and the right choice for code
+//!   producing bounds via computation (Range conversions, rebound,
+//!   split-at-boundary).
+//!
+//! - **Pre-normalized** ([`FiniteInterval::new_assume_normed`],
+//!   [`FiniteInterval::try_new_assume_normed`]): caller has already
+//!   normalized; collapse-or-build. Used internally by intersection
+//!   and other ops where bounds are computed from already-valid
+//!   inputs and may legitimately cross.
+//!
+//! - **Bypass** ([`FiniteInterval::new_assume_valid`]): caller
+//!   asserts the preconditions; no checking. `forbid(unsafe_code)`
+//!   means a violation produces incorrect results, never undefined
+//!   behavior.
+//!
+//! The two-tier split (strict primitives + coercive factories) keeps
+//! the strict semantic available where it matters — at trust
+//! boundaries — without forcing every ergonomic factory call to plumb
+//! a `Result` to handle "the bounds describe an empty set."
+//!
+//! # Deserialization
+//!
+//! `Deserialize` impls route through the strict constructor path: a
+//! well-formed serializer never emits a swapped-order `Bounded`,
+//! a non-canonical discrete interval, an empty stored in an
+//! `IntervalSet`, an unsorted set, or connecting intervals in a set.
+//! Any such payload did not come from us, and silently accepting it
+//! would mask producer bugs. NaN, swapped-order `Bounded`,
+//! stored-empty, unsorted-set, and connecting-set inputs all return
+//! `Err`.
+//!
+//! The deserialization boundary is a trust boundary and gets the
+//! strict treatment unconditionally. Callers that want crossed →
+//! empty coercion can opt in via the appropriate constructor at the
+//! callsite (see "Construction at boundaries" above).
 //!
 //! # Features
 //! intervalsets-core has several feature flags that modify capabilities. By

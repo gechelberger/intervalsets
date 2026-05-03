@@ -200,7 +200,34 @@ impl<T: Element> TryFrom<RawIntervalSet<T>> for IntervalSet<T> {
 }
 
 impl<T: Element> IntervalSet<T> {
-    /// Create a new Set of intervals and enforce invariants.
+    /// Create an `IntervalSet` from any iterable of intervals,
+    /// **repairing** any invariant violations along the way.
+    ///
+    /// # Semantics
+    ///
+    /// `new` is the ergonomic, "do what I mean" constructor. It accepts
+    /// arbitrarily-ordered, possibly-overlapping, possibly-empty input
+    /// and produces a canonical-form `IntervalSet`:
+    ///
+    /// - empty intervals are dropped;
+    /// - the remainder is sorted ascending;
+    /// - connecting / overlapping intervals are merged.
+    ///
+    /// This is the right choice for set-algebraic code that produces
+    /// intervals as a byproduct (unions of arbitrary input,
+    /// difference/symmetric-difference of sets, etc.) and just wants
+    /// the canonical result.
+    ///
+    /// For callers that want to *reject* malformed input rather than
+    /// repair it, see [`try_new`](Self::try_new). The `Deserialize`
+    /// path also rejects rather than repairs.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any pair of intervals is incomparable during sorting
+    /// (typically a NaN-tainted float bound). Pre-validate with
+    /// [`Interval::try_*`](crate::Interval) constructors if working
+    /// with float types.
     pub fn new<I>(intervals: I) -> Self
     where
         I: IntoIterator<Item = Interval<T>>,
@@ -220,17 +247,29 @@ impl<T: Element> IntervalSet<T> {
         Self { intervals }
     }
 
-    /// Create a new `IntervalSet`, returning `Err` if the input violates
-    /// any invariant. Unlike [`new`](Self::new), this does **not** repair
-    /// or normalize the input — it is the strict counterpart used by
-    /// the `Deserialize` path and by callers that want to reject
-    /// malformed data outright.
+    /// Create a new `IntervalSet`, returning `Err` if the input
+    /// violates any invariant. Unlike [`new`](Self::new), this does
+    /// **not** repair or normalize the input.
+    ///
+    /// # Semantics
+    ///
+    /// `try_new` is the strict counterpart to `new`. It is the right
+    /// choice when the caller has already canonicalized the input
+    /// elsewhere (or believes it has) and wants to detect a contract
+    /// violation rather than silently fix it. The `Deserialize` path
+    /// uses `try_new` for exactly this reason — by the time data
+    /// reaches deserialize, a well-formed serializer has already
+    /// emitted canonical form, and a non-canonical payload is a
+    /// signal that the input did not come from us.
     ///
     /// Rejects:
     /// - any stored empty interval;
     /// - intervals not in strict ascending order;
     /// - two consecutive intervals that connect (and would have been
     ///   merged in canonical form).
+    ///
+    /// See the crate-level "Construction at boundaries" section in
+    /// [`intervalsets_core`] for the broader principle.
     pub fn try_new<I>(intervals: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = Interval<T>>,

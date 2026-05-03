@@ -78,7 +78,9 @@ impl<T: Element> Rebound<T> for FiniteInterval<T> {
 
         match bound {
             None => EnumInterval::try_right_bounded(rhs),
-            Some(inner) => EnumInterval::try_finite(inner, rhs),
+            // Rebound's documented semantic: a new bound that crosses
+            // the existing opposite bound silently produces empty.
+            Some(inner) => FiniteInterval::try_new_or_empty(inner, rhs).map(EnumInterval::from),
         }
     }
 
@@ -89,7 +91,7 @@ impl<T: Element> Rebound<T> for FiniteInterval<T> {
 
         match bound {
             None => EnumInterval::try_left_bounded(lhs),
-            Some(inner) => EnumInterval::try_finite(lhs, inner),
+            Some(inner) => FiniteInterval::try_new_or_empty(lhs, inner).map(EnumInterval::from),
         }
     }
 }
@@ -108,7 +110,9 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
             Side::Right => match bound {
                 // just repacking
                 None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
-                Some(inner) => EnumInterval::try_finite(inner, current_bound),
+                Some(inner) => {
+                    FiniteInterval::try_new_or_empty(inner, current_bound).map(EnumInterval::from)
+                }
             },
         }
     }
@@ -123,7 +127,9 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
             Side::Left => match bound {
                 // just repacking
                 None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
-                Some(inner) => EnumInterval::try_finite(current_bound, inner),
+                Some(inner) => {
+                    FiniteInterval::try_new_or_empty(current_bound, inner).map(EnumInterval::from)
+                }
             },
         }
     }

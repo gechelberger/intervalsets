@@ -21,14 +21,14 @@ impl<T: Element> EmptyFactory<T, Identity> for Interval<T> {
 
 impl<T: Element> FiniteFactory<T, Identity> for Interval<T> {
     fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::new(lhs, rhs).into()
+        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
     }
 
     fn try_finite(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
     ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new(lhs, rhs).map(Interval::from)
+        FiniteInterval::try_new_or_empty(lhs, rhs).map(Interval::from)
     }
 }
 
@@ -64,14 +64,14 @@ impl<T: Element> EmptyFactory<T, Identity> for IntervalSet<T> {
 
 impl<T: Element> FiniteFactory<T, Identity> for IntervalSet<T> {
     fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::new(lhs, rhs).into()
+        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
     }
 
     fn try_finite(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
     ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new(lhs, rhs).map(IntervalSet::from)
+        FiniteInterval::try_new_or_empty(lhs, rhs).map(IntervalSet::from)
     }
 }
 

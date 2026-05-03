@@ -723,9 +723,51 @@ pub mod ord {
         }
     }
 
-    /// An ordered pair of bounds where left <= right.
+    /// A canonical, totally-ordered representation of an interval's
+    /// bounds: the pair `(left, right)` with `left <= right` in the
+    /// augmented total order on bounds. The empty set is represented
+    /// by the sentinel `(LeftUnbounded, LeftUnbounded)` (the lowest
+    /// element of the order).
     ///
-    /// The empty set is represented by (-inf, -inf).
+    /// # Public role
+    ///
+    /// `OrdBoundPair` is conversion currency, not a primary user type.
+    /// Two reasons it stays `pub`:
+    ///
+    /// 1. **Outbound** — every interval-shaped public type (`FiniteInterval`,
+    ///    `HalfInterval`, `EnumInterval`, the outer crate's `Interval` and
+    ///    `IntervalSet`) implements `From<&Self> for OrdBoundPair<&T>` (and
+    ///    `From<Self> for OrdBoundPair<T>`). Code that wants a uniform
+    ///    "two ordered endpoints" representation across mixed interval
+    ///    types — e.g. for hashing, sorting, or comparing bounds without
+    ///    branching on variant — uses this conversion.
+    ///
+    /// 2. **Inbound** — `TryFrom<OrdBoundPair<T>> for EnumInterval<T>`
+    ///    (and the outer `Interval`/`IntervalSet`) reconstructs an
+    ///    interval from a raw ord pair. The typical use is round-trip
+    ///    after extracting via outbound conversion (Role 1) and
+    ///    manipulating the bounds; constructing one from scratch is
+    ///    rare and not the recommended pattern.
+    ///
+    /// # Constructors
+    ///
+    /// All three follow the [crate-wide constructor convention](crate#construction-at-boundaries):
+    ///
+    /// - [`empty`](Self::empty) — the canonical empty marker, no bound
+    ///   on T, `const`.
+    /// - [`new_assume_valid`](Self::new_assume_valid) — bypass; caller
+    ///   guarantees the preconditions; no bound on T, `const`.
+    /// - [`new`](Self::new) — panicking validating variant. Requires
+    ///   `T: PartialOrd`.
+    /// - [`try_new`](Self::try_new) — fallible validating variant.
+    ///   Returns `Err` for any structural or value-level violation
+    ///   (NaN / `left.value() > right.value()` / structurally invalid
+    ///   `(LeftUnbounded, _)` etc). Requires `T: PartialOrd`.
+    ///
+    /// `OrdBoundPair` does **not** derive `serde::Serialize` /
+    /// `serde::Deserialize`; it is not part of the documented public
+    /// wire-format contract. If you want to round-trip bound pair data,
+    /// serialize the interval type that contains them.
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     pub struct OrdBoundPair<T>(OrdBound<T>, OrdBound<T>);
 

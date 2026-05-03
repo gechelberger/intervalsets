@@ -15,16 +15,19 @@ impl<T> From<()> for FiniteInterval<T> {
 
 impl<T: Element> From<(T, T)> for FiniteInterval<T> {
     fn from(value: (T, T)) -> Self {
-        Self::new(FiniteBound::open(value.0), FiniteBound::open(value.1))
+        // (a, b) with a > b is treated as empty (matches Range semantics).
+        Self::try_new_or_empty(FiniteBound::open(value.0), FiniteBound::open(value.1))
+            .unwrap()
     }
 }
 
 impl<T: Element + Clone> From<&(T, T)> for FiniteInterval<T> {
     fn from(value: &(T, T)) -> Self {
-        Self::new(
+        Self::try_new_or_empty(
             FiniteBound::open(value.0.clone()),
             FiniteBound::open(value.1.clone()),
         )
+        .unwrap()
     }
 }
 
@@ -43,10 +46,12 @@ impl<T> From<()> for EnumInterval<T> {
 impl<T: Element> From<[T; 2]> for FiniteInterval<T> {
     fn from(value: [T; 2]) -> Self {
         let mut iter = value.into_iter();
-        FiniteInterval::new(
+        // [a, b] with a > b is treated as empty (matches Range semantics).
+        FiniteInterval::try_new_or_empty(
             FiniteBound::closed(iter.next().unwrap()),
             FiniteBound::closed(iter.next().unwrap()),
         )
+        .unwrap()
     }
 }
 

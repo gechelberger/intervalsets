@@ -74,31 +74,57 @@ impl<T: Element> TryFrom<RawFiniteInterval<T>> for FiniteInterval<T> {
     fn try_from(raw: RawFiniteInterval<T>) -> Result<Self, Self::Error> {
         match raw.0 {
             RawFiniteIntervalInner::Empty => Ok(Self::empty()),
-            RawFiniteIntervalInner::Bounded(lhs, rhs) => {
-                let result = Self::try_new(lhs, rhs)?;
-                if result.is_empty() {
-                    // try_new normalizes a swapped-order pair to empty;
-                    // deserialize is strict and rejects malformed input.
-                    Err(Error::InvalidBoundPair)
-                } else {
-                    Ok(result)
-                }
-            }
+            // try_new is strict about crossed bounds, which is what
+            // we want here — deserialize never legitimately receives
+            // a Bounded with lhs > rhs.
+            RawFiniteIntervalInner::Bounded(lhs, rhs) => Self::try_new(lhs, rhs),
         }
     }
 }
 
 impl<T: Element> FiniteInterval<T> {
-    /// Creates a FiniteInterval.
+    /// Creates a `FiniteInterval`. Strict — panics on any malformed input.
+    ///
+    /// Discrete bounds are normalized to closed form. After normalization,
+    /// if `lhs > rhs` or either value is incomparable (e.g. NaN), this
+    /// panics. Use [`try_new`](Self::try_new) for the fallible variant,
+    /// or [`try_new_or_empty`](Self::try_new_or_empty) when crossed
+    /// bounds should produce empty.
     ///
     /// # Panics
     ///
-    /// Panics if lhs and rhs are not comparable
+    /// Panics if either bound's value is incomparable (NaN), or if the
+    /// normalized `lhs > rhs`.
     pub fn new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
         Self::try_new(lhs, rhs).unwrap()
     }
 
-    /// Creates a new FiniteInterval or Error; Should never panic.
+    /// Strict validating constructor: returns `Err` for any malformed
+    /// input. Discrete bounds are normalized to closed form before
+    /// validation.
+    ///
+    /// # Errors
+    ///
+    /// - `Err(TotalOrderError)` — a bound value is incomparable (e.g. NaN).
+    /// - `Err(InvalidBoundPair)` — after normalization, `lhs > rhs`.
+    ///
+    /// # When to use what
+    ///
+    /// - **Pure validation** (this function): use when `Bounded(lhs, rhs)`
+    ///   is what you mean and you want to reject anything else. The
+    ///   `Deserialize` path uses this — the wire format never legitimately
+    ///   produces crossed bounds, so an Err signals malformed input.
+    /// - **Crossed → empty**: use [`try_new_or_empty`](Self::try_new_or_empty)
+    ///   when "crossed bounds means empty set" is the correct
+    ///   interpretation (Range conversions, split-at-boundary).
+    /// - **Intersection-shape internal ops**: use
+    ///   [`try_new_assume_normed`](Self::try_new_assume_normed) or
+    ///   [`new_assume_normed`](Self::new_assume_normed), which assume
+    ///   bounds are pre-normalized and silently collapse crossed pairs
+    ///   to empty.
+    ///
+    /// See the crate-level "Construction at boundaries" section in
+    /// [`lib`](crate) for the broader principle.
     pub fn try_new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
         let lhs = lhs.normalized(Left);
         let rhs = rhs.normalized(Right);
@@ -108,7 +134,26 @@ impl<T: Element> FiniteInterval<T> {
             // normalized & comparable & lhs <= rhs
             Ok(Self::new_assume_valid(lhs, rhs))
         } else {
-            Ok(Self::empty())
+            Err(Error::InvalidBoundPair)
+        }
+    }
+
+    /// Construct, returning `Self::empty()` for crossed-bound inputs but
+    /// surfacing NaN / incomparable values as `Err`.
+    ///
+    /// This is the right choice for code that produces bounds via a
+    /// computation that *may* cross (Range conversions where the user
+    /// passed a reversed range, split operations at a boundary point,
+    /// etc.) but where pure validation through [`try_new`](Self::try_new)
+    /// would be wrong because crossed input has a defensible
+    /// "empty set" reading.
+    pub fn try_new_or_empty(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self, Error> {
+        match Self::try_new(lhs, rhs) {
+            Err(Error::InvalidBoundPair) => Ok(Self::empty()),
+            other => other,
         }
     }
 }
@@ -498,6 +543,86 @@ mod tests {
 
         assert_eq!(x.left().unwrap(), &FiniteBound::closed(0));
         assert_eq!(x.right().unwrap(), &FiniteBound::closed(10));
+    }
+
+    mod try_new_strict {
+        use super::*;
+        use crate::error::Error;
+
+        #[test]
+        fn try_new_errors_on_crossed_continuous() {
+            let result = FiniteInterval::try_new(
+                FiniteBound::closed(10.0_f32),
+                FiniteBound::closed(0.0),
+            );
+            assert!(matches!(result, Err(Error::InvalidBoundPair)));
+        }
+
+        #[test]
+        fn try_new_errors_on_crossed_discrete_after_normalization() {
+            // open(10, 10) for i32 normalizes to closed(11, 9) which is crossed.
+            let result = FiniteInterval::try_new(
+                FiniteBound::open(10_i32),
+                FiniteBound::open(10),
+            );
+            assert!(matches!(result, Err(Error::InvalidBoundPair)));
+        }
+
+        #[test]
+        fn try_new_errors_on_nan() {
+            let result = FiniteInterval::try_new(
+                FiniteBound::closed(f32::NAN),
+                FiniteBound::closed(0.0),
+            );
+            assert!(matches!(result, Err(Error::TotalOrderError(_))));
+        }
+
+        #[test]
+        fn try_new_or_empty_returns_empty_on_crossed() {
+            let result = FiniteInterval::try_new_or_empty(
+                FiniteBound::closed(10.0_f32),
+                FiniteBound::closed(0.0),
+            )
+            .unwrap();
+            assert_eq!(result, FiniteInterval::empty());
+        }
+
+        #[test]
+        fn try_new_or_empty_propagates_nan() {
+            let result = FiniteInterval::try_new_or_empty(
+                FiniteBound::closed(f32::NAN),
+                FiniteBound::closed(0.0),
+            );
+            assert!(matches!(result, Err(Error::TotalOrderError(_))));
+        }
+
+        #[test]
+        #[should_panic(expected = "InvalidBoundPair")]
+        fn new_panics_on_crossed() {
+            let _ = FiniteInterval::new(
+                FiniteBound::closed(10_i32),
+                FiniteBound::closed(0),
+            );
+        }
+
+        #[test]
+        fn factory_open_coerces_crossed_to_empty() {
+            // Factory remains coercive: ergonomic for callers who treat
+            // crossed bounds as "the set described is empty."
+            let x = FiniteInterval::<f32>::open(10.0, 0.0);
+            assert_eq!(x, FiniteInterval::empty());
+        }
+
+        #[test]
+        fn from_reversed_range_is_empty() {
+            // Rust's Range semantics: reversed → iterates nothing.
+            // The From impl preserves that.
+            let x: FiniteInterval<i32> = (10..0).into();
+            assert_eq!(x, FiniteInterval::empty());
+
+            let x: FiniteInterval<i32> = (10..=0).into();
+            assert_eq!(x, FiniteInterval::empty());
+        }
     }
 
     #[test]
