@@ -1,7 +1,5 @@
 //#![feature(sort_floats)]
 
-use std::cmp::Ordering;
-
 use arbitrary::Arbitrary;
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use intervalsets_core::bound::{FiniteBound, Side};
@@ -324,19 +322,13 @@ pub fn bench_core_split(c: &mut Criterion) {
     let x = FiniteInterval::closed(0.0, 100.0);
     let mut group = c.benchmark_group("core::split");
     group.bench_function("finite-bisect", |b| {
-        b.iter(|| {
-            let (a, b) = black_box(x.clone()).split(50.0, Side::Right);
-        })
+        b.iter(|| black_box(black_box(x.clone()).split(50.0, Side::Right)))
     });
     group.bench_function("finite-left", |b| {
-        b.iter(|| {
-            let (a, b) = black_box(x.clone()).split(-50.0, Side::Right);
-        })
+        b.iter(|| black_box(black_box(x.clone()).split(-50.0, Side::Right)))
     });
     group.bench_function("finite-right", |b| {
-        b.iter(|| {
-            let (a, b) = black_box(x.clone()).split(150.0, Side::Right);
-        })
+        b.iter(|| black_box(black_box(x.clone()).split(150.0, Side::Right)))
     });
 }
 
@@ -392,14 +384,14 @@ pub fn bench_interval_hull(c: &mut Criterion) {
     group.bench_function("finite-by-value", |b| {
         b.iter(|| {
             let x = black_box(points.clone());
-            FiniteInterval::strict_hull(x)
+            FiniteInterval::try_hull(x)
         })
     });
 
     group.bench_function("finite-by-ref", |b| {
         b.iter(|| {
             let x = black_box(&points);
-            FiniteInterval::strict_hull(x)
+            FiniteInterval::try_hull(x)
         })
     });
 }

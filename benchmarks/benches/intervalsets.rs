@@ -1,12 +1,7 @@
 //#![feature(sort_floats)]
 
-use std::cmp::Ordering;
-
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use intervalsets::prelude::*;
-use rand::distributions::Standard;
-use rand::prelude::Distribution;
-use rand::Rng;
 
 pub fn bench_interval_intersection(c: &mut Criterion) {
     c.bench_function("interval-intersection", |b| {
@@ -66,7 +61,7 @@ pub fn bench_set_split(c: &mut Criterion) {
             .union(Interval::closed(1000009000, 1100000000));
         b.iter(|| {
             let x = black_box(set.clone());
-            let (left, right) = x.split(10500, Side::Left);
+            black_box(x.split(10500, Side::Left))
         })
     });
 }
@@ -79,7 +74,7 @@ pub fn bench_interval_hull_by_value(c: &mut Criterion) {
         ];
         b.iter(|| {
             let x = black_box(points.clone());
-            Interval::strict_hull(x)
+            Interval::try_hull(x)
         })
     });
 }
@@ -90,7 +85,7 @@ pub fn bench_interval_hull_by_ref(c: &mut Criterion) {
             5, 300, -300, 32, 44, 83, 93, -1000, 20, 84, 74, -33, 49, 400, 55, 32, -2000, 100, 22,
             73, 1000, 3000, 30, -200, 432, 4000, 300, -3000, 12,
         ];
-        b.iter(|| Interval::strict_hull(black_box(&points)))
+        b.iter(|| Interval::try_hull(black_box(&points)))
     });
 }
 
