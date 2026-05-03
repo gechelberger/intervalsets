@@ -540,7 +540,11 @@ mod tests {
                 .unwrap(),
             FiniteInterval::singleton(0)
         );
+    }
 
+    #[cfg(feature = "ordered-float")]
+    #[test]
+    fn test_closed_zero_propagation_ordered_float() {
         // interval-level: [0, 1] * (0.0, 5.0) for OrderedFloat -> [0.0, 5.0)
         // closed lower bound at 0 is preserved (0 is reachable via x=0)
         // open upper bound at 5 is preserved (5 is not reachable, since rhs upper is open)
