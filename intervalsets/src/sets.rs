@@ -292,6 +292,12 @@ impl<T> IntervalSet<T> {
 }
 
 impl<T: Element> IntervalSet<T> {
+    /// Check if `intervals` satisfies the `IntervalSet` invariants.
+    ///
+    /// - no empty intervals stored
+    /// - strictly ascending order,
+    /// - no two consecutive intervals connected (i.e. would have been
+    /// merged in canonical form).
     pub fn satisfies_invariants(intervals: &[Interval<T>]) -> bool {
         let mut prev = &Interval::<T>::empty();
         for interval in intervals {
@@ -570,9 +576,7 @@ mod tests {
 
         // Empty Set < everything else
         assert!(Interval::<u8>::empty() < Interval::<u8>::unbounded());
-        assert!(
-            !(Interval::<u8>::empty() >= Interval::<u8>::unbounded())
-        );
+        assert!(!(Interval::<u8>::empty() >= Interval::<u8>::unbounded()));
     }
 
     fn do_hash<T: Hash>(item: T) -> u64 {
@@ -691,7 +695,10 @@ mod malformed_deserialize {
         let valid = IntervalSet::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
         let json = serde_json::to_string(&valid).unwrap();
         // Sanity: confirm both endpoints survived serialization.
-        assert!(json.contains("10") && json.contains("20"), "unexpected: {json}");
+        assert!(
+            json.contains("10") && json.contains("20"),
+            "unexpected: {json}"
+        );
         let swapped = json
             .replacen("0", "X1", 1)
             .replacen("10", "X2", 1)
@@ -715,9 +722,7 @@ mod malformed_deserialize {
         // connected and would collapse to [0,20] in canonical form.
         let valid = IntervalSet::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
         let json = serde_json::to_string(&valid).unwrap();
-        let connecting = json
-            .replacen("20", "11", 1)
-            .replacen("30", "20", 1);
+        let connecting = json.replacen("20", "11", 1).replacen("30", "20", 1);
 
         let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&connecting);
         assert!(
@@ -733,11 +738,7 @@ mod malformed_deserialize {
         let nonempty = IntervalSet::<i32>::new([Interval::closed(0, 10)]);
         let nonempty_json = serde_json::to_string(&nonempty).unwrap();
         let empty_repr = r#"{"Finite":"Empty"}"#;
-        let with_empty = nonempty_json.replacen(
-            "[",
-            &format!("[{empty_repr},"),
-            1,
-        );
+        let with_empty = nonempty_json.replacen("[", &format!("[{empty_repr},"), 1);
 
         let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&with_empty);
         assert!(
