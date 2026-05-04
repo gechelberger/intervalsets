@@ -173,45 +173,43 @@ mod tests {
 
     #[test]
     fn test_connects() {
-        assert_eq!(EI::closed(0, 10).connects(&EI::empty()), true);
-        assert_eq!(EI::empty().connects(&EI::closed(0, 10)), true);
+        assert!(EI::closed(0, 10).connects(&EI::empty()));
+        assert!(EI::empty().connects(&EI::closed(0, 10)));
 
-        assert_eq!(EI::closed(0, 10).connects(&EI::closed(10, 20)), true);
-        assert_eq!(EI::closed(0, 10).connects(&EI::closed(11, 20)), true);
-        assert_eq!(EI::closed(0, 10).connects(&EI::closed(12, 20)), false);
+        assert!(EI::closed(0, 10).connects(&EI::closed(10, 20)));
+        assert!(EI::closed(0, 10).connects(&EI::closed(11, 20)));
+        assert!(!EI::closed(0, 10).connects(&EI::closed(12, 20)));
 
-        assert_eq!(
-            EI::closed(0.0, 10.0).connects(&EI::closed(10.0, 20.0)),
-            true
+        assert!(
+            EI::closed(0.0, 10.0).connects(&EI::closed(10.0, 20.0))
         );
-        assert_eq!(EI::closed(0.0, 10.0).connects(&EI::open(10.0, 20.0)), true);
-        assert_eq!(EI::open(0.0, 10.0).connects(&EI::closed(10.0, 20.0)), true);
-        assert_eq!(EI::open(0.0, 10.0).connects(&EI::open(10.0, 20.0)), false);
+        assert!(EI::closed(0.0, 10.0).connects(&EI::open(10.0, 20.0)));
+        assert!(EI::open(0.0, 10.0).connects(&EI::closed(10.0, 20.0)));
+        assert!(!EI::open(0.0, 10.0).connects(&EI::open(10.0, 20.0)));
 
-        assert_eq!(
-            EI::open(0.0, 10.0).connects(&EI::closed_unbound(10.0)),
-            true
+        assert!(
+            EI::open(0.0, 10.0).connects(&EI::closed_unbound(10.0))
         );
 
-        assert_eq!(EI::unbounded().connects(&EI::closed(0, 10)), true);
+        assert!(EI::unbounded().connects(&EI::closed(0, 10)));
     }
 
     #[test]
     fn test_connects_discrete_min_max() {
         let a = EI::closed(0, i32::MAX - 1);
         let b = EI::open_unbound(i32::MAX);
-        assert_eq!(a.connects(&b), false);
+        assert!(!a.connects(&b));
 
         let a = EI::closed(0, i32::MAX);
         let b = EI::open_unbound(i32::MAX);
-        assert_eq!(a.connects(&b), true);
+        assert!(a.connects(&b));
 
         let a = EI::closed(i32::MIN + 1, 0);
         let b = EI::unbound_open(i32::MIN);
-        assert_eq!(a.connects(&b), false);
+        assert!(!a.connects(&b));
 
         let a = EI::closed(i32::MIN, 0);
         let b = EI::unbound_open(i32::MIN);
-        assert_eq!(a.connects(&b), true);
+        assert!(a.connects(&b));
     }
 }

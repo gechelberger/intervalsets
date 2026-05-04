@@ -235,19 +235,19 @@ mod tests {
         let closed_ord_nan = crate::bound::ord::FiniteOrdBound::closed(&f64::NAN);
 
         let f = FiniteInterval::open(0.0, 10.0);
-        assert_eq!(f.contains(&f64::NAN), false);
-        assert_eq!(f.contains(closed_ord_nan), false);
+        assert!(!f.contains(&f64::NAN));
+        assert!(!f.contains(closed_ord_nan));
 
         let h = EnumInterval::unbound_open(0.0);
-        assert_eq!(h.contains(&f64::NAN), false);
-        assert_eq!(h.contains(closed_ord_nan), false);
+        assert!(!h.contains(&f64::NAN));
+        assert!(!h.contains(closed_ord_nan));
 
         let h = EnumInterval::open_unbound(0.0);
-        assert_eq!(h.contains(&f64::NAN), false);
-        assert_eq!(h.contains(closed_ord_nan), false);
+        assert!(!h.contains(&f64::NAN));
+        assert!(!h.contains(closed_ord_nan));
 
         let h = EnumInterval::unbounded();
-        assert_eq!(h.contains(&f64::NAN), false);
-        assert_eq!(h.contains(closed_ord_nan), false);
+        assert!(!h.contains(&f64::NAN));
+        assert!(!h.contains(closed_ord_nan));
     }
 }

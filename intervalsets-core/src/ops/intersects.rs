@@ -140,15 +140,15 @@ mod tests {
         let a = FiniteInterval::open(0.0, 10.0);
         let b = FiniteInterval::open(10.0, 20.0);
 
-        assert_eq!(a.intersects(&b), false);
-        assert_eq!(b.intersects(&a), false);
+        assert!(!a.intersects(&b));
+        assert!(!b.intersects(&a));
 
         let hb = HalfInterval::open_unbound(10.0);
-        assert_eq!(a.intersects(&hb), false);
-        assert_eq!(hb.intersects(&a), false);
+        assert!(!a.intersects(&hb));
+        assert!(!hb.intersects(&a));
 
         let ha = HalfInterval::unbound_open(0.0);
-        assert_eq!(a.intersects(&ha), false);
-        assert_eq!(ha.intersects(&a), false);
+        assert!(!a.intersects(&ha));
+        assert!(!ha.intersects(&a));
     }
 }

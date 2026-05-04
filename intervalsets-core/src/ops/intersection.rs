@@ -416,7 +416,7 @@ mod tests {
 
         let x = HalfInterval::left(FiniteBound::closed(0.0));
         let y = HalfInterval::left(FiniteBound::closed(100.0));
-        let expected = EnumInterval::from(y.clone());
+        let expected = EnumInterval::from(y);
         assert_eq!((&x).intersection(&y), expected);
         assert_eq!(x.intersection(y), expected);
     }
@@ -462,7 +462,7 @@ mod tests {
         assert_eq!(it.next(), Some(EnumInterval::closed(140, 150)));
         assert_eq!(it.next(), None);
 
-        let mut it = SetSetIntersection::new(a.into_iter(), b.into_iter());
+        let mut it = SetSetIntersection::new(a, b);
 
         assert_eq!(it.next(), Some(EnumInterval::closed(5, 10)));
         assert_eq!(it.next(), Some(EnumInterval::closed(140, 150)));

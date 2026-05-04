@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main", "dev"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main", "dev"]
   workflow_dispatch:
 
 env:
@@ -14,38 +14,47 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@nightly
-    - run: cargo test --all-features --verbose
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --all-features --verbose
+
+  clippy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - run: cargo clippy --all-features --all-targets -- -D warnings
 
   no-std:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - name: Install nightly toolchain with nostd target
-      uses: dtolnay/rust-toolchain@nightly
-      with:
-        targets: thumbv6m-none-eabi
-    - name: Install cargo hack
-      uses: baptiste0928/cargo-install@v3
-      with:
-        crate: cargo-hack
-        version: '^0.6'
-    - name: install just
-      uses: baptiste0928/cargo-install@v3
-      with:
-        crate: just
-        version: '^1'
-    - run: just check-no-std
+      - uses: actions/checkout@v4
+      - name: Install nightly toolchain with nostd target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv6m-none-eabi
+      - name: Install cargo hack
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: cargo-hack
+          version: "^0.6"
+      - name: install just
+        uses: baptiste0928/cargo-install@v3
+        with:
+          crate: just
+          version: "^1"
+      - run: just check-no-std
 
   msrv-check:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    - uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: "1.81.0"
-    - run: cargo test --all-features --verbose
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.81.0"
+      - run: cargo test --all-features --verbose
 
   check-docs:
     runs-on: ubuntu-latest
@@ -56,25 +65,5 @@ jobs:
         uses: baptiste0928/cargo-install@v3
         with:
           crate: just
-          version: '^1'
+          version: "^1"
       - run: just doc
-
-      #- run: cargo +nightly doc --all-features --no-deps
-      #  env:
-      #    RUSTDOCFLAGS: "-D warnings --cfg docsrs"
-  
-  check-book:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@nightly
-      - name: Setup mdbook
-        uses: peaceiris/actions-mdbook@v2
-        with:
-          mdbook-version: 'latest'
-      - name: install just
-        uses: baptiste0928/cargo-install@v3
-        with:
-          crate: just
-          version: '^1'
-      - run: just book-test

@@ -614,6 +614,7 @@ mod tests {
         }
 
         #[test]
+        #[allow(clippy::reversed_empty_ranges)]
         fn from_reversed_range_is_empty() {
             // Rust's Range semantics: reversed → iterates nothing.
             // The From impl preserves that.

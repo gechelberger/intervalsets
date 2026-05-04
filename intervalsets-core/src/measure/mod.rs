@@ -236,6 +236,6 @@ mod tests {
 
     #[test]
     fn test_measurement_ord() {
-        assert_eq!(Measurement::Finite(10) < Measurement::Infinite, true,);
+        assert!(Measurement::Finite(10) < Measurement::Infinite,);
     }
 }

@@ -19,7 +19,7 @@ mod brief {
     {
         let mut buffer = [0u8; 128];
         let encoded = serde_brief::to_slice(&item, &mut buffer).unwrap();
-        let decoded = serde_brief::from_slice(&encoded).unwrap();
+        let decoded = serde_brief::from_slice(encoded).unwrap();
         item == decoded
     }
 

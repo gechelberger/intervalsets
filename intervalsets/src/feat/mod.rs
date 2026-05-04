@@ -44,9 +44,6 @@ mod num_bigint_tests {
     }
 }
 
-// #[cfg(feature = "uom")]
-// pub mod uom;
-
 #[cfg(all(test, feature = "ordered-float"))]
 mod ordered_float_tests {
 

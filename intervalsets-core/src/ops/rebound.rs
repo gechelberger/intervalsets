@@ -1,4 +1,5 @@
 use crate::bound::{FiniteBound, Side};
+#[allow(unused_imports)] // FiniteFactory provides ::closed et al. via re-export through `use super::*` in tests
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -169,26 +170,26 @@ mod tests {
     #[test]
     fn test_with_left() {
         let x = FiniteInterval::closed(0, 100);
-        assert_eq!(x.clone().with_left(None), EnumInterval::unbound_closed(100));
-        assert_eq!(x.clone().with_left_closed(-100), [-100, 100].into());
-        assert_eq!(x.clone().with_left_closed(200), ().into());
+        assert_eq!(x.with_left(None), EnumInterval::unbound_closed(100));
+        assert_eq!(x.with_left_closed(-100), [-100, 100].into());
+        assert_eq!(x.with_left_closed(200), ().into());
 
         let x = HalfInterval::left(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_left(None), EnumInterval::Unbounded);
+        assert_eq!(x.with_left(None), EnumInterval::Unbounded);
         assert_eq!(
-            x.clone().with_left_closed(100),
+            x.with_left_closed(100),
             EnumInterval::closed_unbound(100)
         );
 
         let x = HalfInterval::right(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_left(None), x.into());
-        assert_eq!(x.clone().with_left_closed(0), EnumInterval::closed(0, 0));
-        assert_eq!(x.clone().with_left_closed(100), EnumInterval::empty());
+        assert_eq!(x.with_left(None), x.into());
+        assert_eq!(x.with_left_closed(0), EnumInterval::closed(0, 0));
+        assert_eq!(x.with_left_closed(100), EnumInterval::empty());
 
         let x = EnumInterval::<i32>::Unbounded;
-        assert_eq!(x.clone().with_left(None), EnumInterval::Unbounded);
+        assert_eq!(x.with_left(None), EnumInterval::Unbounded);
         assert_eq!(
-            x.clone().with_left_closed(0),
+            x.with_left_closed(0),
             EnumInterval::closed_unbound(0)
         );
     }
@@ -196,33 +197,33 @@ mod tests {
     #[test]
     fn test_with_right() {
         let x = FiniteInterval::closed(0, 100);
-        assert_eq!(x.clone().with_right(None), EnumInterval::closed_unbound(0));
-        assert_eq!(x.clone().with_right_closed(-100), EnumInterval::empty());
-        assert_eq!(x.clone().with_right_closed(200), [0, 200].into());
+        assert_eq!(x.with_right(None), EnumInterval::closed_unbound(0));
+        assert_eq!(x.with_right_closed(-100), EnumInterval::empty());
+        assert_eq!(x.with_right_closed(200), [0, 200].into());
 
         let x = HalfInterval::left(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_right(None), x.into());
+        assert_eq!(x.with_right(None), x.into());
         assert_eq!(
-            x.clone().with_right_closed(100),
+            x.with_right_closed(100),
             EnumInterval::closed(0, 100)
         );
-        assert_eq!(x.clone().with_right_closed(-100), EnumInterval::empty());
+        assert_eq!(x.with_right_closed(-100), EnumInterval::empty());
 
         let x = HalfInterval::right(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_right(None), EnumInterval::unbounded());
+        assert_eq!(x.with_right(None), EnumInterval::unbounded());
         assert_eq!(
-            x.clone().with_right_closed(100),
+            x.with_right_closed(100),
             EnumInterval::unbound_closed(100)
         );
         assert_eq!(
-            x.clone().with_right_closed(-100),
+            x.with_right_closed(-100),
             EnumInterval::unbound_closed(-100)
         );
 
         let x = EnumInterval::unbounded();
-        assert_eq!(x.clone().with_right(None), x.clone());
+        assert_eq!(x.with_right(None), x);
         assert_eq!(
-            x.clone().with_right_closed(0),
+            x.with_right_closed(0),
             EnumInterval::unbound_closed(0)
         );
     }

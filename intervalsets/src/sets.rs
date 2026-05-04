@@ -526,12 +526,13 @@ mod tests {
         assert_eq!(
             x.iter().fold(
                 IntervalSet::from(Interval::unbounded()),
-                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(item.clone()) }
+                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(*item) }
             ),
             x.complement()
         );
     }
 
+    #[allow(clippy::neg_cmp_op_on_partial_ord)] // deliberately exercising negated partial-ord operators for antisymmetry
     fn assert_lt<T: Element>(itv1: Interval<T>, itv2: Interval<T>) {
         assert!(itv1 < itv2);
         assert!(!(itv1 >= itv2)); // antisymmetry
@@ -541,6 +542,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::nonminimal_bool)] // deliberately asserting the negated form for antisymmetry
     fn test_interval_cmp() {
         // (0, _) < (200, _)
         assert_lt(Interval::open(0.0, 100.0), Interval::open(200.0, 300.0));
@@ -567,10 +569,9 @@ mod tests {
         assert_lt(Interval::unbounded(), Interval::open_unbound(0.0));
 
         // Empty Set < everything else
-        assert_eq!(Interval::<u8>::empty() < Interval::<u8>::unbounded(), true);
-        assert_eq!(
-            Interval::<u8>::empty() >= Interval::<u8>::unbounded(),
-            false
+        assert!(Interval::<u8>::empty() < Interval::<u8>::unbounded());
+        assert!(
+            !(Interval::<u8>::empty() >= Interval::<u8>::unbounded())
         );
     }
 

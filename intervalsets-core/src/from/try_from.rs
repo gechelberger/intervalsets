@@ -50,11 +50,11 @@ mod tests {
     fn test_try_from_enum_interval() -> Result<(), ConversionError> {
         let finite = EnumInterval::closed(0, 10);
         assert_eq!(FiniteInterval::closed(0, 10), finite.try_into()?);
-        assert!(matches!(HalfInterval::try_from(finite), Err(_)));
+        assert!(HalfInterval::try_from(finite).is_err());
 
         let half = EnumInterval::closed_unbound(0.0);
         assert_eq!(HalfInterval::closed_unbound(0.0), half.try_into()?);
-        assert!(matches!(FiniteInterval::try_from(half), Err(_)));
+        assert!(FiniteInterval::try_from(half).is_err());
 
         Ok(())
     }

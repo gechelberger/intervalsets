@@ -1046,27 +1046,27 @@ mod test {
     pub fn test_try_contains() {
         let x = FiniteBound::closed(0.0);
 
-        assert_eq!(x.try_contains(Left, &0.0).unwrap(), true);
-        assert_eq!(x.try_contains(Left, &1.0).unwrap(), true);
-        assert_eq!(x.try_contains(Left, &-1.0).unwrap(), false);
-        assert_eq!(x.try_contains(Left, &f64::NAN).is_err(), true);
+        assert!(x.try_contains(Left, &0.0).unwrap());
+        assert!(x.try_contains(Left, &1.0).unwrap());
+        assert!(!x.try_contains(Left, &-1.0).unwrap());
+        assert!(x.try_contains(Left, &f64::NAN).is_err());
 
-        assert_eq!(x.try_contains(Right, &0.0).unwrap(), true);
-        assert_eq!(x.try_contains(Right, &-1.0).unwrap(), true);
-        assert_eq!(x.try_contains(Right, &1.0).unwrap(), false);
-        assert_eq!(x.try_contains(Right, &f64::NAN).is_err(), true);
+        assert!(x.try_contains(Right, &0.0).unwrap());
+        assert!(x.try_contains(Right, &-1.0).unwrap());
+        assert!(!x.try_contains(Right, &1.0).unwrap());
+        assert!(x.try_contains(Right, &f64::NAN).is_err());
 
         let open = FiniteBound::open(0.0);
 
-        assert_eq!(open.try_contains(Left, &0.0).unwrap(), false);
-        assert_eq!(open.try_contains(Left, &1.0).unwrap(), true);
-        assert_eq!(open.try_contains(Left, &-1.0).unwrap(), false);
-        assert_eq!(open.try_contains(Left, &f64::NAN).is_err(), true);
+        assert!(!open.try_contains(Left, &0.0).unwrap());
+        assert!(open.try_contains(Left, &1.0).unwrap());
+        assert!(!open.try_contains(Left, &-1.0).unwrap());
+        assert!(open.try_contains(Left, &f64::NAN).is_err());
 
-        assert_eq!(open.try_contains(Right, &0.0).unwrap(), false);
-        assert_eq!(open.try_contains(Right, &-1.0).unwrap(), true);
-        assert_eq!(open.try_contains(Right, &1.0).unwrap(), false);
-        assert_eq!(open.try_contains(Right, &f64::NAN).is_err(), true);
+        assert!(!open.try_contains(Right, &0.0).unwrap());
+        assert!(open.try_contains(Right, &-1.0).unwrap());
+        assert!(!open.try_contains(Right, &1.0).unwrap());
+        assert!(open.try_contains(Right, &f64::NAN).is_err());
     }
 
     #[test]

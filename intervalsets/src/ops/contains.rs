@@ -47,13 +47,13 @@ mod tests {
     #[quickcheck]
     fn check_empty_contains_integer(x: i8) {
         let interval = Interval::<i8>::empty();
-        assert_eq!(interval.contains(&x), false)
+        assert!(!interval.contains(&x))
     }
 
     #[quickcheck]
     fn check_empty_contains_float(x: f32) {
         let interval = Interval::<f32>::empty();
-        assert_eq!(interval.contains(&x), false)
+        assert!(!interval.contains(&x))
     }
 
     #[quickcheck]
@@ -122,11 +122,11 @@ mod tests {
     fn check_finite_contains_unbounded_integer(x: i8) {
         let interval = Interval::closed(-100, 100);
 
-        assert_eq!(interval.contains(&Interval::unbound_closed(x)), false);
-        assert_eq!(interval.contains(&Interval::unbound_open(x)), false);
-        assert_eq!(interval.contains(&Interval::open_unbound(x)), false);
-        assert_eq!(interval.contains(&Interval::closed_unbound(x)), false);
-        assert_eq!(interval.contains(&Interval::unbounded()), false);
+        assert!(!interval.contains(&Interval::unbound_closed(x)));
+        assert!(!interval.contains(&Interval::unbound_open(x)));
+        assert!(!interval.contains(&Interval::open_unbound(x)));
+        assert!(!interval.contains(&Interval::closed_unbound(x)));
+        assert!(!interval.contains(&Interval::unbounded()));
     }
 
     #[quickcheck]
@@ -142,7 +142,7 @@ mod tests {
         let interval = Interval::<i8>::unbounded();
 
         let finite = Interval::closed(a, b);
-        assert_eq!(interval.contains(&finite), true);
+        assert!(interval.contains(&finite));
     }
 
     #[test]
@@ -152,10 +152,10 @@ mod tests {
 
         let subset = IntervalSet::from_iter([Interval::closed(40, 60), Interval::closed(240, 260)]);
 
-        assert_eq!(superset.contains(&subset), true);
-        assert_eq!(subset.contains(&superset), false);
+        assert!(superset.contains(&subset));
+        assert!(!subset.contains(&superset));
 
-        assert_eq!(superset.contains(&superset), true);
-        assert_eq!(subset.contains(&subset), true);
+        assert!(superset.contains(&superset));
+        assert!(subset.contains(&subset));
     }
 }

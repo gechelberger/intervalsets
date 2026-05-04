@@ -482,7 +482,7 @@ mod tests {
             Interval::closed(300, 310),
         ]);
 
-        assert_eq!(a.clone().union(b.clone()), c);
+        assert_eq!(a.clone().union(b), c);
         assert_eq!(b.union(a), c);
     }
 
@@ -504,7 +504,7 @@ mod tests {
             Interval::closed(300, 310),
         ]);
 
-        assert_eq!(a.clone().union(b.clone()), c);
+        assert_eq!(a.clone().union(b), c);
         assert_eq!(b.union(a), c);
     }
 }

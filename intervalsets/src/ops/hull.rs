@@ -91,7 +91,7 @@ mod tests {
 
     #[test]
     fn test_hull_of_points_by_reference() {
-        let points = vec![5, 3, -1, 30, 2, -22, 100, -100];
+        let points = [5, 3, -1, 30, 2, -22, 100, -100];
 
         let hull = Interval::try_hull(points.iter()).unwrap();
         assert_eq!(hull, Interval::closed(-100, 100));
@@ -118,13 +118,11 @@ mod tests {
 
     #[test]
     fn test_hull_of_intervals_by_reference() {
-        let items = vec![
-            Interval::empty(),
+        let items = [Interval::empty(),
             Interval::empty(),
             Interval::closed(0, 10),
             Interval::empty(),
-            Interval::empty(),
-        ];
+            Interval::empty()];
         let hull = Interval::try_hull(items.iter()).unwrap();
         assert_eq!(hull, Interval::closed(0, 10));
     }

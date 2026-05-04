@@ -33,7 +33,7 @@ mod test {
     #[quickcheck]
     fn test_finite_complement_i8(a: i8) {
         let baseline = Interval::open_closed(0, 50);
-        let complement = baseline.clone().complement();
+        let complement = baseline.complement();
 
         assert!(baseline.contains(&a) != complement.contains(&a))
     }
@@ -45,14 +45,14 @@ mod test {
         }
 
         let baseline = Interval::open_closed(0 as f32, 50.0);
-        let complement = baseline.clone().complement();
+        let complement = baseline.complement();
         assert!(baseline.contains(&a) != complement.contains(&a))
     }
 
     #[quickcheck]
     fn test_half_complement_i8(a: i8) {
-        let baseline = Interval::unbound_closed(50 as i8);
-        let complement = baseline.clone().complement();
+        let baseline = Interval::unbound_closed(50_i8);
+        let complement = baseline.complement();
         assert!(baseline.contains(&a) != complement.contains(&a));
     }
 
@@ -92,11 +92,11 @@ mod test {
         }
 
         let a = Interval::closed(a, b);
-        let c = a.clone().complement();
+        let c = a.complement();
 
         // This one we need to fix
         assert_eq!(
-            a.clone().union(c.clone()).expect_interval(),
+            a.union(c.clone()).expect_interval(),
             Interval::unbounded()
         );
         assert_eq!(a.intersection(c).expect_interval(), Interval::empty());

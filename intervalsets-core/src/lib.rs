@@ -107,12 +107,12 @@
 //! error from the fallible (try_*) api).
 //!
 //! 1. Discrete types are always normalized to closed form so that there is only
-//!     a single valid bit-pattern for each possible `Set`.
+//!    a single valid bit-pattern for each possible `Set`.
 //! 2. lhs <= rhs. All non-empty sets have a left and right hand side, though
-//!     they may be implicit and/or unbounded.
+//!    they may be implicit and/or unbounded.
 //! 3. A FiniteBound's limit value must be a member of some set S ⊆ T where
-//!     T is the set of the underlying data-type which may be partially ordered,
-//!     but S has a strict total order. (S is a chain)
+//!    T is the set of the underlying data-type which may be partially ordered,
+//!    but S has a strict total order. (S is a chain)
 //!
 //! # Foot guns
 //!
@@ -139,10 +139,10 @@
 //! whole host of complexities regardless.
 //!
 //! * `NAN` is not part of the default ordering, though there is a `total_cmp`
-//!     available now.
+//!   available now.
 //! * rounding errors can cause issues with testing values near a set bound.
 //! * `FiniteBound(f32::INFINITY)` and `FiniteBound(f32::NEG_INFINITY)`are both
-//!     valid syntax, though all manner of headache semantically speaking.
+//!   valid syntax, though all manner of headache semantically speaking.
 //!
 //! Sometimes, floats are still the right tool for the job, and it is left to the
 //! user to choose the right approach for the given problem. Fixed precision

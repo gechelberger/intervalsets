@@ -51,7 +51,7 @@ mod tests {
         }
 
         let x = Interval::unbound_closed(x);
-        let y = x.clone().complement().expect_interval();
+        let y = x.complement().expect_interval();
 
         assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
     }
@@ -59,7 +59,7 @@ mod tests {
     #[quickcheck]
     fn check_merge_half_complements_i32(x: i32) {
         let x = Interval::closed_unbound(x);
-        let y = x.clone().complement().expect_interval();
+        let y = x.complement().expect_interval();
 
         assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
     }
@@ -67,11 +67,11 @@ mod tests {
     #[test]
     fn test_regressions() {
         let x = Interval::closed_unbound(i32::MIN);
-        let y = x.clone().complement().expect_interval();
+        let y = x.complement().expect_interval();
         assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
 
         let x = Interval::unbound_closed(i32::MAX);
-        let y = x.clone().complement().expect_interval();
+        let y = x.complement().expect_interval();
         assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
 
         let x = Interval::open_unbound(0.0);
@@ -79,11 +79,11 @@ mod tests {
         assert_eq!(x.try_merge(y), None);
 
         let x = Interval::closed_unbound(f32::MIN);
-        let y = x.clone().complement().expect_interval();
+        let y = x.complement().expect_interval();
         assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
 
         let x = Interval::unbound_closed(f32::MAX);
-        let y = x.clone().complement().expect_interval();
+        let y = x.complement().expect_interval();
         assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
     }
 
