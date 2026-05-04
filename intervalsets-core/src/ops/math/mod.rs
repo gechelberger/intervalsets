@@ -1,3 +1,46 @@
+//! Set-Arithmetic on intervals.
+//!
+//! Arithmetic operators (`+ - * /`) are implemented for
+//! [`FiniteInterval`](crate::sets::FiniteInterval),
+//! [`HalfInterval`](crate::sets::HalfInterval), and
+//! [`EnumInterval`](crate::sets::EnumInterval), along with the
+//! cross-type combinations needed for ergonomic chaining.
+//!
+//! # Panicking and fallible forms
+//!
+//! Each operation is offered in two flavors:
+//!
+//! - The infix operator (`+ - * /`) is the panicking, ergonomic
+//!   form. It requires `T: Ord` so that `partial_cmp` on bounds is
+//!   total and arithmetic on bounds is provably infallible; the
+//!   underlying try-form's `.unwrap()` can never panic.
+//! - The corresponding [`TryAdd`] / [`TrySub`] / [`TryMul`] /
+//!   [`TryDiv`] trait returns `Result<_, Error>` and requires only
+//!   `T: PartialOrd`. NaN-induced incomparability surfaces as
+//!   `Err`, never as a panic.
+//!
+//! Float users without an [`Ord`]-providing wrapper (raw `f32` /
+//! `f64`) cannot satisfy the infix operator bounds. Wrap floats in
+//! `OrderedFloat` (with the `ordered-float` feature) to restore the
+//! infix operators, or use the `Try*` traits directly.
+//!
+//! # Output shape
+//!
+//! Division can produce up to two pieces (e.g. `[1, 2] / [-1, 1]`
+//! is unbounded with a hole at zero), so its output is a
+//! [`MaybeDisjoint`](crate::disjoint::MaybeDisjoint). Add, sub, and
+//! mul produce a single interval.
+//!
+//! # Overflow
+//!
+//! Arithmetic on bounds delegates to the underlying type's
+//! [`Add`](::core::ops::Add) / [`Sub`](::core::ops::Sub) /
+//! [`Mul`](::core::ops::Mul) / [`Div`](::core::ops::Div). Overflow
+//! behavior is whatever those impls do — `i32` panics in debug and
+//! wraps in release, `Wrapping<T>` always wraps, `checked_*` is not
+//! used. Callers needing defined overflow should pick a numeric type
+//! that provides it.
+
 mod add;
 mod sub;
 mod mul;

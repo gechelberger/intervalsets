@@ -157,7 +157,7 @@
 //! | Concern | Panicking | Fallible |
 //! |---|---|---|
 //! | Constructing an interval | `FiniteInterval::new`, factory methods like `closed`/`open` | [`FiniteInterval::try_new`], `try_closed`/`try_open` |
-//! | Arithmetic operators | `+` `-` `*` `/` (require `T: Ord`) | [`ops::TryAdd`], [`ops::TrySub`], [`ops::TryMul`], [`ops::TryDiv`] |
+//! | Arithmetic operators | `+` `-` `*` `/` (require `T: Ord`) | [`ops::math::TryAdd`], [`ops::math::TrySub`], [`ops::math::TryMul`], [`ops::math::TryDiv`] |
 //! | Convex hull | [`ops::ConvexHull::hull`] | [`ops::ConvexHull::try_hull`] |
 //! | Splitting | [`ops::Split::split`] | [`ops::Split::try_split`] |
 //! | Rebounding | [`ops::Rebound::with_left`]/[`ops::Rebound::with_right`] | [`ops::Rebound::try_with_left`]/[`ops::Rebound::try_with_right`] |
@@ -349,6 +349,7 @@ pub mod prelude {
     //pub use crate::error::Error;
     pub use crate::factory::traits::*;
     pub use crate::measure::{Count, Measurement, Width};
+    pub use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
     pub use crate::ops::*;
     pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 }

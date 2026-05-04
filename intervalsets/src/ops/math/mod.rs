@@ -29,4 +29,4 @@ mod div;
 mod mul;
 mod sub;
 
-pub use intervalsets_core::ops::{TryAdd, TryDiv, TryMul, TrySub};
+pub use intervalsets_core::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
