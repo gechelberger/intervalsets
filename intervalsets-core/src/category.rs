@@ -173,6 +173,7 @@ impl<T: Zero + PartialOrd> EnumInterval<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(debug_assertions))]
     use crate::bound::FiniteBound;
     use crate::factory::FiniteFactory;
 
