@@ -1,3 +1,19 @@
+//! Set-algebra and arithmetic operations on intervals and interval sets.
+//!
+//! Re-exports the trait set from [`intervalsets_core::ops`] and adds
+//! implementations for the allocating
+//! [`IntervalSet`](crate::IntervalSet), so set operations can return
+//! arbitrary-piece results. The core crate's implementations cap output
+//! at two pieces via
+//! [`MaybeDisjoint`](intervalsets_core::disjoint::MaybeDisjoint).
+//!
+//! [`SymDifference`] is added at this layer — it composes naturally
+//! over `IntervalSet` inputs that the core crate doesn't model.
+//!
+//! For panic-free variants of fallible operations, see the `Try*`
+//! traits ([`TryAdd`], [`TrySub`], [`TryMul`], [`TryDiv`],
+//! [`TryMerge`]).
+
 mod connects;
 pub use connects::Connects;
 
