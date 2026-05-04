@@ -2,13 +2,24 @@
 
 use core::ops::Div;
 
-use super::TryDiv;
 use crate::category::ECat;
 use crate::disjoint::MaybeDisjoint;
 use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
+
+/// Div that returns Result instead of panicking on logical violations.
+///
+/// See [`super::TryAdd`] for the convention.
+pub trait TryDiv<Rhs = Self> {
+    /// The type produced by a successful division.
+    type Output;
+    /// The error returned when the operation cannot produce a valid result.
+    type Error;
+    /// Divide `self` by `rhs`, returning `Err` instead of panicking.
+    fn try_div(self, rhs: Rhs) -> Result<Self::Output, Self::Error>;
+}
 
 // The infix Div operators below all require T: Ord. For Ord types,
 // partial_cmp on bounds is total, so try_div is provably infallible
