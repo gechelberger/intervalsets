@@ -162,13 +162,23 @@ impl<T> OrdBounded<T> for Interval<T> {
 ///
 /// # Invariants
 ///
-/// * All stored intervals are normalized.
-///     * This is not checked here because it should be
-///       an invariant of `Interval<T>` already.
-/// * No stored interval may be the empty set.
-///     * Emptiness is represented by storing no intervals.
-/// * All intervals are stored in ascending order.
-/// * All stored intervals are unconnected subsets of T.
+/// An `IntervalSet` is canonical iff:
+///
+/// 1. **No stored empty interval.** Emptiness is represented by
+///    storing no intervals at all.
+/// 2. **Strict ascending order.** Stored intervals are sorted by
+///    their lower bound.
+/// 3. **No two consecutive intervals connect.** Any pair that
+///    would merge into a single interval has already done so.
+/// 4. **All stored intervals are normalized.** Inherited from
+///    [`Interval<T>`]'s own invariants and not re-checked here.
+///
+/// [`satisfies_invariants`](Self::satisfies_invariants) is the
+/// public predicate that tests for these. The constructors
+/// ([`new`](Self::new), [`try_new`](Self::try_new),
+/// [`new_assume_valid`](Self::new_assume_valid)) handle invariant
+/// enforcement at different points along the
+/// repair / reject / trust spectrum.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(try_from = "RawIntervalSet<T>"))]
@@ -262,13 +272,9 @@ impl<T: Element> IntervalSet<T> {
     /// emitted canonical form, and a non-canonical payload is a
     /// signal that the input did not come from us.
     ///
-    /// Rejects:
-    /// - any stored empty interval;
-    /// - intervals not in strict ascending order;
-    /// - two consecutive intervals that connect (and would have been
-    ///   merged in canonical form).
-    ///
-    /// See the crate-level "Construction at boundaries" section in
+    /// Rejects any input that does not satisfy the
+    /// [`IntervalSet` invariants](Self#invariants). See the
+    /// crate-level "Construction at boundaries" section in
     /// [`intervalsets_core`] for the broader principle.
     pub fn try_new<I>(intervals: I) -> Result<Self, Error>
     where
@@ -292,12 +298,11 @@ impl<T> IntervalSet<T> {
 }
 
 impl<T: Element> IntervalSet<T> {
-    /// Check if `intervals` satisfies the `IntervalSet` invariants.
+    /// Returns `true` iff `intervals` satisfies the
+    /// [`IntervalSet` invariants](Self#invariants).
     ///
-    /// - no empty intervals stored
-    /// - strictly ascending order,
-    /// - no two consecutive intervals connected (i.e. would have been
-    /// merged in canonical form).
+    /// This is the predicate [`try_new`](Self::try_new) uses to
+    /// validate input.
     pub fn satisfies_invariants(intervals: &[Interval<T>]) -> bool {
         let mut prev = &Interval::<T>::empty();
         for interval in intervals {
@@ -312,12 +317,10 @@ impl<T: Element> IntervalSet<T> {
 }
 
 impl<T> IntervalSet<T> {
-    /// Creates a new IntervalSet without checking invariants.
+    /// Creates a new `IntervalSet` without checking invariants.
     ///
-    /// Caller is responsible for enforcing invariants:
-    /// 1. provided intervals do not include the empty set.
-    /// 2. provided intervals are sorted ascendingly.
-    /// 3. provided intervals are not connected to each other.
+    /// Caller is responsible for enforcing the
+    /// [`IntervalSet` invariants](Self#invariants).
     ///
     /// Violations are not memory-unsafe but produce a logically invalid
     /// `IntervalSet` whose set-algebraic operations may misbehave.
