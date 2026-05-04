@@ -157,11 +157,11 @@
 //! | Concern | Panicking | Fallible |
 //! |---|---|---|
 //! | Constructing an interval | `FiniteInterval::new`, factory methods like `closed`/`open` | [`FiniteInterval::try_new`], `try_closed`/`try_open` |
-//! | Arithmetic operators | `+` `-` `*` `/` (require `T: Ord`) | [`TryAdd`], [`TrySub`], [`TryMul`], [`TryDiv`] |
-//! | Convex hull | [`ConvexHull::hull`] | [`ConvexHull::try_hull`] |
-//! | Splitting | [`Split::split`] | [`Split::try_split`] |
-//! | Rebounding | [`Rebound::with_left`]/[`Rebound::with_right`] | [`Rebound::try_with_left`]/[`Rebound::try_with_right`] |
-//! | Counting | [`Count::count`] | [`Count::try_count`] |
+//! | Arithmetic operators | `+` `-` `*` `/` (require `T: Ord`) | [`ops::TryAdd`], [`ops::TrySub`], [`ops::TryMul`], [`ops::TryDiv`] |
+//! | Convex hull | [`ops::ConvexHull::hull`] | [`ops::ConvexHull::try_hull`] |
+//! | Splitting | [`ops::Split::split`] | [`ops::Split::try_split`] |
+//! | Rebounding | [`ops::Rebound::with_left`]/[`ops::Rebound::with_right`] | [`ops::Rebound::try_with_left`]/[`ops::Rebound::try_with_right`] |
+//! | Counting | [`measure::Count::count`] | [`measure::Count::try_count`] |
 //! | Categorizing | [`FiniteInterval::category`] | [`FiniteInterval::try_category`] |
 //!
 //! ```
@@ -296,9 +296,9 @@
 //! * serde: implement [`Serialize`](::serde::Serialize), [`Deserialize`](::serde::Deserialize).
 //!   `Deserialize` requires `T: Element` and rejects NaN, swapped-order
 //!   `Bounded` pairs, and other invariant violations on the interval types
-//!   ([`FiniteInterval`](sets::FiniteInterval),
-//!   [`HalfInterval`](sets::HalfInterval),
-//!   [`EnumInterval`](sets::EnumInterval)). The `bound::ord::*` helper
+//!   ([`FiniteInterval`],
+//!   [`HalfInterval`],
+//!   [`EnumInterval`]). The `bound::ord::*` helper
 //!   types do not derive serde traits.
 //!
 //! # Diving Deeper
