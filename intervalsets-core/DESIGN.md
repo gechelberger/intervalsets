@@ -7,7 +7,13 @@ linked from rustdoc — user-facing rustdoc states what each API does and how it
 can fail; the principles below explain why.
 
 When making API or contract decisions, cite the principle by name (e.g. "P3" or
-"the safe-public-API principle") so the reasoning carries forward.
+"the validating-API principle") so the reasoning carries forward.
+
+A note on terminology: throughout this document, "validating API" / "validating
+tier" refers to constructors and operations that enforce or rely on type
+invariants — distinct from Rust's `safe` / `unsafe` keywords, which refer
+specifically to memory safety. The crate is `forbid(unsafe_code)` end-to-end;
+correctness here is about *invariant preservation*, not memory safety.
 
 # Principles
 
@@ -17,7 +23,7 @@ No other goal beats correctness. A faster wrong answer is worse than a slower
 right one.
 
 *In practice*: any change that admits a wrong-answer mode requires explicit
-justification; ambiguity defaults to the safe choice.
+justification; ambiguity defaults to the more-validating choice.
 
 ## P2. Silent corruption is unacceptable.
 
@@ -26,19 +32,20 @@ boundary; surface it loudly.
 
 *In practice*: errors are `Result` or panic, never best-effort fallback values.
 
-## P3. The safe public API preserves correctness.
+## P3. The validating API preserves correctness.
 
-A caller using only safe-tier APIs cannot produce a wrong answer. The crate
-provides multiple safe shapes (truly infallible, infallible-when-closed,
-`try_*` + panicking sugar) — those shapes are an ergonomics/performance
-trade-off in the *contract*, not a principle. Hazardous APIs (`*_assume_valid`)
+A caller using only validating-tier APIs cannot produce a wrong answer. The
+crate provides multiple validating shapes (truly infallible, infallible-when-
+closed, `try_*` + panicking sugar) — those shapes are an ergonomics/performance
+trade-off in the *contract*, not a principle. Bypass APIs (`*_assume_valid`)
 exist as a deliberate, scoped exception, public only because the outer crate
 needs them for performance.
 
-*In practice*: the privacy boundary should approximate the safety boundary.
-`*_assume_valid` items are the known gap, justified by performance and labeled
-accordingly. Adding new public items that can produce wrong answers (outside
-the assume-valid family) is a P3 violation and needs explicit sign-off.
+*In practice*: the privacy boundary should approximate the validation
+boundary. `*_assume_valid` items are the known gap, justified by performance
+and labeled accordingly. Adding new public items that can produce wrong
+answers (outside the assume-valid family) is a P3 violation and needs explicit
+sign-off.
 
 ## P4. Types carry invariants; operations preserve them.
 

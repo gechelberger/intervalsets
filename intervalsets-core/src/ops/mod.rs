@@ -42,16 +42,24 @@
 //! ## Tier 2 — Infallible when closed over the invariants
 //!
 //! Cannot panic and cannot error *given inputs satisfying their type
-//! invariants*. The type system prevents safe-API users from
-//! constructing invariant-violating inputs, so from the safe-API
+//! invariants*. The type system prevents validating-API callers from
+//! constructing invariant-violating inputs, so from the validating-API
 //! caller's seat this tier is also infallible. These traits have no
 //! `try_*` variant because the operation introduces no logical
 //! violation of its own — there is nothing to surface.
 //!
+//! Internally, every `*_assume_*` checkpoint reachable from a Tier 2
+//! op carries a `debug_assert!` that verifies the precondition it
+//! relies on. In debug builds, an upstream invariant violation
+//! (typically Tier 4 misuse) panics at the first checkpoint reached;
+//! in release the asserts are compiled out and misuse propagates to
+//! a wrong answer (no UB).
+//!
 //! Tier 2 is **fundamentally different from a panicking sugar
-//! wrapper (Tier 3)**: their panic path, if reached, would be from
-//! invariant violation upstream (e.g. via Tier 4 misuse), not an
-//! intentional `unwrap()` on a documented `Err`.
+//! wrapper (Tier 3)**: a Tier 3 panic is an intentional `unwrap()`
+//! on a documented `Err` from user-supplied `T` and is part of the
+//! contract; a Tier 2 debug-mode panic is a tripwire on broken
+//! invariants and is not reachable from validating-API usage.
 //!
 //! Members: [`Complement`], [`Intersection`], [`Union`],
 //! [`Difference`], [`IntoFinite`], plus [`TryMerge`] (the `Option`
@@ -81,7 +89,7 @@
 //!
 //! ## Tier 4 — `*_assume_valid` (bypass)
 //!
-//! Not part of the safe surface. Caller asserts the precondition;
+//! Bypasses the validating surface. Caller asserts the precondition;
 //! misuse produces a wrong answer (no UB, since the crate is
 //! `forbid(unsafe_code)`). Public only because the outer crate needs
 //! them for performance reasons. User code probably shouldn't reach

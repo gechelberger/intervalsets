@@ -329,7 +329,18 @@ where
             let candidate = self.sorted.next().unwrap();
             current = match current.try_merge(candidate) {
                 Some(merged) => S::from(merged),
-                None => unreachable!(),
+                None => {
+                    // Connects/TryMerge contract: connects(rhs) ⇒ try_merge(rhs).is_some().
+                    // Reaching this arm means an upstream invariant has been
+                    // violated (e.g. via a Tier 4 *_assume_valid bypass). In
+                    // debug builds, panic loudly; in release, end the iterator
+                    // gracefully rather than diverge.
+                    debug_assert!(
+                        false,
+                        "Connects/TryMerge contract violation: connected but not mergeable"
+                    );
+                    return None;
+                }
             };
         }
 
