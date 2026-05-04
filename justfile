@@ -57,8 +57,9 @@ setup: update
     cargo clean && cargo test build
 
 # build the docs
+[env("RUSTDOCFLAGS", "-D warnings --cfg docsrs")]
 doc:
-    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo +nightly doc \
+    cargo +nightly doc \
         --workspace \
         --all-features \
         --no-deps \
