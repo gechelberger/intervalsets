@@ -19,6 +19,17 @@ use crate::MaybeEmpty;
 /// > edge cases is left to the end user. A fixed precision decimal
 /// > type may be preferred in some cases.
 ///
+/// # Contract
+///
+/// Tier 2 (infallible when closed over the invariants). Cannot panic
+/// or error given inputs satisfying their type invariants. The
+/// returned `Option` is a domain answer — `None` means the operands
+/// are disconnected and have no single-piece fusion — not an error
+/// signal. The `try_*` name overloads the [`crate::ops::math`]
+/// `Try*` convention (where `Try*` means `Result`-fallible);
+/// renaming is queued as a follow-up. See [`crate::ops`] for the
+/// full tier model.
+///
 /// # Examples
 /// ```
 /// use intervalsets_core::prelude::*;

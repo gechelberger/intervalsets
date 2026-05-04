@@ -20,18 +20,75 @@
 //! layers an arbitrary-piece `IntervalSet` on top for use cases that
 //! need it.
 //!
-//! # Fallibility (TODO)
+//! # Contract
 //!
-//! The set-arithmetic side of [`math`] has a clear contract: the
-//! infix operators are panicking and the `Try*` traits are their
-//! `Result`-returning counterparts. The set-algebra traits in this
-//! module are less consistent — some have `try_*` variants
-//! ([`TryMerge`]; [`ConvexHull::try_hull`], [`Split::try_split`],
-//! [`Rebound::try_with_left`]) while others don't, and the
-//! conditions under which the panicking forms actually panic are
-//! not uniformly documented. We need to settle on a contract and
-//! audit the impls; until then, treat per-trait rustdoc as the
-//! source of truth.
+//! Set operations fall into four tiers, ordered from strongest to
+//! weakest guarantee. Every public trait in this module names its
+//! tier in its own rustdoc.
+//!
+//! This is the parallel to the four-tier *constructor* contract
+//! documented under "Construction at boundaries" in the crate root,
+//! and to the panicking/`Try*` split spelled out in [`math`].
+//!
+//! ## Tier 1 — Truly infallible
+//!
+//! Cannot panic, cannot error, cannot return wrong answers — *for
+//! any input*, including pathological ones. The shape of the return
+//! absorbs failure modes (e.g. predicates collapse incomparability
+//! into `false`).
+//!
+//! Members: [`Contains`], [`Intersects`], [`Connects`].
+//!
+//! ## Tier 2 — Infallible when closed over the invariants
+//!
+//! Cannot panic and cannot error *given inputs satisfying their type
+//! invariants*. The type system prevents safe-API users from
+//! constructing invariant-violating inputs, so from the safe-API
+//! caller's seat this tier is also infallible. These traits have no
+//! `try_*` variant because the operation introduces no logical
+//! violation of its own — there is nothing to surface.
+//!
+//! Tier 2 is **fundamentally different from a panicking sugar
+//! wrapper (Tier 3)**: their panic path, if reached, would be from
+//! invariant violation upstream (e.g. via Tier 4 misuse), not an
+//! intentional `unwrap()` on a documented `Err`.
+//!
+//! Members: [`Complement`], [`Intersection`], [`Union`],
+//! [`Difference`], [`IntoFinite`], plus [`TryMerge`] (the `Option`
+//! is a domain answer — "operands disconnected" — not an error).
+//! The bound on each impl varies; bound choice is independent of
+//! fallibility.
+//!
+//! [`TryMerge`] sits in this tier despite its `try_*` name. The name
+//! overloads the [`math`] convention where `Try*` means
+//! `Result`-fallible; renaming is queued as a follow-up. Treat the
+//! returned `Option` as a domain answer, not an error signal.
+//!
+//! ## Tier 3 — `try_*` + panicking sugar
+//!
+//! Accepts user-supplied `T` that may break a logical constraint
+//! (NaN, etc.). The `try_*` form returns
+//! `Result<_, Self::Error>` and never panics; the sugar form is
+//! `try_*().unwrap()` and panics on `Err` by design, with the panic
+//! site documented as part of the contract. Per-impl
+//! `Error: core::error::Error`; some impls are `Infallible` for
+//! already-validated inputs (the
+//! [`ConvexHull::try_hull`]`<&FiniteInterval<T>>` precedent).
+//!
+//! Members: [`Split`], [`Rebound`], [`ConvexHull`], plus the
+//! [`math::TryAdd`] / [`math::TrySub`] / [`math::TryMul`] /
+//! [`math::TryDiv`] family.
+//!
+//! ## Tier 4 — `*_assume_valid` (bypass)
+//!
+//! Not part of the safe surface. Caller asserts the precondition;
+//! misuse produces a wrong answer (no UB, since the crate is
+//! `forbid(unsafe_code)`). Public only because the outer crate needs
+//! them for performance reasons. User code probably shouldn't reach
+//! for these.
+//!
+//! Members are spread across `bound`, `sets`, etc. (not specific to
+//! ops): `*_assume_valid` and `*_assume_normed` functions.
 
 mod complement;
 pub use complement::Complement;

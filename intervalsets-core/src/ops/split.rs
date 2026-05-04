@@ -7,6 +7,15 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// `at` provides the new bounds where the set should be split.
 ///
+/// # Contract
+///
+/// Tier 3 (`try_*` + panicking sugar).
+/// [`try_split`](Self::try_split) returns `Err(Self::Error)` on
+/// logical violation (typically: a non-comparable user-supplied
+/// `at`, e.g. NaN); it never panics. [`split`](Self::split) is the
+/// panicking unwrap of `try_split`. See [`crate::ops`] for the full
+/// tier model.
+///
 /// # Example
 ///
 /// ```

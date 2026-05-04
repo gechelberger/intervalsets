@@ -12,6 +12,17 @@ use crate::try_cmp::{try_ord_tuple, TryMax, TryMin};
 ///
 /// The set of input elements must have a valid total ordering.
 ///
+/// # Contract
+///
+/// Tier 3 (`try_*` + panicking sugar). [`try_hull`](Self::try_hull)
+/// returns `Err(Self::Error)` on logical violation (typically: a
+/// non-comparable user-supplied element such as NaN); it never
+/// panics. [`hull`](Self::hull) is the panicking unwrap of
+/// `try_hull`. Some impls use [`core::convert::Infallible`] as
+/// `Self::Error` for inputs that are already validated intervals —
+/// for those, the hull is genuinely infallible. See [`crate::ops`]
+/// for the full tier model.
+///
 /// # Example
 /// ```
 /// use intervalsets_core::prelude::*;

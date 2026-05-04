@@ -15,6 +15,12 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// All intersecting intervals are therefore connected.
 ///
+/// # Contract
+///
+/// Tier 1 (truly infallible). Must not panic. Predicate-shaped
+/// return absorbs incomparability into `false`. See [`crate::ops`]
+/// for the full tier model.
+///
 /// # Examples
 ///
 /// ```

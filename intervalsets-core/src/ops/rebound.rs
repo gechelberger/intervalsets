@@ -6,6 +6,16 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Create a new interval, replacing a bound.
 ///
+/// # Contract
+///
+/// Tier 3 (`try_*` + panicking sugar). The `try_with_left` /
+/// `try_with_right` forms return `Err(Self::Error)` on logical
+/// violation (typically: a non-comparable user-supplied bound such
+/// as NaN); they never panic. The non-`try_*` forms are the
+/// panicking unwraps. Sugar methods (`with_left_closed`,
+/// `with_right_open`, etc.) compose on the panicking forms. See
+/// [`crate::ops`] for the full tier model.
+///
 /// # Examples
 /// ```
 /// use intervalsets_core::prelude::*;

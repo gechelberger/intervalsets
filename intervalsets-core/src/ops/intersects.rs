@@ -12,9 +12,9 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// # Contract
 ///
-/// Intersects should be usable from fallible (try_*) api calls, therefore it should
-/// not panic. Since it is only testing between instantiated sets, comparability
-/// is already addressed by set invariants and should not be a problem.
+/// Tier 1 (truly infallible). Must not panic. Predicate-shaped
+/// return absorbs incomparability into `false`. See [`crate::ops`]
+/// for the full tier model.
 ///
 /// # Examples
 ///

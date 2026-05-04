@@ -15,7 +15,12 @@ use crate::sets::{FiniteInterval, HalfInterval};
 /// {x | x ∈ A ∧ x ∈ B }
 /// ```
 ///
-/// This operation should not panic.
+/// # Contract
+///
+/// Tier 2 (infallible when closed over the invariants). Cannot panic
+/// or error given inputs satisfying their type invariants; no
+/// `try_*` variant because the operation introduces no logical
+/// violation of its own. See [`crate::ops`] for the full tier model.
 ///
 /// # Examples
 ///
