@@ -43,7 +43,7 @@
 //! assert_eq!(x.is_fully_bounded(), true);
 //! assert_eq!(*x.right().unwrap(), FiniteBound::closed(10));
 //! assert_eq!(*x.rval().unwrap(), 10);
-//! //todo: assert_eq!(format!("x = {}", x), "x = [0, 10]");
+//! assert_eq!(format!("x = {}", x), "x = [0, 10]");
 //!
 //! let x = Interval::closed_unbound(0.0);
 //! assert_eq!(x.right(), None);
@@ -84,14 +84,6 @@
 //! assert_eq!(c, Interval::<f64>::empty());
 //! ```
 //!
-//! ## General Mapping
-//!
-//! ```
-//! use intervalsets::prelude::*;
-//!
-//! //TODO
-//! ```
-//!
 //! ## Measure of a Set
 //!
 //! Two [measures](measure) are provided.
@@ -128,7 +120,7 @@
 //! `intervalsets` has multiple Cargo features for controlling the underlying
 //! data types used by [`Interval`] and [`IntervalSet`]. None are enabled by
 //! default
-//!    
+//!
 //! * rust_decimal
 //! * num-bigint
 //! * chrono
