@@ -2,7 +2,7 @@ use core::cmp::Ordering::{Equal, Greater, Less};
 
 use crate::bound::ord::FiniteOrdBound;
 use crate::bound::Side::{Left, Right};
-use crate::error::TotalOrderError;
+use crate::error::{Error, TotalOrderError};
 use crate::numeric::Zero;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -40,17 +40,25 @@ impl<T: Zero + PartialOrd> FiniteInterval<T> {
     ///
     /// # Panics
     ///
-    /// Panics if a bound value is not comparable to zero (e.g. a NaN
-    /// `f32`/`f64` bound). For panic-free classification on
-    /// `PartialOrd`-only types, use [`try_category`](Self::try_category).
-    /// For `Ord` types this method is infallible.
+    /// Panics if [`try_category`](Self::try_category) would return `Err`:
+    /// either a bound value is not comparable to zero (e.g. a NaN
+    /// `f32`/`f64` bound), or the `lhs <= rhs` invariant has been
+    /// violated by an earlier `new_assume_valid` call. For panic-free
+    /// classification on `PartialOrd`-only types, use
+    /// [`try_category`](Self::try_category). For `Ord` types constructed
+    /// through validating constructors this method is infallible.
     pub fn category(&self) -> ECat {
         self.try_category().unwrap()
     }
 
-    /// Classify this interval relative to zero, returning `Err` if a
-    /// bound is not comparable to zero (e.g. a NaN float bound).
-    pub fn try_category(&self) -> Result<ECat, TotalOrderError> {
+    /// Classify this interval relative to zero.
+    ///
+    /// Returns `Err(Error::TotalOrderError)` if a bound is not comparable
+    /// to zero (e.g. a NaN float bound), or
+    /// `Err(Error::InvalidBoundPair)` if the `lhs <= rhs` invariant has
+    /// been violated (only reachable via `new_assume_valid` with a
+    /// broken precondition).
+    pub fn try_category(&self) -> Result<ECat, Error> {
         let Some((lhs, rhs)) = self.view_raw() else {
             return Ok(ECat::Empty);
         };
@@ -71,7 +79,10 @@ impl<T: Zero + PartialOrd> FiniteInterval<T> {
                 match rhs_ord {
                     Greater => ECat::Pos(MaybeZero::Zero),
                     Equal => ECat::Zero,
-                    Less => unreachable!(),
+                    // lhs closed at 0 with the lhs <= rhs invariant forces
+                    // rhs >= 0; reaching this arm means the invariant was
+                    // violated upstream (e.g. via new_assume_valid).
+                    Less => return Err(Error::InvalidBoundPair),
                 }
             }
             Less => {
@@ -102,9 +113,10 @@ impl<T: Zero + PartialOrd> HalfInterval<T> {
         self.try_category().unwrap()
     }
 
-    /// Classify this interval relative to zero, returning `Err` if the
-    /// bound is not comparable to zero (e.g. a NaN float bound).
-    pub fn try_category(&self) -> Result<ECat, TotalOrderError> {
+    /// Classify this interval relative to zero, returning
+    /// `Err(Error::TotalOrderError)` if the bound is not comparable to
+    /// zero (e.g. a NaN float bound).
+    pub fn try_category(&self) -> Result<ECat, Error> {
         let t_zero = T::zero();
         let zero = FiniteOrdBound::closed(&t_zero);
         let ord = self
@@ -131,17 +143,25 @@ impl<T: Zero + PartialOrd> EnumInterval<T> {
     ///
     /// # Panics
     ///
-    /// Panics if a bound value is not comparable to zero (e.g. a NaN
-    /// `f32`/`f64` bound). For panic-free classification on
+    /// Panics if [`try_category`](Self::try_category) would return `Err`:
+    /// either a bound value is not comparable to zero (e.g. a NaN
+    /// `f32`/`f64` bound), or the underlying `FiniteInterval`'s
+    /// `lhs <= rhs` invariant has been violated by an earlier
+    /// `new_assume_valid` call. For panic-free classification on
     /// `PartialOrd`-only types, use [`try_category`](Self::try_category).
-    /// For `Ord` types this method is infallible.
+    /// For `Ord` types constructed through validating constructors this
+    /// method is infallible.
     pub fn category(&self) -> ECat {
         self.try_category().unwrap()
     }
 
-    /// Classify this interval relative to zero, returning `Err` if a
-    /// bound is not comparable to zero (e.g. a NaN float bound).
-    pub fn try_category(&self) -> Result<ECat, TotalOrderError> {
+    /// Classify this interval relative to zero.
+    ///
+    /// Returns `Err(Error::TotalOrderError)` if a bound is not comparable
+    /// to zero (e.g. a NaN float bound), or
+    /// `Err(Error::InvalidBoundPair)` if a `FiniteInterval` variant has
+    /// a violated `lhs <= rhs` invariant.
+    pub fn try_category(&self) -> Result<ECat, Error> {
         match self {
             Self::Finite(inner) => inner.try_category(),
             Self::Half(inner) => inner.try_category(),
@@ -165,7 +185,25 @@ mod tests {
             FiniteBound::closed(f32::NAN),
             FiniteBound::closed(0.0),
         );
-        assert!(bad.try_category().is_err());
+        assert!(matches!(
+            bad.try_category(),
+            Err(Error::TotalOrderError(_))
+        ));
+    }
+
+    #[test]
+    fn test_try_category_invariant_violation() {
+        // lhs > rhs violates the FiniteInterval invariant; new_assume_valid
+        // bypasses the check, and try_category surfaces it as
+        // InvalidBoundPair instead of panicking.
+        let bad = FiniteInterval::new_assume_valid(
+            FiniteBound::closed(0i32),
+            FiniteBound::open(0i32),
+        );
+        assert!(matches!(
+            bad.try_category(),
+            Err(Error::InvalidBoundPair)
+        ));
     }
 
     #[test]
