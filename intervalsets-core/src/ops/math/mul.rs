@@ -1,23 +1,12 @@
 use core::ops::Mul;
 
+use super::TryMul;
 use crate::bound::FiniteBound;
 use crate::bound::Side::{Left, Right};
 use crate::error::Error;
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
-
-/// Mul that returns Result instead of panicking on logical violations.
-///
-/// See [`super::TryAdd`] for the convention.
-pub trait TryMul<Rhs = Self> {
-    /// The type produced by a successful multiplication.
-    type Output;
-    /// The error returned when the operation cannot produce a valid result.
-    type Error;
-    /// Multiply `self` and `rhs`, returning `Err` instead of panicking.
-    fn try_mul(self, rhs: Rhs) -> Result<Self::Output, Self::Error>;
-}
 
 // The infix Mul operators below all require T: Ord (and the arithmetic
 // output type to also be Ord). For Ord types, partial_cmp on bounds is

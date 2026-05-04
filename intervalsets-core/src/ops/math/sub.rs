@@ -1,23 +1,12 @@
 use core::ops::Sub;
 
+use super::TrySub;
 use crate::bound::FiniteBound;
 use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
-
-/// Sub that returns Result instead of panicking on logical violations.
-///
-/// See [`super::TryAdd`] for the convention.
-pub trait TrySub<Rhs = Self> {
-    /// The type produced by a successful subtraction.
-    type Output;
-    /// The error returned when the operation cannot produce a valid result.
-    type Error;
-    /// Subtract `rhs` from `self`, returning `Err` instead of panicking.
-    fn try_sub(self, rhs: Rhs) -> Result<Self::Output, Self::Error>;
-}
 
 impl<T: Sub> Sub for FiniteBound<T> {
     type Output = FiniteBound<<T as Sub>::Output>;

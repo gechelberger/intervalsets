@@ -1,25 +1,11 @@
 use core::ops::Add;
 
+use super::TryAdd;
 use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
-
-/// Add that returns Result instead of panicking on logical violations.
-///
-/// The infix `+` operator panics if the operation would produce an
-/// invalid bound (e.g., a NaN result). `TryAdd::try_add` returns
-/// `Result<_, Self::Error>` so panic-free callers can detect and
-/// handle failure.
-pub trait TryAdd<Rhs = Self> {
-    /// The type produced by a successful addition.
-    type Output;
-    /// The error returned when the operation cannot produce a valid result.
-    type Error;
-    /// Add `self` and `rhs`, returning `Err` instead of panicking.
-    fn try_add(self, rhs: Rhs) -> Result<Self::Output, Self::Error>;
-}
 
 // The infix Add operators below all require T: Ord (and the arithmetic
 // output type to also be Ord). For Ord types, partial_cmp on bounds is
