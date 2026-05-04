@@ -1,9 +1,6 @@
 mod add;
 mod sub;
-
-#[doc(hidden)]
-pub mod mul;
-
+mod mul;
 mod div;
 
 /// Add that returns Result instead of panicking on logical violations.

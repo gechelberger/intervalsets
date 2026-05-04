@@ -168,9 +168,7 @@ where
     }
 }
 
-// This is only public for benchmarking access
-#[doc(hidden)]
-pub mod impls {
+mod impls {
     use super::*;
     use crate::bound::FiniteBound as FB;
     use crate::category::{ECat, MaybeZero};
@@ -190,7 +188,7 @@ pub mod impls {
         FiniteBound::new(akind.combine(bkind), aval * bval)
     }
 
-    pub fn finite_x_finite_by_cat<T>(
+    pub(super) fn finite_x_finite_by_cat<T>(
         a: FiniteInterval<T>,
         b: FiniteInterval<T>,
     ) -> Result<FiniteInterval<<T as Mul>::Output>, Error>
@@ -292,7 +290,7 @@ pub mod impls {
         }
     }
 
-    pub fn half_x_half_by_cat<T>(
+    pub(super) fn half_x_half_by_cat<T>(
         a: HalfInterval<T>,
         b: HalfInterval<T>,
     ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
@@ -330,7 +328,7 @@ pub mod impls {
         }
     }
 
-    pub fn finite_x_half<T>(
+    pub(super) fn finite_x_half<T>(
         a: FiniteInterval<T>,
         b: HalfInterval<T>,
     ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
@@ -396,7 +394,7 @@ pub mod impls {
     }
 
     #[inline]
-    pub fn enum_x_finite<T>(
+    pub(super) fn enum_x_finite<T>(
         a: EnumInterval<T>,
         b: FiniteInterval<T>,
     ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
@@ -416,7 +414,7 @@ pub mod impls {
     }
 
     #[inline]
-    pub fn enum_x_half<T>(
+    pub(super) fn enum_x_half<T>(
         a: EnumInterval<T>,
         b: HalfInterval<T>,
     ) -> Result<EnumInterval<<T as Mul>::Output>, Error>
