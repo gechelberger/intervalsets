@@ -1,10 +1,10 @@
 # Common tasks for intervalsets dev.
 
 # the minimum supported rust version
-MSRV := "1.81.0"
+MSRV := "1.85.0"
 
 # the target rust version
-RV := "nightly"
+RV := "stable"
 
 # just run the tests
 default: test
@@ -23,7 +23,7 @@ update:
     rustup update
 
     # make sure we have the MSRV toolchain installed
-    rustup toolchain install {{MSRV}}
+    rustup toolchain install {{ MSRV }}
 
     # make sure that we have the nightly compiler
     rustup toolchain install nightly
@@ -58,21 +58,21 @@ setup: update
 
 # build the docs
 doc:
-    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo +{{RV}} doc \
+    RUSTDOCFLAGS="-D warnings --cfg docsrs" cargo +nightly doc \
         --workspace \
         --all-features \
         --no-deps \
         --exclude benchmarks
-        
+
 alias d := doc
 
 # launch a file server for docs
 doc-serve port="8080": doc
-    static-web-server --root target/doc --port {{port}} -z
+    static-web-server --root target/doc --port {{ port }} -z
 
 # run the tests
 test pattern="":
-    cargo +{{RV}} test --all-features {{pattern}}
+    cargo +{{ RV }} test --all-features {{ pattern }}
 
 alias t := test
 
@@ -81,23 +81,23 @@ book-serve:
 
 book-test:
     mdbook build book
-    cargo +{{RV}} test --package book --doc
+    cargo +{{ RV }} test --package book --doc
 
 # format the code base
 fmt:
-    cargo +{{RV}} fmt
+    cargo +{{ RV }} fmt
 
 # check the build
 check:
-    cargo +{{RV}} check --all-features
+    cargo +{{ RV }} check --all-features
 
 # run the test suite against the msrv
 check-msrv:
-    cargo +{{MSRV}} test --all-features
+    cargo +{{ MSRV }} test --all-features
 
 # build against a no-std target
 check-no-std:
-    cargo +{{RV}} hack check --package intervalsets-core --each-feature \
+    cargo +{{ RV }} hack check --package intervalsets-core --each-feature \
         --exclude-features std,num-bigint,bigdecimal,arbitrary,quickcheck \
         --target thumbv6m-none-eabi \
         --verbose
@@ -112,15 +112,15 @@ clean:
 
 # run the micro benchmarks
 bench pattern="":
-    cargo +{{RV}} criterion --package benchmarks {{pattern}}
+    cargo +{{ RV }} criterion --package benchmarks {{ pattern }}
 
 # run the core crate micro benchmarks
 bench-core pattern="":
-    just bench "--bench intervalsets_core {{pattern}}"
+    just bench "--bench intervalsets_core {{ pattern }}"
 
 # run the main crate micro benchmarks
 bench-main pattern="":
-    just bench "--bench intervalsets {{pattern}}"
+    just bench "--bench intervalsets {{ pattern }}"
 
 # check the ci targets locally
 ci: doc book-test test check-msrv check-no-std check-bench

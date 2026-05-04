@@ -7,3 +7,5 @@ Cargo.lock
 
 # Claude Code local settings
 .claude/settings.local.json
+
+/scratch
