@@ -258,6 +258,10 @@ macro_rules! integer_midpoint_delegate_impl {
         $(
             impl $crate::numeric::Midpoint for $t {
                 type Error = ::core::convert::Infallible;
+
+                /// Infallible: std's inherent integer `midpoint` is
+                /// defined for every value in the type's range and
+                /// cannot overflow.
                 #[inline]
                 fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
                     Ok(<$t>::midpoint(self, other))
@@ -275,6 +279,17 @@ macro_rules! float_midpoint_delegate_impl {
         $(
             impl $crate::numeric::Midpoint for $t {
                 type Error = $crate::error::MidpointError;
+
+                /// Delegates to the inherent float `midpoint` method,
+                /// which avoids spurious overflow/underflow at extremes.
+                ///
+                /// # Errors
+                ///
+                /// Returns [`MidpointError`](crate::error::MidpointError)
+                /// when either input is non-finite — NaN, +∞, or −∞.
+                /// Infinities are rejected even though they are
+                /// comparable, because their midpoint is not
+                /// well-defined as a finite endpoint.
                 #[inline]
                 fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
                     if !self.is_finite() || !other.is_finite() {

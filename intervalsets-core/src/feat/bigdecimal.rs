@@ -10,6 +10,8 @@ use core::ops::Add;
 impl Midpoint for BigDecimal {
     type Error = core::convert::Infallible;
 
+    /// Infallible: `BigDecimal` is arbitrary precision, so the midpoint
+    /// of any pair is always representable.
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
         Ok(self.add(other).half())
     }

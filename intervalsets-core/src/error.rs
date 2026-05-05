@@ -32,9 +32,10 @@ pub enum Error {
 #[error("incomparable values")]
 pub struct TotalOrderError;
 
-/// Inputs to [`Midpoint`](crate::numeric::Midpoint) were not suitable
-/// for computing a midpoint — either incomparable (NaN) or non-finite
-/// (±∞), both of which are degenerate as midpoint endpoints.
+/// Returned when a [`Midpoint`](crate::numeric::Midpoint) impl cannot
+/// produce a result for the given inputs. The specific conditions that
+/// trigger this are documented by each [`Midpoint`] impl, since the
+/// trait deliberately delegates failure semantics to its implementors.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
-#[error("midpoint requires finite, comparable values")]
+#[error("midpoint could not be computed")]
 pub struct MidpointError;

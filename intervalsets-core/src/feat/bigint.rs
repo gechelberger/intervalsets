@@ -19,9 +19,10 @@ default_countable_impl!(BigInt);
 impl Midpoint for BigInt {
     type Error = core::convert::Infallible;
 
+    /// Infallible: `BigInt` is arbitrary precision, so the midpoint of
+    /// any pair is always representable. `/2` truncates toward zero,
+    /// matching std's signed-primitive midpoint semantics.
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
-        // `/2` on BigInt truncates toward zero, matching std's signed
-        // primitive midpoint semantics.
         Ok((self + other) / 2)
     }
 }
@@ -40,6 +41,8 @@ default_countable_impl!(BigUint);
 impl Midpoint for BigUint {
     type Error = core::convert::Infallible;
 
+    /// Infallible: `BigUint` is arbitrary precision, so the midpoint
+    /// of any pair is always representable.
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
         Ok((self + other) >> 1)
     }
