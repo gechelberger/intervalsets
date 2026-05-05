@@ -114,6 +114,8 @@ mod rebound;
 pub use rebound::Rebound;
 mod split;
 pub use split::Split;
+mod bisect;
+pub use bisect::Bisect;
 mod union;
 pub use union::Union;
 

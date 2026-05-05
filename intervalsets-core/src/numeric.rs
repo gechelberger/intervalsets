@@ -202,13 +202,55 @@ macro_rules! integer_domain_impl {
 integer_domain_impl!(u8, u16, u32, u64, u128, usize);
 integer_domain_impl!(i8, i16, i32, i64, i128, isize);
 
+pub trait Midpoint {
+    //type Error: core::error::Error;
+    fn midpoint(a: Self, b: Self) -> Self;
+}
+
+impl Midpoint for u32 {
+    fn midpoint(a: Self, b: Self) -> Self {
+        (a / 2) + (b / 2) + (a & b & 1)
+        //(a / 2) + (b / 2) + (a & 1 | b & 1)
+    }
+}
+
+impl Midpoint for f32 {
+    fn midpoint(a: Self, b: Self) -> Self {
+        (a + b) * 0.5
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use quickcheck_macros::quickcheck;
 
     #[test]
     fn test_adjacent() {
         assert_eq!(10.try_adjacent(Side::Right).unwrap(), 11);
         assert_eq!(11.try_adjacent(Side::Left).unwrap(), 10);
+    }
+
+    #[test]
+    fn test_midpoint() {
+        assert_eq!(i32::midpoint(10, 20), 15);
+        assert_eq!(i32::midpoint(20, 10), 15);
+    }
+
+    #[quickcheck]
+    fn quickcheck_midpoint_u32(a: u32, b: u32) {
+        let min = u32::min(a, b);
+        let max = u32::max(a, b);
+        let mid = min + (max - min) / 2;
+
+        assert_eq!(u32::midpoint(a, b), mid);
+    }
+
+    #[quickcheck]
+    fn quickcheck_midpoint_f32(a: f32, b: f32) {
+        if f32::is_nan(a) || f32::is_nan(b) || f32::is_infinite(a) || f32::is_infinite(b) {
+            return;
+        }
+        //todo
     }
 }
