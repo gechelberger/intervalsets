@@ -4,9 +4,6 @@ pub enum Error {
     #[error(transparent)]
     TotalOrderError(#[from] TotalOrderError),
 
-    #[error(transparent)]
-    CountOverflow(#[from] CountOverflow),
-
     /// Bound-pair invariants violated. Covers two related conditions:
     ///
     /// 1. **Crossed bounds in a `FiniteInterval`** — `lhs > rhs` after
@@ -31,10 +28,3 @@ pub enum Error {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("incomparable values")]
 pub struct TotalOrderError;
-
-/// The counting measure of a set cannot be represented by the
-/// `Countable::Output` type (e.g. counting `[i32::MIN, i32::MAX]`
-/// overflows `i32`).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
-#[error("count overflows the Countable Output type")]
-pub struct CountOverflow;

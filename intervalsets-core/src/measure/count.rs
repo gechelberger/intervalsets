@@ -1,7 +1,13 @@
 use super::Measurement;
-use crate::error::CountOverflow;
 use crate::numeric::{Element, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
+/// The counting measure of a set cannot be represented by the
+/// [`Countable::Output`] type (e.g. counting `[i32::MIN, i32::MAX]`
+/// overflows `i32`).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
+#[error("count overflows the Countable Output type")]
+pub struct CountOverflowError;
 
 /// Defines the counting measure of a [`Countable`] Set.
 ///
@@ -152,13 +158,13 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = CountOverflow;
+    type Error = CountOverflowError;
 
     fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self.view_raw() {
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
                 Some(count) => Ok(Measurement::Finite(count)),
-                None => Err(CountOverflow),
+                None => Err(CountOverflowError),
             },
             None => Ok(Measurement::Finite(Self::Output::zero())),
         }
@@ -167,7 +173,7 @@ where
 
 impl<T> Count for HalfInterval<T> {
     type Output = ();
-    type Error = CountOverflow;
+    type Error = CountOverflowError;
 
     fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         Ok(Measurement::Infinite)
@@ -180,7 +186,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = CountOverflow;
+    type Error = CountOverflowError;
 
     fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self {

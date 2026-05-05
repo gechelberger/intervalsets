@@ -1,10 +1,22 @@
 //! Errors returned by fallible `intervalsets` APIs.
 //!
-//! [`Error`] wraps and hides [`intervalsets_core::error::Error`] so the
-//! outer-crate surface never names a core type. The wrap exists so that
-//! richer, alloc-enabled error context (messages, source chains, the
-//! offending value) can be added additively in the future without
-//! touching the core's no-alloc contract.
+//! [`Error`] is the unified error type for set-algebra and bound
+//! operations. Set ops chain into other set ops, so a single error
+//! type along that chain keeps `?`-propagation simple.
+//!
+//! Terminal failures that do not chain into further set operations
+//! (e.g. [`CountOverflowError`](crate::measure::CountOverflowError)
+//! from [`Count::try_count`](crate::measure::Count::try_count), which
+//! yields a scalar count) are returned as their own precise types and
+//! live next to their producer instead of in this module.
+//!
+//! [`Error`] wraps [`intervalsets_core::error::Error`] so the variants
+//! it carries can grow alloc-enabled context (messages, source chains,
+//! the offending value) without touching core's no-alloc contract.
+//! [`TotalOrderError`] is re-exported from core verbatim — it has no
+//! payload to enrich.
+
+pub use intervalsets_core::error::TotalOrderError;
 
 use intervalsets_core::error::Error as CoreError;
 use thiserror::Error as ThisError;
@@ -14,13 +26,24 @@ use thiserror::Error as ThisError;
 #[non_exhaustive]
 pub enum Error {
     #[error(transparent)]
-    TotalOrder(#[from] TotalOrderError),
+    TotalOrderError(#[from] TotalOrderError),
 
-    #[error(transparent)]
-    CountOverflow(#[from] CountOverflow),
-
-    /// Bound-pair invariants violated: crossed bounds in a finite
-    /// interval, or a structurally invalid `OrdBoundPair`.
+    /// Bound-pair invariants violated. Covers two related conditions:
+    ///
+    /// 1. **Crossed bounds in a `FiniteInterval`** — `lhs > rhs` after
+    ///    normalization. Raised by
+    ///    [`FiniteInterval::try_new`](intervalsets_core::sets::FiniteInterval::try_new)
+    ///    and the interval types' `Deserialize` paths.
+    /// 2. **Structural `OrdBoundPair` violations** — an `OrdBound` of
+    ///    the wrong kind for its position (e.g. `RightUnbounded` on
+    ///    the left), an unmatched empty marker, or
+    ///    `left.value() > right.value()`. Raised by
+    ///    [`OrdBoundPair::try_new`](crate::bound::ord::OrdBoundPair::try_new).
+    ///
+    /// Both contexts share this variant because callers rarely need
+    /// to distinguish them in error handling. If a future use case
+    /// requires distinguishing, this variant can be split additively
+    /// (the enum is `#[non_exhaustive]`).
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
 
@@ -28,48 +51,23 @@ pub enum Error {
     /// violated its invariants: an empty interval was stored,
     /// intervals were not in ascending order, or two consecutive
     /// intervals were connected (would have been merged in canonical
-    /// form). Outer-crate-only; core has no `IntervalSet`.
+    /// form). Raised by [`IntervalSet::try_new`](crate::IntervalSet::try_new)
+    /// and the `Deserialize` path on outer-crate set types.
     #[error("interval set invariants violated")]
     InvalidIntervalSet,
 }
 
-/// Failed comparison of `PartialOrd` values.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ThisError)]
-#[error("incomparable values")]
-pub struct TotalOrderError;
-
-/// The counting measure of a set cannot be represented by the
-/// `Countable::Output` type (e.g. counting `[i32::MIN, i32::MAX]`
-/// overflows `i32`).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ThisError)]
-#[error("count overflows the Countable Output type")]
-pub struct CountOverflow;
-
 impl From<CoreError> for Error {
     fn from(e: CoreError) -> Self {
         match e {
-            CoreError::TotalOrderError(_) => Error::TotalOrder(TotalOrderError),
-            CoreError::CountOverflow(_) => Error::CountOverflow(CountOverflow),
+            CoreError::TotalOrderError(e) => Error::TotalOrderError(e),
             CoreError::InvalidBoundPair => Error::InvalidBoundPair,
             // CoreError is #[non_exhaustive]; if a new variant is added,
-            // this `From` lift must be extended to map it. Leaving the
-            // wildcard as `unreachable!` makes the gap surface as a runtime
-            // panic during the first conversion of the new variant.
+            // this `From` lift must be extended to map it. The wildcard
+            // surfaces the gap as a runtime panic on first conversion.
             _ => unreachable!(
                 "intervalsets_core::error::Error gained a variant that intervalsets::error::Error does not yet map"
             ),
         }
-    }
-}
-
-impl From<intervalsets_core::error::TotalOrderError> for Error {
-    fn from(_: intervalsets_core::error::TotalOrderError) -> Self {
-        Error::TotalOrder(TotalOrderError)
-    }
-}
-
-impl From<intervalsets_core::error::CountOverflow> for CountOverflow {
-    fn from(_: intervalsets_core::error::CountOverflow) -> Self {
-        CountOverflow
     }
 }

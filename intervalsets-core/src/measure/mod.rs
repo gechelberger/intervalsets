@@ -17,7 +17,7 @@
 //! the Lebesgue measure which is Width in R1.
 
 mod count;
-pub use count::{Count, Countable};
+pub use count::{Count, CountOverflowError, Countable};
 mod width;
 pub use width::Width;
 
