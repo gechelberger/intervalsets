@@ -13,6 +13,15 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// 1 piece, disjoint → 2 pieces) and is therefore representable in
 /// [`MaybeDisjoint`] without allocation.
 ///
+/// # Contract
+///
+/// Tier 2 (infallible when closed over the invariants). Cannot panic
+/// or error given inputs satisfying their type invariants; no
+/// `try_*` variant because the operation introduces no logical
+/// violation of its own. The `T: Ord` bound on impls is a
+/// stronger-guarantee policy choice (see `numeric.rs`), independent
+/// of fallibility. See [`crate::ops`] for the full tier model.
+///
 /// # Example
 /// ```
 /// use intervalsets_core::prelude::*;

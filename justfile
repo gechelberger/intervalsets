@@ -1,5 +1,7 @@
 # Common tasks for intervalsets dev.
 
+set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
+
 # the minimum supported rust version
 MSRV := "1.85.0"
 
