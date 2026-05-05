@@ -1,6 +1,6 @@
 use crate::disjoint::MaybeDisjoint;
 use crate::numeric::Element;
-use crate::ops::TryMerge;
+use crate::ops::MergeConnected;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// The (possibly disjoint) union of two intervals.
@@ -47,7 +47,7 @@ pub trait Union<Rhs = Self> {
 
 // All Union impls take T: Element + Ord + Clone. Ord is needed to
 // order the pieces when the inputs are disjoint; Clone is needed
-// because we use the by-ref TryMerge to avoid consuming the operands
+// because we use the by-ref MergeConnected to avoid consuming the operands
 // until we know whether they merge.
 macro_rules! union_via_merge {
     ($lhs:ty, $rhs:ty) => {
@@ -60,7 +60,7 @@ macro_rules! union_via_merge {
             fn union(self, rhs: $rhs) -> Self::Output {
                 // Try to merge first; if connected, return a single piece.
                 // Otherwise, order the operands and return a disjoint pair.
-                match (&self).try_merge(&rhs) {
+                match (&self).merge_connected(&rhs) {
                     Some(merged) => EnumInterval::from(merged).into(),
                     None => {
                         let lhs: EnumInterval<T> = self.into();
@@ -88,7 +88,7 @@ union_via_merge!(FiniteInterval<T>, EnumInterval<T>);
 union_via_merge!(HalfInterval<T>, EnumInterval<T>);
 
 // By-ref Union: specialized per LHS x RHS pair so the connected case
-// avoids cloning entirely (the by-ref TryMerge returns an owned merged
+// avoids cloning entirely (the by-ref MergeConnected returns an owned merged
 // value). Clones only happen when falling into the disjoint branch,
 // which needs owned EnumInterval values for MaybeDisjoint::Disjoint.
 macro_rules! union_via_merge_ref {
@@ -100,7 +100,7 @@ macro_rules! union_via_merge_ref {
             type Output = MaybeDisjoint<T>;
 
             fn union(self, rhs: &$rhs) -> Self::Output {
-                match self.try_merge(rhs) {
+                match self.merge_connected(rhs) {
                     Some(merged) => EnumInterval::from(merged).into(),
                     None => {
                         let lhs: EnumInterval<T> = self.clone().into();

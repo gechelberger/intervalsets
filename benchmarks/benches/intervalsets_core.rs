@@ -273,7 +273,7 @@ pub fn bench_core_merged(c: &mut Criterion) {
         b.iter(|| {
             let x = black_box(x.clone());
             let y = black_box(y.clone());
-            x.try_merge(y)
+            x.merge_connected(y)
         });
     });
 
@@ -281,7 +281,7 @@ pub fn bench_core_merged(c: &mut Criterion) {
         b.iter(|| {
             let x = black_box(x.clone());
             let z = black_box(z.clone());
-            x.try_merge(z);
+            x.merge_connected(z);
         })
     });
 
@@ -289,7 +289,7 @@ pub fn bench_core_merged(c: &mut Criterion) {
         b.iter(|| {
             let x = black_box(x.clone());
             let a = black_box(a.clone());
-            x.try_merge(a);
+            x.merge_connected(a);
         })
     });
 
@@ -297,7 +297,7 @@ pub fn bench_core_merged(c: &mut Criterion) {
         b.iter(|| {
             let x = black_box(EnumInterval::from(x.clone()));
             let y = black_box(EnumInterval::from(y.clone()));
-            x.try_merge(y)
+            x.merge_connected(y)
         });
     });
 
@@ -305,7 +305,7 @@ pub fn bench_core_merged(c: &mut Criterion) {
         b.iter(|| {
             let x = black_box(EnumInterval::from(x.clone()));
             let z = black_box(EnumInterval::from(z.clone()));
-            x.try_merge(z);
+            x.merge_connected(z);
         })
     });
 
@@ -313,7 +313,7 @@ pub fn bench_core_merged(c: &mut Criterion) {
         b.iter(|| {
             let x = black_box(EnumInterval::from(x.clone()));
             let a = black_box(EnumInterval::from(a.clone()));
-            x.try_merge(a);
+            x.merge_connected(a);
         })
     });
 }

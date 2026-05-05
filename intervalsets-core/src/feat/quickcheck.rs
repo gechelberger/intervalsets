@@ -104,7 +104,7 @@ mod tests {
 
     fn check_intersect_and_merge(a: EnumInterval<f32>, b: EnumInterval<f32>) {
         let intersection = a.intersection(b);
-        let merge = a.try_merge(b);
+        let merge = a.merge_connected(b);
 
         if a.intersects(&b) {
             assert!(intersection.is_inhabited());

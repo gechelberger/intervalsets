@@ -65,8 +65,8 @@ Operations that *can* fail say so in their type. Operations that can't, don't.
 Identifiers carry semantics across the whole crate.
 
 *In practice*: `try_*` is reserved for `Result`-fallible operations whose `Err`
-is a logical violation. Reusing `try_` for `Option`-on-domain (as `TryMerge`
-does today) is a contract bug — flagged for a separate-PR fix.
+is a logical violation. `Option`-on-domain operations get descriptive names
+that surface the precondition (e.g. `MergeConnected`).
 
 ## P6. The bound axis and the fallibility axis are independent.
 

@@ -26,7 +26,7 @@ easy to use API for each type.
 | Width         | measure   | &check; | &check; | Find the width/diameter/length of a set          |
 | Count         | measure   | &check; | &check; | Count the elements of a set                      |
 | Intersection  | binary    | &check; | &check; | The intersection set of two sets                 |
-| TryMerge      | binary    | &check; | &check; | The union of two connected sets                  |
+| MergeConnected | binary   | &check; | &check; | The union of two connected sets                  |
 | Split         | function  | &check; | &check; | Two sets partitioned by some element             |
 | IntoFinite    | unary     | &check; | &check; | Convert to a finite interval limited by `element type`   |
 | Complement    | unary     | &mdash; | &check; | The (possibly disjoint) complement of a set              |

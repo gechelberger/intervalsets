@@ -59,10 +59,10 @@
 //! assert!(a.intersects(&EnumInterval::closed(10, 20)));
 //! assert!(!a.intersects(&EnumInterval::closed(11, 20)));
 //!
-//! let merged = a.try_merge(EnumInterval::closed(5, 20)).unwrap();
+//! let merged = a.merge_connected(EnumInterval::closed(5, 20)).unwrap();
 //! assert_eq!(merged, EnumInterval::closed(0, 20));
 //!
-//! let merge_failed = a.try_merge(EnumInterval::closed(15, 20));
+//! let merge_failed = a.merge_connected(EnumInterval::closed(15, 20));
 //! assert_eq!(merge_failed, None);
 //!
 //! let intersected = a.intersection(EnumInterval::closed(-5, 5));
