@@ -17,7 +17,7 @@ pub struct CountOverflowError;
 /// use intervalsets_core::measure::Count;
 ///
 /// let x = EnumInterval::closed(0, 10);
-/// assert_eq!(x.count().finite(), 11);
+/// assert_eq!(x.count().finite(), 11u128);
 /// ```
 ///
 /// # Restricted to types implementing Countable
@@ -138,19 +138,48 @@ macro_rules! default_countable_impl {
     }
 }
 
-default_countable_impl!(u8);
-default_countable_impl!(u16);
-default_countable_impl!(u32);
-default_countable_impl!(u64);
-default_countable_impl!(u128);
-default_countable_impl!(usize);
+/// Implements [`Countable`] for native primitive integer types narrower than
+/// 128 bits. Output is always [`u128`]; the input is widened to [`i128`]
+/// before subtraction, so no intermediate overflow is possible. Always
+/// returns `Some`.
+macro_rules! primitive_countable_impl {
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl $crate::measure::Countable for $t {
+                type Output = u128;
 
-default_countable_impl!(i8);
-default_countable_impl!(i16);
-default_countable_impl!(i32);
-default_countable_impl!(i64);
-default_countable_impl!(i128);
-default_countable_impl!(isize);
+                fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
+                    let diff = (*right as i128) - (*left as i128);
+                    Some(diff as u128 + 1)
+                }
+            }
+        )+
+    };
+}
+
+primitive_countable_impl!(u8, u16, u32, u64, usize);
+primitive_countable_impl!(i8, i16, i32, i64, isize);
+
+// 128-bit types need bespoke handling: the count of `[MIN, MAX]` is 2^128,
+// which is one past the u128 representable range.
+impl Countable for u128 {
+    type Output = u128;
+
+    fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
+        right.checked_sub(*left).and_then(|d| d.checked_add(1))
+    }
+}
+
+impl Countable for i128 {
+    type Output = u128;
+
+    fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
+        // Interval invariant: right >= left, so the wrapping i128 difference
+        // reinterpreted as u128 yields the true unsigned distance, up to 2^128 - 1.
+        let diff = right.wrapping_sub(*left) as u128;
+        diff.checked_add(1)
+    }
+}
 
 impl<T> Count for FiniteInterval<T>
 where
@@ -204,13 +233,39 @@ mod tests {
     #[test]
     fn test_count() {
         let x = EnumInterval::closed(0, 10);
-        assert_eq!(x.count().finite(), 11);
+        assert_eq!(x.count().finite(), 11u128);
     }
 
     #[test]
-    fn test_try_count_overflow() {
-        // [i32::MIN, i32::MAX] has 2^32 elements which doesn't fit in i32.
+    fn test_count_signed_full_range() {
         let x = EnumInterval::closed(i32::MIN, i32::MAX);
+        assert_eq!(x.count().finite(), (u32::MAX as u128) + 1);
+    }
+
+    #[test]
+    fn test_count_signed_negative_range() {
+        // Previously panicked: 1 - i32::MIN overflowed i32 in count_inclusive.
+        let x = EnumInterval::closed(i32::MIN, 0);
+        assert_eq!(x.count().finite(), (i32::MAX as u128) + 2);
+    }
+
+    #[test]
+    fn test_count_unsigned_full_range() {
+        let x = EnumInterval::closed(0u64, u64::MAX);
+        assert_eq!(x.count().finite(), (u64::MAX as u128) + 1);
+    }
+
+    #[test]
+    fn test_count_i128_full_range_overflows_u128() {
+        // [i128::MIN, i128::MAX] has 2^128 elements which doesn't fit in u128.
+        let x = EnumInterval::closed(i128::MIN, i128::MAX);
+        assert!(x.try_count().is_err());
+    }
+
+    #[test]
+    fn test_count_u128_full_range_overflows_u128() {
+        // [0, u128::MAX] has 2^128 elements which doesn't fit in u128.
+        let x = EnumInterval::closed(0u128, u128::MAX);
         assert!(x.try_count().is_err());
     }
 
@@ -219,7 +274,7 @@ mod tests {
     fn test_count_overflow_panics() {
         // count() is the panicking sibling of try_count() and is
         // documented to panic when the count overflows Self::Output.
-        let x = EnumInterval::closed(i32::MIN, i32::MAX);
+        let x = EnumInterval::closed(i128::MIN, i128::MAX);
         let _ = x.count();
     }
 }
