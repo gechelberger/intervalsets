@@ -27,7 +27,10 @@ update:
     # make sure we have the MSRV toolchain installed
     rustup toolchain install {{ MSRV }}
 
-    # make sure that we have the nightly compiler
+    # make sure we have our target toolchain installed
+    rustup toolchain install {{ RV }}
+
+    # make sure that we have the nightly compiler for docs
     rustup toolchain install nightly
 
     # watch the docs as you work
@@ -47,6 +50,9 @@ update:
 
     # check features
     cargo install cargo-hack --locked
+
+    # check dependencies
+    cargo install cargo-updeps --locked
 
     # checks commit messages follow [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/)
     cargo install commitlint-rs --locked
@@ -72,6 +78,16 @@ alias d := doc
 # launch a file server for docs
 doc-serve port="8080": doc
     static-web-server --root target/doc --port {{ port }} -z
+
+[working-directory('intervalsets-core')]
+doc-check-core:
+    cargo rustc --lib -- -W missing-docs -W rustdoc::missing-crate-level-docs -W rustdoc::broken-intra-doc-links
+
+[working-directory('intervalsets')]
+doc-check-main:
+    cargo rustc --lib -- -W missing-docs -W rustdoc::missing-crate-level-docs -W rustdoc::broken-intra-doc-links
+
+doc-check: doc-check-core doc-check-main
 
 # run the tests
 test pattern="":
@@ -105,9 +121,25 @@ check-no-std:
         --target thumbv6m-none-eabi \
         --verbose
 
+# check that all possible feature combinations compile
+# 2^n possible combinations
+[working-directory('intervalsets-core')]
+check-core-feature-powerset:
+    cargo +{{ RV }} hack check --feature-powerset --no-dev-deps
+
+# check that all possible feature combinations compile
+# 2^n possible combinations
+[working-directory('intervalsets')]
+check-main-feature-powerset:
+    cargo +{{ RV }} hack check --feature-powerset --no-dev-deps
+
 # check the benchmarks
 check-bench:
     just bench --no-run
+
+# check the dependency tree for unused deps
+check-deps:
+    cargo +nightly udeps --all-features --all-targets
 
 # clean old build artifacts
 clean:
