@@ -14,27 +14,27 @@
 ///
 /// let x = Interval::closed(0, 10);
 /// let y = Interval::closed(11, 20);
-/// assert_eq!(x.try_merge(y).unwrap(), Interval::closed(0, 20));
+/// assert_eq!(x.merge_connected(y).unwrap(), Interval::closed(0, 20));
 ///
 /// let y = Interval::closed(20, 30);
-/// assert_eq!(x.try_merge(y), None);
+/// assert_eq!(x.merge_connected(y), None);
 ///
 /// let y = Interval::<i32>::empty();
-/// assert_eq!(x.try_merge(y).unwrap(), x);
+/// assert_eq!(x.merge_connected(y).unwrap(), x);
 ///
 /// let x = Interval::<i32>::empty();
-/// assert_eq!(x.try_merge(y).unwrap(), Interval::empty());
+/// assert_eq!(x.merge_connected(y).unwrap(), Interval::empty());
 /// ```
-pub use intervalsets_core::ops::TryMerge;
+pub use intervalsets_core::ops::MergeConnected;
 
 use crate::numeric::Element;
 use crate::Interval;
 
-impl<T: Element> TryMerge<Self> for Interval<T> {
+impl<T: Element> MergeConnected<Self> for Interval<T> {
     type Output = Self;
 
-    fn try_merge(self, rhs: Self) -> Option<Self::Output> {
-        self.0.try_merge(rhs.0).map(Interval::from)
+    fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
+        self.0.merge_connected(rhs.0).map(Interval::from)
     }
 }
 
@@ -53,7 +53,7 @@ mod tests {
         let x = Interval::unbound_closed(x);
         let y = x.complement().expect_interval();
 
-        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+        assert_eq!(x.merge_connected(y).unwrap(), Interval::unbounded());
     }
 
     #[quickcheck]
@@ -61,30 +61,30 @@ mod tests {
         let x = Interval::closed_unbound(x);
         let y = x.complement().expect_interval();
 
-        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+        assert_eq!(x.merge_connected(y).unwrap(), Interval::unbounded());
     }
 
     #[test]
     fn test_regressions() {
         let x = Interval::closed_unbound(i32::MIN);
         let y = x.complement().expect_interval();
-        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+        assert_eq!(x.merge_connected(y).unwrap(), Interval::unbounded());
 
         let x = Interval::unbound_closed(i32::MAX);
         let y = x.complement().expect_interval();
-        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+        assert_eq!(x.merge_connected(y).unwrap(), Interval::unbounded());
 
         let x = Interval::open_unbound(0.0);
         let y = Interval::unbound_open(0.0);
-        assert_eq!(x.try_merge(y), None);
+        assert_eq!(x.merge_connected(y), None);
 
         let x = Interval::closed_unbound(f32::MIN);
         let y = x.complement().expect_interval();
-        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+        assert_eq!(x.merge_connected(y).unwrap(), Interval::unbounded());
 
         let x = Interval::unbound_closed(f32::MAX);
         let y = x.complement().expect_interval();
-        assert_eq!(x.try_merge(y).unwrap(), Interval::unbounded());
+        assert_eq!(x.merge_connected(y).unwrap(), Interval::unbounded());
     }
 
     #[test]
@@ -92,7 +92,7 @@ mod tests {
         let x = Interval::closed(0, i32::MAX);
         let y = Interval::closed(-100, -1);
 
-        assert_eq!(x.try_merge(y).unwrap(), Interval::closed(-100, i32::MAX));
+        assert_eq!(x.merge_connected(y).unwrap(), Interval::closed(-100, i32::MAX));
     }
 }
 
@@ -121,14 +121,14 @@ mod decimal_test {
         let left = Interval::open(a.clone(), b.clone());
         let right = Interval::closed(b.clone(), c.clone());
 
-        let merged = left.try_merge(&right).unwrap();
+        let merged = left.merge_connected(&right).unwrap();
         if left.is_empty() {
             assert_eq!(merged, right);
         } else if right.is_empty() {
             assert_eq!(merged, left);
         } else {
             assert_eq!(
-                left.try_merge(right).unwrap(),
+                left.merge_connected(right).unwrap(),
                 Interval::open_closed(a.clone(), c.clone())
             );
         }

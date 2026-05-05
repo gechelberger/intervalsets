@@ -62,15 +62,10 @@
 //! invariants and is not reachable from validating-API usage.
 //!
 //! Members: [`Complement`], [`Intersection`], [`Union`],
-//! [`Difference`], [`IntoFinite`], plus [`TryMerge`] (the `Option`
-//! is a domain answer — "operands disconnected" — not an error).
-//! The bound on each impl varies; bound choice is independent of
-//! fallibility.
-//!
-//! [`TryMerge`] sits in this tier despite its `try_*` name. The name
-//! overloads the [`math`] convention where `Try*` means
-//! `Result`-fallible; renaming is queued as a follow-up. Treat the
-//! returned `Option` as a domain answer, not an error signal.
+//! [`Difference`], [`IntoFinite`], plus [`MergeConnected`] (the
+//! `Option` is a domain answer — "operands disconnected" — not an
+//! error). The bound on each impl varies; bound choice is independent
+//! of fallibility.
 //!
 //! ## Tier 3 — `try_*` + panicking sugar
 //!
@@ -114,7 +109,7 @@ pub use hull::{convex_hull_into_ord_bound_impl, convex_hull_ord_bounded_impl, Co
 mod intersection;
 pub use intersection::{Intersection, SetSetIntersection};
 mod merged;
-pub use merged::{MergeSortedByRef, MergeSortedByValue, TryMerge};
+pub use merged::{MergeConnected, MergeSortedByRef, MergeSortedByValue};
 mod rebound;
 pub use rebound::Rebound;
 mod split;

@@ -11,8 +11,7 @@
 //! over `IntervalSet` inputs that the core crate doesn't model.
 //!
 //! For panic-free variants of fallible operations, see the `Try*`
-//! traits ([`TryAdd`], [`TrySub`], [`TryMul`], [`TryDiv`],
-//! [`TryMerge`]).
+//! traits ([`TryAdd`], [`TrySub`], [`TryMul`], [`TryDiv`]).
 
 mod connects;
 pub use connects::Connects;
@@ -39,7 +38,7 @@ mod union;
 pub use union::Union;
 
 mod merged;
-pub use merged::TryMerge;
+pub use merged::MergeConnected;
 
 mod difference;
 pub use difference::{Difference, SymDifference};

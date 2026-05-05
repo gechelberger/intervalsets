@@ -370,7 +370,7 @@ where
     ///
     /// let x = EnumInterval::unbound_open(0);
     /// let y = EnumInterval::half_bounded(Side::Left, x.right().unwrap().clone().flip());
-    /// let z = x.try_merge(y).unwrap();
+    /// let z = x.merge_connected(y).unwrap();
     /// assert_eq!(z, EnumInterval::Unbounded);
     /// ```
     fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;

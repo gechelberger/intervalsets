@@ -124,7 +124,7 @@ impl<T> Interval<T> {
     /// use intervalsets::prelude::*;
     ///
     /// let x = Interval::unbound_closed(10)
-    ///             .try_merge(Interval::closed_unbound(-10))
+    ///             .merge_connected(Interval::closed_unbound(-10))
     ///             .unwrap();
     ///
     /// assert_eq!(x.is_unbounded(), true);
