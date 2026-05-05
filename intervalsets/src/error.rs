@@ -16,11 +16,8 @@ pub enum Error {
     #[error(transparent)]
     TotalOrder(#[from] TotalOrderError),
 
-    /// The counting measure of a set cannot be represented by the
-    /// `Countable::Output` type (e.g. counting `[i32::MIN, i32::MAX]`
-    /// overflows `i32`).
-    #[error("count overflows the Countable Output type")]
-    CountOverflow,
+    #[error(transparent)]
+    CountOverflow(#[from] CountOverflow),
 
     /// Bound-pair invariants violated: crossed bounds in a finite
     /// interval, or a structurally invalid `OrdBoundPair`.
@@ -41,11 +38,18 @@ pub enum Error {
 #[error("incomparable values")]
 pub struct TotalOrderError;
 
+/// The counting measure of a set cannot be represented by the
+/// `Countable::Output` type (e.g. counting `[i32::MIN, i32::MAX]`
+/// overflows `i32`).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ThisError)]
+#[error("count overflows the Countable Output type")]
+pub struct CountOverflow;
+
 impl From<CoreError> for Error {
     fn from(e: CoreError) -> Self {
         match e {
             CoreError::TotalOrderError(_) => Error::TotalOrder(TotalOrderError),
-            CoreError::CountOverflow => Error::CountOverflow,
+            CoreError::CountOverflow(_) => Error::CountOverflow(CountOverflow),
             CoreError::InvalidBoundPair => Error::InvalidBoundPair,
             // CoreError is #[non_exhaustive]; if a new variant is added,
             // this `From` lift must be extended to map it. Leaving the
@@ -61,5 +65,11 @@ impl From<CoreError> for Error {
 impl From<intervalsets_core::error::TotalOrderError> for Error {
     fn from(_: intervalsets_core::error::TotalOrderError) -> Self {
         Error::TotalOrder(TotalOrderError)
+    }
+}
+
+impl From<intervalsets_core::error::CountOverflow> for CountOverflow {
+    fn from(_: intervalsets_core::error::CountOverflow) -> Self {
+        CountOverflow
     }
 }

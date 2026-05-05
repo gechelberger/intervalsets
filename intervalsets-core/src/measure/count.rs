@@ -1,5 +1,5 @@
 use super::Measurement;
-use crate::error::Error;
+use crate::error::CountOverflow;
 use crate::numeric::{Element, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -152,13 +152,13 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = Error;
+    type Error = CountOverflow;
 
     fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self.view_raw() {
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
                 Some(count) => Ok(Measurement::Finite(count)),
-                None => Err(Error::CountOverflow),
+                None => Err(CountOverflow),
             },
             None => Ok(Measurement::Finite(Self::Output::zero())),
         }
@@ -167,7 +167,7 @@ where
 
 impl<T> Count for HalfInterval<T> {
     type Output = ();
-    type Error = Error;
+    type Error = CountOverflow;
 
     fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         Ok(Measurement::Infinite)
@@ -180,7 +180,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = Error;
+    type Error = CountOverflow;
 
     fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self {
