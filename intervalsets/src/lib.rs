@@ -109,7 +109,7 @@
 //! use intervalsets::prelude::*;
 //!
 //! let x = Interval::closed(0, 10);
-//! assert_eq!(x.count().finite(), 11);
+//! assert_eq!(x.count().finite(), 11u128);
 //!
 //! let x = Interval::closed_unbound(0);
 //! assert_eq!(x.count().is_finite(), false);

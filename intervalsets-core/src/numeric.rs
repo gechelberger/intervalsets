@@ -113,7 +113,7 @@
 //! }
 //! ```
 
-pub use num_traits::Zero;
+pub use num_traits::{CheckedSub, Zero};
 
 //use ordered_float::{NotNan, OrderedFloat};
 use crate::bound::Side;

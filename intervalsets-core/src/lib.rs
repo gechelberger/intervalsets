@@ -88,7 +88,7 @@
 //! assert_eq!(width.finite(), 10);
 //!
 //! let count: Measurement<_> = a.count();
-//! assert_eq!(count.finite(), 11);
+//! assert_eq!(count.finite(), 11u128);
 //!
 //! assert_eq!(format!("{}", a), "[0, 10]");
 //!
