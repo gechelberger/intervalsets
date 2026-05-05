@@ -19,6 +19,17 @@ use crate::MaybeEmpty;
 /// > edge cases is left to the end user. A fixed precision decimal
 /// > type may be preferred in some cases.
 ///
+/// # Contract
+///
+/// Tier 2 (infallible when closed over the invariants). Cannot panic
+/// or error given inputs satisfying their type invariants. The
+/// returned `Option` is a domain answer — `None` means the operands
+/// are disconnected and have no single-piece fusion — not an error
+/// signal. The `try_*` name overloads the [`crate::ops::math`]
+/// `Try*` convention (where `Try*` means `Result`-fallible);
+/// renaming is queued as a follow-up. See [`crate::ops`] for the
+/// full tier model.
+///
 /// # Examples
 /// ```
 /// use intervalsets_core::prelude::*;
@@ -318,7 +329,18 @@ where
             let candidate = self.sorted.next().unwrap();
             current = match current.try_merge(candidate) {
                 Some(merged) => S::from(merged),
-                None => unreachable!(),
+                None => {
+                    // Connects/TryMerge contract: connects(rhs) ⇒ try_merge(rhs).is_some().
+                    // Reaching this arm means an upstream invariant has been
+                    // violated (e.g. via a Tier 4 *_assume_valid bypass). In
+                    // debug builds, panic loudly; in release, end the iterator
+                    // gracefully rather than diverge.
+                    debug_assert!(
+                        false,
+                        "Connects/TryMerge contract violation: connected but not mergeable"
+                    );
+                    return None;
+                }
             };
         }
 

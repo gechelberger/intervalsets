@@ -197,13 +197,6 @@ impl<T: PartialOrd> FiniteInterval<T> {
             Ok(Self::empty())
         }
     }
-}
-
-impl<T> FiniteInterval<T> {
-    #[inline(always)]
-    pub const fn empty() -> Self {
-        Self(FiniteIntervalInner::Empty)
-    }
 
     /// Constructs without checking invariants.
     ///
@@ -212,10 +205,32 @@ impl<T> FiniteInterval<T> {
     /// 1. lhs <= rhs
     /// 2. discrete bounds are normalized to closed form.
     ///
-    /// Violating either yields incorrect results but no undefined behavior.
+    /// Violating either yields incorrect results but no undefined
+    /// behavior; in debug builds it trips a `debug_assert!`.
+    /// Discrete normalization (precondition 2) is not asserted here —
+    /// it requires the [`Element`] bound;
+    /// callers reach this constructor via paths that already go
+    /// through normalizing constructors like
+    /// [`try_new`](Self::try_new).
     #[inline]
-    pub const fn new_assume_valid(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+    pub fn new_assume_valid(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+        debug_assert!(
+            lhs.value().partial_cmp(rhs.value()).is_some(),
+            "bounds must be comparable (NaN check)"
+        );
+        debug_assert!(
+            lhs.value() < rhs.value()
+                || (lhs.value() == rhs.value() && lhs.is_closed() && rhs.is_closed()),
+            "bounds must satisfy lhs <= rhs (closed-closed at equality)"
+        );
         Self(FiniteIntervalInner::Bounded(lhs, rhs))
+    }
+}
+
+impl<T> FiniteInterval<T> {
+    #[inline(always)]
+    pub const fn empty() -> Self {
+        Self(FiniteIntervalInner::Empty)
     }
 
     #[inline]
@@ -287,15 +302,20 @@ impl<T: Element> TryFrom<RawHalfInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T> HalfInterval<T> {
+impl<T: PartialOrd> HalfInterval<T> {
     /// Creates a new half interval without checking invariants.
     ///
     /// # Preconditions
     ///
     /// `bound` must be comparable (e.g., a non-NaN float). This is
     /// assumed if the bound is taken from an existing set. Violating
-    /// this yields incorrect results but no undefined behavior.
-    pub const fn new_assume_valid(side: Side, bound: FiniteBound<T>) -> Self {
+    /// this yields incorrect results but no undefined behavior; in
+    /// debug builds it trips a `debug_assert!`.
+    pub fn new_assume_valid(side: Side, bound: FiniteBound<T>) -> Self {
+        debug_assert!(
+            bound.value().partial_cmp(bound.value()).is_some(),
+            "bound value must be comparable to itself (NaN check)"
+        );
         Self { side, bound }
     }
 }
@@ -623,6 +643,55 @@ mod tests {
 
             let x: FiniteInterval<i32> = (10..=0).into();
             assert_eq!(x, FiniteInterval::empty());
+        }
+    }
+
+    /// Debug-mode tripwires on Tier 4 `*_assume_valid` bypass.
+    ///
+    /// Each test constructs a deliberately invariant-violating input
+    /// and confirms the corresponding `debug_assert!` panics. Gated
+    /// to `cfg(debug_assertions)` because the asserts are compiled
+    /// out in release; release behavior is exercised by the
+    /// `#[cfg(not(debug_assertions))]` tests in `category.rs`.
+    #[cfg(debug_assertions)]
+    mod assume_valid_tripwires {
+        use super::*;
+
+        #[test]
+        #[should_panic(expected = "NaN check")]
+        fn finite_interval_new_assume_valid_panics_on_nan() {
+            let _ = FiniteInterval::new_assume_valid(
+                FiniteBound::closed(f32::NAN),
+                FiniteBound::closed(0.0),
+            );
+        }
+
+        #[test]
+        #[should_panic(expected = "lhs <= rhs")]
+        fn finite_interval_new_assume_valid_panics_on_crossed() {
+            let _ = FiniteInterval::new_assume_valid(
+                FiniteBound::closed(10_i32),
+                FiniteBound::closed(0_i32),
+            );
+        }
+
+        #[test]
+        #[should_panic(expected = "lhs <= rhs")]
+        fn finite_interval_new_assume_valid_panics_on_equal_open() {
+            // (5, 5) violates the closed-closed-at-equality clause.
+            let _ = FiniteInterval::new_assume_valid(
+                FiniteBound::open(5_i32),
+                FiniteBound::open(5_i32),
+            );
+        }
+
+        #[test]
+        #[should_panic(expected = "NaN check")]
+        fn half_interval_new_assume_valid_panics_on_nan() {
+            let _ = HalfInterval::new_assume_valid(
+                Side::Left,
+                FiniteBound::closed(f32::NAN),
+            );
         }
     }
 

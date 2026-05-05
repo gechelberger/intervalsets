@@ -173,14 +173,19 @@ impl<T: Zero + PartialOrd> EnumInterval<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(not(debug_assertions))]
     use crate::bound::FiniteBound;
     use crate::factory::FiniteFactory;
 
+    // These tests exercise try_category's behavior on a deliberately
+    // invariant-violating FiniteInterval constructed through the Tier 4
+    // bypass `new_assume_valid`. In debug builds the bypass itself trips
+    // a `debug_assert!`, so the tests are gated to release-only here;
+    // the debug-build tripwire is exercised by the `#[should_panic]`
+    // tests in `sets.rs`.
+    #[cfg(not(debug_assertions))]
     #[test]
     fn test_try_category_nan() {
-        // NaN bounds are "logically invalid" but UB-free; construct via
-        // new_assume_valid to bypass the factory's NaN check, then verify
-        // try_category surfaces the incomparability as Err.
         let bad = FiniteInterval::new_assume_valid(
             FiniteBound::closed(f32::NAN),
             FiniteBound::closed(0.0),
@@ -191,11 +196,9 @@ mod tests {
         ));
     }
 
+    #[cfg(not(debug_assertions))]
     #[test]
     fn test_try_category_invariant_violation() {
-        // lhs > rhs violates the FiniteInterval invariant; new_assume_valid
-        // bypasses the check, and try_category surfaces it as
-        // InvalidBoundPair instead of panicking.
         let bad = FiniteInterval::new_assume_valid(
             FiniteBound::closed(0i32),
             FiniteBound::open(0i32),

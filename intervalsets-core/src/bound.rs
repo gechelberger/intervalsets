@@ -797,9 +797,28 @@ pub mod ord {
         ///    in total order (no NaN, not swapped).
         ///
         /// Violating any precondition yields incorrect results downstream
-        /// but no undefined behavior.
+        /// but no undefined behavior. Preconditions 1–4 are checked by
+        /// `debug_assert!` in debug builds; precondition 5 is not asserted
+        /// here (it requires `T: PartialOrd`) and is covered transitively
+        /// by callers that route through validated paths.
         #[inline]
         pub const fn new_assume_valid(left: OrdBound<T>, right: OrdBound<T>) -> Self {
+            debug_assert!(
+                !matches!(left, RightUnbounded),
+                "OrdBoundPair: left must not be RightUnbounded"
+            );
+            debug_assert!(
+                !matches!(right, LeftUnbounded) || matches!(left, LeftUnbounded),
+                "OrdBoundPair: right must not be LeftUnbounded outside the canonical empty pair"
+            );
+            debug_assert!(
+                !matches!(left, Finite(FiniteOrdBound(_, RightOpen))),
+                "OrdBoundPair: left Finite must not be RightOpen"
+            );
+            debug_assert!(
+                !matches!(right, Finite(FiniteOrdBound(_, LeftOpen))),
+                "OrdBoundPair: right Finite must not be LeftOpen"
+            );
             Self(left, right)
         }
 
@@ -938,6 +957,51 @@ mod test {
         #[should_panic(expected = "OrdBoundPair invariants violated")]
         fn new_panics_on_malformed() {
             let _ = OrdBoundPair::<i32>::new(OrdBound::closed(10), OrdBound::closed(0));
+        }
+
+        // Debug-mode tripwires on Tier 4 `new_assume_valid` bypass.
+        // Compiled out in release; release behavior is "wrong answer, no UB."
+        #[cfg(debug_assertions)]
+        mod assume_valid_tripwires {
+            use super::*;
+
+            #[test]
+            #[should_panic(expected = "left must not be RightUnbounded")]
+            fn rejects_right_unbounded_on_left() {
+                let _ = OrdBoundPair::<i32>::new_assume_valid(
+                    RightUnbounded,
+                    OrdBound::closed(0),
+                );
+            }
+
+            #[test]
+            #[should_panic(
+                expected = "right must not be LeftUnbounded outside the canonical empty pair"
+            )]
+            fn rejects_left_unbounded_on_right() {
+                let _ = OrdBoundPair::<i32>::new_assume_valid(
+                    OrdBound::closed(0),
+                    LeftUnbounded,
+                );
+            }
+
+            #[test]
+            #[should_panic(expected = "left Finite must not be RightOpen")]
+            fn rejects_right_open_kind_on_left() {
+                let _ = OrdBoundPair::<i32>::new_assume_valid(
+                    Finite(FiniteOrdBound(0, RightOpen)),
+                    OrdBound::closed(10),
+                );
+            }
+
+            #[test]
+            #[should_panic(expected = "right Finite must not be LeftOpen")]
+            fn rejects_left_open_kind_on_right() {
+                let _ = OrdBoundPair::<i32>::new_assume_valid(
+                    OrdBound::closed(0),
+                    Finite(FiniteOrdBound(10, LeftOpen)),
+                );
+            }
         }
     }
 

@@ -16,7 +16,9 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// # Contract
 ///
-/// Contains should not panic and should return false for incomparable arguments.
+/// Tier 1 (truly infallible). Must not panic. Predicate-shaped
+/// return absorbs incomparability into `false`. See [`crate::ops`]
+/// for the full tier model.
 ///
 /// # Examples
 ///
