@@ -202,9 +202,55 @@ macro_rules! integer_domain_impl {
 integer_domain_impl!(u8, u16, u32, u64, u128, usize);
 integer_domain_impl!(i8, i16, i32, i64, i128, isize);
 
+/// Computes the midpoint (average) of two values.
+///
+/// The midpoint is the value equidistant from both inputs. For numeric
+/// types this is conceptually `(self + other) / 2`, computed in a way
+/// that does not overflow at the bounds of the type.
+///
+/// # Contract
+///
+/// Implementations should uphold the following:
+///
+/// 1. **No overflow.** The computation must not overflow even when
+///    `self + other` would. Conceptually, evaluate as if in a
+///    sufficiently-large arithmetic domain, then map back into `Self`.
+/// 2. **Commutativity.** `a.midpoint(b) == b.midpoint(a)`.
+/// 3. **Boundedness.** When inputs are comparable, the result lies
+///    between them: `min(a, b) <= a.midpoint(b) <= max(a, b)`.
+///
+/// # Rounding
+///
+/// For std primitives this trait delegates to the inherent
+/// `<T>::midpoint` method, so rounding behavior matches std exactly:
+///
+/// - **Integers** — rounded toward zero.
+/// - **Floats** (`f32`, `f64`) — computed as if in extended precision,
+///   then rounded to the nearest representable value
+///   (round-to-nearest-even).
+///
+/// Custom types choose the rounding semantics appropriate to their
+/// domain; this trait does not prescribe one. Downstream impls are
+/// expected to document their own rounding, error, and edge-case
+/// behavior.
+///
+/// # Errors
+///
+/// The associated [`Error`](Midpoint::Error) type lets implementations
+/// surface failure modes specific to the type:
+///
+/// - For total-ordered types where every pair has a well-defined
+///   midpoint (e.g. integers), `Error` is typically
+///   [`core::convert::Infallible`] and the impl never returns `Err`.
+/// - For partial-ordered types (e.g. `f32`/`f64`), the impl may reject
+///   inputs that are degenerate as midpoint endpoints. The float impls
+///   in this crate return [`MidpointError`](crate::error::MidpointError)
+///   when either input is non-finite (NaN, +∞, or −∞) — note that ±∞
+///   are excluded even though they are comparable, because they have
+///   no well-defined midpoint.
 pub trait Midpoint: Sized {
     type Error;
-    fn midpoint(a: Self, b: Self) -> Result<Self, Self::Error>;
+    fn midpoint(self, other: Self) -> Result<Self, Self::Error>;
 }
 
 macro_rules! integer_midpoint_delegate_impl {
@@ -213,8 +259,8 @@ macro_rules! integer_midpoint_delegate_impl {
             impl $crate::numeric::Midpoint for $t {
                 type Error = ::core::convert::Infallible;
                 #[inline]
-                fn midpoint(a: Self, b: Self) -> Result<Self, Self::Error> {
-                    Ok(<$t>::midpoint(a, b))
+                fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
+                    Ok(<$t>::midpoint(self, other))
                 }
             }
         )+
@@ -230,11 +276,11 @@ macro_rules! float_midpoint_delegate_impl {
             impl $crate::numeric::Midpoint for $t {
                 type Error = $crate::error::MidpointError;
                 #[inline]
-                fn midpoint(a: Self, b: Self) -> Result<Self, Self::Error> {
-                    if !a.is_finite() || !b.is_finite() {
+                fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
+                    if !self.is_finite() || !other.is_finite() {
                         return Err($crate::error::MidpointError);
                     }
-                    Ok(<$t>::midpoint(a, b))
+                    Ok(<$t>::midpoint(self, other))
                 }
             }
         )+
@@ -256,7 +302,7 @@ mod tests {
 
     // force resolution through trait
     fn get_midpoint<T: Midpoint>(a: T, b: T) -> Result<T, T::Error> {
-        T::midpoint(a, b)
+        a.midpoint(b)
     }
 
     #[quickcheck]
