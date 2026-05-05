@@ -22,9 +22,6 @@ pub enum Error {
     /// (the enum is `#[non_exhaustive]`).
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
-
-    #[error(transparent)]
-    MidpointError(#[from] MidpointError),
 }
 
 /// Failed comparison of `PartialOrd` values.
@@ -38,4 +35,4 @@ pub struct TotalOrderError;
 /// trait deliberately delegates failure semantics to its implementors.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("midpoint could not be computed")]
-pub struct MidpointError;
+pub(crate) struct MidpointError;
