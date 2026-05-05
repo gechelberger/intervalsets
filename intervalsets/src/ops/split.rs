@@ -16,6 +16,7 @@ impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
     ) -> Result<(Self::Output, Self::Output), Self::Error> {
         self.0
             .try_split(at, closed)
+            .map_err(Into::into)
             .map(|(l, r)| (l.into(), r.into()))
     }
 }

@@ -4,12 +4,6 @@ pub enum Error {
     #[error(transparent)]
     TotalOrderError(#[from] TotalOrderError),
 
-    /// The counting measure of a set cannot be represented by the
-    /// `Countable::Output` type (e.g. counting `[i32::MIN, i32::MAX]`
-    /// overflows `i32`).
-    #[error("count overflows the Countable Output type")]
-    CountOverflow,
-
     /// Bound-pair invariants violated. Covers two related conditions:
     ///
     /// 1. **Crossed bounds in a `FiniteInterval`** — `lhs > rhs` after
@@ -28,15 +22,6 @@ pub enum Error {
     /// (the enum is `#[non_exhaustive]`).
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
-
-    /// An interval-set's stored intervals violated its invariants:
-    /// an empty interval was stored, intervals were not in ascending
-    /// order, or two consecutive intervals were connected (would have
-    /// been merged in canonical form). Raised by the strict
-    /// `try_new` constructor and the `Deserialize` path on outer-crate
-    /// set types.
-    #[error("interval set invariants violated")]
-    InvalidIntervalSet,
 }
 
 /// Failed comparison of `PartialOrd` values.
