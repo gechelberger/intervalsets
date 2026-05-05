@@ -248,7 +248,18 @@ integer_domain_impl!(i8, i16, i32, i64, i128, isize);
 ///   when either input is non-finite (NaN, +∞, or −∞) — note that ±∞
 ///   are excluded even though they are comparable, because they have
 ///   no well-defined midpoint.
-pub trait Midpoint: Sized {
+///
+/// # Status
+///
+/// This is implemented with an eye towards a Bisect trait, but since we
+/// are in a holding pattern on that and this is feature complete for now,
+/// we can merge this back but keep it as part of the private crate API
+/// until we have a need for it or remove it. There is also a consideration
+/// to drop the error type entirely in favor of Option<Self>. The fact that
+/// we can mark certain impls as Infallible has certain appeal, but may be
+/// more complexity than is worth the tradeoff.
+#[allow(unused)]
+pub(crate) trait Midpoint: Sized {
     type Error;
     fn midpoint(self, other: Self) -> Result<Self, Self::Error>;
 }
