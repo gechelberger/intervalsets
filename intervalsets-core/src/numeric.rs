@@ -202,27 +202,46 @@ macro_rules! integer_domain_impl {
 integer_domain_impl!(u8, u16, u32, u64, u128, usize);
 integer_domain_impl!(i8, i16, i32, i64, i128, isize);
 
-pub trait Midpoint {
-    //type Error: core::error::Error;
-    fn midpoint(a: Self, b: Self) -> Self;
+pub trait Midpoint: Sized {
+    type Error;
+    fn midpoint(a: Self, b: Self) -> Result<Self, Self::Error>;
 }
 
-macro_rules! primitive_midpoint_delegate_impl {
+macro_rules! integer_midpoint_delegate_impl {
     ($($t:ty), +) => {
         $(
             impl $crate::numeric::Midpoint for $t {
+                type Error = ::core::convert::Infallible;
                 #[inline]
-                fn midpoint(a: Self, b: Self) -> Self {
-                    <$t>::midpoint(a, b)
+                fn midpoint(a: Self, b: Self) -> Result<Self, Self::Error> {
+                    Ok(<$t>::midpoint(a, b))
                 }
             }
         )+
     }
 }
 
-primitive_midpoint_delegate_impl!(u8, u16, u32, u64, u128, usize);
-primitive_midpoint_delegate_impl!(i8, i16, i32, i64, i128, isize);
-primitive_midpoint_delegate_impl!(f32, f64);
+integer_midpoint_delegate_impl!(u8, u16, u32, u64, u128, usize);
+integer_midpoint_delegate_impl!(i8, i16, i32, i64, i128, isize);
+
+macro_rules! float_midpoint_delegate_impl {
+    ($($t:ty), +) => {
+        $(
+            impl $crate::numeric::Midpoint for $t {
+                type Error = $crate::error::MidpointError;
+                #[inline]
+                fn midpoint(a: Self, b: Self) -> Result<Self, Self::Error> {
+                    if !a.is_finite() || !b.is_finite() {
+                        return Err($crate::error::MidpointError);
+                    }
+                    Ok(<$t>::midpoint(a, b))
+                }
+            }
+        )+
+    }
+}
+
+float_midpoint_delegate_impl!(f32, f64);
 
 #[cfg(test)]
 mod tests {
@@ -236,22 +255,23 @@ mod tests {
     }
 
     // force resolution through trait
-    fn get_midpoint<T: Midpoint>(a: T, b: T) -> T {
+    fn get_midpoint<T: Midpoint>(a: T, b: T) -> Result<T, T::Error> {
         T::midpoint(a, b)
     }
 
     #[quickcheck]
     fn quickcheck_midpoint_i32(a: i32, b: i32) {
         let expected = (((a as i64) + (b as i64)) / 2) as i32;
-        assert_eq!(get_midpoint(a, b), expected);
+        assert_eq!(get_midpoint(a, b).unwrap(), expected);
     }
 
     #[quickcheck]
     fn quickcheck_midpoint_f32(a: f32, b: f32) {
-        if f32::is_nan(a) || f32::is_nan(b) || f32::is_infinite(a) || f32::is_infinite(b) {
+        if !a.is_finite() || !b.is_finite() {
             return;
         }
-        let expected = (a + b) / 2.0;
-        assert_eq!(get_midpoint(a, b), expected);
+        // widen so the reference sum can't overflow f32 range
+        let expected = (((a as f64) + (b as f64)) / 2.0) as f32;
+        assert_eq!(get_midpoint(a, b).unwrap(), expected);
     }
 }

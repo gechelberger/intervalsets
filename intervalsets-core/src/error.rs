@@ -22,9 +22,19 @@ pub enum Error {
     /// (the enum is `#[non_exhaustive]`).
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
+
+    #[error(transparent)]
+    MidpointError(#[from] MidpointError),
 }
 
 /// Failed comparison of `PartialOrd` values.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("incomparable values")]
 pub struct TotalOrderError;
+
+/// Inputs to [`Midpoint`](crate::numeric::Midpoint) were not suitable
+/// for computing a midpoint — either incomparable (NaN) or non-finite
+/// (±∞), both of which are degenerate as midpoint endpoints.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
+#[error("midpoint requires finite, comparable values")]
+pub struct MidpointError;
