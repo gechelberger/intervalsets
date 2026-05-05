@@ -316,6 +316,12 @@
 //#![warn(clippy::cargo)]
 //#![warn(missing_docs)]
 
+#[cfg(test)]
+extern crate quickcheck;
+#[cfg(test)]
+#[macro_use(quickcheck)]
+extern crate quickcheck_macros;
+
 pub mod bound;
 pub mod numeric;
 

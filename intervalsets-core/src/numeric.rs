@@ -207,23 +207,27 @@ pub trait Midpoint {
     fn midpoint(a: Self, b: Self) -> Self;
 }
 
-impl Midpoint for u32 {
-    fn midpoint(a: Self, b: Self) -> Self {
-        (a / 2) + (b / 2) + (a & b & 1)
-        //(a / 2) + (b / 2) + (a & 1 | b & 1)
+macro_rules! primitive_midpoint_delegate_impl {
+    ($($t:ty), +) => {
+        $(
+            impl $crate::numeric::Midpoint for $t {
+                #[inline]
+                fn midpoint(a: Self, b: Self) -> Self {
+                    <$t>::midpoint(a, b)
+                }
+            }
+        )+
     }
 }
 
-impl Midpoint for f32 {
-    fn midpoint(a: Self, b: Self) -> Self {
-        (a + b) * 0.5
-    }
-}
+primitive_midpoint_delegate_impl!(u8, u16, u32, u64, u128, usize);
+primitive_midpoint_delegate_impl!(i8, i16, i32, i64, i128, isize);
+primitive_midpoint_delegate_impl!(f32, f64);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use quickcheck_macros::quickcheck;
+    //use quickcheck_macros::quickcheck;
 
     #[test]
     fn test_adjacent() {
@@ -231,19 +235,15 @@ mod tests {
         assert_eq!(11.try_adjacent(Side::Left).unwrap(), 10);
     }
 
-    #[test]
-    fn test_midpoint() {
-        assert_eq!(i32::midpoint(10, 20), 15);
-        assert_eq!(i32::midpoint(20, 10), 15);
+    // force resolution through trait
+    fn get_midpoint<T: Midpoint>(a: T, b: T) -> T {
+        T::midpoint(a, b)
     }
 
     #[quickcheck]
-    fn quickcheck_midpoint_u32(a: u32, b: u32) {
-        let min = u32::min(a, b);
-        let max = u32::max(a, b);
-        let mid = min + (max - min) / 2;
-
-        assert_eq!(u32::midpoint(a, b), mid);
+    fn quickcheck_midpoint_i32(a: i32, b: i32) {
+        let expected = (((a as i64) + (b as i64)) / 2) as i32;
+        assert_eq!(get_midpoint(a, b), expected);
     }
 
     #[quickcheck]
@@ -251,6 +251,7 @@ mod tests {
         if f32::is_nan(a) || f32::is_nan(b) || f32::is_infinite(a) || f32::is_infinite(b) {
             return;
         }
-        //todo
+        let expected = (a + b) / 2.0;
+        assert_eq!(get_midpoint(a, b), expected);
     }
 }
