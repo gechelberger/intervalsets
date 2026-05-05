@@ -54,7 +54,7 @@ pub trait Count {
 ///
 /// # Example
 /// ```
-/// use intervalsets_core::numeric::Element;
+/// use intervalsets_core::numeric::{CheckedSub, Element};
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::default_countable_impl;
 /// use intervalsets_core::measure::{Count, Countable};
@@ -76,6 +76,12 @@ pub trait Count {
 ///     }
 /// }
 ///
+/// impl CheckedSub for MyInt {
+///     fn checked_sub(&self, rhs: &Self) -> Option<Self> {
+///         self.0.checked_sub(rhs.0).map(MyInt)
+///     }
+/// }
+///
 /// impl num_traits::Zero for MyInt {
 ///     fn zero() -> Self {
 ///         MyInt(0)
@@ -88,22 +94,14 @@ pub trait Count {
 ///
 /// impl Element for MyInt {
 ///     fn try_adjacent(&self, side: Side) -> Option<Self> {
-///         Some(match side {
-///             Side::Left => MyInt(self.0 - 1),
-///             Side::Right => MyInt(self.0 + 1),
-///         })
+///         match side {
+///             Side::Left => self.0.checked_sub(1).map(MyInt),
+///             Side::Right => self.0.checked_add(1).map(MyInt),
+///         }
 ///     }
 /// }
 ///
 /// default_countable_impl!(MyInt);
-///
-/// /*
-/// impl Countable for MyInt {
-///     type Output = Self;
-///     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
-///         Some(MyInt(right.0 - left.0 + 1))
-///     }
-/// }*/
 ///
 /// let interval = FiniteInterval::closed(MyInt(0), MyInt(10));
 /// assert_eq!(interval.count().finite(), MyInt(11));
@@ -121,17 +119,17 @@ macro_rules! default_countable_impl {
             type Output = $t_in_out;
 
             fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
-                //Some(right - left + 1)
+                // count = (right - left) + 1, computed via try_adjacent so we
+                // can fall back when one endpoint sits at the type's limit.
+                // Both subtractions go through CheckedSub: if the count itself
+                // doesn't fit in Self::Output, we return None instead of
+                // panicking on overflow.
                 if let Some(upper) = right.try_adjacent($crate::bound::Side::Right) {
-                    return Some(upper - left.clone());
+                    return $crate::numeric::CheckedSub::checked_sub(&upper, left);
                 }
-
                 if let Some(lower) = left.try_adjacent($crate::bound::Side::Left) {
-                    return Some(right.clone() - lower);
+                    return $crate::numeric::CheckedSub::checked_sub(right, &lower);
                 }
-
-                // Both adjacents overflow (e.g. [MIN, MAX]). The count
-                // mathematically exists but cannot fit in Self::Output.
                 None
             }
         }
