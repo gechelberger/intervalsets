@@ -3,7 +3,7 @@
 set windows-shell := ["powershell.exe", "-NoLogo", "-Command"]
 
 # the minimum supported rust version
-MSRV := "1.85.0"
+MSRV := "1.87.0"
 
 # the target rust version
 RV := "stable"
