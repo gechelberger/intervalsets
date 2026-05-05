@@ -24,6 +24,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// ```
 pub trait Count {
     type Output;
+    type Error: core::error::Error;
 
     /// Compute the counting measure of this set.
     ///
@@ -38,7 +39,7 @@ pub trait Count {
 
     /// Compute the counting measure of this set, returning `Err` if
     /// the count cannot be represented in `Self::Output`.
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Error>;
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error>;
 }
 
 /// Defines whether a set of type T is countable.
@@ -151,8 +152,9 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
+    type Error = Error;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self.view_raw() {
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
                 Some(count) => Ok(Measurement::Finite(count)),
@@ -165,8 +167,9 @@ where
 
 impl<T> Count for HalfInterval<T> {
     type Output = ();
+    type Error = Error;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         Ok(Measurement::Infinite)
     }
 }
@@ -177,8 +180,9 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
+    type Error = Error;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self {
             Self::Finite(inner) => inner.try_count(),
             _ => Ok(Measurement::Infinite),

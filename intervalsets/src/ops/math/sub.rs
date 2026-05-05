@@ -15,7 +15,7 @@ where
 
     #[inline]
     fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        self.0.try_sub(rhs.0).map(Interval::from)
+        self.0.try_sub(rhs.0).map_err(Into::into).map(Interval::from)
     }
 }
 

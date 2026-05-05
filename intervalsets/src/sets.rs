@@ -1,4 +1,4 @@
-use intervalsets_core::error::Error;
+use crate::error::Error;
 use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::EnumInterval;
 use num_traits::{One, Zero};

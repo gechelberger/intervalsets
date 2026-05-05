@@ -28,15 +28,6 @@ pub enum Error {
     /// (the enum is `#[non_exhaustive]`).
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
-
-    /// An interval-set's stored intervals violated its invariants:
-    /// an empty interval was stored, intervals were not in ascending
-    /// order, or two consecutive intervals were connected (would have
-    /// been merged in canonical form). Raised by the strict
-    /// `try_new` constructor and the `Deserialize` path on outer-crate
-    /// set types.
-    #[error("interval set invariants violated")]
-    InvalidIntervalSet,
 }
 
 /// Failed comparison of `PartialOrd` values.

@@ -34,6 +34,7 @@ itertools = "0.13.0"
 num-traits = "0.2.19"
 quickcheck = { version = "1.0.3", optional = true }
 serde = { version = "1.0.215", optional = true, features = ["derive"] }
+thiserror = "2.0.3"
 
 [dev-dependencies]
 approx = "0.5.1"

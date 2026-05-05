@@ -11,9 +11,10 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
+    type Error = Error;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
-        self.0.try_count()
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+        self.0.try_count().map_err(Into::into)
     }
 }
 
@@ -23,8 +24,9 @@ where
     Out: Zero + Clone + Add<Out, Output = Out>,
 {
     type Output = Out;
+    type Error = Error;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Error> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         self.iter()
             .try_fold(Measurement::Finite(Out::zero()), |accum, subset| {
                 Ok(accum + subset.try_count()?)

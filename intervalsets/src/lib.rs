@@ -143,9 +143,10 @@ pub use intervalsets_core::bound::ord::OrdBounded;
 pub use intervalsets_core::bound::{SetBounds, Side};
 pub use intervalsets_core::numeric::Element;
 pub use intervalsets_core::{
-    bound, continuous_domain_impl, default_countable_impl, error, numeric,
+    bound, continuous_domain_impl, default_countable_impl, numeric,
 };
 
+pub mod error;
 pub mod factory;
 
 pub use intervalsets_core::MaybeEmpty;
