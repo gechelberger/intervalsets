@@ -50,10 +50,10 @@ pub mod traits {
     pub use super::{EmptyFactory, FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 }
 
-/// Convert an arbitrary type to one implemnting [`Element`].
+/// Convert an arbitrary type to one implementing [`Element`].
 ///
 /// The [`Converter`] trait provides a mechanism to wrap
-/// or coerse a type into one that is compatible with interval bounds. This is
+/// or coerce a type into one that is compatible with interval bounds. This is
 /// particularly useful when working with 3rd party crates with unsupported types.
 ///
 /// # Structure
@@ -378,10 +378,8 @@ where
     /// Creates a new half-bounded interval, returning `Err` if the
     /// bound is not comparable (e.g. NaN). The panic-free counterpart
     /// of [`half_bounded`](Self::half_bounded).
-    fn try_half_bounded(
-        side: Side,
-        bound: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error>;
+    fn try_half_bounded(side: Side, bound: FiniteBound<C::To>)
+        -> Result<Self::Output, Self::Error>;
 
     fn right_bounded(bound: FiniteBound<C::To>) -> Self::Output {
         Self::half_bounded(Side::Right, bound)
@@ -485,10 +483,7 @@ impl<T: Element> FiniteFactory<T, Identity> for FiniteInterval<T> {
         Self::try_new_or_empty(lhs, rhs).unwrap()
     }
 
-    fn try_finite(
-        lhs: FiniteBound<T>,
-        rhs: FiniteBound<T>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         Self::try_new_or_empty(lhs, rhs)
     }
 }
@@ -524,10 +519,7 @@ impl<T: Element> FiniteFactory<T, Identity> for EnumInterval<T> {
         FiniteInterval::finite(lhs, rhs).into()
     }
 
-    fn try_finite(
-        lhs: FiniteBound<T>,
-        rhs: FiniteBound<T>,
-    ) -> Result<Self::Output, Self::Error> {
+    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         FiniteInterval::try_finite(lhs, rhs).map(Self::Output::from)
     }
 }

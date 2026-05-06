@@ -148,7 +148,7 @@ pub trait Element: Sized + PartialEq + PartialOrd {
 /// Automatically implements [`Element`] for a type.
 ///
 /// Interval/Set types require generic storage types to implement
-/// the [`Element`] trait. It's primary function is to normalize **disrete**
+/// the [`Element`] trait. It's primary function is to normalize **discrete**
 /// data types.
 ///
 /// For **continuous** data types, normalization is a **noop**, but the trait

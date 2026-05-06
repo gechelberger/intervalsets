@@ -3,6 +3,8 @@
 
 [default.extend-words]
 # project-specific allowlist (add as needed)
+fo = "fo"
+numer = "numer"
 
 [files]
 extend-exclude = [

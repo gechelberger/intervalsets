@@ -161,6 +161,10 @@ semver-checks:
 typos:
     typos
 
+# auto-fix typos (review with `git diff` before committing)
+fix-typos:
+    typos --write-changes
+
 # check the build
 check:
     cargo +{{ RV }} check --all-features

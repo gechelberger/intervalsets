@@ -54,7 +54,7 @@ assert_eq!(x.unwrap(), FiniteInterval::empty());
 ```
 
 Silent failures can make it difficult to isolate logic errors as they are
-able to propogate further from their source before detection.
+able to propagate further from their source before detection.
 
 ```rust
 use intervalsets_core::prelude::*;
