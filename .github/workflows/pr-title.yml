@@ -30,7 +30,9 @@ jobs:
             revert
           requireScope: false
           # PR titles aren't sentences; lowercase first word fits conventional-commits style.
-          subjectPattern: ^(?![A-Z])
+          # Pattern must consume the full subject — the action checks match[0].length === subject.length,
+          # so a bare lookahead like `^(?![A-Z])` rejects everything (it matches empty string at position 0).
+          subjectPattern: ^(?![A-Z]).+$
           subjectPatternError: |
             The PR title subject "{subject}" must start with a lowercase letter
             (per Conventional Commits style). Update the title and re-run.

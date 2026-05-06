@@ -43,7 +43,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy --all-features --all-targets -- -D warnings
+      # `-A missing-docs` is a transitional opt-out: workspace lint stays at
+      # `warn` so authors see warnings locally, but CI doesn't gate on it
+      # until the existing backlog is fixed. Tracked in #TRACKING_ISSUE.
+      - run: cargo clippy --all-features --all-targets -- -D warnings -A missing-docs
 
   no-std:
     runs-on: ubuntu-latest

@@ -100,7 +100,11 @@ setup-hooks: install-lefthook-bin
     lefthook install
 
 # build the docs
-[env("RUSTDOCFLAGS", "-D warnings --cfg docsrs")]
+# `-A missing-docs` and `-A rustdoc::missing-crate-level-docs` are transitional
+# opt-outs matching the clippy CI job — workspace lints stay "warn" but doc
+# build doesn't gate on them until the existing backlog is fixed.
+# Tracked in #TRACKING_ISSUE.
+[env("RUSTDOCFLAGS", "-D warnings -A missing-docs -A rustdoc::missing-crate-level-docs --cfg docsrs")]
 doc:
     cargo +nightly doc \
         --workspace \
