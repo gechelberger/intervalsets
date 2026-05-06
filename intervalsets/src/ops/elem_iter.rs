@@ -89,6 +89,25 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
             return None;
         }
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        // Each pending interval is non-empty (IntervalSet invariant), so
+        // contributes at least 1 element. Front and back walkers delegate
+        // to Elements<T>::size_hint — (0, None) today, but a tighter hint
+        // (via Countable, deferred) is picked up for free.
+        let (fl, fu) = self.front.as_ref().map_or((0, Some(0)), Iterator::size_hint);
+        let (bl, bu) = self.back.as_ref().map_or((0, Some(0)), Iterator::size_hint);
+        let pending = self.intervals.len();
+        let lower = fl.saturating_add(bl).saturating_add(pending);
+        // Upper is known only if every pending piece's count is known —
+        // which today requires Countable, so we conservatively return
+        // None whenever any piece remains.
+        let upper = match (fu, bu) {
+            (Some(a), Some(b)) if pending == 0 => a.checked_add(b),
+            _ => None,
+        };
+        (lower, upper)
+    }
 }
 
 impl<T: Element + Ord> DoubleEndedIterator for SetElements<T> {
@@ -307,6 +326,40 @@ mod tests {
         let collected: Vec<u8> =
             set.into_elements().rev().take(5).collect();
         assert_eq!(collected, vec![101, 100, 2, 1, 0]);
+    }
+
+    // ---- size_hint ----
+
+    #[test]
+    fn set_elements_size_hint_empty_is_exact_zero() {
+        let set = IntervalSet::<i32>::empty();
+        let it = set.into_elements();
+        assert_eq!(it.size_hint(), (0, Some(0)));
+    }
+
+    #[test]
+    fn set_elements_size_hint_lower_bound_counts_pending_pieces() {
+        // Two unconsumed pieces; each contributes ≥1 by invariant.
+        // Upper is unknown without Countable.
+        let set = IntervalSet::new([
+            Interval::closed(0, 2),
+            Interval::closed(10, 12),
+        ]);
+        let it = set.into_elements();
+        let (lower, upper) = it.size_hint();
+        assert_eq!(lower, 2);
+        assert!(upper.is_none());
+    }
+
+    #[test]
+    fn set_elements_size_hint_consumed_is_exact_zero() {
+        let set = IntervalSet::new([
+            Interval::closed(0, 1),
+            Interval::closed(10, 11),
+        ]);
+        let mut it = set.into_elements();
+        for _ in &mut it {}
+        assert_eq!(it.size_hint(), (0, Some(0)));
     }
 
     #[test]
