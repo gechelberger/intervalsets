@@ -4,14 +4,23 @@ version = "0.0.0"
 edition = "2021"
 publish = false
 
-# Internal workspace member. Each binary in src/bin/ is a panic-free
-# linker canary that exercises a slice of the annotated Tier 1/2/3
-# surface in `intervalsets-core`. Build via `just panic-check`.
+# Internal workspace member that verifies the panic-free claim
+# documented in `intervalsets-core/src/ops/mod.rs` two ways.
 #
-# The canary mechanism (#[no_panic::no_panic]) lives in
-# intervalsets-core itself, gated by the `panic-free-check` feature.
-# The bins here just call into the annotated impls; the link
-# succeeds iff the optimizer can eliminate every panic edge.
+# 1. Linker canaries: each `[[bin]]` in src/bin/ links against the
+#    `#[no_panic::no_panic]`-annotated surface (gated by the
+#    `panic-free-check` feature on `intervalsets-core`). Link succeeds
+#    iff the optimizer eliminates every panic edge. Run via
+#    `just panic-check`.
+#
+# 2. Kani proofs: `#[cfg(kani)]` modules under `src/proofs/` mirror
+#    each linker canary as a symbolic-execution harness. Run via
+#    `cargo kani -p core-panic-canary`. Strictly stronger than the
+#    linker canary because it covers every input within harness
+#    bounds rather than just the concrete fixtures the bin links.
 
 [dependencies]
 intervalsets-core = { path = "../intervalsets-core", features = ["panic-free-check"] }
+
+[package.metadata.kani.flags]
+default-unwind = 4

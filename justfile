@@ -60,6 +60,10 @@ update:
     # check codebase for loose ends
     cargo install ripgrep --locked
 
+update-static-analysis-tools: #update-binstall
+    cargo binstall kani-verifier --locked --no-confirm
+    cargo kani setup
+
 setup: update
     # building the test dependencies installs newest githooks (husky-rs)
     cargo clean && cargo test build
@@ -169,6 +173,24 @@ ci: doc book-test test check-msrv check-no-std check-bench
 [working-directory('core-panic-canary')]
 panic-check:
     cargo +{{ RV }} build --release --bins
+
+# kani: symbolic-execution proof that the panic-free claims hold for all
+# inputs within each harness's bounds. Stronger than `panic-check` (it
+# doesn't depend on optimizer cleverness), but per-harness and slow.
+#
+# `debug-assertions=off` matches the `#[no_panic]` cfg gate
+# (`not(debug_assertions)`) so debug_asserts aren't treated as panics.
+#
+# Note: Kani requires `overflow-checks=on` for sound analysis, which is
+# stricter than release-mode `+ - *` semantics (release wraps silently;
+# Kani treats overflow as a panic). Arithmetic harnesses must therefore
+# bound their inputs to avoid overflow, or accept that the proof covers
+# "no panic AND no overflow" rather than just "no panic in release".
+# Signed integer division overflow (e.g. `i64::MIN / -1`) panics under
+# any setting — Rust always panics on `/` and `%` overflow.
+[env("RUSTFLAGS", "-C debug-assertions=off")]
+kani filter="":
+    cargo kani -p core-panic-canary {{ if filter == "" { "" } else { "--harness " + filter } }}
 
 # scan codebase for pre-release markers
 loose-ends:
