@@ -14,7 +14,7 @@ Version
 
 <div class="warning">
 This reference is continuously deployed to GitHub Pages in sync with "main". 
-It is <b>not</b> gauaranteed to reflect a release in the crates registry.
+It is <b>not</b> guaranteed to reflect a release in the crates registry.
 </div>
 
 Limitations

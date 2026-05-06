@@ -33,15 +33,51 @@ macro_rules! mul_via_try {
     };
 }
 
-mul_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<<T as Mul>::Output>);
-mul_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(
+    FiniteInterval<T>,
+    FiniteInterval<T>,
+    FiniteInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    HalfInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    FiniteInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    HalfInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    EnumInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    EnumInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    EnumInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    FiniteInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    HalfInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
 
 impl<T> TryMul for FiniteInterval<T>
 where

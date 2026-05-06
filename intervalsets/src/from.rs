@@ -1,8 +1,8 @@
 use intervalsets_core::bound::ord::OrdBoundPair;
 use intervalsets_core::disjoint::MaybeDisjoint;
-use crate::error::Error;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
+use crate::error::Error;
 use crate::numeric::Element;
 use crate::{Interval, IntervalSet, MaybeEmpty};
 
@@ -208,7 +208,5 @@ mod tests {
 
         let _ = IntervalSet::from_iter([(0, 5), (20, 25)]);
         let _ = IntervalSet::from_iter([(0.0, 5.0)]);
-
-        //let zzz = IntervalSet::coerse([(0, 10), (20, 30), (40, 50)]);
     }
 }

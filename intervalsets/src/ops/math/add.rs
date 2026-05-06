@@ -15,7 +15,10 @@ where
 
     #[inline]
     fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        self.0.try_add(rhs.0).map_err(Into::into).map(Interval::from)
+        self.0
+            .try_add(rhs.0)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -30,7 +33,8 @@ where
     fn add(self, rhs: Self) -> Self::Output {
         // T: Ord makes partial_cmp on bounds total, so try_add is provably
         // infallible -- no path inside reaches a TotalOrderError.
-        self.try_add(rhs).expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs)
+            .expect("infix Add invariants guarantee try_add infallibility")
     }
 }
 
@@ -46,9 +50,10 @@ where
     // the IntervalSet invariants by construction; calling Union avoids the
     // public IntervalSet::new validation overhead (and its NaN-panic path).
     fn try_add(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
-        self.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
-            Ok(acc.union(subset.try_add(rhs.clone())?))
-        })
+        self.into_iter()
+            .try_fold(IntervalSet::empty(), |acc, subset| {
+                Ok(acc.union(subset.try_add(rhs.clone())?))
+            })
     }
 }
 
@@ -60,7 +65,8 @@ where
     type Output = IntervalSet<<T as Add>::Output>;
 
     fn add(self, rhs: Interval<T>) -> Self::Output {
-        self.try_add(rhs).expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs)
+            .expect("infix Add invariants guarantee try_add infallibility")
     }
 }
 
@@ -86,7 +92,8 @@ where
     type Output = IntervalSet<<T as Add>::Output>;
 
     fn add(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_add(rhs).expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs)
+            .expect("infix Add invariants guarantee try_add infallibility")
     }
 }
 
@@ -118,7 +125,8 @@ where
     type Output = IntervalSet<T>;
 
     fn add(self, rhs: Self) -> Self::Output {
-        self.try_add(rhs).expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs)
+            .expect("infix Add invariants guarantee try_add infallibility")
     }
 }
 

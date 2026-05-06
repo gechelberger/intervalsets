@@ -1,5 +1,9 @@
 name: Rust
 
+# Note: actions are referenced by tag for now; supply-chain hardening to
+# SHA-pinning is tracked as a follow-up. dependabot is already configured to
+# keep these current (.github/dependabot.yml).
+
 on:
   push:
     branches: ["main", "dev"]
@@ -11,12 +15,26 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  fmt-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --all-features --verbose
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
+      - run: cargo nextest run --all-features --no-fail-fast
+      - name: Run doctests
+        run: cargo test --all-features --doc
 
   clippy:
     runs-on: ubuntu-latest
@@ -25,26 +43,22 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      - run: cargo clippy --all-features --all-targets -- -D warnings
+      # `-A missing-docs` is a transitional opt-out: workspace lint stays at
+      # `warn` so authors see warnings locally, but CI doesn't gate on it
+      # until the existing backlog is fixed. Tracked in #TRACKING_ISSUE.
+      - run: cargo clippy --all-features --all-targets -- -D warnings -A missing-docs
 
   no-std:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: Install nightly toolchain with nostd target
+      - name: Install stable toolchain with nostd target
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv6m-none-eabi
-      - name: Install cargo hack
-        uses: baptiste0928/cargo-install@v3
+      - uses: taiki-e/install-action@v2
         with:
-          crate: cargo-hack
-          version: "^0.6"
-      - name: install just
-        uses: baptiste0928/cargo-install@v3
-        with:
-          crate: just
-          version: "^1"
+          tool: cargo-hack,just
       - run: just check-no-std
 
   msrv-check:
@@ -54,16 +68,46 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: "1.87.0"
-      - run: cargo test --all-features --verbose
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,just
+      - run: just check-msrv
 
   check-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@nightly
-      - name: install just
-        uses: baptiste0928/cargo-install@v3
+      - uses: taiki-e/install-action@v2
         with:
-          crate: just
-          version: "^1"
+          tool: just
       - run: just doc
+
+  doc-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: just doc-check
+
+  typos:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: crate-ci/typos@master
+
+  semver-checks:
+    runs-on: ubuntu-latest
+    # Informational pre-1.0; does not block merges.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Full history needed so the action can `git checkout` the baseline-rev.
+          fetch-depth: 0
+      - uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          baseline-rev: 9062fa1e1cb72b22a09f525088399d03f7f65346

@@ -134,14 +134,12 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
         } else if n == 1 {
             // self and rhs already satisfy invariants
             match rhs.side() {
-                Left => FiniteInterval::new_assume_normed(
-                    rhs.finite_bound().clone(),
-                    lhs_max.clone(),
-                ),
-                Right => FiniteInterval::new_assume_normed(
-                    lhs_min.clone(),
-                    rhs.finite_bound().clone(),
-                ),
+                Left => {
+                    FiniteInterval::new_assume_normed(rhs.finite_bound().clone(), lhs_max.clone())
+                }
+                Right => {
+                    FiniteInterval::new_assume_normed(lhs_min.clone(), rhs.finite_bound().clone())
+                }
             }
         } else {
             Self::Output::empty()

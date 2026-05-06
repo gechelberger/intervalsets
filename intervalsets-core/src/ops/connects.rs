@@ -186,16 +186,12 @@ mod tests {
         assert!(EI::closed(0, 10).connects(&EI::closed(11, 20)));
         assert!(!EI::closed(0, 10).connects(&EI::closed(12, 20)));
 
-        assert!(
-            EI::closed(0.0, 10.0).connects(&EI::closed(10.0, 20.0))
-        );
+        assert!(EI::closed(0.0, 10.0).connects(&EI::closed(10.0, 20.0)));
         assert!(EI::closed(0.0, 10.0).connects(&EI::open(10.0, 20.0)));
         assert!(EI::open(0.0, 10.0).connects(&EI::closed(10.0, 20.0)));
         assert!(!EI::open(0.0, 10.0).connects(&EI::open(10.0, 20.0)));
 
-        assert!(
-            EI::open(0.0, 10.0).connects(&EI::closed_unbound(10.0))
-        );
+        assert!(EI::open(0.0, 10.0).connects(&EI::closed_unbound(10.0)));
 
         assert!(EI::unbounded().connects(&EI::closed(0, 10)));
     }

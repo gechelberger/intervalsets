@@ -95,10 +95,7 @@ mod test {
         let c = a.complement();
 
         // This one we need to fix
-        assert_eq!(
-            a.union(c.clone()).expect_interval(),
-            Interval::unbounded()
-        );
+        assert_eq!(a.union(c.clone()).expect_interval(), Interval::unbounded());
         assert_eq!(a.intersection(c).expect_interval(), Interval::empty());
 
         true

@@ -1,0 +1,29 @@
+# cargo-release configuration. https://github.com/crate-ci/cargo-release
+# Workflow: dry-run with `cargo release patch`, then execute with `cargo release patch --execute`.
+
+# Lockstep versioning: bumping the workspace version moves both
+# intervalsets-core and intervalsets together. The inter-crate dependency
+# specifier in [workspace.dependencies] is updated automatically.
+shared-version = true
+
+# A single commit + a single tag for the whole workspace, not one per crate.
+consolidate-commits = true
+
+# We sign releases off-band; cargo-release does not sign on our behalf.
+sign-tag = false
+sign-commit = false
+
+# Tag the release. Push and publish are gated to --execute (defaults: false
+# means dry-run only). Maintainer reviews diff before flipping.
+tag = true
+
+# Replace [Unreleased] section heading with the new version + date.
+# Each crate has its own CHANGELOG.md adjacent to its Cargo.toml; cargo-release
+# resolves `file` paths relative to the package directory, so this rule applies
+# to intervalsets/CHANGELOG.md and intervalsets-core/CHANGELOG.md independently.
+pre-release-replacements = [
+    { file = "CHANGELOG.md",
+      search = "## \\[Unreleased\\]",
+      replace = "## [Unreleased]\n\n## [{{version}}] - {{date}}",
+      exactly = 1 },
+]

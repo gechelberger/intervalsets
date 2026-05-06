@@ -162,8 +162,14 @@ mod tests {
         // empty ∪ A = A, A ∪ empty = A
         let a = FiniteInterval::closed(0, 10);
         let e = FiniteInterval::<i32>::empty();
-        assert_eq!(a.union(e).into_interval(), Some(EnumInterval::closed(0, 10)));
-        assert_eq!(e.union(a).into_interval(), Some(EnumInterval::closed(0, 10)));
+        assert_eq!(
+            a.union(e).into_interval(),
+            Some(EnumInterval::closed(0, 10))
+        );
+        assert_eq!(
+            e.union(a).into_interval(),
+            Some(EnumInterval::closed(0, 10))
+        );
     }
 
     #[test]

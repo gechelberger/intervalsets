@@ -1,5 +1,6 @@
 use crate::bound::{FiniteBound, Side};
-#[allow(unused_imports)] // FiniteFactory provides ::closed et al. via re-export through `use super::*` in tests
+#[allow(unused_imports)]
+// FiniteFactory provides ::closed et al. via re-export through `use super::*` in tests
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -120,7 +121,10 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
             },
             Side::Right => match bound {
                 // just repacking
-                None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
+                None => Ok(EnumInterval::from(Self::new_assume_valid(
+                    side,
+                    current_bound,
+                ))),
                 Some(inner) => {
                     FiniteInterval::try_new_or_empty(inner, current_bound).map(EnumInterval::from)
                 }
@@ -137,7 +141,10 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
             },
             Side::Left => match bound {
                 // just repacking
-                None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
+                None => Ok(EnumInterval::from(Self::new_assume_valid(
+                    side,
+                    current_bound,
+                ))),
                 Some(inner) => {
                     FiniteInterval::try_new_or_empty(current_bound, inner).map(EnumInterval::from)
                 }
@@ -186,10 +193,7 @@ mod tests {
 
         let x = HalfInterval::left(FiniteBound::closed(0));
         assert_eq!(x.with_left(None), EnumInterval::Unbounded);
-        assert_eq!(
-            x.with_left_closed(100),
-            EnumInterval::closed_unbound(100)
-        );
+        assert_eq!(x.with_left_closed(100), EnumInterval::closed_unbound(100));
 
         let x = HalfInterval::right(FiniteBound::closed(0));
         assert_eq!(x.with_left(None), x.into());
@@ -198,10 +202,7 @@ mod tests {
 
         let x = EnumInterval::<i32>::Unbounded;
         assert_eq!(x.with_left(None), EnumInterval::Unbounded);
-        assert_eq!(
-            x.with_left_closed(0),
-            EnumInterval::closed_unbound(0)
-        );
+        assert_eq!(x.with_left_closed(0), EnumInterval::closed_unbound(0));
     }
 
     #[test]
@@ -213,18 +214,12 @@ mod tests {
 
         let x = HalfInterval::left(FiniteBound::closed(0));
         assert_eq!(x.with_right(None), x.into());
-        assert_eq!(
-            x.with_right_closed(100),
-            EnumInterval::closed(0, 100)
-        );
+        assert_eq!(x.with_right_closed(100), EnumInterval::closed(0, 100));
         assert_eq!(x.with_right_closed(-100), EnumInterval::empty());
 
         let x = HalfInterval::right(FiniteBound::closed(0));
         assert_eq!(x.with_right(None), EnumInterval::unbounded());
-        assert_eq!(
-            x.with_right_closed(100),
-            EnumInterval::unbound_closed(100)
-        );
+        assert_eq!(x.with_right_closed(100), EnumInterval::unbound_closed(100));
         assert_eq!(
             x.with_right_closed(-100),
             EnumInterval::unbound_closed(-100)
@@ -232,9 +227,6 @@ mod tests {
 
         let x = EnumInterval::unbounded();
         assert_eq!(x.with_right(None), x);
-        assert_eq!(
-            x.with_right_closed(0),
-            EnumInterval::unbound_closed(0)
-        );
+        assert_eq!(x.with_right_closed(0), EnumInterval::unbound_closed(0));
     }
 }

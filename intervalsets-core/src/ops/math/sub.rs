@@ -39,15 +39,51 @@ macro_rules! sub_via_try {
     };
 }
 
-sub_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<<T as Sub>::Output>);
-sub_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<<T as Sub>::Output>);
-sub_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<<T as Sub>::Output>);
-sub_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<<T as Sub>::Output>);
-sub_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<<T as Sub>::Output>);
-sub_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<<T as Sub>::Output>);
-sub_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<<T as Sub>::Output>);
-sub_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<<T as Sub>::Output>);
-sub_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<<T as Sub>::Output>);
+sub_via_try!(
+    FiniteInterval<T>,
+    FiniteInterval<T>,
+    FiniteInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    HalfInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    FiniteInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    HalfInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    EnumInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    EnumInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    EnumInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    FiniteInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    HalfInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
 
 impl<T> TrySub for FiniteInterval<T>
 where

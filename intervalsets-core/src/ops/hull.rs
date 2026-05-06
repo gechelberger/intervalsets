@@ -311,9 +311,7 @@ impl<T: Element> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
 impl<'a, T: Element + Clone> ConvexHull<&'a EnumInterval<T>> for EnumInterval<T> {
     type Error = Error;
 
-    fn try_hull<U: IntoIterator<Item = &'a EnumInterval<T>>>(
-        iter: U,
-    ) -> Result<Self, Self::Error> {
+    fn try_hull<U: IntoIterator<Item = &'a EnumInterval<T>>>(iter: U) -> Result<Self, Self::Error> {
         convex_hull_ord_bounded_impl(iter)
     }
 }

@@ -4,8 +4,9 @@ use crate::continuous_domain_impl;
 
 continuous_domain_impl!(BigDecimal);
 
-use crate::numeric::Midpoint;
 use core::ops::Add;
+
+use crate::numeric::Midpoint;
 
 impl Midpoint for BigDecimal {
     type Error = core::convert::Infallible;

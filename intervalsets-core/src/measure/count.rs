@@ -133,7 +133,7 @@ macro_rules! default_countable_impl {
                 None
             }
         }
-    }
+    };
 }
 
 /// Implements [`Countable`] for native primitive integer types narrower than

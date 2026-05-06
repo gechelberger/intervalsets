@@ -40,8 +40,7 @@ pub trait Split<T>: Sized {
         self.try_split(at, closed).unwrap()
     }
 
-    fn try_split(self, at: T, closed: Side)
-        -> Result<(Self::Output, Self::Output), Self::Error>;
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error>;
 }
 
 fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBound<T>) {
@@ -55,11 +54,7 @@ impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn try_split(
-        self,
-        at: T,
-        closed: Side,
-    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error> {
         let Some((min, max)) = self.into_raw() else {
             return Ok((Self::empty(), Self::empty()));
         };
@@ -89,11 +84,7 @@ impl<T: Element + Clone> Split<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    fn try_split(
-        self,
-        at: T,
-        closed: Side,
-    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error> {
         if !self.contains(&at) {
             return match self.side() {
                 Side::Left => Ok((Self::Output::empty(), self.into())),
@@ -125,11 +116,7 @@ impl<T: Element + Clone> Split<T> for EnumInterval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn try_split(
-        self,
-        at: T,
-        closed: Side,
-    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error> {
         match self {
             Self::Finite(inner) => inner
                 .try_split(at, closed)
@@ -161,4 +148,3 @@ impl<T: Element + Clone> Split<T> for EnumInterval<T> {
         }
     }
 }
-

@@ -1,10 +1,10 @@
-use crate::error::Error;
 use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::EnumInterval;
 use num_traits::{One, Zero};
 
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, SetBounds, Side};
+use crate::error::Error;
 use crate::numeric::Element;
 use crate::ops::Connects;
 use crate::MaybeEmpty;
@@ -593,7 +593,7 @@ mod tests {
         if a == b {
             assert_eq!(do_hash(a), do_hash(b));
         } else {
-            // hash collissions are allowed, but highly unlikely
+            // hash collisions are allowed, but highly unlikely
             assert_ne!(do_hash(a), do_hash(b));
         }
     }
