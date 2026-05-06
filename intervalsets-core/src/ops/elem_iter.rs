@@ -319,6 +319,20 @@ impl<T: Element + Ord> Iterator for DisjointElements<T> {
         }
         None
     }
+
+    // Delegate to the at-most-two children. Today both contribute
+    // (0, None), so this matches the default — but when Elements gains
+    // a tighter hint (via Countable, deferred), we pick it up for free.
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let (fl, fu) = self.front.as_ref().map_or((0, Some(0)), Iterator::size_hint);
+        let (bl, bu) = self.back.as_ref().map_or((0, Some(0)), Iterator::size_hint);
+        let lower = fl.saturating_add(bl);
+        let upper = match (fu, bu) {
+            (Some(a), Some(b)) => a.checked_add(b),
+            _ => None,
+        };
+        (lower, upper)
+    }
 }
 
 impl<T: Element + Ord> DoubleEndedIterator for DisjointElements<T> {
@@ -610,5 +624,13 @@ mod tests {
         )
             .into();
         assert!(pair.into_elements().eq([0u8, 1, 254, 255]));
+    }
+
+    #[test]
+    fn disjoint_elements_size_hint_consumed_is_exact_zero() {
+        // With both cursors None, the delegated hint reports the
+        // tightest possible (0, Some(0)) rather than (0, None).
+        let it = MaybeDisjoint::<i32>::Consumed.into_elements();
+        assert_eq!(it.size_hint(), (0, Some(0)));
     }
 }
