@@ -103,3 +103,5 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: obi1kenobi/cargo-semver-checks-action@v2
+        with:
+          baseline-rev: 9062fa1e1cb72b22a09f525088399d03f7f65346

@@ -155,7 +155,7 @@ deny:
 
 # semver compatibility check (informational pre-1.0)
 semver-checks:
-    cargo semver-checks --workspace
+    cargo semver-checks --workspace --baseline-rev 9062fa1e1cb72b22a09f525088399d03f7f65346
 
 # typo scan
 typos:
