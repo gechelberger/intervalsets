@@ -46,6 +46,7 @@ impl<T: Element> Intersection<Self> for FiniteInterval<T> {
     type Output = Self;
 
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn intersection(self, rhs: Self) -> Self::Output {
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
             return Self::empty();
@@ -67,6 +68,7 @@ impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn intersection(self, rhs: Self) -> Self::Output {
         let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return Self::Output::empty();
@@ -88,6 +90,7 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
     type Output = Self;
 
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn intersection(self, rhs: HalfInterval<T>) -> Self::Output {
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
             return Self::Output::empty();
@@ -118,6 +121,7 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn intersection(self, rhs: &HalfInterval<T>) -> Self::Output {
         let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return FiniteInterval::empty();
@@ -153,6 +157,7 @@ impl<T: Element> Intersection<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn intersection(self, rhs: Self) -> Self::Output {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
@@ -179,6 +184,7 @@ impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn intersection(self, rhs: Self) -> Self::Output {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
@@ -208,6 +214,7 @@ macro_rules! dispatch_intersection_impl {
             type Output = EnumInterval<T>;
 
             #[inline(always)]
+            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
             fn intersection(self, rhs: $t_rhs) -> Self::Output {
                 match self {
                     Finite(lhs) => lhs.intersection(rhs).into(),
@@ -221,6 +228,7 @@ macro_rules! dispatch_intersection_impl {
             type Output = EnumInterval<T>;
 
             #[inline(always)]
+            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
             fn intersection(self, rhs: &$t_rhs) -> Self::Output {
                 match self {
                     Finite(lhs) => lhs.intersection(rhs).into(),
@@ -242,6 +250,7 @@ macro_rules! commutative_intersection_impl {
             type Output = $t_ret;
 
             #[inline(always)]
+            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
             fn intersection(self, rhs: $t_rhs) -> Self::Output {
                 rhs.intersection(self)
             }
@@ -251,6 +260,7 @@ macro_rules! commutative_intersection_impl {
             type Output = $t_ret;
 
             #[inline(always)]
+            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
             fn intersection(self, rhs: &$t_rhs) -> Self::Output {
                 rhs.intersection(self)
             }

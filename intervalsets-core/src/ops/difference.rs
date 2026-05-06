@@ -61,6 +61,7 @@ macro_rules! difference_via_complement {
         {
             type Output = MaybeDisjoint<T>;
 
+            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
             fn difference(self, rhs: $rhs) -> Self::Output {
                 let lhs: EnumInterval<T> = self.into();
                 let mut pieces = rhs.complement().into_iter();
@@ -110,6 +111,7 @@ where
 {
     type Output = <X as Difference<Y>>::Output;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn difference(self, rhs: &Y) -> Self::Output {
         self.clone().difference(rhs.clone())
     }

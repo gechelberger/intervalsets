@@ -146,6 +146,7 @@ impl<T: Element + Ord> Elements<T> {
 impl<T: Element + Ord> Iterator for Elements<T> {
     type Item = T;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn next(&mut self) -> Option<T> {
         let current = self.front.take()?;
         match self.back.as_ref() {
@@ -173,6 +174,7 @@ impl<T: Element + Ord> Iterator for Elements<T> {
 }
 
 impl<T: Element + Ord> DoubleEndedIterator for Elements<T> {
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn next_back(&mut self) -> Option<T> {
         let current = self.back.take()?;
         match self.front.as_ref() {
@@ -199,6 +201,7 @@ impl<T: Element + Ord> IntoElementIterator for FiniteInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn into_elements(self) -> Elements<T> {
         match self.into_raw() {
             None => Elements::empty(),
@@ -209,6 +212,7 @@ impl<T: Element + Ord> IntoElementIterator for FiniteInterval<T> {
 
 impl<T: Element + Ord + Clone> FiniteInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     pub fn elements(&self) -> Elements<T> {
         match self.view_raw() {
             None => Elements::empty(),
@@ -223,6 +227,7 @@ impl<T: Element + Ord> IntoElementIterator for HalfInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn into_elements(self) -> Elements<T> {
         let (side, bound) = self.into_raw();
         match side {
@@ -234,6 +239,7 @@ impl<T: Element + Ord> IntoElementIterator for HalfInterval<T> {
 
 impl<T: Element + Ord + Clone> HalfInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     pub fn elements(&self) -> Elements<T> {
         let bound = self.finite_bound().clone();
         match self.side() {
@@ -249,6 +255,7 @@ impl<T: Element + Ord> IntoElementIterator for EnumInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn into_elements(self) -> Elements<T> {
         match self {
             Self::Finite(inner) => inner.into_elements(),
@@ -260,6 +267,7 @@ impl<T: Element + Ord> IntoElementIterator for EnumInterval<T> {
 
 impl<T: Element + Ord + Clone> EnumInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     pub fn elements(&self) -> Elements<T> {
         match self {
             Self::Finite(inner) => inner.elements(),
@@ -301,6 +309,7 @@ pub struct DisjointElements<T> {
 impl<T: Element + Ord> Iterator for DisjointElements<T> {
     type Item = T;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn next(&mut self) -> Option<T> {
         if let Some(it) = self.front.as_mut() {
             if let Some(v) = it.next() {
@@ -336,6 +345,7 @@ impl<T: Element + Ord> Iterator for DisjointElements<T> {
 }
 
 impl<T: Element + Ord> DoubleEndedIterator for DisjointElements<T> {
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn next_back(&mut self) -> Option<T> {
         if let Some(it) = self.back.as_mut() {
             if let Some(v) = it.next_back() {
@@ -359,6 +369,7 @@ impl<T: Element + Ord> IntoElementIterator for MaybeDisjoint<T> {
     type Item = T;
     type IntoIter = DisjointElements<T>;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn into_elements(self) -> DisjointElements<T> {
         match self {
             MaybeDisjoint::Consumed => DisjointElements { front: None, back: None },
@@ -379,6 +390,7 @@ impl<T: Element + Ord + Clone> MaybeDisjoint<T> {
     ///
     /// Walks each piece in order, yielding every element along the way.
     /// The returned iterator is double-ended.
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     pub fn elements(&self) -> DisjointElements<T> {
         match self {
             MaybeDisjoint::Consumed => DisjointElements { front: None, back: None },

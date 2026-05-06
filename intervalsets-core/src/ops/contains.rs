@@ -39,6 +39,7 @@ pub trait Contains<T> {
 
 impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &T) -> bool {
         let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
@@ -51,6 +52,7 @@ impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
 
 impl<T: PartialOrd> Contains<&T> for HalfInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &T) -> bool {
         self.finite_bound()
             .try_contains(self.side(), rhs)
@@ -60,6 +62,7 @@ impl<T: PartialOrd> Contains<&T> for HalfInterval<T> {
 
 impl<T: PartialOrd> Contains<&T> for EnumInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &T) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -71,6 +74,7 @@ impl<T: PartialOrd> Contains<&T> for EnumInterval<T> {
 
 impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for FiniteInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
         let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
@@ -84,6 +88,7 @@ impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for FiniteInterval<T> {
 
 impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for HalfInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
         let lhs = self.finite_ord_bound();
         match self.side() {
@@ -95,6 +100,7 @@ impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for HalfInterval<T> {
 
 impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for EnumInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: FiniteOrdBound<&T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -106,6 +112,7 @@ impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for EnumInterval<T> {
 
 impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &T) -> bool {
         let rhs = OrdBound::closed(rhs);
         let (lhs_min, lhs_max) = self.into_raw();
@@ -115,6 +122,7 @@ impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
 
 impl<T: PartialOrd> Contains<&FiniteInterval<T>> for FiniteInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
@@ -131,6 +139,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for FiniteInterval<T> {
 
 impl<T: PartialOrd> Contains<&HalfInterval<T>> for FiniteInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, _rhs: &HalfInterval<T>) -> bool {
         false
     }
@@ -138,6 +147,7 @@ impl<T: PartialOrd> Contains<&HalfInterval<T>> for FiniteInterval<T> {
 
 impl<T: PartialOrd> Contains<&EnumInterval<T>> for FiniteInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match rhs {
             EnumInterval::Finite(rhs) => self.contains(rhs),
@@ -149,6 +159,7 @@ impl<T: PartialOrd> Contains<&EnumInterval<T>> for FiniteInterval<T> {
 
 impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
             return true;
@@ -164,6 +175,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for HalfInterval<T> {
 
 impl<T: PartialOrd> Contains<&HalfInterval<T>> for HalfInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &HalfInterval<T>) -> bool {
         self.side() == rhs.side() && self.contains(rhs.finite_ord_bound())
     }
@@ -171,6 +183,7 @@ impl<T: PartialOrd> Contains<&HalfInterval<T>> for HalfInterval<T> {
 
 impl<T: PartialOrd> Contains<&EnumInterval<T>> for HalfInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match rhs {
             EnumInterval::Finite(rhs) => self.contains(rhs),
@@ -182,6 +195,7 @@ impl<T: PartialOrd> Contains<&EnumInterval<T>> for HalfInterval<T> {
 
 impl<T: PartialOrd> Contains<&FiniteInterval<T>> for EnumInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -193,6 +207,7 @@ impl<T: PartialOrd> Contains<&FiniteInterval<T>> for EnumInterval<T> {
 
 impl<T: PartialOrd> Contains<&HalfInterval<T>> for EnumInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),
@@ -204,6 +219,7 @@ impl<T: PartialOrd> Contains<&HalfInterval<T>> for EnumInterval<T> {
 
 impl<T: PartialOrd> Contains<&EnumInterval<T>> for EnumInterval<T> {
     #[inline(always)]
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn contains(&self, rhs: &EnumInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.contains(rhs),

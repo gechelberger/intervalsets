@@ -55,6 +55,7 @@ impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn try_split(
         self,
         at: T,
@@ -89,6 +90,7 @@ impl<T: Element + Clone> Split<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn try_split(
         self,
         at: T,
@@ -125,6 +127,7 @@ impl<T: Element + Clone> Split<T> for EnumInterval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn try_split(
         self,
         at: T,

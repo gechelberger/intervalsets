@@ -57,6 +57,7 @@ where
     type Output = FiniteInterval<<T as Sub>::Output>;
     type Error = Error;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
             return Ok(FiniteInterval::empty());
@@ -78,6 +79,7 @@ where
     type Output = EnumInterval<<T as Sub>::Output>;
     type Error = Error;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let (l_side, l_bound) = self.into_raw();
         let (r_side, r_bound) = rhs.into_raw();
@@ -97,6 +99,7 @@ where
     type Output = EnumInterval<<T as Sub>::Output>;
     type Error = Error;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn try_sub(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         // (a, b) - (c, ->) => (<-, b - c)
         // (a, b) - (<-, c) => (a - c, ->)
@@ -119,6 +122,7 @@ where
     type Output = EnumInterval<<T as Sub>::Output>;
     type Error = Error;
 
+    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
     fn try_sub(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         // (<-, c) - (a, b) => (<-, c - a)
         // (c, ->) - (a, b) => (c - b, ->)
@@ -143,6 +147,7 @@ macro_rules! dispatch_lhs_try_sub_impl {
             type Error = Error;
 
             #[inline]
+            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
             fn try_sub(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
                 match self {
                     Finite(inner) => inner.try_sub(rhs).map(EnumInterval::from),
@@ -175,6 +180,7 @@ macro_rules! dispatch_rhs_try_sub_impl {
             type Error = Error;
 
             #[inline]
+            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
             fn try_sub(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
                 match rhs {
                     Finite(rhs) => self.try_sub(rhs).map(EnumInterval::from),
