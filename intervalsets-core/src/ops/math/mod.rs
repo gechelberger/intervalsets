@@ -42,9 +42,9 @@
 //! that provides it.
 
 mod add;
-mod sub;
-mod mul;
 mod div;
+mod mul;
+mod sub;
 
 /// Add that returns Result instead of panicking on logical violations.
 ///

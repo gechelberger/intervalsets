@@ -92,7 +92,10 @@ mod tests {
         let x = Interval::closed(0, i32::MAX);
         let y = Interval::closed(-100, -1);
 
-        assert_eq!(x.merge_connected(y).unwrap(), Interval::closed(-100, i32::MAX));
+        assert_eq!(
+            x.merge_connected(y).unwrap(),
+            Interval::closed(-100, i32::MAX)
+        );
     }
 }
 

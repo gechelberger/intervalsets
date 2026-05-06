@@ -98,8 +98,7 @@ mod malformed {
         // Build a payload by serializing a valid Bounded(closed(0), closed(10))
         // then swapping the two limit values so the wire shape is identical
         // but lhs > rhs. The strict deserialize path must reject it.
-        let canonical =
-            serde_json::to_string(&EnumInterval::<f32>::closed(0.0, 10.0)).unwrap();
+        let canonical = serde_json::to_string(&EnumInterval::<f32>::closed(0.0, 10.0)).unwrap();
         // Sanity-check the wire format before we mutate it.
         assert!(
             canonical.contains("Bounded"),

@@ -117,7 +117,10 @@ pub struct Elements<T> {
 
 impl<T> Elements<T> {
     const fn empty() -> Self {
-        Self { front: None, back: None }
+        Self {
+            front: None,
+            back: None,
+        }
     }
 }
 
@@ -324,7 +327,10 @@ impl<T: Element + Ord> Iterator for DisjointElements<T> {
     // (0, None), so this matches the default — but when Elements gains
     // a tighter hint (via Countable, deferred), we pick it up for free.
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let (fl, fu) = self.front.as_ref().map_or((0, Some(0)), Iterator::size_hint);
+        let (fl, fu) = self
+            .front
+            .as_ref()
+            .map_or((0, Some(0)), Iterator::size_hint);
         let (bl, bu) = self.back.as_ref().map_or((0, Some(0)), Iterator::size_hint);
         let lower = fl.saturating_add(bl);
         let upper = match (fu, bu) {
@@ -361,7 +367,10 @@ impl<T: Element + Ord> IntoElementIterator for MaybeDisjoint<T> {
 
     fn into_elements(self) -> DisjointElements<T> {
         match self {
-            MaybeDisjoint::Consumed => DisjointElements { front: None, back: None },
+            MaybeDisjoint::Consumed => DisjointElements {
+                front: None,
+                back: None,
+            },
             MaybeDisjoint::Connected(iv) => DisjointElements {
                 front: Some(iv.into_elements()),
                 back: None,
@@ -381,7 +390,10 @@ impl<T: Element + Ord + Clone> MaybeDisjoint<T> {
     /// The returned iterator is double-ended.
     pub fn elements(&self) -> DisjointElements<T> {
         match self {
-            MaybeDisjoint::Consumed => DisjointElements { front: None, back: None },
+            MaybeDisjoint::Consumed => DisjointElements {
+                front: None,
+                back: None,
+            },
             MaybeDisjoint::Connected(iv) => DisjointElements {
                 front: Some(iv.elements()),
                 back: None,
@@ -435,10 +447,7 @@ mod tests {
 
     #[test]
     fn singleton_yields_once_backward() {
-        assert!(FiniteInterval::closed(7, 7)
-            .into_elements()
-            .rev()
-            .eq([7]));
+        assert!(FiniteInterval::closed(7, 7).into_elements().rev().eq([7]));
     }
 
     #[test]

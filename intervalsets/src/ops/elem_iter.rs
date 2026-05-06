@@ -95,7 +95,10 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
         // contributes at least 1 element. Front and back walkers delegate
         // to Elements<T>::size_hint — (0, None) today, but a tighter hint
         // (via Countable, deferred) is picked up for free.
-        let (fl, fu) = self.front.as_ref().map_or((0, Some(0)), Iterator::size_hint);
+        let (fl, fu) = self
+            .front
+            .as_ref()
+            .map_or((0, Some(0)), Iterator::size_hint);
         let (bl, bu) = self.back.as_ref().map_or((0, Some(0)), Iterator::size_hint);
         let pending = self.intervals.len();
         let lower = fl.saturating_add(bl).saturating_add(pending);
@@ -186,20 +189,14 @@ mod tests {
 
     #[test]
     fn interval_set_into_elements_multi_piece() {
-        let set = IntervalSet::new([
-            Interval::closed(0, 2),
-            Interval::closed(10, 12),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0, 2), Interval::closed(10, 12)]);
         let collected: Vec<i32> = set.into_elements().collect();
         assert_eq!(collected, vec![0, 1, 2, 10, 11, 12]);
     }
 
     #[test]
     fn interval_set_elements_borrow() {
-        let set = IntervalSet::new([
-            Interval::closed(0u8, 1),
-            Interval::closed(253, 255),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0u8, 1), Interval::closed(253, 255)]);
         let collected: Vec<u8> = set.elements().collect();
         assert_eq!(collected, vec![0, 1, 253, 254, 255]);
         // Still usable.
@@ -223,10 +220,7 @@ mod tests {
     #[test]
     fn interval_set_with_half_bounded_walks_until_max() {
         // Right-most piece is half-bounded → continues to type MAX.
-        let set = IntervalSet::new([
-            Interval::closed(0u8, 1),
-            Interval::closed_unbound(254),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0u8, 1), Interval::closed_unbound(254)]);
         let collected: Vec<u8> = set.into_elements().collect();
         assert_eq!(collected, vec![0, 1, 254, 255]);
     }
@@ -235,20 +229,14 @@ mod tests {
 
     #[test]
     fn interval_set_into_elements_reversed() {
-        let set = IntervalSet::new([
-            Interval::closed(0, 2),
-            Interval::closed(10, 12),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0, 2), Interval::closed(10, 12)]);
         let collected: Vec<i32> = set.into_elements().rev().collect();
         assert_eq!(collected, vec![12, 11, 10, 2, 1, 0]);
     }
 
     #[test]
     fn interval_set_next_back_only() {
-        let set = IntervalSet::new([
-            Interval::closed(0, 1),
-            Interval::closed(10, 11),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0, 1), Interval::closed(10, 11)]);
         let mut it = set.into_elements();
         assert_eq!(it.next_back(), Some(11));
         assert_eq!(it.next_back(), Some(10));
@@ -279,10 +267,7 @@ mod tests {
     fn interval_set_meeting_inside_one_piece() {
         // Two pieces; consume one from front, then one from back, then
         // both walkers converge on the remaining elements of one piece.
-        let set = IntervalSet::new([
-            Interval::closed(0, 1),
-            Interval::closed(10, 14),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0, 1), Interval::closed(10, 14)]);
         let mut it = set.into_elements();
         assert_eq!(it.next(), Some(0));
         assert_eq!(it.next(), Some(1));
@@ -319,12 +304,8 @@ mod tests {
     fn interval_set_left_half_bounded_in_reverse_walks_to_min() {
         // Leftmost piece is `(-∞, 2]`; reverse iteration should walk it
         // down to type MIN.
-        let set = IntervalSet::new([
-            Interval::unbound_closed(2u8),
-            Interval::closed(100, 101),
-        ]);
-        let collected: Vec<u8> =
-            set.into_elements().rev().take(5).collect();
+        let set = IntervalSet::new([Interval::unbound_closed(2u8), Interval::closed(100, 101)]);
+        let collected: Vec<u8> = set.into_elements().rev().take(5).collect();
         assert_eq!(collected, vec![101, 100, 2, 1, 0]);
     }
 
@@ -341,10 +322,7 @@ mod tests {
     fn set_elements_size_hint_lower_bound_counts_pending_pieces() {
         // Two unconsumed pieces; each contributes ≥1 by invariant.
         // Upper is unknown without Countable.
-        let set = IntervalSet::new([
-            Interval::closed(0, 2),
-            Interval::closed(10, 12),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0, 2), Interval::closed(10, 12)]);
         let it = set.into_elements();
         let (lower, upper) = it.size_hint();
         assert_eq!(lower, 2);
@@ -353,10 +331,7 @@ mod tests {
 
     #[test]
     fn set_elements_size_hint_consumed_is_exact_zero() {
-        let set = IntervalSet::new([
-            Interval::closed(0, 1),
-            Interval::closed(10, 11),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0, 1), Interval::closed(10, 11)]);
         let mut it = set.into_elements();
         for _ in &mut it {}
         assert_eq!(it.size_hint(), (0, Some(0)));
@@ -364,10 +339,7 @@ mod tests {
 
     #[test]
     fn interval_set_borrow_reverse() {
-        let set = IntervalSet::new([
-            Interval::closed(0u8, 2),
-            Interval::closed(10, 11),
-        ]);
+        let set = IntervalSet::new([Interval::closed(0u8, 2), Interval::closed(10, 11)]);
         let collected: Vec<u8> = set.elements().rev().collect();
         assert_eq!(collected, vec![11, 10, 2, 1, 0]);
         // Still usable.

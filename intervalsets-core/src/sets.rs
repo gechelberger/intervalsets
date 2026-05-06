@@ -49,7 +49,10 @@ impl<T> SetBounds<T> for FiniteIntervalInner<T> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(try_from = "RawFiniteInterval<T>"))]
-#[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
 pub struct FiniteInterval<T>(FiniteIntervalInner<T>);
 
 /// Wire-format mirror of [`FiniteInterval`] used to drive validation
@@ -147,10 +150,7 @@ impl<T: Element> FiniteInterval<T> {
     /// etc.) but where pure validation through [`try_new`](Self::try_new)
     /// would be wrong because crossed input has a defensible
     /// "empty set" reading.
-    pub fn try_new_or_empty(
-        lhs: FiniteBound<T>,
-        rhs: FiniteBound<T>,
-    ) -> Result<Self, Error> {
+    pub fn try_new_or_empty(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
         match Self::try_new(lhs, rhs) {
             Err(Error::InvalidBoundPair) => Ok(Self::empty()),
             other => other,
@@ -186,10 +186,7 @@ impl<T: PartialOrd> FiniteInterval<T> {
     /// [`TryCmp`] but may not be correct if not normalized. No undefined
     /// behavior on violation.
     #[inline(always)]
-    pub fn try_new_assume_normed(
-        lhs: FiniteBound<T>,
-        rhs: FiniteBound<T>,
-    ) -> Result<Self, Error> {
+    pub fn try_new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
         let order = lhs.value().try_cmp(rhs.value())?;
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
             Ok(Self::new_assume_valid(lhs, rhs))
@@ -277,7 +274,10 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(try_from = "RawHalfInterval<T>"))]
-#[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
 pub struct HalfInterval<T> {
     side: Side,
     bound: FiniteBound<T>,
@@ -407,7 +407,10 @@ impl<T> SetBounds<T> for HalfInterval<T> {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(try_from = "RawEnumInterval<T>"))]
-#[cfg_attr(feature = "serde", serde(bound(deserialize = "T: Element + serde::Deserialize<'de>")))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
 #[allow(missing_docs)]
 pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
@@ -571,29 +574,22 @@ mod tests {
 
         #[test]
         fn try_new_errors_on_crossed_continuous() {
-            let result = FiniteInterval::try_new(
-                FiniteBound::closed(10.0_f32),
-                FiniteBound::closed(0.0),
-            );
+            let result =
+                FiniteInterval::try_new(FiniteBound::closed(10.0_f32), FiniteBound::closed(0.0));
             assert!(matches!(result, Err(Error::InvalidBoundPair)));
         }
 
         #[test]
         fn try_new_errors_on_crossed_discrete_after_normalization() {
             // open(10, 10) for i32 normalizes to closed(11, 9) which is crossed.
-            let result = FiniteInterval::try_new(
-                FiniteBound::open(10_i32),
-                FiniteBound::open(10),
-            );
+            let result = FiniteInterval::try_new(FiniteBound::open(10_i32), FiniteBound::open(10));
             assert!(matches!(result, Err(Error::InvalidBoundPair)));
         }
 
         #[test]
         fn try_new_errors_on_nan() {
-            let result = FiniteInterval::try_new(
-                FiniteBound::closed(f32::NAN),
-                FiniteBound::closed(0.0),
-            );
+            let result =
+                FiniteInterval::try_new(FiniteBound::closed(f32::NAN), FiniteBound::closed(0.0));
             assert!(matches!(result, Err(Error::TotalOrderError(_))));
         }
 
@@ -619,10 +615,7 @@ mod tests {
         #[test]
         #[should_panic(expected = "InvalidBoundPair")]
         fn new_panics_on_crossed() {
-            let _ = FiniteInterval::new(
-                FiniteBound::closed(10_i32),
-                FiniteBound::closed(0),
-            );
+            let _ = FiniteInterval::new(FiniteBound::closed(10_i32), FiniteBound::closed(0));
         }
 
         #[test]
@@ -688,10 +681,7 @@ mod tests {
         #[test]
         #[should_panic(expected = "NaN check")]
         fn half_interval_new_assume_valid_panics_on_nan() {
-            let _ = HalfInterval::new_assume_valid(
-                Side::Left,
-                FiniteBound::closed(f32::NAN),
-            );
+            let _ = HalfInterval::new_assume_valid(Side::Left, FiniteBound::closed(f32::NAN));
         }
     }
 

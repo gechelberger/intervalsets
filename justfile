@@ -143,7 +143,7 @@ book-test:
 
 # format the code base
 fmt:
-    cargo +{{ RV }} fmt --all
+    cargo +nightly fmt --all
 
 # verify formatting (used by lefthook + ci)
 fmt-check:

@@ -80,7 +80,10 @@ mod tests {
         // commutativity
         let a = BigInt::from(1_000_001);
         let b = BigInt::from(-3);
-        assert_eq!(a.clone().midpoint(b.clone()).unwrap(), b.midpoint(a).unwrap());
+        assert_eq!(
+            a.clone().midpoint(b.clone()).unwrap(),
+            b.midpoint(a).unwrap()
+        );
     }
 
     #[test]

@@ -20,11 +20,8 @@ impl<T: Element> From<Range<T>> for FiniteInterval<T> {
 impl<T: Element> From<RangeInclusive<T>> for FiniteInterval<T> {
     fn from(value: RangeInclusive<T>) -> Self {
         let (start, end) = value.into_inner();
-        FiniteInterval::try_new_or_empty(
-            FiniteBound::closed(start),
-            FiniteBound::closed(end),
-        )
-        .unwrap()
+        FiniteInterval::try_new_or_empty(FiniteBound::closed(start), FiniteBound::closed(end))
+            .unwrap()
     }
 }
 

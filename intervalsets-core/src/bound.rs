@@ -412,11 +412,7 @@ impl<T: PartialOrd> FiniteBound<T> {
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn contains_bound_assume_valid(
-        &self,
-        side: Side,
-        test: ord::FiniteOrdBound<&T>,
-    ) -> bool {
+    pub fn contains_bound_assume_valid(&self, side: Side, test: ord::FiniteOrdBound<&T>) -> bool {
         let lhs = self.finite_ord(side);
         debug_assert!(lhs.partial_cmp(&test).is_some());
         match side {
@@ -473,9 +469,8 @@ mod math {
             // Closed(0) absorbs: 0 * x = 0, the value 0 is achieved
             // regardless of the other operand's openness, so the result
             // bound is Closed even if the other operand is Open.
-            let absorbing =
-                (self.0 == BoundType::Closed && self.1.is_zero())
-                    || (rhs.0 == BoundType::Closed && rhs.1.is_zero());
+            let absorbing = (self.0 == BoundType::Closed && self.1.is_zero())
+                || (rhs.0 == BoundType::Closed && rhs.1.is_zero());
             let kind = if absorbing {
                 BoundType::Closed
             } else {
@@ -884,9 +879,9 @@ mod test {
     use crate::try_cmp::{TryMax, TryMin};
 
     mod ord_bound_pair {
-        use crate::bound::ord::{
-            FiniteOrdBound, FiniteOrdBoundKind::*, OrdBound, OrdBound::*, OrdBoundPair,
-        };
+        use crate::bound::ord::FiniteOrdBoundKind::*;
+        use crate::bound::ord::OrdBound::*;
+        use crate::bound::ord::{FiniteOrdBound, OrdBound, OrdBoundPair};
         use crate::error::Error;
 
         #[test]
@@ -914,8 +909,7 @@ mod test {
 
         #[test]
         fn rejects_left_unbounded_on_right() {
-            let err =
-                OrdBoundPair::<i32>::try_new(OrdBound::closed(0), LeftUnbounded).unwrap_err();
+            let err = OrdBoundPair::<i32>::try_new(OrdBound::closed(0), LeftUnbounded).unwrap_err();
             assert!(matches!(err, Error::InvalidBoundPair));
         }
 
@@ -937,9 +931,8 @@ mod test {
 
         #[test]
         fn rejects_swapped_value_order() {
-            let err =
-                OrdBoundPair::<i32>::try_new(OrdBound::closed(10), OrdBound::closed(0))
-                    .unwrap_err();
+            let err = OrdBoundPair::<i32>::try_new(OrdBound::closed(10), OrdBound::closed(0))
+                .unwrap_err();
             assert!(matches!(err, Error::InvalidBoundPair));
         }
 
@@ -968,10 +961,7 @@ mod test {
             #[test]
             #[should_panic(expected = "left must not be RightUnbounded")]
             fn rejects_right_unbounded_on_left() {
-                let _ = OrdBoundPair::<i32>::new_assume_valid(
-                    RightUnbounded,
-                    OrdBound::closed(0),
-                );
+                let _ = OrdBoundPair::<i32>::new_assume_valid(RightUnbounded, OrdBound::closed(0));
             }
 
             #[test]
@@ -979,10 +969,7 @@ mod test {
                 expected = "right must not be LeftUnbounded outside the canonical empty pair"
             )]
             fn rejects_left_unbounded_on_right() {
-                let _ = OrdBoundPair::<i32>::new_assume_valid(
-                    OrdBound::closed(0),
-                    LeftUnbounded,
-                );
+                let _ = OrdBoundPair::<i32>::new_assume_valid(OrdBound::closed(0), LeftUnbounded);
             }
 
             #[test]

@@ -29,15 +29,51 @@ macro_rules! add_via_try {
     };
 }
 
-add_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<<T as Add>::Output>);
-add_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<<T as Add>::Output>);
-add_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<<T as Add>::Output>);
-add_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<<T as Add>::Output>);
-add_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<<T as Add>::Output>);
-add_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<<T as Add>::Output>);
-add_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<<T as Add>::Output>);
-add_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<<T as Add>::Output>);
-add_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<<T as Add>::Output>);
+add_via_try!(
+    FiniteInterval<T>,
+    FiniteInterval<T>,
+    FiniteInterval<<T as Add>::Output>
+);
+add_via_try!(
+    HalfInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
+add_via_try!(
+    HalfInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
+add_via_try!(
+    EnumInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
+add_via_try!(
+    EnumInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
+add_via_try!(
+    EnumInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
+add_via_try!(
+    FiniteInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
+add_via_try!(
+    FiniteInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
+add_via_try!(
+    HalfInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Add>::Output>
+);
 
 impl<T> TryAdd for FiniteInterval<T>
 where

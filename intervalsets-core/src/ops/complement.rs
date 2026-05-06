@@ -55,14 +55,10 @@ impl<T: Element> Complement for FiniteInterval<T> {
                 // [a, b] -> (-inf, a) U (b, inf), with each bound flipped
                 // (closed becomes open and vice versa) and re-normalized
                 // for discrete types.
-                let left = HalfInterval::new_assume_valid(
-                    Side::Right,
-                    lhs.flip().normalized(Side::Right),
-                );
-                let right = HalfInterval::new_assume_valid(
-                    Side::Left,
-                    rhs.flip().normalized(Side::Left),
-                );
+                let left =
+                    HalfInterval::new_assume_valid(Side::Right, lhs.flip().normalized(Side::Right));
+                let right =
+                    HalfInterval::new_assume_valid(Side::Left, rhs.flip().normalized(Side::Left));
                 (EnumInterval::from(left), EnumInterval::from(right)).into()
             }
         }
