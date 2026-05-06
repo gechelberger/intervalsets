@@ -29,7 +29,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
 arbitrary = { version = "1.4.1", optional = true }
-intervalsets-core = { version = "0.1.0-alpha.3", path = "../intervalsets-core" }
+intervalsets-core = { workspace = true }
 itertools = "0.13.0"
 num-traits = "0.2.19"
 quickcheck = { version = "1.0.3", optional = true }
@@ -59,3 +59,6 @@ num-bigint = ["intervalsets-core/num-bigint"]
 quickcheck = ["dep:quickcheck", "intervalsets-core/quickcheck"]
 arbitrary = ["dep:arbitrary", "intervalsets-core/arbitrary"]
 serde = ["dep:serde", "intervalsets-core/serde"]
+
+[lints]
+workspace = true

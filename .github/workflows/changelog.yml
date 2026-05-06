@@ -1,0 +1,40 @@
+name: Changelog
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  enforce:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.pull_request.labels.*.name, 'skip-changelog')"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify per-crate CHANGELOG.md updated
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+          if echo "$changed" | grep -qE '^(intervalsets|intervalsets-core)/CHANGELOG\.md$'; then
+            echo "OK: changelog entry detected."
+            exit 0
+          fi
+          cat <<EOF >&2
+          ::error::No CHANGELOG.md update detected.
+
+          This PR must update at least one of:
+            - intervalsets/CHANGELOG.md
+            - intervalsets-core/CHANGELOG.md
+
+          If this PR genuinely doesn't warrant a changelog entry (e.g. CI/tooling-only),
+          apply the 'skip-changelog' label to bypass this check.
+          EOF
+          exit 1
