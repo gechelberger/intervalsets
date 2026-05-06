@@ -121,7 +121,7 @@ mod finite;
 pub use finite::IntoFinite;
 
 mod elem_iter;
-pub use elem_iter::{Elements, IntoElementIterator};
+pub use elem_iter::{DisjointElements, Elements, IntoElementIterator};
 
 pub mod math;
 

@@ -50,7 +50,7 @@ mod finite;
 pub use finite::IntoFinite;
 
 mod elem_iter;
-pub use elem_iter::{Elements, IntoElementIterator, SetElements};
+pub use elem_iter::{DisjointElements, Elements, IntoElementIterator, SetElements};
 
 mod math;
 pub use math::{TryAdd, TryDiv, TryMul, TrySub};

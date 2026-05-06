@@ -1,9 +1,11 @@
-//! Iterate the discrete element values of an interval.
+//! Iterate the discrete element values of an interval or disjoint pair.
 //!
 //! [`IntoElementIterator`] is the trait entry point: any owned set type
-//! that knows how to enumerate its elements implements it. The companion
-//! [`Elements`] iterator does the per-step walk via
-//! [`Element::try_adjacent`](crate::numeric::Element::try_adjacent).
+//! that knows how to enumerate its elements implements it. [`Elements`]
+//! does the per-step walk over a single interval via
+//! [`Element::try_adjacent`](crate::numeric::Element::try_adjacent), and
+//! [`DisjointElements`] composes it across the at-most-two pieces of a
+//! [`MaybeDisjoint`](crate::disjoint::MaybeDisjoint).
 //!
 //! # Why not [`IntoIterator`]?
 //!
@@ -42,6 +44,7 @@
 //! tier model.
 
 use crate::bound::{BoundType, FiniteBound, Side};
+use crate::disjoint::MaybeDisjoint;
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -266,6 +269,117 @@ impl<T: Element + Ord + Clone> EnumInterval<T> {
     }
 }
 
+// ---- MaybeDisjoint ----
+
+/// Iterator over the discrete element values of a [`MaybeDisjoint`].
+///
+/// `MaybeDisjoint` is at most two pieces, so this iterator holds at most
+/// two `Elements<T>` walkers — one per cursor. Implements [`Iterator`],
+/// [`DoubleEndedIterator`], and [`core::iter::FusedIterator`].
+///
+/// Constructed via [`IntoElementIterator::into_elements`] (consume) or
+/// [`MaybeDisjoint::elements`] (borrow).
+///
+/// # Examples
+///
+/// ```
+/// use intervalsets_core::prelude::*;
+/// use intervalsets_core::disjoint::MaybeDisjoint;
+///
+/// let lhs = EnumInterval::closed(0, 2);
+/// let rhs = EnumInterval::closed(10, 12);
+/// let pair: MaybeDisjoint<i32> = (lhs, rhs).into();
+///
+/// let xs: Vec<i32> = pair.into_elements().collect();
+/// assert_eq!(xs, vec![0, 1, 2, 10, 11, 12]);
+/// ```
+pub struct DisjointElements<T> {
+    front: Option<Elements<T>>,
+    back: Option<Elements<T>>,
+}
+
+impl<T: Element + Ord> Iterator for DisjointElements<T> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        if let Some(it) = self.front.as_mut() {
+            if let Some(v) = it.next() {
+                return Some(v);
+            }
+            self.front = None;
+        }
+        // Front exhausted; back walker now owns whatever's left.
+        // Elements<T> is itself DoubleEndedIterator, so meeting in
+        // the middle is handled there.
+        if let Some(it) = self.back.as_mut() {
+            if let Some(v) = it.next() {
+                return Some(v);
+            }
+            self.back = None;
+        }
+        None
+    }
+}
+
+impl<T: Element + Ord> DoubleEndedIterator for DisjointElements<T> {
+    fn next_back(&mut self) -> Option<T> {
+        if let Some(it) = self.back.as_mut() {
+            if let Some(v) = it.next_back() {
+                return Some(v);
+            }
+            self.back = None;
+        }
+        if let Some(it) = self.front.as_mut() {
+            if let Some(v) = it.next_back() {
+                return Some(v);
+            }
+            self.front = None;
+        }
+        None
+    }
+}
+
+impl<T: Element + Ord> core::iter::FusedIterator for DisjointElements<T> {}
+
+impl<T: Element + Ord> IntoElementIterator for MaybeDisjoint<T> {
+    type Item = T;
+    type IntoIter = DisjointElements<T>;
+
+    fn into_elements(self) -> DisjointElements<T> {
+        match self {
+            MaybeDisjoint::Consumed => DisjointElements { front: None, back: None },
+            MaybeDisjoint::Connected(iv) => DisjointElements {
+                front: Some(iv.into_elements()),
+                back: None,
+            },
+            MaybeDisjoint::Disjoint(lhs, rhs) => DisjointElements {
+                front: Some(lhs.into_elements()),
+                back: Some(rhs.into_elements()),
+            },
+        }
+    }
+}
+
+impl<T: Element + Ord + Clone> MaybeDisjoint<T> {
+    /// Borrow `self` and produce an iterator over its discrete elements.
+    ///
+    /// Walks each piece in order, yielding every element along the way.
+    /// The returned iterator is double-ended.
+    pub fn elements(&self) -> DisjointElements<T> {
+        match self {
+            MaybeDisjoint::Consumed => DisjointElements { front: None, back: None },
+            MaybeDisjoint::Connected(iv) => DisjointElements {
+                front: Some(iv.elements()),
+                back: None,
+            },
+            MaybeDisjoint::Disjoint(lhs, rhs) => DisjointElements {
+                front: Some(lhs.elements()),
+                back: Some(rhs.elements()),
+            },
+        }
+    }
+}
+
 /// f32/f64 are not `Ord`, so `into_elements()` doesn't compile for them.
 ///
 /// ```compile_fail
@@ -278,7 +392,7 @@ struct ContinuousCompileFailDoctest;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::FiniteFactory;
+    use crate::factory::{FiniteFactory, HalfBoundedFactory};
 
     #[test]
     fn finite_closed_walks_forward() {
@@ -425,5 +539,76 @@ mod tests {
         assert_eq!(it.next(), None);
         assert_eq!(it.next(), None);
         assert_eq!(it.next_back(), None);
+    }
+
+    // ---- MaybeDisjoint coverage ----
+
+    #[test]
+    fn maybe_disjoint_consumed_yields_nothing() {
+        let mut it = MaybeDisjoint::<i32>::Consumed.into_elements();
+        assert_eq!(it.next(), None);
+        assert_eq!(it.next_back(), None);
+    }
+
+    #[test]
+    fn maybe_disjoint_connected_walks_forward() {
+        let pair = MaybeDisjoint::Connected(EnumInterval::closed(2, 5));
+        assert!(pair.into_elements().eq([2, 3, 4, 5]));
+    }
+
+    #[test]
+    fn maybe_disjoint_connected_walks_backward() {
+        let pair = MaybeDisjoint::Connected(EnumInterval::closed(2, 5));
+        assert!(pair.into_elements().rev().eq([5, 4, 3, 2]));
+    }
+
+    #[test]
+    fn maybe_disjoint_two_pieces_walks_forward() {
+        let pair: MaybeDisjoint<i32> =
+            (EnumInterval::closed(0, 2), EnumInterval::closed(10, 12)).into();
+        assert!(pair.into_elements().eq([0, 1, 2, 10, 11, 12]));
+    }
+
+    #[test]
+    fn maybe_disjoint_two_pieces_walks_backward() {
+        let pair: MaybeDisjoint<i32> =
+            (EnumInterval::closed(0, 2), EnumInterval::closed(10, 12)).into();
+        assert!(pair.into_elements().rev().eq([12, 11, 10, 2, 1, 0]));
+    }
+
+    #[test]
+    fn maybe_disjoint_mixed_walk_meets_inside_one_piece() {
+        let pair: MaybeDisjoint<i32> =
+            (EnumInterval::closed(0, 1), EnumInterval::closed(10, 14)).into();
+        let mut it = pair.into_elements();
+        assert_eq!(it.next(), Some(0));
+        assert_eq!(it.next(), Some(1));
+        assert_eq!(it.next_back(), Some(14));
+        assert_eq!(it.next(), Some(10));
+        assert_eq!(it.next_back(), Some(13));
+        assert_eq!(it.next(), Some(11));
+        assert_eq!(it.next_back(), Some(12));
+        assert_eq!(it.next(), None);
+        assert_eq!(it.next_back(), None);
+    }
+
+    #[test]
+    fn maybe_disjoint_borrowed_does_not_consume() {
+        let pair: MaybeDisjoint<u8> =
+            (EnumInterval::closed(0u8, 1), EnumInterval::closed(10, 11)).into();
+        assert!(pair.elements().eq([0u8, 1, 10, 11]));
+        // Still usable.
+        assert_eq!(pair.elements().count(), 4);
+    }
+
+    #[test]
+    fn maybe_disjoint_with_half_bounded_piece() {
+        // Right piece is `[254, +∞)` over u8 → walks to MAX = 255.
+        let pair: MaybeDisjoint<u8> = (
+            EnumInterval::closed(0u8, 1),
+            EnumInterval::closed_unbound(254),
+        )
+            .into();
+        assert!(pair.into_elements().eq([0u8, 1, 254, 255]));
     }
 }

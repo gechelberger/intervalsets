@@ -8,7 +8,7 @@
 //! the separate, named entry point for **element-wise** reading
 //! (yielding `T`), so the two don't compete.
 
-pub use intervalsets_core::ops::{Elements, IntoElementIterator};
+pub use intervalsets_core::ops::{DisjointElements, Elements, IntoElementIterator};
 
 use crate::numeric::Element;
 use crate::{Interval, IntervalSet};
