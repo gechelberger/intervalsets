@@ -166,19 +166,9 @@ ci: doc book-test test check-msrv check-no-std check-bench
 # Tier 1 ("any input") and Tier 2 ("invariant-respecting input") scopes
 # stay distinct. Local-only — release builds are slow and the canary is
 # opt-in. Add new tier examples to this target as they land.
-[working-directory('intervalsets-core')]
+[working-directory('core-panic-canary')]
 panic-check:
-    cargo +{{ RV }} build --example panic_free_tier1 --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier2 --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_split --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_rebound --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_hull --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_hull_enums --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_add --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_sub --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_mul --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_mul_b --features panic-free-check --release
-    cargo +{{ RV }} build --example panic_free_tier3_div --features panic-free-check --release
+    cargo +{{ RV }} build --release --bins
 
 # scan codebase for pre-release markers
 loose-ends:

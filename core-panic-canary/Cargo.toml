@@ -1,0 +1,17 @@
+[package]
+name = "core-panic-canary"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Internal workspace member. Each binary in src/bin/ is a panic-free
+# linker canary that exercises a slice of the annotated Tier 1/2/3
+# surface in `intervalsets-core`. Build via `just panic-check`.
+#
+# The canary mechanism (#[no_panic::no_panic]) lives in
+# intervalsets-core itself, gated by the `panic-free-check` feature.
+# The bins here just call into the annotated impls; the link
+# succeeds iff the optimizer can eliminate every panic edge.
+
+[dependencies]
+intervalsets-core = { path = "../intervalsets-core", features = ["panic-free-check"] }
