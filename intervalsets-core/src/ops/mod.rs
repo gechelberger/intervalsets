@@ -62,10 +62,10 @@
 //! invariants and is not reachable from validating-API usage.
 //!
 //! Members: [`Complement`], [`Intersection`], [`Union`],
-//! [`Difference`], [`IntoFinite`], plus [`MergeConnected`] (the
-//! `Option` is a domain answer — "operands disconnected" — not an
-//! error). The bound on each impl varies; bound choice is independent
-//! of fallibility.
+//! [`Difference`], [`IntoFinite`], [`IntoElementIterator`], plus
+//! [`MergeConnected`] (the `Option` is a domain answer — "operands
+//! disconnected" — not an error). The bound on each impl varies; bound
+//! choice is independent of fallibility.
 //!
 //! ## Tier 3 — `try_*` + panicking sugar
 //!
@@ -119,6 +119,9 @@ pub use union::Union;
 
 mod finite;
 pub use finite::IntoFinite;
+
+mod elem_iter;
+pub use elem_iter::{DisjointElements, Elements, IntoElementIterator};
 
 pub mod math;
 
