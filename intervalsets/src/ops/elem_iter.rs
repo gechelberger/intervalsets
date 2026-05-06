@@ -67,22 +67,19 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
 
     fn next(&mut self) -> Option<T> {
         loop {
-            // 1. The forward walker has more in its current piece.
             if let Some(it) = self.front.as_mut() {
                 if let Some(v) = it.next() {
                     return Some(v);
                 }
                 self.front = None;
             }
-            // 2. Pull the next-leftmost piece into the forward walker.
             if let Some(piece) = self.intervals.next() {
                 self.front = Some(piece.into_elements());
                 continue;
             }
-            // 3. No pieces between cursors. The back walker is in the
-            //    last remaining piece; serve forward calls from it too.
-            //    Elements<T> is itself DoubleEndedIterator, so meeting
-            //    in the middle is handled there.
+            // No pieces left between cursors; the back walker is in the
+            // final remaining piece. Elements<T> is DoubleEndedIterator,
+            // so it handles meeting-in-the-middle for the shared piece.
             if let Some(it) = self.back.as_mut() {
                 if let Some(v) = it.next() {
                     return Some(v);

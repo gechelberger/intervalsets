@@ -113,7 +113,6 @@ pub struct Elements<T> {
 }
 
 impl<T> Elements<T> {
-    #[inline(always)]
     const fn empty() -> Self {
         Self { front: None, back: None }
     }
@@ -164,12 +163,10 @@ impl<T: Element + Ord> Iterator for Elements<T> {
         Some(current)
     }
 
-    // size_hint defaults to (0, None). A tighter bound for finite-bounded
-    // intervals is `Countable::count_inclusive(front, back)`, which would
-    // also unlock ExactSizeIterator. Deferred: pulling Countable into
-    // these bounds shrinks the set of types this works for. Revisit as a
-    // separate `impl<T: Countable> Elements<T>` block carrying only the
-    // tighter size_hint and ExactSizeIterator.
+    // Default size_hint of (0, None) is intentional: a tighter bound
+    // requires `Countable`, which we keep off the type bounds. Revisit
+    // as a separate `impl<T: Countable> Elements<T>` adding both
+    // size_hint and ExactSizeIterator.
 }
 
 impl<T: Element + Ord> DoubleEndedIterator for Elements<T> {
