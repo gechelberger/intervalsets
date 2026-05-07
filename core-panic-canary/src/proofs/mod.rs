@@ -1,4 +1,11 @@
 pub mod tier1;
+pub mod tier2_complement;
+pub mod tier2_difference;
+pub mod tier2_elem_iter;
+pub mod tier2_finite;
+pub mod tier2_intersection;
+pub mod tier2_merged;
+pub mod tier2_union;
 pub mod tier3_add;
 pub mod tier3_div;
 pub mod tier3_hull;
