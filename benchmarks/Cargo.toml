@@ -9,7 +9,7 @@ arbitrary = "1.4.1"
 criterion = "0.8.2"
 intervalsets = { path = "../intervalsets", features = ["arbitrary"]}
 intervalsets-core = { workspace = true, features = ["arbitrary"] }
-rand = "0.8.5"
+rand = "0.10.1"
 
 [[bench]]
 name = "intervalsets"
