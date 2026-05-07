@@ -73,6 +73,16 @@ jobs:
           tool: cargo-nextest,just
       - run: just check-msrv
 
+  check-bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-criterion,just
+      - run: just check-bench
+
   check-docs:
     runs-on: ubuntu-latest
     steps:
