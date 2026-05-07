@@ -92,6 +92,22 @@ toolchain" case gracefully). They're marked as `build:` in PR titles, trigger
 a **minor** version bump, are called out in the changelog, and are tested
 in CI via the `msrv-check` job.
 
+### Dependency updates and MSRV
+
+Dependabot does not read `rust-version` — it will happily open PRs that bump a
+dependency past our MSRV. The `msrv-check` CI job is the backstop: such PRs
+fail and are not mergeable.
+
+When that happens:
+
+1. Close the dependabot PR.
+2. Add the offending range to the `ignore:` block in `.github/dependabot.yml`,
+   with an inline comment recording the rustc version the new release requires.
+
+**Whenever MSRV is raised**, audit the `ignore:` block in the same PR and remove
+or relax entries that the new MSRV makes valid again. Otherwise we silently
+fall behind on dependencies that are now in range.
+
 ## Versioning between crates
 
 `intervalsets` and `intervalsets-core` ship in **lockstep** — both crates
