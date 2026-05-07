@@ -113,9 +113,9 @@ where
         let a = self.slice();
         let b = other.slice();
         a.len() == b.len()
-            && a.iter().zip(b.iter()).all(|(x, y)| {
-                x.relative_eq(y, epsilon.clone(), max_relative.clone())
-            })
+            && a.iter()
+                .zip(b.iter())
+                .all(|(x, y)| x.relative_eq(y, epsilon.clone(), max_relative.clone()))
     }
 }
 
@@ -156,10 +156,7 @@ mod tests {
 
     #[test]
     fn interval_set_pairwise() {
-        let a = IntervalSet::new([
-            Interval::closed(1.0_f64, 2.0),
-            Interval::closed(5.0, 6.0),
-        ]);
+        let a = IntervalSet::new([Interval::closed(1.0_f64, 2.0), Interval::closed(5.0, 6.0)]);
         let b = IntervalSet::new([
             Interval::closed(1.0 + 1e-12, 2.0),
             Interval::closed(5.0, 6.0 - 1e-12),
@@ -173,10 +170,7 @@ mod tests {
     #[test]
     fn interval_set_length_mismatch_never_equal() {
         let one = IntervalSet::new([Interval::closed(1.0_f64, 2.0)]);
-        let two = IntervalSet::new([
-            Interval::closed(1.0_f64, 2.0),
-            Interval::closed(5.0, 6.0),
-        ]);
+        let two = IntervalSet::new([Interval::closed(1.0_f64, 2.0), Interval::closed(5.0, 6.0)]);
         assert!(!abs_diff_eq!(one, two, epsilon = f64::INFINITY));
     }
 

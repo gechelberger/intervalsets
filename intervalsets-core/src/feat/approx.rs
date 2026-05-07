@@ -132,7 +132,9 @@ impl<T: AbsDiffEq> AbsDiffEq for HalfInterval<T> {
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         self.side() == other.side()
-            && self.finite_bound().abs_diff_eq(other.finite_bound(), epsilon)
+            && self
+                .finite_bound()
+                .abs_diff_eq(other.finite_bound(), epsilon)
     }
 }
 
@@ -297,8 +299,7 @@ where
             (Self::Consumed, Self::Consumed) => true,
             (Self::Connected(a), Self::Connected(b)) => a.ulps_eq(b, epsilon, max_ulps),
             (Self::Disjoint(a1, a2), Self::Disjoint(b1, b2)) => {
-                a1.ulps_eq(b1, epsilon.clone(), max_ulps)
-                    && a2.ulps_eq(b2, epsilon, max_ulps)
+                a1.ulps_eq(b1, epsilon.clone(), max_ulps) && a2.ulps_eq(b2, epsilon, max_ulps)
             }
             _ => false,
         }
@@ -446,10 +447,7 @@ mod tests {
     #[test]
     fn maybe_disjoint_connected_forwards() {
         let a = MaybeDisjoint::Connected(EnumInterval::Finite(bounded(1.0, 2.0)));
-        let b = MaybeDisjoint::Connected(EnumInterval::Finite(bounded(
-            1.0 + 1e-12,
-            2.0 - 1e-12,
-        )));
+        let b = MaybeDisjoint::Connected(EnumInterval::Finite(bounded(1.0 + 1e-12, 2.0 - 1e-12)));
         assert!(abs_diff_eq!(a, b, epsilon = 1e-9));
         assert!(!abs_diff_eq!(a, b, epsilon = 1e-15));
         assert!(relative_eq!(a, b, max_relative = 1e-9));
