@@ -1,3 +1,6 @@
+#[cfg(feature = "approx")]
+mod approx;
+
 #[cfg(feature = "rust_decimal")]
 mod decimal;
 

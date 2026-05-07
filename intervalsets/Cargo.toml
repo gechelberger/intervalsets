@@ -28,6 +28,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
+approx = { version = "0.5.1", default-features = false, optional = true }
 arbitrary = { version = "1.4.1", optional = true }
 intervalsets-core = { workspace = true }
 itertools = "0.13.0"
@@ -51,6 +52,7 @@ serde_json = "1.0.132"
 siphasher = "1.0.1"
 
 [features]
+approx = ["dep:approx", "intervalsets-core/approx"]
 ordered-float = [ "intervalsets-core/ordered-float"]
 rust_decimal = [ "intervalsets-core/rust_decimal"]
 bigdecimal = ["intervalsets-core/bigdecimal"]
