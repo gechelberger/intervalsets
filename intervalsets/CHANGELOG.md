@@ -13,6 +13,8 @@ version and are released together via `cargo-release`. See the repo
 
 ### Added
 
+- Optional `approx` feature with `AbsDiffEq` / `RelativeEq` / `UlpsEq` impls for `Interval` and `IntervalSet` ([#214](https://github.com/gechelberger/intervalsets/issues/214)).
+
 ### Changed
 
 ### Deprecated

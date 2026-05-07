@@ -13,6 +13,8 @@ version and are released together via `cargo-release`. See the repo
 
 ### Added
 
+- Optional `approx` feature with `AbsDiffEq` / `RelativeEq` / `UlpsEq` impls for `FiniteBound`, `FiniteInterval`, `HalfInterval`, `EnumInterval`, and `MaybeDisjoint` ([#214](https://github.com/gechelberger/intervalsets/issues/214)).
+
 ### Changed
 
 ### Deprecated
