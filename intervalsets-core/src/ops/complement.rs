@@ -47,7 +47,10 @@ pub trait Complement {
 impl<T: Element> Complement for FiniteInterval<T> {
     type Output = MaybeDisjoint<T>;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn complement(self) -> Self::Output {
         match self.into_raw() {
             // empty -> unbounded
@@ -56,14 +59,10 @@ impl<T: Element> Complement for FiniteInterval<T> {
                 // [a, b] -> (-inf, a) U (b, inf), with each bound flipped
                 // (closed becomes open and vice versa) and re-normalized
                 // for discrete types.
-                let left = HalfInterval::new_assume_valid(
-                    Side::Right,
-                    lhs.flip().normalized(Side::Right),
-                );
-                let right = HalfInterval::new_assume_valid(
-                    Side::Left,
-                    rhs.flip().normalized(Side::Left),
-                );
+                let left =
+                    HalfInterval::new_assume_valid(Side::Right, lhs.flip().normalized(Side::Right));
+                let right =
+                    HalfInterval::new_assume_valid(Side::Left, rhs.flip().normalized(Side::Left));
                 (EnumInterval::from(left), EnumInterval::from(right)).into()
             }
         }
@@ -73,7 +72,10 @@ impl<T: Element> Complement for FiniteInterval<T> {
 impl<T: Element> Complement for HalfInterval<T> {
     type Output = MaybeDisjoint<T>;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn complement(self) -> Self::Output {
         let (side, bound) = self.into_raw();
         let side = side.flip();
@@ -85,7 +87,10 @@ impl<T: Element> Complement for HalfInterval<T> {
 impl<T: Element> Complement for EnumInterval<T> {
     type Output = MaybeDisjoint<T>;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn complement(self) -> Self::Output {
         match self {
             Self::Finite(inner) => inner.complement(),
@@ -101,7 +106,10 @@ impl<T: Element> Complement for EnumInterval<T> {
 impl<X: Complement + Clone> Complement for &X {
     type Output = <X as Complement>::Output;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn complement(self) -> Self::Output {
         self.clone().complement()
     }

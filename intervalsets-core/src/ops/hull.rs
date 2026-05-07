@@ -117,7 +117,10 @@ convex_hull_ref_t_impl!(FiniteInterval, EnumInterval);
 impl<T: Element> ConvexHull<Self> for FiniteInterval<T> {
     type Error = core::convert::Infallible;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_hull<U>(iter: U) -> Result<Self, Self::Error>
     where
         U: IntoIterator<Item = FiniteInterval<T>>,
@@ -153,7 +156,10 @@ impl<T: Element> ConvexHull<Self> for FiniteInterval<T> {
 impl<'a, T: Element + Clone> ConvexHull<&'a Self> for FiniteInterval<T> {
     type Error = core::convert::Infallible;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_hull<U: IntoIterator<Item = &'a Self>>(iter: U) -> Result<Self, Self::Error> {
         let mut iter = iter.into_iter();
 
@@ -283,7 +289,10 @@ where
 impl<T: Element> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_hull<U>(iter: U) -> Result<Self, Self::Error>
     where
         U: IntoIterator<Item = FiniteInterval<T>>,
@@ -295,7 +304,10 @@ impl<T: Element> ConvexHull<FiniteInterval<T>> for EnumInterval<T> {
 impl<'a, T: Element + Clone> ConvexHull<&'a FiniteInterval<T>> for EnumInterval<T> {
     type Error = core::convert::Infallible;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_hull<U: IntoIterator<Item = &'a FiniteInterval<T>>>(
         iter: U,
     ) -> Result<Self, Self::Error> {
@@ -306,7 +318,10 @@ impl<'a, T: Element + Clone> ConvexHull<&'a FiniteInterval<T>> for EnumInterval<
 impl<T: Element> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_hull<U>(iter: U) -> Result<Self, Self::Error>
     where
         U: IntoIterator<Item = EnumInterval<T>>,
@@ -318,10 +333,11 @@ impl<T: Element> ConvexHull<EnumInterval<T>> for EnumInterval<T> {
 impl<'a, T: Element + Clone> ConvexHull<&'a EnumInterval<T>> for EnumInterval<T> {
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
-    fn try_hull<U: IntoIterator<Item = &'a EnumInterval<T>>>(
-        iter: U,
-    ) -> Result<Self, Self::Error> {
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
+    fn try_hull<U: IntoIterator<Item = &'a EnumInterval<T>>>(iter: U) -> Result<Self, Self::Error> {
         convex_hull_ord_bounded_impl(iter)
     }
 }

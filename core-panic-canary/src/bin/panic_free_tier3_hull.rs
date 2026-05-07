@@ -19,14 +19,30 @@ fn main() {
     let finites = std::vec![FiniteInterval::<i64>::closed(0, 5)];
 
     // 4 macro-generated impls: FiniteInterval / EnumInterval × T / &T.
-    let _ = black_box(<FiniteInterval<i64> as ConvexHull<i64>>::try_hull(elems.clone()));
-    let _ = black_box(<FiniteInterval<i64> as ConvexHull<&i64>>::try_hull(elems.iter()));
-    let _ = black_box(<EnumInterval<i64> as ConvexHull<i64>>::try_hull(elems.clone()));
-    let _ = black_box(<EnumInterval<i64> as ConvexHull<&i64>>::try_hull(elems.iter()));
+    let _ = black_box(<FiniteInterval<i64> as ConvexHull<i64>>::try_hull(
+        elems.clone(),
+    ));
+    let _ = black_box(<FiniteInterval<i64> as ConvexHull<&i64>>::try_hull(
+        elems.iter(),
+    ));
+    let _ = black_box(<EnumInterval<i64> as ConvexHull<i64>>::try_hull(
+        elems.clone(),
+    ));
+    let _ = black_box(<EnumInterval<i64> as ConvexHull<&i64>>::try_hull(
+        elems.iter(),
+    ));
 
     // 4 hand impls over FiniteInterval items.
-    let _ = black_box(<FiniteInterval<i64> as ConvexHull<FiniteInterval<i64>>>::try_hull(finites.clone()));
-    let _ = black_box(<FiniteInterval<i64> as ConvexHull<&FiniteInterval<i64>>>::try_hull(finites.iter()));
-    let _ = black_box(<EnumInterval<i64> as ConvexHull<FiniteInterval<i64>>>::try_hull(finites.clone()));
-    let _ = black_box(<EnumInterval<i64> as ConvexHull<&FiniteInterval<i64>>>::try_hull(finites.iter()));
+    let _ = black_box(
+        <FiniteInterval<i64> as ConvexHull<FiniteInterval<i64>>>::try_hull(finites.clone()),
+    );
+    let _ = black_box(
+        <FiniteInterval<i64> as ConvexHull<&FiniteInterval<i64>>>::try_hull(finites.iter()),
+    );
+    let _ = black_box(
+        <EnumInterval<i64> as ConvexHull<FiniteInterval<i64>>>::try_hull(finites.clone()),
+    );
+    let _ = black_box(
+        <EnumInterval<i64> as ConvexHull<&FiniteInterval<i64>>>::try_hull(finites.iter()),
+    );
 }

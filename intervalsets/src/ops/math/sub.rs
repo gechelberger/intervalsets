@@ -15,7 +15,10 @@ where
 
     #[inline]
     fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        self.0.try_sub(rhs.0).map_err(Into::into).map(Interval::from)
+        self.0
+            .try_sub(rhs.0)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -28,7 +31,8 @@ where
 
     #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
-        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs)
+            .expect("infix Sub invariants guarantee try_sub infallibility")
     }
 }
 
@@ -43,9 +47,10 @@ where
     // Union-fold over already-valid subsets; bypasses IntervalSet::new's
     // re-validation overhead.
     fn try_sub(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
-        self.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
-            Ok(acc.union(subset.try_sub(rhs.clone())?))
-        })
+        self.into_iter()
+            .try_fold(IntervalSet::empty(), |acc, subset| {
+                Ok(acc.union(subset.try_sub(rhs.clone())?))
+            })
     }
 }
 
@@ -57,7 +62,8 @@ where
     type Output = IntervalSet<<T as Sub>::Output>;
 
     fn sub(self, rhs: Interval<T>) -> Self::Output {
-        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs)
+            .expect("infix Sub invariants guarantee try_sub infallibility")
     }
 }
 
@@ -74,9 +80,10 @@ where
     // self - subset produces (descending: as subset grows, self - subset
     // shrinks).
     fn try_sub(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
-        rhs.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
-            Ok(acc.union(self.clone().try_sub(subset)?))
-        })
+        rhs.into_iter()
+            .try_fold(IntervalSet::empty(), |acc, subset| {
+                Ok(acc.union(self.clone().try_sub(subset)?))
+            })
     }
 }
 
@@ -88,7 +95,8 @@ where
     type Output = IntervalSet<<T as Sub>::Output>;
 
     fn sub(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs)
+            .expect("infix Sub invariants guarantee try_sub infallibility")
     }
 }
 
@@ -122,7 +130,8 @@ where
     type Output = IntervalSet<<T as Sub>::Output>;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        self.try_sub(rhs).expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs)
+            .expect("infix Sub invariants guarantee try_sub infallibility")
     }
 }
 

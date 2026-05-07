@@ -16,7 +16,7 @@ fn main() {
     let f = FiniteInterval::<i64>::closed(0, 10);
     let h_l = HalfInterval::<i64>::closed_unbound(0);
 
-    let _ = black_box(f.try_mul(f));            // FiniteInterval × Self
-    let _ = black_box(h_l.try_mul(h_l));        // HalfInterval × Self
-    let _ = black_box(f.try_mul(h_l));          // FiniteInterval × HalfInterval
+    let _ = black_box(f.try_mul(f)); // FiniteInterval × Self
+    let _ = black_box(h_l.try_mul(h_l)); // HalfInterval × Self
+    let _ = black_box(f.try_mul(h_l)); // FiniteInterval × HalfInterval
 }

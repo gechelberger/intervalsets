@@ -9,11 +9,7 @@ impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn try_split(
-        self,
-        at: T,
-        closed: Side,
-    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error> {
         self.0
             .try_split(at, closed)
             .map_err(Into::into)
@@ -25,11 +21,7 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn try_split(
-        self,
-        at: T,
-        closed: Side,
-    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error> {
         if self.is_empty() {
             return Ok((Self::Output::empty(), Self::Output::empty()));
         }

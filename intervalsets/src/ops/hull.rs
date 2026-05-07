@@ -9,7 +9,9 @@ impl<T: Element + Clone> ConvexHull<T> for Interval<T> {
     type Error = crate::error::Error;
 
     fn try_hull<U: IntoIterator<Item = T>>(iter: U) -> Result<Self, Self::Error> {
-        EnumInterval::try_hull(iter).map_err(Into::into).map(Interval::from)
+        EnumInterval::try_hull(iter)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -17,7 +19,9 @@ impl<'a, T: Element + Clone> ConvexHull<&'a T> for Interval<T> {
     type Error = crate::error::Error;
 
     fn try_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Result<Self, Self::Error> {
-        EnumInterval::try_hull(iter).map_err(Into::into).map(Interval::from)
+        EnumInterval::try_hull(iter)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -37,7 +41,9 @@ impl<T: Element + Clone + Zero> ConvexHull<Interval<T>> for Interval<T> {
     /// assert_eq!(iv, Interval::open_unbound(0.0));
     /// ```
     fn try_hull<U: IntoIterator<Item = Interval<T>>>(iter: U) -> Result<Self, Self::Error> {
-        convex_hull_into_ord_bound_impl(iter).map_err(Into::into).map(Interval::from)
+        convex_hull_into_ord_bound_impl(iter)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -45,7 +51,9 @@ impl<'a, T: Element + Clone + Zero> ConvexHull<&'a Interval<T>> for Interval<T> 
     type Error = crate::error::Error;
 
     fn try_hull<U: IntoIterator<Item = &'a Interval<T>>>(iter: U) -> Result<Self, Self::Error> {
-        convex_hull_ord_bounded_impl(iter).map_err(Into::into).map(Interval::from)
+        convex_hull_ord_bounded_impl(iter)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -53,17 +61,19 @@ impl<T: Element + Clone + Zero> ConvexHull<IntervalSet<T>> for Interval<T> {
     type Error = crate::error::Error;
 
     fn try_hull<U: IntoIterator<Item = IntervalSet<T>>>(iter: U) -> Result<Self, Self::Error> {
-        convex_hull_into_ord_bound_impl(iter).map_err(Into::into).map(Interval::from)
+        convex_hull_into_ord_bound_impl(iter)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
 impl<'a, T: Element + Clone> ConvexHull<&'a IntervalSet<T>> for Interval<T> {
     type Error = crate::error::Error;
 
-    fn try_hull<U: IntoIterator<Item = &'a IntervalSet<T>>>(
-        iter: U,
-    ) -> Result<Self, Self::Error> {
-        convex_hull_ord_bounded_impl(iter).map_err(Into::into).map(Interval::from)
+    fn try_hull<U: IntoIterator<Item = &'a IntervalSet<T>>>(iter: U) -> Result<Self, Self::Error> {
+        convex_hull_ord_bounded_impl(iter)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -118,11 +128,13 @@ mod tests {
 
     #[test]
     fn test_hull_of_intervals_by_reference() {
-        let items = [Interval::empty(),
+        let items = [
+            Interval::empty(),
             Interval::empty(),
             Interval::closed(0, 10),
             Interval::empty(),
-            Interval::empty()];
+            Interval::empty(),
+        ];
         let hull = Interval::try_hull(items.iter()).unwrap();
         assert_eq!(hull, Interval::closed(0, 10));
     }

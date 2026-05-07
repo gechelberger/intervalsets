@@ -1,5 +1,6 @@
 use crate::bound::{FiniteBound, Side};
-#[allow(unused_imports)] // FiniteFactory provides ::closed et al. via re-export through `use super::*` in tests
+#[allow(unused_imports)]
+// FiniteFactory provides ::closed et al. via re-export through `use super::*` in tests
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -82,7 +83,10 @@ impl<T: Element> Rebound<T> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((_, rhs)) = self.into_raw() else {
             return Ok(Self::Output::empty());
@@ -96,7 +100,10 @@ impl<T: Element> Rebound<T> for FiniteInterval<T> {
         }
     }
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((lhs, _)) = self.into_raw() else {
             return Ok(Self::Output::empty()); // empty
@@ -113,7 +120,10 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
@@ -123,7 +133,10 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
             },
             Side::Right => match bound {
                 // just repacking
-                None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
+                None => Ok(EnumInterval::from(Self::new_assume_valid(
+                    side,
+                    current_bound,
+                ))),
                 Some(inner) => {
                     FiniteInterval::try_new_or_empty(inner, current_bound).map(EnumInterval::from)
                 }
@@ -131,7 +144,10 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
         }
     }
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
@@ -141,7 +157,10 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
             },
             Side::Left => match bound {
                 // just repacking
-                None => Ok(EnumInterval::from(Self::new_assume_valid(side, current_bound))),
+                None => Ok(EnumInterval::from(Self::new_assume_valid(
+                    side,
+                    current_bound,
+                ))),
                 Some(inner) => {
                     FiniteInterval::try_new_or_empty(current_bound, inner).map(EnumInterval::from)
                 }
@@ -154,7 +173,10 @@ impl<T: Element> Rebound<T> for EnumInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(inner) => inner.try_with_left(bound),
@@ -166,7 +188,10 @@ impl<T: Element> Rebound<T> for EnumInterval<T> {
         }
     }
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(inner) => inner.try_with_right(bound),
@@ -192,10 +217,7 @@ mod tests {
 
         let x = HalfInterval::left(FiniteBound::closed(0));
         assert_eq!(x.with_left(None), EnumInterval::Unbounded);
-        assert_eq!(
-            x.with_left_closed(100),
-            EnumInterval::closed_unbound(100)
-        );
+        assert_eq!(x.with_left_closed(100), EnumInterval::closed_unbound(100));
 
         let x = HalfInterval::right(FiniteBound::closed(0));
         assert_eq!(x.with_left(None), x.into());
@@ -204,10 +226,7 @@ mod tests {
 
         let x = EnumInterval::<i32>::Unbounded;
         assert_eq!(x.with_left(None), EnumInterval::Unbounded);
-        assert_eq!(
-            x.with_left_closed(0),
-            EnumInterval::closed_unbound(0)
-        );
+        assert_eq!(x.with_left_closed(0), EnumInterval::closed_unbound(0));
     }
 
     #[test]
@@ -219,18 +238,12 @@ mod tests {
 
         let x = HalfInterval::left(FiniteBound::closed(0));
         assert_eq!(x.with_right(None), x.into());
-        assert_eq!(
-            x.with_right_closed(100),
-            EnumInterval::closed(0, 100)
-        );
+        assert_eq!(x.with_right_closed(100), EnumInterval::closed(0, 100));
         assert_eq!(x.with_right_closed(-100), EnumInterval::empty());
 
         let x = HalfInterval::right(FiniteBound::closed(0));
         assert_eq!(x.with_right(None), EnumInterval::unbounded());
-        assert_eq!(
-            x.with_right_closed(100),
-            EnumInterval::unbound_closed(100)
-        );
+        assert_eq!(x.with_right_closed(100), EnumInterval::unbound_closed(100));
         assert_eq!(
             x.with_right_closed(-100),
             EnumInterval::unbound_closed(-100)
@@ -238,9 +251,6 @@ mod tests {
 
         let x = EnumInterval::unbounded();
         assert_eq!(x.with_right(None), x);
-        assert_eq!(
-            x.with_right_closed(0),
-            EnumInterval::unbound_closed(0)
-        );
+        assert_eq!(x.with_right_closed(0), EnumInterval::unbound_closed(0));
     }
 }

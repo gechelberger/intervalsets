@@ -84,7 +84,10 @@ pub fn are_bounds_connected<T: Element>(right: &FiniteBound<T>, left: &FiniteBou
 
 impl<T: Element> Connects<&Self> for FiniteInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn connects(&self, rhs: &Self) -> bool {
         if self.intersects(rhs) {
             return true;
@@ -104,7 +107,10 @@ impl<T: Element> Connects<&Self> for FiniteInterval<T> {
 
 impl<T: Element> Connects<&Self> for HalfInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn connects(&self, rhs: &Self) -> bool {
         self.intersects(rhs)
             || match (self.side(), rhs.side()) {
@@ -121,7 +127,10 @@ impl<T: Element> Connects<&Self> for HalfInterval<T> {
 
 impl<T: Element> Connects<&HalfInterval<T>> for FiniteInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn connects(&self, rhs: &HalfInterval<T>) -> bool {
         if self.intersects(rhs) {
             return true;
@@ -141,7 +150,10 @@ commutative_predicate_impl!(Connects, connects, HalfInterval<T>, FiniteInterval<
 
 impl<T: Element> Connects<&FiniteInterval<T>> for EnumInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn connects(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.connects(rhs),
@@ -154,7 +166,10 @@ commutative_predicate_impl!(Connects, connects, FiniteInterval<T>, EnumInterval<
 
 impl<T: Element> Connects<&HalfInterval<T>> for EnumInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn connects(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.connects(rhs),
@@ -167,7 +182,10 @@ commutative_predicate_impl!(Connects, connects, HalfInterval<T>, EnumInterval<T>
 
 impl<T: Element> Connects<&Self> for EnumInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn connects(&self, rhs: &Self) -> bool {
         match rhs {
             Self::Finite(rhs) => self.connects(rhs),
@@ -192,16 +210,12 @@ mod tests {
         assert!(EI::closed(0, 10).connects(&EI::closed(11, 20)));
         assert!(!EI::closed(0, 10).connects(&EI::closed(12, 20)));
 
-        assert!(
-            EI::closed(0.0, 10.0).connects(&EI::closed(10.0, 20.0))
-        );
+        assert!(EI::closed(0.0, 10.0).connects(&EI::closed(10.0, 20.0)));
         assert!(EI::closed(0.0, 10.0).connects(&EI::open(10.0, 20.0)));
         assert!(EI::open(0.0, 10.0).connects(&EI::closed(10.0, 20.0)));
         assert!(!EI::open(0.0, 10.0).connects(&EI::open(10.0, 20.0)));
 
-        assert!(
-            EI::open(0.0, 10.0).connects(&EI::closed_unbound(10.0))
-        );
+        assert!(EI::open(0.0, 10.0).connects(&EI::closed_unbound(10.0)));
 
         assert!(EI::unbounded().connects(&EI::closed(0, 10)));
     }

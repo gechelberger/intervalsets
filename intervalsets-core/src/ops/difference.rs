@@ -61,7 +61,10 @@ macro_rules! difference_via_complement {
         {
             type Output = MaybeDisjoint<T>;
 
-            #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+            #[cfg_attr(
+                all(feature = "panic-free-check", not(debug_assertions)),
+                no_panic::no_panic
+            )]
             fn difference(self, rhs: $rhs) -> Self::Output {
                 let lhs: EnumInterval<T> = self.into();
                 let mut pieces = rhs.complement().into_iter();
@@ -111,7 +114,10 @@ where
 {
     type Output = <X as Difference<Y>>::Output;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn difference(self, rhs: &Y) -> Self::Output {
         self.clone().difference(rhs.clone())
     }
@@ -136,8 +142,8 @@ mod tests {
     #[test]
     fn test_difference_b_overlaps_one_side() {
         // [0, 100] \ [50, 200] = [0, 50)
-        let result = FiniteInterval::closed(0.0_f64, 100.0)
-            .difference(FiniteInterval::closed(50.0, 200.0));
+        let result =
+            FiniteInterval::closed(0.0_f64, 100.0).difference(FiniteInterval::closed(50.0, 200.0));
         assert_eq!(
             result.into_interval(),
             Some(EnumInterval::closed_open(0.0, 50.0))
@@ -155,23 +161,20 @@ mod tests {
     #[test]
     fn test_difference_b_disjoint_returns_a() {
         // [0, 10] \ [50, 60] = [0, 10]
-        let result =
-            FiniteInterval::closed(0_i32, 10).difference(FiniteInterval::closed(50, 60));
+        let result = FiniteInterval::closed(0_i32, 10).difference(FiniteInterval::closed(50, 60));
         assert_eq!(result.into_interval(), Some(EnumInterval::closed(0, 10)));
     }
 
     #[test]
     fn test_difference_a_minus_empty_is_a() {
         // [0, 10] \ ∅ = [0, 10]
-        let result =
-            FiniteInterval::closed(0_i32, 10).difference(FiniteInterval::empty());
+        let result = FiniteInterval::closed(0_i32, 10).difference(FiniteInterval::empty());
         assert_eq!(result.into_interval(), Some(EnumInterval::closed(0, 10)));
     }
 
     #[test]
     fn test_difference_empty_minus_anything_is_empty() {
-        let result =
-            FiniteInterval::<i32>::empty().difference(FiniteInterval::closed(0, 10));
+        let result = FiniteInterval::<i32>::empty().difference(FiniteInterval::closed(0, 10));
         assert_eq!(result.into_interval(), Some(EnumInterval::empty()));
     }
 

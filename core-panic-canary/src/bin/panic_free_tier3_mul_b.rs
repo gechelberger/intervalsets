@@ -20,7 +20,7 @@ fn main() {
     let h_l = HalfInterval::<i64>::closed_unbound(0);
     let e = EnumInterval::<i64>::closed(0, 10);
 
-    let _ = black_box(h_l.try_mul(f));          // HalfInterval × FiniteInterval (hand)
-    let _ = black_box(e.try_mul(f));            // EnumInterval × FiniteInterval (dispatch)
+    let _ = black_box(h_l.try_mul(f)); // HalfInterval × FiniteInterval (hand)
+    let _ = black_box(e.try_mul(f)); // EnumInterval × FiniteInterval (dispatch)
     let _ = (h_l, e);
 }

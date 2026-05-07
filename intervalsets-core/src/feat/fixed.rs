@@ -120,9 +120,7 @@ mod tests {
         // 0.25). The bit trick `(a & b) + ((a ^ b) >> 1)` on
         // (-1, 0) yields -1, so the fixed-point result is -0.25 --
         // *not* 0.0, which would be std's toward-zero rounding.
-        let mid = I6F2::from_num(-0.25)
-            .midpoint(I6F2::from_num(0.0))
-            .unwrap();
+        let mid = I6F2::from_num(-0.25).midpoint(I6F2::from_num(0.0)).unwrap();
         assert_eq!(mid, I6F2::from_num(-0.25));
 
         // No overflow at the bounds of the type.

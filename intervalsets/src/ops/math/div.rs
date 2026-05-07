@@ -26,7 +26,8 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs)
+            .expect("infix Div invariants guarantee try_div infallibility")
     }
 }
 
@@ -38,9 +39,10 @@ where
     type Error = Error;
 
     fn try_div(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
-        self.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
-            Ok(acc.union(subset.try_div(rhs.clone())?))
-        })
+        self.into_iter()
+            .try_fold(IntervalSet::empty(), |acc, subset| {
+                Ok(acc.union(subset.try_div(rhs.clone())?))
+            })
     }
 }
 
@@ -51,7 +53,8 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: Interval<T>) -> Self::Output {
-        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs)
+            .expect("infix Div invariants guarantee try_div infallibility")
     }
 }
 
@@ -63,9 +66,10 @@ where
     type Error = Error;
 
     fn try_div(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
-        rhs.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
-            Ok(acc.union(self.clone().try_div(subset)?))
-        })
+        rhs.into_iter()
+            .try_fold(IntervalSet::empty(), |acc, subset| {
+                Ok(acc.union(self.clone().try_div(subset)?))
+            })
     }
 }
 
@@ -76,7 +80,8 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs)
+            .expect("infix Div invariants guarantee try_div infallibility")
     }
 }
 
@@ -88,9 +93,10 @@ where
     type Error = Error;
 
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        self.into_iter().try_fold(IntervalSet::empty(), |acc, l_subset| {
-            Ok(acc.union(l_subset.try_div(rhs.clone())?))
-        })
+        self.into_iter()
+            .try_fold(IntervalSet::empty(), |acc, l_subset| {
+                Ok(acc.union(l_subset.try_div(rhs.clone())?))
+            })
     }
 }
 
@@ -101,7 +107,8 @@ where
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self.try_div(rhs).expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs)
+            .expect("infix Div invariants guarantee try_div infallibility")
     }
 }
 
@@ -117,10 +124,7 @@ mod try_tests {
     fn test_try_div_raw_f64() {
         let a = Interval::open(10.0_f64, 20.0);
         let b = Interval::closed_unbound(10.0_f64);
-        assert_eq!(
-            a.try_div(b).unwrap(),
-            Interval::open(0.0_f64, 2.0).into()
-        );
+        assert_eq!(a.try_div(b).unwrap(), Interval::open(0.0_f64, 2.0).into());
     }
 }
 

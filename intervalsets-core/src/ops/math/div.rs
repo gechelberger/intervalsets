@@ -48,7 +48,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         impls::finite_by_finite(self, rhs)
     }
@@ -62,7 +65,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         impls::half_by_half(self, rhs)
     }
@@ -76,7 +82,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::finite_by_half(self, rhs)
     }
@@ -90,7 +99,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::half_by_finite(self, rhs)
     }
@@ -104,7 +116,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(lhs) => lhs.try_div(rhs),
@@ -122,7 +137,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(lhs) => lhs.try_div(rhs),
@@ -140,7 +158,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(lhs) => lhs.try_div(rhs),
@@ -158,7 +179,10 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         match rhs {
             EnumInterval::Finite(rhs) => self.try_div(rhs),
@@ -180,7 +204,10 @@ where
     type Output = MaybeDisjoint<T>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         match rhs {
             EnumInterval::Finite(rhs) => self.try_div(rhs),
@@ -789,8 +816,14 @@ mod tests {
             fc(0.25, 2.0 / 3.0).into()
         );
 
-        assert_eq!(d(fc(-10.0, -5.0), fc(2.0, 3.0)), fc(-5.0, -5.0 / 3.0).into());
-        assert_eq!(d(fc(5.0, 10.0), fc(-3.0, -2.0)), fc(-5.0, -5.0 / 3.0).into());
+        assert_eq!(
+            d(fc(-10.0, -5.0), fc(2.0, 3.0)),
+            fc(-5.0, -5.0 / 3.0).into()
+        );
+        assert_eq!(
+            d(fc(5.0, 10.0), fc(-3.0, -2.0)),
+            fc(-5.0, -5.0 / 3.0).into()
+        );
 
         assert_eq!(d(fc(-10.0, 0.0), fc(1.0, 2.0)), fc(-10.0, 0.0).into());
         assert_eq!(d(fc(-10.0, 0.0), fc(0.0, 2.0)), uc(0.0).into());

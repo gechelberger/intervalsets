@@ -33,15 +33,51 @@ macro_rules! mul_via_try {
     };
 }
 
-mul_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<<T as Mul>::Output>);
-mul_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
-mul_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<<T as Mul>::Output>);
+mul_via_try!(
+    FiniteInterval<T>,
+    FiniteInterval<T>,
+    FiniteInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    HalfInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    FiniteInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    HalfInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    EnumInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    EnumInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    EnumInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    FiniteInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
+mul_via_try!(
+    HalfInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Mul>::Output>
+);
 
 impl<T> TryMul for FiniteInterval<T>
 where
@@ -51,7 +87,10 @@ where
     type Output = FiniteInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         impls::finite_x_finite_by_cat(self, rhs)
     }
@@ -65,7 +104,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         impls::half_x_half_by_cat(self, rhs)
     }
@@ -79,7 +121,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::finite_x_half(self, rhs)
     }
@@ -93,7 +138,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::finite_x_half(rhs, self)
     }
@@ -107,7 +155,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::enum_x_finite(self, rhs)
     }
@@ -121,7 +172,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::enum_x_half(self, rhs)
     }
@@ -135,7 +189,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(lhs) => lhs.try_mul(rhs),
@@ -157,7 +214,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::enum_x_finite(rhs, self)
     }
@@ -171,7 +231,10 @@ where
     type Output = EnumInterval<<T as Mul>::Output>;
     type Error = Error;
 
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn try_mul(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::enum_x_half(rhs, self)
     }

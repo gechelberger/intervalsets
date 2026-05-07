@@ -15,6 +15,8 @@ use intervalsets_core::sets::EnumInterval;
 fn main() {
     let enums = std::vec![EnumInterval::<i64>::closed(0, 5)];
 
-    let _ = black_box(<EnumInterval<i64> as ConvexHull<EnumInterval<i64>>>::try_hull(enums.clone()));
-    let _ = black_box(<EnumInterval<i64> as ConvexHull<&EnumInterval<i64>>>::try_hull(enums.iter()));
+    let _ =
+        black_box(<EnumInterval<i64> as ConvexHull<EnumInterval<i64>>>::try_hull(enums.clone()));
+    let _ =
+        black_box(<EnumInterval<i64> as ConvexHull<&EnumInterval<i64>>>::try_hull(enums.iter()));
 }

@@ -24,11 +24,10 @@ impl<T: Element> FiniteFactory<T, Identity> for Interval<T> {
         FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
     }
 
-    fn try_finite(
-        lhs: FiniteBound<T>,
-        rhs: FiniteBound<T>,
-    ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new_or_empty(lhs, rhs).map_err(Into::into).map(Interval::from)
+    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_new_or_empty(lhs, rhs)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -41,7 +40,9 @@ impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for Interval<T> {
     where
         T: num_traits::Zero,
     {
-        HalfInterval::try_new(side, bound).map_err(Into::into).map(Interval::from)
+        HalfInterval::try_new(side, bound)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -67,11 +68,10 @@ impl<T: Element> FiniteFactory<T, Identity> for IntervalSet<T> {
         FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
     }
 
-    fn try_finite(
-        lhs: FiniteBound<T>,
-        rhs: FiniteBound<T>,
-    ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new_or_empty(lhs, rhs).map_err(Into::into).map(IntervalSet::from)
+    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_new_or_empty(lhs, rhs)
+            .map_err(Into::into)
+            .map(IntervalSet::from)
     }
 }
 
@@ -84,7 +84,9 @@ impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for IntervalSet<T> {
     where
         T: num_traits::Zero,
     {
-        HalfInterval::try_new(side, bound).map_err(Into::into).map(IntervalSet::from)
+        HalfInterval::try_new(side, bound)
+            .map_err(Into::into)
+            .map(IntervalSet::from)
     }
 }
 
@@ -128,7 +130,9 @@ where
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
     ) -> Result<Self::Output, Self::Error> {
-        EIFactory::<T, C>::try_finite(lhs, rhs).map_err(Into::into).map(Interval::from)
+        EIFactory::<T, C>::try_finite(lhs, rhs)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -145,7 +149,9 @@ where
         side: Side,
         bound: FiniteBound<C::To>,
     ) -> Result<Self::Output, Self::Error> {
-        EIFactory::<T, C>::try_half_bounded(side, bound).map_err(Into::into).map(Interval::from)
+        EIFactory::<T, C>::try_half_bounded(side, bound)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 

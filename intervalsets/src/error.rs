@@ -16,9 +16,8 @@
 //! [`TotalOrderError`] is re-exported from core verbatim — it has no
 //! payload to enrich.
 
-pub use intervalsets_core::error::TotalOrderError;
-
 use intervalsets_core::error::Error as CoreError;
+pub use intervalsets_core::error::TotalOrderError;
 use thiserror::Error as ThisError;
 
 /// Errors returned by fallible `intervalsets` APIs.

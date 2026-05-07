@@ -40,7 +40,10 @@ pub trait Intersects<T> {
 
 impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn intersects(&self, rhs: &Self) -> bool {
         let Some((lhs_min, lhs_max)) = self.view_raw() else {
             return false;
@@ -67,7 +70,10 @@ impl<T: PartialOrd> Intersects<&Self> for FiniteInterval<T> {
 
 impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
         let Some((left, right)) = rhs.view_raw() else {
             return false;
@@ -79,7 +85,10 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for HalfInterval<T> {
 
 impl<T: PartialOrd> Intersects<&Self> for HalfInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn intersects(&self, rhs: &Self) -> bool {
         self.contains(rhs.finite_ord_bound()) || rhs.contains(self.finite_ord_bound())
     }
@@ -87,7 +96,10 @@ impl<T: PartialOrd> Intersects<&Self> for HalfInterval<T> {
 
 impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for EnumInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn intersects(&self, rhs: &FiniteInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => lhs.intersects(rhs),
@@ -99,7 +111,10 @@ impl<T: PartialOrd> Intersects<&FiniteInterval<T>> for EnumInterval<T> {
 
 impl<T: PartialOrd> Intersects<&HalfInterval<T>> for EnumInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn intersects(&self, rhs: &HalfInterval<T>) -> bool {
         match self {
             Self::Finite(lhs) => rhs.intersects(lhs),
@@ -111,7 +126,10 @@ impl<T: PartialOrd> Intersects<&HalfInterval<T>> for EnumInterval<T> {
 
 impl<T: PartialOrd> Intersects<&Self> for EnumInterval<T> {
     #[inline(always)]
-    #[cfg_attr(all(feature = "panic-free-check", not(debug_assertions)), no_panic::no_panic)]
+    #[cfg_attr(
+        all(feature = "panic-free-check", not(debug_assertions)),
+        no_panic::no_panic
+    )]
     fn intersects(&self, rhs: &Self) -> bool {
         match self {
             Self::Finite(lhs) => rhs.intersects(lhs),

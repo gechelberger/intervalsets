@@ -15,7 +15,10 @@ where
 
     #[inline]
     fn try_mul(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        self.0.try_mul(rhs.0).map_err(Into::into).map(Interval::from)
+        self.0
+            .try_mul(rhs.0)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 
@@ -28,7 +31,8 @@ where
 
     #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
-        self.try_mul(rhs).expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs)
+            .expect("infix Mul invariants guarantee try_mul infallibility")
     }
 }
 
@@ -43,9 +47,10 @@ where
     // Union-fold over already-valid subsets; bypasses IntervalSet::new's
     // re-validation overhead.
     fn try_mul(self, rhs: Interval<T>) -> Result<Self::Output, Self::Error> {
-        self.into_iter().try_fold(IntervalSet::empty(), |acc, subset| {
-            Ok(acc.union(subset.try_mul(rhs.clone())?))
-        })
+        self.into_iter()
+            .try_fold(IntervalSet::empty(), |acc, subset| {
+                Ok(acc.union(subset.try_mul(rhs.clone())?))
+            })
     }
 }
 
@@ -57,7 +62,8 @@ where
     type Output = IntervalSet<<T as Mul>::Output>;
 
     fn mul(self, rhs: Interval<T>) -> Self::Output {
-        self.try_mul(rhs).expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs)
+            .expect("infix Mul invariants guarantee try_mul infallibility")
     }
 }
 
@@ -83,7 +89,8 @@ where
     type Output = IntervalSet<<T as Mul>::Output>;
 
     fn mul(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_mul(rhs).expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs)
+            .expect("infix Mul invariants guarantee try_mul infallibility")
     }
 }
 
@@ -117,7 +124,8 @@ where
     type Output = IntervalSet<<T as Mul>::Output>;
 
     fn mul(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_mul(rhs).expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs)
+            .expect("infix Mul invariants guarantee try_mul infallibility")
     }
 }
 

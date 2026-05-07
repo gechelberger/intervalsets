@@ -10,7 +10,11 @@ use intervalsets_core::ops::Split;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 fn any_side() -> Side {
-    if kani::any() { Side::Left } else { Side::Right }
+    if kani::any() {
+        Side::Left
+    } else {
+        Side::Right
+    }
 }
 
 fn make_finite() -> FiniteInterval<i64> {

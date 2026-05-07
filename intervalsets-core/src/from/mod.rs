@@ -16,8 +16,7 @@ impl<T> From<()> for FiniteInterval<T> {
 impl<T: Element> From<(T, T)> for FiniteInterval<T> {
     fn from(value: (T, T)) -> Self {
         // (a, b) with a > b is treated as empty (matches Range semantics).
-        Self::try_new_or_empty(FiniteBound::open(value.0), FiniteBound::open(value.1))
-            .unwrap()
+        Self::try_new_or_empty(FiniteBound::open(value.0), FiniteBound::open(value.1)).unwrap()
     }
 }
 
@@ -86,10 +85,9 @@ impl<T> From<FiniteInterval<T>> for OrdBoundPair<T> {
     fn from(value: FiniteInterval<T>) -> Self {
         match value.into_raw() {
             None => OrdBoundPair::empty(),
-            Some((lhs, rhs)) => OrdBoundPair::new_assume_valid(
-                lhs.into_ord(Side::Left),
-                rhs.into_ord(Side::Right),
-            ),
+            Some((lhs, rhs)) => {
+                OrdBoundPair::new_assume_valid(lhs.into_ord(Side::Left), rhs.into_ord(Side::Right))
+            }
         }
     }
 }
@@ -133,10 +131,9 @@ impl<T> From<EnumInterval<T>> for OrdBoundPair<T> {
         match value {
             EnumInterval::Finite(inner) => inner.into(),
             EnumInterval::Half(inner) => inner.into(),
-            EnumInterval::Unbounded => OrdBoundPair::new_assume_valid(
-                OrdBound::LeftUnbounded,
-                OrdBound::RightUnbounded,
-            ),
+            EnumInterval::Unbounded => {
+                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
+            }
         }
     }
 }
@@ -146,10 +143,9 @@ impl<'a, T> From<&'a EnumInterval<T>> for OrdBoundPair<&'a T> {
         match value {
             EnumInterval::Finite(inner) => inner.into(),
             EnumInterval::Half(inner) => inner.into(),
-            EnumInterval::Unbounded => OrdBoundPair::new_assume_valid(
-                OrdBound::LeftUnbounded,
-                OrdBound::RightUnbounded,
-            ),
+            EnumInterval::Unbounded => {
+                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
+            }
         }
     }
 }

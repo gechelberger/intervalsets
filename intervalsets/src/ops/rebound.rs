@@ -9,11 +9,17 @@ impl<T: Element + Zero> Rebound<T> for Interval<T> {
     type Error = crate::error::Error;
 
     fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
-        self.0.try_with_left(bound).map_err(Into::into).map(Interval::from)
+        self.0
+            .try_with_left(bound)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 
     fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
-        self.0.try_with_right(bound).map_err(Into::into).map(Interval::from)
+        self.0
+            .try_with_right(bound)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
 }
 

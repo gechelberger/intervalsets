@@ -89,8 +89,7 @@ fn main() {
     let c8 = h_left.connects(&e_finite);
 
     black_box((
-        r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16,
-        i1, i2, i3, i4, i5, i6, i7, i8, i9,
-        c1, c2, c3, c4, c5, c6, c7, c8, c9,
+        r1, r2, r3, r4, r5, r6, r7, r8, r9, r10, r11, r12, r13, r14, r15, r16, i1, i2, i3, i4, i5,
+        i6, i7, i8, i9, c1, c2, c3, c4, c5, c6, c7, c8, c9,
     ));
 }
