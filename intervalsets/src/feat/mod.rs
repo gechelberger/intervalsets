@@ -4,6 +4,9 @@
 //! modules mostly test interoperability with the 'Interval'
 //! and 'IntervalSet' types.
 
+#[cfg(feature = "approx")]
+mod approx;
+
 #[cfg(feature = "arbitrary")]
 mod arbitrary;
 
