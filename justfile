@@ -189,8 +189,8 @@ panic-check:
 # Signed integer division overflow (e.g. `i64::MIN / -1`) panics under
 # any setting — Rust always panics on `/` and `%` overflow.
 [env("RUSTFLAGS", "-C debug-assertions=off")]
-kani filter="":
-    cargo kani -p core-panic-canary {{ if filter == "" { "" } else { "--harness " + filter } }}
+kani filter="" jobs="1":
+    cargo kani -p core-panic-canary {{ if jobs != "1" { "-j " + jobs + " --output-format terse" } else { "" } }} {{ if filter == "" { "" } else { "--harness " + filter } }}
 
 # scan codebase for pre-release markers
 loose-ends:

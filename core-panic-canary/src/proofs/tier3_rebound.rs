@@ -1,31 +1,78 @@
-//! Phase 2 pilot — `Rebound::try_with_left` for `FiniteInterval<i64>`.
+//! Phase 2 — `Rebound::try_with_left` / `try_with_right` for all 6
+//! impls at i64.
 //!
-//! Mirrors the canary's `f.try_with_left(Some(FiniteBound::closed(...)))`
-//! call shape. No arithmetic on T, so no overflow concerns.
+//! Rebound has 6 methods: 3 types × {try_with_left, try_with_right}.
+//! No arithmetic on T, so no overflow concerns; inputs are
+//! unconstrained.
 
 use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::Rebound;
-use intervalsets_core::sets::FiniteInterval;
+use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
+fn any_bound() -> Option<FiniteBound<i64>> {
+    if !kani::any::<bool>() {
+        return None;
+    }
+    let v: i64 = kani::any();
+    Some(if kani::any() {
+        FiniteBound::closed(v)
+    } else {
+        FiniteBound::open(v)
+    })
+}
+
+fn make_finite() -> FiniteInterval<i64> {
+    FiniteInterval::<i64>::closed(kani::any(), kani::any())
+}
+
+fn make_half() -> HalfInterval<i64> {
+    let at: i64 = kani::any();
+    if kani::any() {
+        HalfInterval::<i64>::closed_unbound(at)
+    } else {
+        HalfInterval::<i64>::unbound_closed(at)
+    }
+}
+
+fn make_enum() -> EnumInterval<i64> {
+    let kind: u8 = kani::any();
+    kani::assume(kind < 5);
+    match kind {
+        0 => EnumInterval::<i64>::closed(kani::any(), kani::any()),
+        1 => EnumInterval::<i64>::closed_unbound(kani::any()),
+        2 => EnumInterval::<i64>::unbound_closed(kani::any()),
+        3 => EnumInterval::<i64>::unbounded(),
+        _ => EnumInterval::<i64>::empty(),
+    }
+}
 
 #[kani::proof]
 fn try_with_left_finite_i64_no_panic() {
-    let lmin: i64 = kani::any();
-    let lmax: i64 = kani::any();
-    let new_left: i64 = kani::any();
-    let bound_kind: bool = kani::any();
-    let some_bound: bool = kani::any();
+    let _ = make_finite().try_with_left(any_bound());
+}
 
-    let interval = FiniteInterval::<i64>::closed(lmin, lmax);
-    let bound = if some_bound {
-        Some(if bound_kind {
-            FiniteBound::closed(new_left)
-        } else {
-            FiniteBound::open(new_left)
-        })
-    } else {
-        None
-    };
+#[kani::proof]
+fn try_with_right_finite_i64_no_panic() {
+    let _ = make_finite().try_with_right(any_bound());
+}
 
-    let _ = interval.try_with_left(bound);
+#[kani::proof]
+fn try_with_left_half_i64_no_panic() {
+    let _ = make_half().try_with_left(any_bound());
+}
+
+#[kani::proof]
+fn try_with_right_half_i64_no_panic() {
+    let _ = make_half().try_with_right(any_bound());
+}
+
+#[kani::proof]
+fn try_with_left_enum_i64_no_panic() {
+    let _ = make_enum().try_with_left(any_bound());
+}
+
+#[kani::proof]
+fn try_with_right_enum_i64_no_panic() {
+    let _ = make_enum().try_with_right(any_bound());
 }
