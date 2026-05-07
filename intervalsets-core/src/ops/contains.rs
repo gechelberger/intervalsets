@@ -16,7 +16,9 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// # Contract
 ///
-/// Contains should not panic and should return false for incomparable arguments.
+/// Tier 1 (truly infallible). Must not panic. Predicate-shaped
+/// return absorbs incomparability into `false`. See [`crate::ops`]
+/// for the full tier model.
 ///
 /// # Examples
 ///
@@ -42,8 +44,8 @@ impl<T: PartialOrd> Contains<&T> for FiniteInterval<T> {
             return false;
         };
 
-        lhs_min.strict_contains(Left, rhs).unwrap_or(false)
-            && lhs_max.strict_contains(Right, rhs).unwrap_or(false)
+        lhs_min.try_contains(Left, rhs).unwrap_or(false)
+            && lhs_max.try_contains(Right, rhs).unwrap_or(false)
     }
 }
 
@@ -51,7 +53,7 @@ impl<T: PartialOrd> Contains<&T> for HalfInterval<T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {
         self.finite_bound()
-            .strict_contains(self.side(), rhs)
+            .try_contains(self.side(), rhs)
             .unwrap_or(false)
     }
 }
@@ -235,19 +237,19 @@ mod tests {
         let closed_ord_nan = crate::bound::ord::FiniteOrdBound::closed(&f64::NAN);
 
         let f = FiniteInterval::open(0.0, 10.0);
-        assert_eq!(f.contains(&f64::NAN), false);
-        assert_eq!(f.contains(closed_ord_nan), false);
+        assert!(!f.contains(&f64::NAN));
+        assert!(!f.contains(closed_ord_nan));
 
         let h = EnumInterval::unbound_open(0.0);
-        assert_eq!(h.contains(&f64::NAN), false);
-        assert_eq!(h.contains(closed_ord_nan), false);
+        assert!(!h.contains(&f64::NAN));
+        assert!(!h.contains(closed_ord_nan));
 
         let h = EnumInterval::open_unbound(0.0);
-        assert_eq!(h.contains(&f64::NAN), false);
-        assert_eq!(h.contains(closed_ord_nan), false);
+        assert!(!h.contains(&f64::NAN));
+        assert!(!h.contains(closed_ord_nan));
 
         let h = EnumInterval::unbounded();
-        assert_eq!(h.contains(&f64::NAN), false);
-        assert_eq!(h.contains(closed_ord_nan), false);
+        assert!(!h.contains(&f64::NAN));
+        assert!(!h.contains(closed_ord_nan));
     }
 }

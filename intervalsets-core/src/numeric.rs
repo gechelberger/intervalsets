@@ -113,7 +113,7 @@
 //! }
 //! ```
 
-pub use num_traits::Zero;
+pub use num_traits::{CheckedSub, Zero};
 
 //use ordered_float::{NotNan, OrderedFloat};
 use crate::bound::Side;
@@ -122,6 +122,25 @@ use crate::bound::Side;
 ///
 /// `try_adjacent` determines whether the elements are
 /// treated as continuous or discrete data.
+///
+/// # Design: `PartialOrd`, not `Ord`
+///
+/// `Element` deliberately requires only `PartialOrd`, **not** `Ord`.
+/// Tightening this bound to `Ord` would exclude `f32` and `f64` (which
+/// are `!Ord` because of NaN), and float support is one of the crate's
+/// core value propositions — much of the crate's complexity exists to
+/// keep floats in the domain. Don't tighten this.
+///
+/// The crate handles NaN at runtime via [`TryCmp`](crate::try_cmp::TryCmp)
+/// (a blanket impl over `T: PartialOrd` that returns
+/// [`TotalOrderError`](crate::error::TotalOrderError) when
+/// `partial_cmp` returns `None`). Validating constructors (`new`,
+/// `try_new`, `Deserialize`) call `try_cmp` and reject NaN. Operations
+/// that benefit from a stronger guarantee (set-op traits like `Union`)
+/// add `T: Ord` as a separate per-trait bound, so callers using
+/// integer-only types pay no NaN-checking cost while float users still
+/// get a working API. The verbose `T: Element + Ord + Clone + Zero`-style
+/// bounds elsewhere are deliberate; that's the cost of the split.
 pub trait Element: Sized + PartialEq + PartialOrd {
     fn try_adjacent(&self, side: Side) -> Option<Self>;
 }
@@ -129,7 +148,7 @@ pub trait Element: Sized + PartialEq + PartialOrd {
 /// Automatically implements [`Element`] for a type.
 ///
 /// Interval/Set types require generic storage types to implement
-/// the [`Element`] trait. It's primary function is to normalize **disrete**
+/// the [`Element`] trait. It's primary function is to normalize **discrete**
 /// data types.
 ///
 /// For **continuous** data types, normalization is a **noop**, but the trait
@@ -147,11 +166,6 @@ pub trait Element: Sized + PartialEq + PartialOrd {
 /// struct MyFloat(f64);
 ///
 /// continuous_domain_impl!(MyFloat);
-///
-/// //todo: num_traits::Zero required
-///
-/// //let x = FiniteInterval::closed(MyFloat(0.0), MyFloat(10.0));
-/// //assert_eq!(x.contains(&MyFloat(5.0)), true);
 /// ```
 #[macro_export]
 macro_rules! continuous_domain_impl {
@@ -188,13 +202,148 @@ macro_rules! integer_domain_impl {
 integer_domain_impl!(u8, u16, u32, u64, u128, usize);
 integer_domain_impl!(i8, i16, i32, i64, i128, isize);
 
+/// Computes the midpoint (average) of two values.
+///
+/// The midpoint is the value equidistant from both inputs. For numeric
+/// types this is conceptually `(self + other) / 2`, computed in a way
+/// that does not overflow at the bounds of the type.
+///
+/// # Contract
+///
+/// Implementations should uphold the following:
+///
+/// 1. **No overflow.** The computation must not overflow even when
+///    `self + other` would. Conceptually, evaluate as if in a
+///    sufficiently-large arithmetic domain, then map back into `Self`.
+/// 2. **Commutativity.** `a.midpoint(b) == b.midpoint(a)`.
+/// 3. **Boundedness.** When inputs are comparable, the result lies
+///    between them: `min(a, b) <= a.midpoint(b) <= max(a, b)`.
+///
+/// # Rounding
+///
+/// For std primitives this trait delegates to the inherent
+/// `<T>::midpoint` method, so rounding behavior matches std exactly:
+///
+/// - **Integers** — rounded toward zero.
+/// - **Floats** (`f32`, `f64`) — computed as if in extended precision,
+///   then rounded to the nearest representable value
+///   (round-to-nearest-even).
+///
+/// Custom types choose the rounding semantics appropriate to their
+/// domain; this trait does not prescribe one. Downstream impls are
+/// expected to document their own rounding, error, and edge-case
+/// behavior.
+///
+/// # Errors
+///
+/// The associated [`Error`](Midpoint::Error) type lets implementations
+/// surface failure modes specific to the type:
+///
+/// - For total-ordered types where every pair has a well-defined
+///   midpoint (e.g. integers), `Error` is typically
+///   [`core::convert::Infallible`] and the impl never returns `Err`.
+/// - For partial-ordered types (e.g. `f32`/`f64`), the impl may reject
+///   inputs that are degenerate as midpoint endpoints. The float impls
+///   in this crate return [`MidpointError`](crate::error::MidpointError)
+///   when either input is non-finite (NaN, +∞, or −∞) — note that ±∞
+///   are excluded even though they are comparable, because they have
+///   no well-defined midpoint.
+///
+/// # Status
+///
+/// This is implemented with an eye towards a Bisect trait, but since we
+/// are in a holding pattern on that and this is feature complete for now,
+/// we can merge this back but keep it as part of the private crate API
+/// until we have a need for it or remove it. There is also a consideration
+/// to drop the error type entirely in favor of Option<Self>. The fact that
+/// we can mark certain impls as Infallible has certain appeal, but may be
+/// more complexity than is worth the tradeoff.
+#[allow(unused)]
+pub(crate) trait Midpoint: Sized {
+    type Error;
+    fn midpoint(self, other: Self) -> Result<Self, Self::Error>;
+}
+
+macro_rules! integer_midpoint_delegate_impl {
+    ($($t:ty), +) => {
+        $(
+            impl $crate::numeric::Midpoint for $t {
+                type Error = ::core::convert::Infallible;
+
+                /// Infallible: std's inherent integer `midpoint` is
+                /// defined for every value in the type's range and
+                /// cannot overflow.
+                #[inline]
+                fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
+                    Ok(<$t>::midpoint(self, other))
+                }
+            }
+        )+
+    }
+}
+
+integer_midpoint_delegate_impl!(u8, u16, u32, u64, u128, usize);
+integer_midpoint_delegate_impl!(i8, i16, i32, i64, i128, isize);
+
+macro_rules! float_midpoint_delegate_impl {
+    ($($t:ty), +) => {
+        $(
+            impl $crate::numeric::Midpoint for $t {
+                type Error = $crate::error::MidpointError;
+
+                /// Delegates to the inherent float `midpoint` method,
+                /// which avoids spurious overflow/underflow at extremes.
+                ///
+                /// # Errors
+                ///
+                /// Returns [`MidpointError`](crate::error::MidpointError)
+                /// when either input is non-finite — NaN, +∞, or −∞.
+                /// Infinities are rejected even though they are
+                /// comparable, because their midpoint is not
+                /// well-defined as a finite endpoint.
+                #[inline]
+                fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
+                    if !self.is_finite() || !other.is_finite() {
+                        return Err($crate::error::MidpointError);
+                    }
+                    Ok(<$t>::midpoint(self, other))
+                }
+            }
+        )+
+    }
+}
+
+float_midpoint_delegate_impl!(f32, f64);
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    //use quickcheck_macros::quickcheck;
 
     #[test]
     fn test_adjacent() {
         assert_eq!(10.try_adjacent(Side::Right).unwrap(), 11);
         assert_eq!(11.try_adjacent(Side::Left).unwrap(), 10);
+    }
+
+    // force resolution through trait
+    fn get_midpoint<T: Midpoint>(a: T, b: T) -> Result<T, T::Error> {
+        a.midpoint(b)
+    }
+
+    #[quickcheck]
+    fn quickcheck_midpoint_i32(a: i32, b: i32) {
+        let expected = (((a as i64) + (b as i64)) / 2) as i32;
+        assert_eq!(get_midpoint(a, b).unwrap(), expected);
+    }
+
+    #[quickcheck]
+    fn quickcheck_midpoint_f32(a: f32, b: f32) {
+        if !a.is_finite() || !b.is_finite() {
+            return;
+        }
+        // widen so the reference sum can't overflow f32 range
+        let expected = (((a as f64) + (b as f64)) / 2.0) as f32;
+        assert_eq!(get_midpoint(a, b).unwrap(), expected);
     }
 }

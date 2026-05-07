@@ -16,7 +16,7 @@
 //! Some common measures are Cardinality, Count, and
 //! the Lebesgue measure which is Width in R1.
 
-pub use intervalsets_core::measure::{Count, Countable, Measurement, Width};
+pub use intervalsets_core::measure::{Count, CountOverflowError, Countable, Measurement, Width};
 
 mod count;
 mod width;
@@ -27,6 +27,6 @@ mod tests {
 
     #[test]
     fn test_measurement_ord() {
-        assert_eq!(Measurement::Finite(10) < Measurement::Infinite, true,);
+        assert!(Measurement::Finite(10) < Measurement::Infinite,);
     }
 }

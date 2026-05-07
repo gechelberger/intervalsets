@@ -19,6 +19,14 @@ use crate::MaybeEmpty;
 /// > edge cases is left to the end user. A fixed precision decimal
 /// > type may be preferred in some cases.
 ///
+/// # Contract
+///
+/// Tier 2 (infallible when closed over the invariants). Cannot panic
+/// or error given inputs satisfying their type invariants. The
+/// returned `Option` is a domain answer — `None` means the operands
+/// are disconnected and have no single-piece fusion — not an error
+/// signal. See [`crate::ops`] for the full tier model.
+///
 /// # Examples
 /// ```
 /// use intervalsets_core::prelude::*;
@@ -26,7 +34,7 @@ use crate::MaybeEmpty;
 /// let x = FiniteInterval::closed(0.0, 0.3);
 /// let y = FiniteInterval::closed(0.1 + 0.2, 1.0);
 ///
-/// assert_eq!(x.try_merge(y), None);
+/// assert_eq!(x.merge_connected(y), None);
 /// ```
 ///
 /// ```
@@ -35,31 +43,31 @@ use crate::MaybeEmpty;
 /// let x = FiniteInterval::closed(0, 10);
 ///
 /// let y = FiniteInterval::closed(11, 20);
-/// assert_eq!(x.try_merge(y).unwrap(), FiniteInterval::closed(0, 20));
+/// assert_eq!(x.merge_connected(y).unwrap(), FiniteInterval::closed(0, 20));
 ///
 /// let y = FiniteInterval::closed(20, 30);
-/// assert_eq!(x.try_merge(y), None);
+/// assert_eq!(x.merge_connected(y), None);
 ///
 /// let y = FiniteInterval::<i32>::empty();
-/// assert_eq!(x.try_merge(y).unwrap(), x);
-/// assert_eq!(y.try_merge(x).unwrap(), x);
+/// assert_eq!(x.merge_connected(y).unwrap(), x);
+/// assert_eq!(y.merge_connected(x).unwrap(), x);
 ///
 /// let x = FiniteInterval::<i32>::empty();
-/// assert_eq!(x.try_merge(y).unwrap(), FiniteInterval::empty());
+/// assert_eq!(x.merge_connected(y).unwrap(), FiniteInterval::empty());
 /// ```
-pub trait TryMerge<Rhs = Self> {
+pub trait MergeConnected<Rhs = Self> {
     /// The type of interval to return when mergeable.
     type Output;
 
     /// Tries to merge two intervals into a single interval.
-    fn try_merge(self, rhs: Rhs) -> Option<Self::Output>;
+    fn merge_connected(self, rhs: Rhs) -> Option<Self::Output>;
 }
 
-impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
+impl<T: Element> MergeConnected<Self> for FiniteInterval<T> {
     type Output = Self;
 
     #[inline(always)]
-    fn try_merge(self, rhs: Self) -> Option<Self::Output> {
+    fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.connects(&rhs) {
             let Some((lhs_min, lhs_max)) = self.into_raw() else {
                 // intersects is false, but the empty set
@@ -68,19 +76,17 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
             };
 
             let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-                // SAFETY: repacking
-                let lhs = unsafe { Self::new_unchecked(lhs_min, lhs_max) };
+                // repacking
+                let lhs = Self::new_assume_valid(lhs_min, lhs_max);
                 return Some(lhs);
             };
 
-            // SAFETY: if lhs and rhs satisfy invariants, then bounds are
-            // normalized, comparable, and min(left, right) <= max(left, right).
-            let merged = unsafe {
-                FiniteInterval::new_unchecked(
-                    FiniteBound::take_min_unchecked(Side::Left, lhs_min, rhs_min),
-                    FiniteBound::take_max_unchecked(Side::Right, lhs_max, rhs_max),
-                )
-            };
+            // lhs and rhs satisfy invariants -> bounds are normalized, comparable,
+            // and min(left, right) <= max(left, right)
+            let merged = FiniteInterval::new_assume_valid(
+                FiniteBound::take_min_assume_valid(Side::Left, lhs_min, rhs_min),
+                FiniteBound::take_max_assume_valid(Side::Right, lhs_max, rhs_max),
+            );
 
             Some(merged)
         } else {
@@ -89,31 +95,28 @@ impl<T: Element> TryMerge<Self> for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
+impl<T: Element + Clone> MergeConnected<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
-    fn try_merge(self, rhs: Self) -> Option<Self::Output> {
+    fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.connects(rhs) {
             let Some((lhs_min, lhs_max)) = self.view_raw() else {
                 return Some(rhs.clone());
             };
 
             let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
-                // SAFETY: just putting it back together
-                let lhs =
-                    unsafe { FiniteInterval::new_unchecked(lhs_min.clone(), lhs_max.clone()) };
+                // just putting it back together
+                let lhs = FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone());
                 return Some(lhs);
             };
 
-            // SAFETY: if lhs and rhs satisfy invariants, bounds are normalized,
-            // and min(left, right) <= max(left, right).
-            let merged = unsafe {
-                FiniteInterval::new_unchecked(
-                    FiniteBound::min_unchecked(Side::Left, lhs_min, rhs_min).clone(),
-                    FiniteBound::max_unchecked(Side::Right, lhs_max, rhs_max).clone(),
-                )
-            };
+            // lhs and rhs satisfy invariants -> bounds are normalized, comparable,
+            // and min(left, right) <= max(left, right)
+            let merged = FiniteInterval::new_assume_valid(
+                FiniteBound::min_assume_valid(Side::Left, lhs_min, rhs_min).clone(),
+                FiniteBound::max_assume_valid(Side::Right, lhs_max, rhs_max).clone(),
+            );
 
             Some(merged)
         } else {
@@ -122,11 +125,11 @@ impl<T: Element + Clone> TryMerge<Self> for &FiniteInterval<T> {
     }
 }
 
-impl<T: Element> TryMerge<Self> for HalfInterval<T> {
+impl<T: Element> MergeConnected<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
-    fn try_merge(self, rhs: Self) -> Option<Self::Output> {
+    fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Some(self.into())
@@ -145,11 +148,11 @@ impl<T: Element> TryMerge<Self> for HalfInterval<T> {
     }
 }
 
-impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
+impl<T: Element + Clone> MergeConnected<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
-    fn try_merge(self, rhs: Self) -> Option<Self::Output> {
+    fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
                 Some(self.clone().into())
@@ -164,11 +167,11 @@ impl<T: Element + Clone> TryMerge<Self> for &HalfInterval<T> {
     }
 }
 
-impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
+impl<T: Element> MergeConnected<FiniteInterval<T>> for HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     #[inline(always)]
-    fn try_merge(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
+    fn merge_connected(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
         if self.connects(&rhs) {
             let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
                 return Some(self); // identity: merge with empty
@@ -180,8 +183,8 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
                 Some(self)
             } else {
                 let bound = self.side().select(rhs_min, rhs_max);
-                // SAFETY: bound is stolen from existing FiniteInterval
-                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
+                // bound is stolen from existing FiniteInterval -> already comparable
+                Some(HalfInterval::new_assume_valid(self.side(), bound))
             }
         } else {
             None
@@ -189,11 +192,11 @@ impl<T: Element> TryMerge<FiniteInterval<T>> for HalfInterval<T> {
     }
 }
 
-impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
+impl<T: Element + Clone> MergeConnected<&FiniteInterval<T>> for &HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     #[inline(always)]
-    fn try_merge(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
+    fn merge_connected(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         if self.connects(rhs) {
             let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
                 return Some(self.clone());
@@ -205,7 +208,8 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
                 Some(self.clone())
             } else {
                 let bound = self.side().select(rhs_min, rhs_max).clone();
-                unsafe { Some(HalfInterval::new_unchecked(self.side(), bound)) }
+                // bound is taken from existing FiniteInterval -> already comparable
+                Some(HalfInterval::new_assume_valid(self.side(), bound))
             }
         } else {
             None
@@ -213,26 +217,26 @@ impl<T: Element + Clone> TryMerge<&FiniteInterval<T>> for &HalfInterval<T> {
     }
 }
 
-macro_rules! dispatch_try_merge_impl {
+macro_rules! dispatch_merge_connected_impl {
     ($t_rhs:ty) => {
-        impl<T: $crate::numeric::Element> TryMerge<$t_rhs> for EnumInterval<T> {
+        impl<T: $crate::numeric::Element> MergeConnected<$t_rhs> for EnumInterval<T> {
             type Output = EnumInterval<T>;
             #[inline(always)]
-            fn try_merge(self, rhs: $t_rhs) -> Option<Self::Output> {
+            fn merge_connected(self, rhs: $t_rhs) -> Option<Self::Output> {
                 match self {
-                    Finite(lhs) => lhs.try_merge(rhs).map(EnumInterval::from),
-                    Half(lhs) => lhs.try_merge(rhs).map(EnumInterval::from),
+                    Finite(lhs) => lhs.merge_connected(rhs).map(EnumInterval::from),
+                    Half(lhs) => lhs.merge_connected(rhs).map(EnumInterval::from),
                     Unbounded => Some(Unbounded),
                 }
             }
         }
-        impl<T: $crate::numeric::Element + Clone> TryMerge<&$t_rhs> for &EnumInterval<T> {
+        impl<T: $crate::numeric::Element + Clone> MergeConnected<&$t_rhs> for &EnumInterval<T> {
             type Output = EnumInterval<T>;
             #[inline(always)]
-            fn try_merge(self, rhs: &$t_rhs) -> Option<Self::Output> {
+            fn merge_connected(self, rhs: &$t_rhs) -> Option<Self::Output> {
                 match self {
-                    Finite(lhs) => lhs.try_merge(rhs).map(EnumInterval::from),
-                    Half(lhs) => lhs.try_merge(rhs).map(EnumInterval::from),
+                    Finite(lhs) => lhs.merge_connected(rhs).map(EnumInterval::from),
+                    Half(lhs) => lhs.merge_connected(rhs).map(EnumInterval::from),
                     Unbounded => Some(Unbounded),
                 }
             }
@@ -240,33 +244,33 @@ macro_rules! dispatch_try_merge_impl {
     };
 }
 
-dispatch_try_merge_impl!(FiniteInterval<T>);
-dispatch_try_merge_impl!(HalfInterval<T>);
-dispatch_try_merge_impl!(EnumInterval<T>);
+dispatch_merge_connected_impl!(FiniteInterval<T>);
+dispatch_merge_connected_impl!(HalfInterval<T>);
+dispatch_merge_connected_impl!(EnumInterval<T>);
 
-macro_rules! commutative_try_merge_impl {
+macro_rules! commutative_merge_connected_impl {
     ($t_lhs:ty, $t_rhs:ty, $t_ret:ty) => {
-        impl<T: $crate::numeric::Element> TryMerge<$t_rhs> for $t_lhs {
+        impl<T: $crate::numeric::Element> MergeConnected<$t_rhs> for $t_lhs {
             type Output = $t_ret;
             #[inline(always)]
-            fn try_merge(self, rhs: $t_rhs) -> Option<Self::Output> {
-                rhs.try_merge(self)
+            fn merge_connected(self, rhs: $t_rhs) -> Option<Self::Output> {
+                rhs.merge_connected(self)
             }
         }
 
-        impl<T: $crate::numeric::Element + Clone> TryMerge<&$t_rhs> for &$t_lhs {
+        impl<T: $crate::numeric::Element + Clone> MergeConnected<&$t_rhs> for &$t_lhs {
             type Output = $t_ret;
             #[inline(always)]
-            fn try_merge(self, rhs: &$t_rhs) -> Option<Self::Output> {
-                rhs.try_merge(self)
+            fn merge_connected(self, rhs: &$t_rhs) -> Option<Self::Output> {
+                rhs.merge_connected(self)
             }
         }
     };
 }
 
-commutative_try_merge_impl!(FiniteInterval<T>, HalfInterval<T>, HalfInterval<T>);
-commutative_try_merge_impl!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>);
-commutative_try_merge_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
+commutative_merge_connected_impl!(FiniteInterval<T>, HalfInterval<T>, HalfInterval<T>);
+commutative_merge_connected_impl!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>);
+commutative_merge_connected_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
 
 /// MergeSorted merges intersecting intervals and returns disjoint ones.
 ///
@@ -305,8 +309,8 @@ where
 
 impl<S, I> Iterator for MergeSortedByValue<S, I>
 where
-    S: TryMerge + for<'a> Connects<&'a S>,
-    S: From<<S as TryMerge>::Output>,
+    S: MergeConnected + for<'a> Connects<&'a S>,
+    S: From<<S as MergeConnected>::Output>,
     I: Iterator<Item = S>,
 {
     type Item = I::Item;
@@ -320,9 +324,20 @@ where
             }
 
             let candidate = self.sorted.next().unwrap();
-            current = match current.try_merge(candidate) {
+            current = match current.merge_connected(candidate) {
                 Some(merged) => S::from(merged),
-                None => unreachable!(),
+                None => {
+                    // Connects/MergeConnected contract: connects(rhs) ⇒ merge_connected(rhs).is_some().
+                    // Reaching this arm means an upstream invariant has been
+                    // violated (e.g. via a Tier 4 *_assume_valid bypass). In
+                    // debug builds, panic loudly; in release, end the iterator
+                    // gracefully rather than diverge.
+                    debug_assert!(
+                        false,
+                        "Connects/MergeConnected contract violation: connected but not mergeable"
+                    );
+                    return None;
+                }
             };
         }
 
@@ -364,7 +379,7 @@ where
         let mut current = self.sorted.next()?.clone();
 
         while let Some(cand) = self.sorted.next() {
-            current = match (&current).try_merge(cand) {
+            current = match (&current).merge_connected(cand) {
                 Some(merged) => merged,
                 None => {
                     self.sorted.put_back(cand);
@@ -389,20 +404,20 @@ mod tests {
         let c = EnumInterval::closed(20, 30);
 
         let expected = Some(EnumInterval::closed(0, 15));
-        assert_eq!((&a).try_merge(&b), expected);
-        assert_eq!(a.try_merge(b), expected);
+        assert_eq!((&a).merge_connected(&b), expected);
+        assert_eq!(a.merge_connected(b), expected);
 
         let expected = None;
-        assert_eq!((&a).try_merge(&c), expected);
-        assert_eq!(a.try_merge(c), expected);
+        assert_eq!((&a).merge_connected(&c), expected);
+        assert_eq!(a.merge_connected(c), expected);
 
         let empty = EnumInterval::empty();
 
-        assert_eq!((&a).try_merge(&empty), Some(a));
-        assert_eq!(a.try_merge(empty), Some(a));
+        assert_eq!((&a).merge_connected(&empty), Some(a));
+        assert_eq!(a.merge_connected(empty), Some(a));
 
-        assert_eq!((&empty).try_merge(&a), Some(a));
-        assert_eq!(empty.try_merge(a), Some(a));
+        assert_eq!((&empty).merge_connected(&a), Some(a));
+        assert_eq!(empty.merge_connected(a), Some(a));
     }
 
     #[test]
@@ -410,16 +425,16 @@ mod tests {
         let a = EnumInterval::unbound_closed(-10);
         let b = EnumInterval::closed_unbound(10);
 
-        assert_eq!((&a).try_merge(&b), None);
-        assert_eq!(a.try_merge(b), None);
+        assert_eq!((&a).merge_connected(&b), None);
+        assert_eq!(a.merge_connected(b), None);
 
         let c = EnumInterval::unbound_closed(20);
         let expected = Some(EnumInterval::unbounded());
-        assert_eq!((&b).try_merge(&c), expected);
-        assert_eq!(b.try_merge(c), expected);
+        assert_eq!((&b).merge_connected(&c), expected);
+        assert_eq!(b.merge_connected(c), expected);
 
-        assert_eq!((&a).try_merge(&c), Some(c));
-        assert_eq!(a.try_merge(c), Some(c));
+        assert_eq!((&a).merge_connected(&c), Some(c));
+        assert_eq!(a.merge_connected(c), Some(c));
     }
 
     #[test]
@@ -428,21 +443,21 @@ mod tests {
 
         let b = EnumInterval::unbound_closed(5);
         let expected = Some(EnumInterval::unbound_closed(10));
-        assert_eq!((&a).try_merge(&b), expected);
-        assert_eq!(a.try_merge(b), expected);
+        assert_eq!((&a).merge_connected(&b), expected);
+        assert_eq!(a.merge_connected(b), expected);
 
         let b = EnumInterval::closed_unbound(5);
         let expected = Some(EnumInterval::closed_unbound(0));
-        assert_eq!((&a).try_merge(&b), expected);
-        assert_eq!(a.try_merge(b), expected);
+        assert_eq!((&a).merge_connected(&b), expected);
+        assert_eq!(a.merge_connected(b), expected);
 
         let b = EnumInterval::closed_unbound(0);
-        assert_eq!((&a).try_merge(&b), Some(b));
-        assert_eq!(a.try_merge(b), Some(b));
+        assert_eq!((&a).merge_connected(&b), Some(b));
+        assert_eq!(a.merge_connected(b), Some(b));
 
         let b = EnumInterval::closed_unbound(15);
-        assert_eq!((&a).try_merge(&b), None);
-        assert_eq!(a.try_merge(b), None);
+        assert_eq!((&a).merge_connected(&b), None);
+        assert_eq!(a.merge_connected(b), None);
     }
 
     extern crate std;

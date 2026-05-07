@@ -58,26 +58,24 @@ mod icore {
                 };
 
                 let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-                    // SAFETY: putting it back together
-                    return IntervalSet::from(unsafe { Self::new_unchecked(lhs_min, lhs_max) });
+                    // rhs was empty; reconstruct self from its raw parts.
+                    return IntervalSet::from(Self::new_assume_valid(lhs_min, lhs_max));
                 };
 
-                // SAFETY: if self and rhs satisfy invariants then new interval
-                // is normalized and min(left, right) <= max(left, right)
-                let merged = unsafe {
-                    FiniteInterval::new_unchecked(
-                        FiniteBound::take_min_unchecked(Side::Left, lhs_min, rhs_min),
-                        FiniteBound::take_max_unchecked(Side::Right, lhs_max, rhs_max),
-                    )
-                };
+                // self and rhs are connected and inhabited; min/max of their
+                // bounds preserves left <= right and the normalized form,
+                // so FiniteInterval invariants hold.
+                let merged = FiniteInterval::new_assume_valid(
+                    FiniteBound::take_min_assume_valid(Side::Left, lhs_min, rhs_min),
+                    FiniteBound::take_max_assume_valid(Side::Right, lhs_max, rhs_max),
+                );
 
                 IntervalSet::from(merged)
             } else {
                 let ordpair = ordered_pair(self.into(), rhs.into());
-                // SAFETY:
                 // 2. intervals are sorted here
                 // 1+3. Just checked that the two sets are not connected
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -92,25 +90,25 @@ mod icore {
                 };
 
                 let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
-                    // SAFETY: just reconstructing a clone of self
-                    let lhs =
-                        unsafe { FiniteInterval::new_unchecked(lhs_min.clone(), lhs_max.clone()) };
+                    // rhs was empty; reconstruct a clone of self from its bounds.
+                    let lhs = FiniteInterval::new_assume_valid(lhs_min.clone(), lhs_max.clone());
                     return IntervalSet::from(lhs);
                 };
 
-                // SAFETY: if self and rhs satisfy invariants then new interval
-                // is normalized and min(left, right) <= max(left, right)
-                let merged = unsafe {
-                    FiniteInterval::new_unchecked(
-                        FiniteBound::min_unchecked(Side::Left, lhs_min, rhs_min).clone(),
-                        FiniteBound::max_unchecked(Side::Right, lhs_max, rhs_max).clone(),
-                    )
-                };
+                // self and rhs are connected and inhabited; min/max of their
+                // bounds preserves left <= right and the normalized form,
+                // so FiniteInterval invariants hold.
+                let merged = FiniteInterval::new_assume_valid(
+                    FiniteBound::min_assume_valid(Side::Left, lhs_min, rhs_min).clone(),
+                    FiniteBound::max_assume_valid(Side::Right, lhs_max, rhs_max).clone(),
+                );
 
                 IntervalSet::from(merged)
             } else {
                 let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                // 2. intervals are sorted here
+                // 1+3. Just checked that the two sets are not connected
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -129,10 +127,9 @@ mod icore {
                 IntervalSet::unbounded()
             } else {
                 let ordpair = ordered_pair(self.into(), rhs.into());
-                // SAFETY:
                 // 2: intervals are sorted here
                 // 1+3: intervals are not connected (and therefore also non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -151,10 +148,9 @@ mod icore {
                 IntervalSet::unbounded()
             } else {
                 let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
-                // SAFETY:
                 // 2: intervals are sorted here
                 // 1+3: intervals are not connected (and therefore also non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -174,16 +170,16 @@ mod icore {
                     IntervalSet::from(rhs)
                 } else {
                     let bound = rhs.side().select(lhs_min, lhs_max);
-                    // SAFETY: bound stolen from existing FiniteInterval
-                    let merged = unsafe { HalfInterval::new_unchecked(rhs.side(), bound) };
+                    // bound came from a valid FiniteInterval, so HalfInterval
+                    // invariants hold for the new side.
+                    let merged = HalfInterval::new_assume_valid(rhs.side(), bound);
                     IntervalSet::from(merged)
                 }
             } else {
                 let ordpair = ordered_pair(self.into(), rhs.into());
-                // SAFETY:
                 // 2. intervals are sorted here
                 // 1+3. intervals not connected (and therefore non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -203,16 +199,16 @@ mod icore {
                     IntervalSet::from(rhs.clone())
                 } else {
                     let bound = rhs.side().select(lhs_min, lhs_max).clone();
-                    // SAFETY: bound stolen from existing FiniteInterval
-                    let merged = unsafe { HalfInterval::new_unchecked(rhs.side(), bound) };
+                    // bound came from a valid FiniteInterval, so HalfInterval
+                    // invariants hold for the new side.
+                    let merged = HalfInterval::new_assume_valid(rhs.side(), bound);
                     IntervalSet::from(merged)
                 }
             } else {
                 let ordpair = ordered_pair(self.clone().into(), rhs.clone().into());
-                // SAFETY:
                 // 2. intervals are sorted here
                 // 1+3. intervals not connected (and therefore non-empty)
-                unsafe { IntervalSet::new_unchecked(ordpair) }
+                IntervalSet::new_assume_valid(ordpair)
             }
         }
     }
@@ -300,11 +296,10 @@ impl<T: Element> Union<Self> for IntervalSet<T> {
 
     fn union(self, rhs: Self) -> Self::Output {
         let sorted = itertools::merge(self, rhs);
-        // SAFETY:
         // 1. Neither operand may produce the empty set per invariants.
         // 2. Operands are sorted per invariants.
         // 3. MergSortedByValue merged connected intervals if properly sorted.
-        unsafe { Self::new_unchecked(MergeSortedByValue::new(sorted)) }
+        Self::new_assume_valid(MergeSortedByValue::new(sorted))
     }
 }
 
@@ -314,11 +309,10 @@ impl<T: Element + Clone> Union<Self> for &IntervalSet<T> {
     fn union(self, rhs: Self) -> Self::Output {
         let sorted = itertools::merge(self.iter(), rhs.iter());
         let merged = MergeSortedByRef::new(sorted.into_iter().map(|x| &x.0));
-        // SAFETY:
         // 1. Neither operand may produce the empty set per invariants
         // 2. Operands are sorted per invariants.
         // 3. MergeSortedByRef merges connected intervals if sorted.
-        unsafe { IntervalSet::new_unchecked(merged.map(Interval::from)) }
+        IntervalSet::new_assume_valid(merged.map(Interval::from))
     }
 }
 
@@ -327,11 +321,10 @@ impl<T: Element> Union<Interval<T>> for IntervalSet<T> {
 
     fn union(self, rhs: Interval<T>) -> Self::Output {
         let sorted = itertools::merge(self, once(rhs));
-        // SAFETY:
         // 1. MergeSortedByValue strips empty sets from the head of its input.
         // 2. values are sorted if self invariants are satisfied.
         // 3. MergeSortedByValue merges connected intervals if properly sorted.
-        unsafe { Self::new_unchecked(MergeSortedByValue::new(sorted)) }
+        Self::new_assume_valid(MergeSortedByValue::new(sorted))
     }
 }
 
@@ -341,11 +334,10 @@ impl<T: Element + Clone> Union<&Interval<T>> for &IntervalSet<T> {
     fn union(self, rhs: &Interval<T>) -> Self::Output {
         let sorted = itertools::merge(self.iter(), once(rhs));
         let merged = MergeSortedByRef::new(sorted.into_iter().map(|x| &x.0));
-        // SAFETY:
         // 1. Neither operand may produce the empty set per invariants
         // 2. Operands are sorted per invariants.
         // 3. MergeSortedByRef merges connected intervals if sorted.
-        unsafe { IntervalSet::new_unchecked(merged.map(Interval::from)) }
+        IntervalSet::new_assume_valid(merged.map(Interval::from))
     }
 }
 
@@ -490,7 +482,7 @@ mod tests {
             Interval::closed(300, 310),
         ]);
 
-        assert_eq!(a.clone().union(b.clone()), c);
+        assert_eq!(a.clone().union(b), c);
         assert_eq!(b.union(a), c);
     }
 
@@ -512,7 +504,7 @@ mod tests {
             Interval::closed(300, 310),
         ]);
 
-        assert_eq!(a.clone().union(b.clone()), c);
+        assert_eq!(a.clone().union(b), c);
         assert_eq!(b.union(a), c);
     }
 }

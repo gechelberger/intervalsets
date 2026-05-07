@@ -17,7 +17,7 @@
 //! the Lebesgue measure which is Width in R1.
 
 mod count;
-pub use count::{Count, Countable};
+pub use count::{Count, CountOverflowError, Countable};
 mod width;
 pub use width::Width;
 
@@ -236,6 +236,6 @@ mod tests {
 
     #[test]
     fn test_measurement_ord() {
-        assert_eq!(Measurement::Finite(10) < Measurement::Infinite, true,);
+        assert!(Measurement::Finite(10) < Measurement::Infinite,);
     }
 }

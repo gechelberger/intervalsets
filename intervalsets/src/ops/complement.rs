@@ -1,72 +1,19 @@
-use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use intervalsets_core::ops::Complement;
 
-use crate::bound::Side::*;
 use crate::factory::UnboundedFactory;
 use crate::numeric::Element;
 use crate::ops::Intersection;
 use crate::{Interval, IntervalSet};
 
-/// Defines the complement of a Set.
-///
-/// ```text
-/// Let A  = { x | P(x) } =>
-///     A' = { x | x ∉ A } = { x | !P(x) }
-/// ```
-pub trait Complement {
-    type Output;
-
-    fn complement(self) -> Self::Output;
-}
-
-impl<T: Element> Complement for FiniteInterval<T> {
-    type Output = IntervalSet<T>;
-
-    fn complement(self) -> Self::Output {
-        match self.into_raw() {
-            None => IntervalSet::unbounded(),
-            Some((lhs, rhs)) => unsafe {
-                // SAFETY: Assuming FiniteInterval invariants are satisfied, then lhs <= rhs and
-                // new half intervals are properly sorted; bounds are comparable; manually renormalized.
-                IntervalSet::new_unchecked(vec![
-                    HalfInterval::new_unchecked(Right, lhs.flip().normalized(Right)).into(),
-                    HalfInterval::new_unchecked(Left, rhs.flip().normalized(Left)).into(),
-                ])
-            },
-        }
-    }
-}
-
-impl<T: Element> Complement for HalfInterval<T> {
-    type Output = IntervalSet<T>;
-
-    fn complement(self) -> Self::Output {
-        let (side, bound) = self.into_raw();
-        let side = side.flip();
-        // Safety: Assume bound satisfies invariants; manually re-normalize after flip;
-        unsafe { HalfInterval::new_unchecked(side, bound.flip().normalized(side)).into() }
-    }
-}
-
-impl<T: Element> Complement for EnumInterval<T> {
-    type Output = IntervalSet<T>;
-
-    fn complement(self) -> Self::Output {
-        match self {
-            Self::Finite(inner) => inner.complement(),
-            Self::Half(inner) => inner.complement(),
-            Self::Unbounded => IntervalSet::empty(),
-        }
-    }
-}
-
 impl<T: Element> Complement for Interval<T> {
     type Output = IntervalSet<T>;
 
     fn complement(self) -> Self::Output {
-        self.0.complement()
+        self.0.complement().into()
     }
 }
 
+/// IntervalSet complement uses De Morgan: (A ∪ B ∪ ...)' = A' ∩ B' ∩ ...
 impl<T: Element + Clone> Complement for IntervalSet<T> {
     type Output = Self;
 
@@ -74,14 +21,6 @@ impl<T: Element + Clone> Complement for IntervalSet<T> {
         self.into_iter()
             .map(|x| x.complement())
             .fold(Interval::unbounded().into(), Intersection::intersection)
-    }
-}
-
-impl<T: Complement + Clone> Complement for &T {
-    type Output = <T as Complement>::Output;
-
-    fn complement(self) -> Self::Output {
-        self.clone().complement()
     }
 }
 
@@ -94,7 +33,7 @@ mod test {
     #[quickcheck]
     fn test_finite_complement_i8(a: i8) {
         let baseline = Interval::open_closed(0, 50);
-        let complement = baseline.clone().complement();
+        let complement = baseline.complement();
 
         assert!(baseline.contains(&a) != complement.contains(&a))
     }
@@ -106,14 +45,14 @@ mod test {
         }
 
         let baseline = Interval::open_closed(0 as f32, 50.0);
-        let complement = baseline.clone().complement();
+        let complement = baseline.complement();
         assert!(baseline.contains(&a) != complement.contains(&a))
     }
 
     #[quickcheck]
     fn test_half_complement_i8(a: i8) {
-        let baseline = Interval::unbound_closed(50 as i8);
-        let complement = baseline.clone().complement();
+        let baseline = Interval::unbound_closed(50_i8);
+        let complement = baseline.complement();
         assert!(baseline.contains(&a) != complement.contains(&a));
     }
 
@@ -153,13 +92,10 @@ mod test {
         }
 
         let a = Interval::closed(a, b);
-        let c = a.clone().complement();
+        let c = a.complement();
 
         // This one we need to fix
-        assert_eq!(
-            a.clone().union(c.clone()).expect_interval(),
-            Interval::unbounded()
-        );
+        assert_eq!(a.union(c.clone()).expect_interval(), Interval::unbounded());
         assert_eq!(a.intersection(c).expect_interval(), Interval::empty());
 
         true

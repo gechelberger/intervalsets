@@ -1,4 +1,5 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
+#![forbid(unsafe_code)]
 
 //! # intervalsets: Intervals as Sets in Rust
 //!
@@ -42,7 +43,7 @@
 //! assert_eq!(x.is_fully_bounded(), true);
 //! assert_eq!(*x.right().unwrap(), FiniteBound::closed(10));
 //! assert_eq!(*x.rval().unwrap(), 10);
-//! //todo: assert_eq!(format!("x = {}", x), "x = [0, 10]");
+//! assert_eq!(format!("x = {}", x), "x = [0, 10]");
 //!
 //! let x = Interval::closed_unbound(0.0);
 //! assert_eq!(x.right(), None);
@@ -83,14 +84,6 @@
 //! assert_eq!(c, Interval::<f64>::empty());
 //! ```
 //!
-//! ## General Mapping
-//!
-//! ```
-//! use intervalsets::prelude::*;
-//!
-//! //TODO
-//! ```
-//!
 //! ## Measure of a Set
 //!
 //! Two [measures](measure) are provided.
@@ -116,7 +109,7 @@
 //! use intervalsets::prelude::*;
 //!
 //! let x = Interval::closed(0, 10);
-//! assert_eq!(x.count().finite(), 11);
+//! assert_eq!(x.count().finite(), 11u128);
 //!
 //! let x = Interval::closed_unbound(0);
 //! assert_eq!(x.count().is_finite(), false);
@@ -127,7 +120,7 @@
 //! `intervalsets` has multiple Cargo features for controlling the underlying
 //! data types used by [`Interval`] and [`IntervalSet`]. None are enabled by
 //! default
-//!    
+//!
 //! * rust_decimal
 //! * num-bigint
 //! * chrono
@@ -149,10 +142,9 @@ extern crate quickcheck_macros;
 pub use intervalsets_core::bound::ord::OrdBounded;
 pub use intervalsets_core::bound::{SetBounds, Side};
 pub use intervalsets_core::numeric::Element;
-pub use intervalsets_core::{
-    bound, continuous_domain_impl, default_countable_impl, error, numeric,
-};
+pub use intervalsets_core::{bound, continuous_domain_impl, default_countable_impl, numeric};
 
+pub mod error;
 pub mod factory;
 
 pub use intervalsets_core::MaybeEmpty;

@@ -3,7 +3,7 @@ use quickcheck::{Arbitrary, Gen};
 use crate::bound::BoundType::{self, *};
 use crate::bound::FiniteBound;
 use crate::bound::Side::{self, *};
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
 const fn first_n_i32s<const N: usize>() -> [i32; N] {
@@ -51,7 +51,7 @@ impl<T: Element + Clone + Arbitrary> Arbitrary for FiniteInterval<T> {
                     (b, a)
                 };
 
-                match FiniteInterval::new_strict(left, right) {
+                match FiniteInterval::try_new(left, right) {
                     Ok(interval) => interval,
                     Err(_) => Self::arbitrary(g),
                 }
@@ -60,19 +60,19 @@ impl<T: Element + Clone + Arbitrary> Arbitrary for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for HalfInterval<T> {
+impl<T: Element + Clone + Arbitrary> Arbitrary for HalfInterval<T> {
     fn arbitrary(g: &mut Gen) -> Self {
         let side = Side::arbitrary(g);
         let bound = FiniteBound::<T>::arbitrary(g);
 
-        match HalfInterval::new_strict(side, bound) {
+        match HalfInterval::try_new(side, bound) {
             Ok(interval) => interval,
             Err(_) => Self::arbitrary(g),
         }
     }
 }
 
-impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for EnumInterval<T> {
+impl<T: Element + Clone + Arbitrary> Arbitrary for EnumInterval<T> {
     fn arbitrary(g: &mut Gen) -> Self {
         let x = *g.choose(&CHANCES_100).unwrap();
         if x < 75 {
@@ -93,7 +93,7 @@ mod tests {
 
     #[quickcheck]
     fn check_qc_interval(interval: EnumInterval<f32>) {
-        let hull = EnumInterval::strict_hull([interval]).unwrap();
+        let hull = EnumInterval::try_hull([interval]).unwrap();
         assert_eq!(hull, interval);
     }
 
@@ -104,7 +104,7 @@ mod tests {
 
     fn check_intersect_and_merge(a: EnumInterval<f32>, b: EnumInterval<f32>) {
         let intersection = a.intersection(b);
-        let merge = a.try_merge(b);
+        let merge = a.merge_connected(b);
 
         if a.intersects(&b) {
             assert!(intersection.is_inhabited());

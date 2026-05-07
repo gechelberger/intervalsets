@@ -12,9 +12,9 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 ///
 /// # Contract
 ///
-/// Intersects should be usable with strict api calls, therefore it should
-/// not panic. Since it is only testing between instantiated sets, comparability
-/// is already addressed by set invariants and should not be a problem.
+/// Tier 1 (truly infallible). Must not panic. Predicate-shaped
+/// return absorbs incomparability into `false`. See [`crate::ops`]
+/// for the full tier model.
 ///
 /// # Examples
 ///
@@ -140,15 +140,15 @@ mod tests {
         let a = FiniteInterval::open(0.0, 10.0);
         let b = FiniteInterval::open(10.0, 20.0);
 
-        assert_eq!(a.intersects(&b), false);
-        assert_eq!(b.intersects(&a), false);
+        assert!(!a.intersects(&b));
+        assert!(!b.intersects(&a));
 
         let hb = HalfInterval::open_unbound(10.0);
-        assert_eq!(a.intersects(&hb), false);
-        assert_eq!(hb.intersects(&a), false);
+        assert!(!a.intersects(&hb));
+        assert!(!hb.intersects(&a));
 
         let ha = HalfInterval::unbound_open(0.0);
-        assert_eq!(a.intersects(&ha), false);
-        assert_eq!(ha.intersects(&a), false);
+        assert!(!a.intersects(&ha));
+        assert!(!ha.intersects(&a));
     }
 }

@@ -4,6 +4,7 @@ use num_traits::{One, Zero};
 
 use crate::bound::ord::{OrdBoundPair, OrdBounded};
 use crate::bound::{FiniteBound, SetBounds, Side};
+use crate::error::Error;
 use crate::numeric::Element;
 use crate::ops::Connects;
 use crate::MaybeEmpty;
@@ -24,8 +25,8 @@ use crate::MaybeEmpty;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
 )]
 pub struct Interval<T>(pub(crate) EnumInterval<T>);
 
@@ -123,7 +124,7 @@ impl<T> Interval<T> {
     /// use intervalsets::prelude::*;
     ///
     /// let x = Interval::unbound_closed(10)
-    ///             .try_merge(Interval::closed_unbound(-10))
+    ///             .merge_connected(Interval::closed_unbound(-10))
     ///             .unwrap();
     ///
     /// assert_eq!(x.is_unbounded(), true);
@@ -161,25 +162,82 @@ impl<T> OrdBounded<T> for Interval<T> {
 ///
 /// # Invariants
 ///
-/// * All stored intervals are normalized.
-///     * This is not checked here because it should be
-///       an invariant of `Interval<T>` already.
-/// * No stored interval may be the empty set.
-///     * Emptiness is represented by storing no intervals.
-/// * All intervals are stored in ascending order.
-/// * All stored intervals are unconnected subsets of T.
+/// An `IntervalSet` is canonical iff:
+///
+/// 1. **No stored empty interval.** Emptiness is represented by
+///    storing no intervals at all.
+/// 2. **Strict ascending order.** Stored intervals are sorted by
+///    their lower bound.
+/// 3. **No two consecutive intervals connect.** Any pair that
+///    would merge into a single interval has already done so.
+/// 4. **All stored intervals are normalized.** Inherited from
+///    [`Interval<T>`]'s own invariants and not re-checked here.
+///
+/// [`satisfies_invariants`](Self::satisfies_invariants) is the
+/// public predicate that tests for these. The constructors
+/// ([`new`](Self::new), [`try_new`](Self::try_new),
+/// [`new_assume_valid`](Self::new_assume_valid)) handle invariant
+/// enforcement at different points along the
+/// repair / reject / trust spectrum.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawIntervalSet<T>"))]
 #[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
 )]
 pub struct IntervalSet<T> {
     intervals: Vec<Interval<T>>,
 }
 
+/// Wire-format mirror of [`IntervalSet`] used to drive validation
+/// during `Deserialize`.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "IntervalSet")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
+struct RawIntervalSet<T> {
+    intervals: Vec<Interval<T>>,
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawIntervalSet<T>> for IntervalSet<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawIntervalSet<T>) -> Result<Self, Self::Error> {
+        Self::try_new(raw.intervals)
+    }
+}
+
 impl<T: Element> IntervalSet<T> {
-    /// Create a new Set of intervals and enforce invariants.
+    /// Create an `IntervalSet` from any iterable of intervals,
+    /// **repairing** any invariant violations along the way.
+    ///
+    /// # Semantics
+    ///
+    /// `new` is the ergonomic, "do what I mean" constructor. It accepts
+    /// arbitrarily-ordered, possibly-overlapping, possibly-empty input
+    /// and produces a canonical-form `IntervalSet`:
+    ///
+    /// - empty intervals are dropped;
+    /// - the remainder is sorted ascending;
+    /// - connecting / overlapping intervals are merged.
+    ///
+    /// This is the right choice for set-algebraic code that produces
+    /// intervals as a byproduct (unions of arbitrary input,
+    /// difference/symmetric-difference of sets, etc.) and just wants
+    /// the canonical result.
+    ///
+    /// For callers that want to *reject* malformed input rather than
+    /// repair it, see [`try_new`](Self::try_new). The `Deserialize`
+    /// path also rejects rather than repairs.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any pair of intervals is incomparable during sorting
+    /// (typically a NaN-tainted float bound). Pre-validate with
+    /// [`Interval::try_*`](crate::Interval) constructors if working
+    /// with float types.
     pub fn new<I>(intervals: I) -> Self
     where
         I: IntoIterator<Item = Interval<T>>,
@@ -198,6 +256,38 @@ impl<T: Element> IntervalSet<T> {
         let intervals: Vec<_> = MergeSortedByValue::new(intervals).collect();
         Self { intervals }
     }
+
+    /// Create a new `IntervalSet`, returning `Err` if the input
+    /// violates any invariant. Unlike [`new`](Self::new), this does
+    /// **not** repair or normalize the input.
+    ///
+    /// # Semantics
+    ///
+    /// `try_new` is the strict counterpart to `new`. It is the right
+    /// choice when the caller has already canonicalized the input
+    /// elsewhere (or believes it has) and wants to detect a contract
+    /// violation rather than silently fix it. The `Deserialize` path
+    /// uses `try_new` for exactly this reason — by the time data
+    /// reaches deserialize, a well-formed serializer has already
+    /// emitted canonical form, and a non-canonical payload is a
+    /// signal that the input did not come from us.
+    ///
+    /// Rejects any input that does not satisfy the
+    /// [`IntervalSet` invariants](Self#invariants). See the
+    /// crate-level "Construction at boundaries" section in
+    /// [`intervalsets_core`] for the broader principle.
+    pub fn try_new<I>(intervals: I) -> Result<Self, Error>
+    where
+        I: IntoIterator<Item = Interval<T>>,
+    {
+        let intervals: Vec<_> = intervals.into_iter().collect();
+        // satisfies_invariants catches empty stored intervals as a side
+        // effect of the strict-ascending check (empty compares <= empty).
+        if !Self::satisfies_invariants(&intervals) {
+            return Err(Error::InvalidIntervalSet);
+        }
+        Ok(Self { intervals })
+    }
 }
 
 impl<T> IntervalSet<T> {
@@ -208,6 +298,11 @@ impl<T> IntervalSet<T> {
 }
 
 impl<T: Element> IntervalSet<T> {
+    /// Returns `true` iff `intervals` satisfies the
+    /// [`IntervalSet` invariants](Self#invariants).
+    ///
+    /// This is the predicate [`try_new`](Self::try_new) uses to
+    /// validate input.
     pub fn satisfies_invariants(intervals: &[Interval<T>]) -> bool {
         let mut prev = &Interval::<T>::empty();
         for interval in intervals {
@@ -222,15 +317,14 @@ impl<T: Element> IntervalSet<T> {
 }
 
 impl<T> IntervalSet<T> {
-    /// Creates a new IntervalSet without checking invariants.
+    /// Creates a new `IntervalSet` without checking invariants.
     ///
-    /// # Safety
+    /// Caller is responsible for enforcing the
+    /// [`IntervalSet` invariants](Self#invariants).
     ///
-    /// User is responsible for enforcing invariants:
-    /// 1. provided intervals do not include the empty set.
-    /// 2. provided intervals are sorted ascendingly.
-    /// 3. provided intervals are not connected to each other.
-    pub unsafe fn new_unchecked<I>(intervals: I) -> Self
+    /// Violations are not memory-unsafe but produce a logically invalid
+    /// `IntervalSet` whose set-algebraic operations may misbehave.
+    pub fn new_assume_valid<I>(intervals: I) -> Self
     where
         I: IntoIterator<Item = Interval<T>>,
     {
@@ -270,7 +364,8 @@ impl<T: Clone + Element> IntervalSet<T> {
                 let last = self.intervals.last().unwrap();
                 let (min, _) = first.ord_bound_pair().into_raw();
                 let (_, max) = last.ord_bound_pair().into_raw();
-                let hull = OrdBoundPair::new(min.cloned(), max.cloned());
+                // The IntervalSet invariants give us first.left <= last.right.
+                let hull = OrdBoundPair::new_assume_valid(min.cloned(), max.cloned());
                 hull.try_into().expect("intervalset invariants violated")
             }
         }
@@ -375,7 +470,11 @@ impl<T> MaybeEmpty for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Clone + Zero> Zero for Interval<T> {
+// The Ord bound on T is transitive only: num_traits::Zero / One require
+// Self: Add<Self> / Mul<Self> as super-traits, and our infix Add / Mul
+// require T: Ord. The bodies themselves never inspect ordering -- T: Ord
+// is a tax for num_traits interop, not a semantic requirement of zero / one.
+impl<T: Element + Ord + Clone + Zero> Zero for Interval<T> {
     #[inline]
     fn zero() -> Self {
         Self::from(EnumInterval::zero())
@@ -387,7 +486,7 @@ impl<T: Element + Clone + Zero> Zero for Interval<T> {
     }
 }
 
-impl<T: Element + Clone + Zero> Zero for IntervalSet<T> {
+impl<T: Element + Ord + Clone + Zero> Zero for IntervalSet<T> {
     #[inline]
     fn zero() -> Self {
         Self::from(Interval::zero())
@@ -399,14 +498,14 @@ impl<T: Element + Clone + Zero> Zero for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for Interval<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for Interval<T> {
     #[inline]
     fn one() -> Self {
         Self::from(EnumInterval::one())
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for IntervalSet<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for IntervalSet<T> {
     #[inline]
     fn one() -> Self {
         Self::from(Interval::one())
@@ -436,12 +535,13 @@ mod tests {
         assert_eq!(
             x.iter().fold(
                 IntervalSet::from(Interval::unbounded()),
-                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(item.clone()) }
+                |left: IntervalSet<_>, item: &Interval<_>| { left.difference(*item) }
             ),
             x.complement()
         );
     }
 
+    #[allow(clippy::neg_cmp_op_on_partial_ord)] // deliberately exercising negated partial-ord operators for antisymmetry
     fn assert_lt<T: Element>(itv1: Interval<T>, itv2: Interval<T>) {
         assert!(itv1 < itv2);
         assert!(!(itv1 >= itv2)); // antisymmetry
@@ -451,6 +551,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::nonminimal_bool)] // deliberately asserting the negated form for antisymmetry
     fn test_interval_cmp() {
         // (0, _) < (200, _)
         assert_lt(Interval::open(0.0, 100.0), Interval::open(200.0, 300.0));
@@ -477,11 +578,8 @@ mod tests {
         assert_lt(Interval::unbounded(), Interval::open_unbound(0.0));
 
         // Empty Set < everything else
-        assert_eq!(Interval::<u8>::empty() < Interval::<u8>::unbounded(), true);
-        assert_eq!(
-            Interval::<u8>::empty() >= Interval::<u8>::unbounded(),
-            false
-        );
+        assert!(Interval::<u8>::empty() < Interval::<u8>::unbounded());
+        assert!(!(Interval::<u8>::empty() >= Interval::<u8>::unbounded()));
     }
 
     fn do_hash<T: Hash>(item: T) -> u64 {
@@ -495,7 +593,7 @@ mod tests {
         if a == b {
             assert_eq!(do_hash(a), do_hash(b));
         } else {
-            // hash collissions are allowed, but highly unlikely
+            // hash collisions are allowed, but highly unlikely
             assert_ne!(do_hash(a), do_hash(b));
         }
     }
@@ -582,3 +680,83 @@ mod decimal_tests {
     }
 }
 */
+
+/// Negative tests for `IntervalSet`'s strict `Deserialize` path. Round-trip
+/// of valid input is exercised by other tests; these confirm malformed
+/// input is rejected. We hand-craft payloads by serializing valid sets
+/// and editing the JSON, since a well-formed serializer never emits
+/// these shapes.
+#[cfg(all(test, feature = "serde"))]
+mod malformed_deserialize {
+    use super::*;
+    use crate::prelude::*;
+
+    #[test]
+    fn rejects_unsorted_intervals() {
+        // Build a sorted set, serialize, then swap the two intervals on
+        // the wire so the resulting payload has them in descending order.
+        let valid = IntervalSet::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
+        let json = serde_json::to_string(&valid).unwrap();
+        // Sanity: confirm both endpoints survived serialization.
+        assert!(
+            json.contains("10") && json.contains("20"),
+            "unexpected: {json}"
+        );
+        let swapped = json
+            .replacen("0", "X1", 1)
+            .replacen("10", "X2", 1)
+            .replacen("20", "0", 1)
+            .replacen("30", "10", 1)
+            .replacen("X1", "20", 1)
+            .replacen("X2", "30", 1);
+
+        let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&swapped);
+        assert!(
+            result.is_err(),
+            "expected error for unsorted intervals, got: {:?}\npayload: {swapped}",
+            result
+        );
+    }
+
+    #[test]
+    fn rejects_connecting_intervals() {
+        // Two adjacent intervals that should have been merged. For i32
+        // with closed-form normalization, [0,10] and [11,20] are
+        // connected and would collapse to [0,20] in canonical form.
+        let valid = IntervalSet::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
+        let json = serde_json::to_string(&valid).unwrap();
+        let connecting = json.replacen("20", "11", 1).replacen("30", "20", 1);
+
+        let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&connecting);
+        assert!(
+            result.is_err(),
+            "expected error for connecting intervals, got: {:?}\npayload: {connecting}",
+            result
+        );
+    }
+
+    #[test]
+    fn rejects_stored_empty_interval() {
+        // Graft an Empty variant into a valid set's intervals array.
+        let nonempty = IntervalSet::<i32>::new([Interval::closed(0, 10)]);
+        let nonempty_json = serde_json::to_string(&nonempty).unwrap();
+        let empty_repr = r#"{"Finite":"Empty"}"#;
+        let with_empty = nonempty_json.replacen("[", &format!("[{empty_repr},"), 1);
+
+        let result: Result<IntervalSet<i32>, _> = serde_json::from_str(&with_empty);
+        assert!(
+            result.is_err(),
+            "expected error for stored empty interval, got: {:?}\npayload: {with_empty}",
+            result
+        );
+    }
+
+    #[test]
+    fn accepts_valid_set_round_trip() {
+        // Sanity: valid input still round-trips cleanly.
+        let valid = IntervalSet::<i32>::new([Interval::closed(0, 10), Interval::closed(20, 30)]);
+        let json = serde_json::to_string(&valid).unwrap();
+        let parsed: IntervalSet<i32> = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, valid);
+    }
+}

@@ -1,8 +1,8 @@
 use intervalsets_core::bound::ord::OrdBoundPair;
 use intervalsets_core::disjoint::MaybeDisjoint;
-use intervalsets_core::error::Error;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
+use crate::error::Error;
 use crate::numeric::Element;
 use crate::{Interval, IntervalSet, MaybeEmpty};
 
@@ -73,10 +73,9 @@ impl<T> From<Interval<T>> for IntervalSet<T> {
         if value.is_empty() {
             IntervalSet::empty()
         } else {
-            // SAFETY:
             // 1. the empty set is explicitly excluded.
             // 2+3. only one interval -> sorted/connected are not applicable
-            unsafe { IntervalSet::new_unchecked([value]) }
+            IntervalSet::new_assume_valid([value])
         }
     }
 }
@@ -125,8 +124,8 @@ interval_set_delegate_from_impl!(core::ops::RangeFull);
 
 impl<T> From<MaybeDisjoint<T>> for IntervalSet<T> {
     fn from(value: MaybeDisjoint<T>) -> Self {
-        // SAFETY: MaybeDisjoint requires the same invariants as IntervalSet.
-        unsafe { Self::new_unchecked(value.map(Interval::from)) }
+        // MaybeDisjoint requires the same invariants as IntervalSet.
+        Self::new_assume_valid(value.map(Interval::from))
     }
 }
 
@@ -162,7 +161,8 @@ impl<T> From<IntervalSet<T>> for OrdBoundPair<T> {
                 let last = intervals.swap_remove(0);
                 let (min, _) = OrdBoundPair::from(first).into_raw();
                 let (_, max) = OrdBoundPair::from(last).into_raw();
-                OrdBoundPair::new(min, max)
+                // IntervalSet invariants give first.left <= last.right.
+                OrdBoundPair::new_assume_valid(min, max)
             }
         }
     }
@@ -179,7 +179,7 @@ impl<'a, T> From<&'a IntervalSet<T>> for OrdBoundPair<&'a T> {
                 let last = intervals.last().unwrap();
                 let (min, _) = OrdBoundPair::from(first).into_raw();
                 let (_, max) = OrdBoundPair::from(last).into_raw();
-                OrdBoundPair::new(min, max)
+                OrdBoundPair::new_assume_valid(min, max)
             }
         }
     }
@@ -208,7 +208,5 @@ mod tests {
 
         let _ = IntervalSet::from_iter([(0, 5), (20, 25)]);
         let _ = IntervalSet::from_iter([(0.0, 5.0)]);
-
-        //let zzz = IntervalSet::coerse([(0, 10), (20, 30), (40, 50)]);
     }
 }

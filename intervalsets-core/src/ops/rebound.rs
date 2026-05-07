@@ -1,11 +1,21 @@
-use num_traits::Zero;
-
 use crate::bound::{FiniteBound, Side};
+#[allow(unused_imports)]
+// FiniteFactory provides ::closed et al. via re-export through `use super::*` in tests
 use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Create a new interval, replacing a bound.
+///
+/// # Contract
+///
+/// Tier 3 (`try_*` + panicking sugar). The `try_with_left` /
+/// `try_with_right` forms return `Err(Self::Error)` on logical
+/// violation (typically: a non-comparable user-supplied bound such
+/// as NaN); they never panic. The non-`try_*` forms are the
+/// panicking unwraps. Sugar methods (`with_left_closed`,
+/// `with_right_open`, etc.) compose on the panicking forms. See
+/// [`crate::ops`] for the full tier model.
 ///
 /// # Examples
 /// ```
@@ -19,17 +29,17 @@ pub trait Rebound<T>: Sized {
     type Output;
     type Error: core::error::Error;
 
-    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error>;
-    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error>;
+    fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error>;
+    fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error>;
 
     /// Creates a `Set`, replacing the left/lower bound.
     fn with_left(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        self.with_left_strict(bound).unwrap()
+        self.try_with_left(bound).unwrap()
     }
 
     /// Creates a `Set`, replacing the right/upper bound.
     fn with_right(self, bound: Option<FiniteBound<T>>) -> Self::Output {
-        self.with_right_strict(bound).unwrap()
+        self.try_with_right(bound).unwrap()
     }
 
     /// Creates a `Set` with a new finite left/lower bound.
@@ -69,92 +79,102 @@ pub trait Rebound<T>: Sized {
     }
 }
 
-impl<T: Element + Zero> Rebound<T> for FiniteInterval<T> {
+impl<T: Element> Rebound<T> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+    fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((_, rhs)) = self.into_raw() else {
             return Ok(Self::Output::empty());
         };
 
         match bound {
-            None => EnumInterval::strict_right_bounded(rhs),
-            Some(inner) => EnumInterval::strict_finite(inner, rhs),
+            None => EnumInterval::try_right_bounded(rhs),
+            // Rebound's documented semantic: a new bound that crosses
+            // the existing opposite bound silently produces empty.
+            Some(inner) => FiniteInterval::try_new_or_empty(inner, rhs).map(EnumInterval::from),
         }
     }
 
-    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+    fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((lhs, _)) = self.into_raw() else {
             return Ok(Self::Output::empty()); // empty
         };
 
         match bound {
-            None => EnumInterval::strict_left_bounded(lhs),
-            Some(inner) => EnumInterval::strict_finite(lhs, inner),
+            None => EnumInterval::try_left_bounded(lhs),
+            Some(inner) => FiniteInterval::try_new_or_empty(lhs, inner).map(EnumInterval::from),
         }
     }
 }
 
-impl<T: Element + Zero> Rebound<T> for HalfInterval<T> {
+impl<T: Element> Rebound<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+    fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
             Side::Left => match bound {
                 None => Ok(EnumInterval::unbounded()),
-                Some(inner) => EnumInterval::strict_left_bounded(inner),
+                Some(inner) => EnumInterval::try_left_bounded(inner),
             },
             Side::Right => match bound {
-                // SAFETY: just repacking
-                None => unsafe { Ok(EnumInterval::from(Self::new_unchecked(side, current_bound))) },
-                Some(inner) => EnumInterval::strict_finite(inner, current_bound),
+                // just repacking
+                None => Ok(EnumInterval::from(Self::new_assume_valid(
+                    side,
+                    current_bound,
+                ))),
+                Some(inner) => {
+                    FiniteInterval::try_new_or_empty(inner, current_bound).map(EnumInterval::from)
+                }
             },
         }
     }
 
-    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+    fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
             Side::Right => match bound {
                 None => Ok(EnumInterval::unbounded()),
-                Some(inner) => EnumInterval::strict_right_bounded(inner),
+                Some(inner) => EnumInterval::try_right_bounded(inner),
             },
             Side::Left => match bound {
-                None => unsafe {
-                    // SAFETY: just putting it back together
-                    Ok(EnumInterval::from(Self::new_unchecked(side, current_bound)))
-                },
-                Some(inner) => EnumInterval::strict_finite(current_bound, inner),
+                // just repacking
+                None => Ok(EnumInterval::from(Self::new_assume_valid(
+                    side,
+                    current_bound,
+                ))),
+                Some(inner) => {
+                    FiniteInterval::try_new_or_empty(current_bound, inner).map(EnumInterval::from)
+                }
             },
         }
     }
 }
 
-impl<T: Element + Zero> Rebound<T> for EnumInterval<T> {
+impl<T: Element> Rebound<T> for EnumInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    fn with_left_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+    fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
-            Self::Finite(inner) => inner.with_left_strict(bound),
-            Self::Half(inner) => inner.with_left_strict(bound),
+            Self::Finite(inner) => inner.try_with_left(bound),
+            Self::Half(inner) => inner.try_with_left(bound),
             Self::Unbounded => match bound {
                 None => Ok(Self::Unbounded),
-                Some(inner) => Self::strict_left_bounded(inner),
+                Some(inner) => Self::try_left_bounded(inner),
             },
         }
     }
 
-    fn with_right_strict(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
+    fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
-            Self::Finite(inner) => inner.with_right_strict(bound),
-            Self::Half(inner) => inner.with_right_strict(bound),
+            Self::Finite(inner) => inner.try_with_right(bound),
+            Self::Half(inner) => inner.try_with_right(bound),
             Self::Unbounded => match bound {
                 None => Ok(Self::Unbounded),
-                Some(inner) => Self::strict_right_bounded(inner),
+                Some(inner) => Self::try_right_bounded(inner),
             },
         }
     }
@@ -167,61 +187,46 @@ mod tests {
     #[test]
     fn test_with_left() {
         let x = FiniteInterval::closed(0, 100);
-        assert_eq!(x.clone().with_left(None), EnumInterval::unbound_closed(100));
-        assert_eq!(x.clone().with_left_closed(-100), [-100, 100].into());
-        assert_eq!(x.clone().with_left_closed(200), ().into());
+        assert_eq!(x.with_left(None), EnumInterval::unbound_closed(100));
+        assert_eq!(x.with_left_closed(-100), [-100, 100].into());
+        assert_eq!(x.with_left_closed(200), ().into());
 
         let x = HalfInterval::left(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_left(None), EnumInterval::Unbounded);
-        assert_eq!(
-            x.clone().with_left_closed(100),
-            EnumInterval::closed_unbound(100)
-        );
+        assert_eq!(x.with_left(None), EnumInterval::Unbounded);
+        assert_eq!(x.with_left_closed(100), EnumInterval::closed_unbound(100));
 
         let x = HalfInterval::right(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_left(None), x.into());
-        assert_eq!(x.clone().with_left_closed(0), EnumInterval::closed(0, 0));
-        assert_eq!(x.clone().with_left_closed(100), EnumInterval::empty());
+        assert_eq!(x.with_left(None), x.into());
+        assert_eq!(x.with_left_closed(0), EnumInterval::closed(0, 0));
+        assert_eq!(x.with_left_closed(100), EnumInterval::empty());
 
         let x = EnumInterval::<i32>::Unbounded;
-        assert_eq!(x.clone().with_left(None), EnumInterval::Unbounded);
-        assert_eq!(
-            x.clone().with_left_closed(0),
-            EnumInterval::closed_unbound(0)
-        );
+        assert_eq!(x.with_left(None), EnumInterval::Unbounded);
+        assert_eq!(x.with_left_closed(0), EnumInterval::closed_unbound(0));
     }
 
     #[test]
     fn test_with_right() {
         let x = FiniteInterval::closed(0, 100);
-        assert_eq!(x.clone().with_right(None), EnumInterval::closed_unbound(0));
-        assert_eq!(x.clone().with_right_closed(-100), EnumInterval::empty());
-        assert_eq!(x.clone().with_right_closed(200), [0, 200].into());
+        assert_eq!(x.with_right(None), EnumInterval::closed_unbound(0));
+        assert_eq!(x.with_right_closed(-100), EnumInterval::empty());
+        assert_eq!(x.with_right_closed(200), [0, 200].into());
 
         let x = HalfInterval::left(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_right(None), x.into());
-        assert_eq!(
-            x.clone().with_right_closed(100),
-            EnumInterval::closed(0, 100)
-        );
-        assert_eq!(x.clone().with_right_closed(-100), EnumInterval::empty());
+        assert_eq!(x.with_right(None), x.into());
+        assert_eq!(x.with_right_closed(100), EnumInterval::closed(0, 100));
+        assert_eq!(x.with_right_closed(-100), EnumInterval::empty());
 
         let x = HalfInterval::right(FiniteBound::closed(0));
-        assert_eq!(x.clone().with_right(None), EnumInterval::unbounded());
+        assert_eq!(x.with_right(None), EnumInterval::unbounded());
+        assert_eq!(x.with_right_closed(100), EnumInterval::unbound_closed(100));
         assert_eq!(
-            x.clone().with_right_closed(100),
-            EnumInterval::unbound_closed(100)
-        );
-        assert_eq!(
-            x.clone().with_right_closed(-100),
+            x.with_right_closed(-100),
             EnumInterval::unbound_closed(-100)
         );
 
         let x = EnumInterval::unbounded();
-        assert_eq!(x.clone().with_right(None), x.clone());
-        assert_eq!(
-            x.clone().with_right_closed(0),
-            EnumInterval::unbound_closed(0)
-        );
+        assert_eq!(x.with_right(None), x);
+        assert_eq!(x.with_right_closed(0), EnumInterval::unbound_closed(0));
     }
 }

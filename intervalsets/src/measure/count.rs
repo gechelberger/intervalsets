@@ -1,6 +1,6 @@
 use core::ops::Add;
 
-use super::{Count, Countable, Measurement};
+use super::{Count, CountOverflowError, Countable, Measurement};
 use crate::numeric::Zero;
 use crate::{Interval, IntervalSet};
 
@@ -10,9 +10,10 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
+    type Error = CountOverflowError;
 
-    fn count(&self) -> Measurement<Self::Output> {
-        self.0.count()
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+        self.0.try_count()
     }
 }
 
@@ -22,11 +23,13 @@ where
     Out: Zero + Clone + Add<Out, Output = Out>,
 {
     type Output = Out;
+    type Error = CountOverflowError;
 
-    fn count(&self) -> Measurement<Self::Output> {
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         self.iter()
-            .map(|subset| subset.count())
-            .fold(Measurement::Finite(Out::zero()), |accum, item| accum + item)
+            .try_fold(Measurement::Finite(Out::zero()), |accum, subset| {
+                Ok(accum + subset.try_count()?)
+            })
     }
 }
 

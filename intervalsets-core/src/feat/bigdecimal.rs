@@ -4,6 +4,20 @@ use crate::continuous_domain_impl;
 
 continuous_domain_impl!(BigDecimal);
 
+use core::ops::Add;
+
+use crate::numeric::Midpoint;
+
+impl Midpoint for BigDecimal {
+    type Error = core::convert::Infallible;
+
+    /// Infallible: `BigDecimal` is arbitrary precision, so the midpoint
+    /// of any pair is always representable.
+    fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
+        Ok(self.add(other).half())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;

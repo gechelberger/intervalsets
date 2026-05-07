@@ -4,6 +4,9 @@
 //! modules mostly test interoperability with the 'Interval'
 //! and 'IntervalSet' types.
 
+#[cfg(feature = "approx")]
+mod approx;
+
 #[cfg(feature = "arbitrary")]
 mod arbitrary;
 
@@ -43,9 +46,6 @@ mod num_bigint_tests {
         assert_eq!(interval.width().finite(), a);
     }
 }
-
-// #[cfg(feature = "uom")]
-// pub mod uom;
 
 #[cfg(all(test, feature = "ordered-float"))]
 mod ordered_float_tests {

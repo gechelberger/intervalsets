@@ -1,8 +1,10 @@
 use core::ops::Sub;
 
+use super::TrySub;
 use crate::bound::FiniteBound;
+use crate::error::Error;
 use crate::factory::traits::*;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
@@ -15,156 +17,219 @@ impl<T: Sub> Sub for FiniteBound<T> {
     }
 }
 
-impl<T> Sub for FiniteInterval<T>
+// The infix Sub operators below all require T: Ord (and the arithmetic
+// output type to also be Ord). For Ord types, partial_cmp on bounds is
+// total, so try_sub is provably infallible and the .unwrap() can never
+// panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
+// use TrySub::try_sub directly.
+
+macro_rules! sub_via_try {
+    ($lhs:ty, $rhs:ty, $out:ty) => {
+        impl<T> Sub<$rhs> for $lhs
+        where
+            T: Sub + Ord,
+            <T as Sub>::Output: Element + Ord,
+        {
+            type Output = $out;
+            #[inline]
+            fn sub(self, rhs: $rhs) -> Self::Output {
+                self.try_sub(rhs).unwrap()
+            }
+        }
+    };
+}
+
+sub_via_try!(
+    FiniteInterval<T>,
+    FiniteInterval<T>,
+    FiniteInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    HalfInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    FiniteInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    HalfInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    EnumInterval<T>,
+    FiniteInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    EnumInterval<T>,
+    HalfInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    EnumInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    FiniteInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+sub_via_try!(
+    HalfInterval<T>,
+    EnumInterval<T>,
+    EnumInterval<<T as Sub>::Output>
+);
+
+impl<T> TrySub for FiniteInterval<T>
 where
     T: Sub,
     <T as Sub>::Output: Element,
 {
     type Output = FiniteInterval<<T as Sub>::Output>;
+    type Error = Error;
 
-    fn sub(self, rhs: Self) -> Self::Output {
+    fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
-            return FiniteInterval::empty();
+            return Ok(FiniteInterval::empty());
         };
 
         let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-            return FiniteInterval::empty();
+            return Ok(FiniteInterval::empty());
         };
 
-        let min = lhs_min - rhs_max;
-        let max = lhs_max - rhs_min;
-
-        FiniteInterval::new(min, max)
+        FiniteInterval::try_new(lhs_min - rhs_max, lhs_max - rhs_min)
     }
 }
 
-impl<T> Sub for HalfInterval<T>
+impl<T> TrySub for HalfInterval<T>
 where
     T: Sub,
-    <T as Sub>::Output: Element + Zero,
+    <T as Sub>::Output: Element,
 {
     type Output = EnumInterval<<T as Sub>::Output>;
+    type Error = Error;
 
-    fn sub(self, rhs: Self) -> Self::Output {
-        //(a, ->) - (b, ->) => (a - inf, inf - b) => (<-, ->)
-        //(<-, a) - (<-, b) => (-inf - b, a -- inf) => (<-, ->)
-        //(<-, a) - (b, ->) => (-inf - inf, a - b) => (<-, a - b)
-        //(a, ->) - (<-, b) => (a - b, inf - -inf) => (a - b, ->)
+    fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let (l_side, l_bound) = self.into_raw();
         let (r_side, r_bound) = rhs.into_raw();
         if l_side == r_side {
-            EnumInterval::unbounded()
+            Ok(EnumInterval::unbounded())
         } else {
-            EnumInterval::half_bounded(l_side, l_bound - r_bound)
+            EnumInterval::try_half_bounded(l_side, l_bound - r_bound)
         }
     }
 }
 
-impl<T> Sub<HalfInterval<T>> for FiniteInterval<T>
+impl<T> TrySub<HalfInterval<T>> for FiniteInterval<T>
 where
     T: Sub,
-    <T as Sub>::Output: Element + Zero,
+    <T as Sub>::Output: Element,
 {
     type Output = EnumInterval<<T as Sub>::Output>;
+    type Error = Error;
 
-    fn sub(self, rhs: HalfInterval<T>) -> Self::Output {
-        // (a, b) - (c, ->) => (a - inf, b - c) => (<-, b - c)
-        // (a, b) - (<-, c) => (a - c, b -- inf) => (a - c, ->)
+    fn try_sub(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
+        // (a, b) - (c, ->) => (<-, b - c)
+        // (a, b) - (<-, c) => (a - c, ->)
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
-            return EnumInterval::empty();
+            return Ok(EnumInterval::empty());
         };
 
         let (side, bound) = rhs.into_raw();
         let side = side.flip();
         let anchor = side.select(lhs_min, lhs_max);
-        EnumInterval::half_bounded(side, anchor - bound)
+        EnumInterval::try_half_bounded(side, anchor - bound)
     }
 }
 
-impl<T> Sub<FiniteInterval<T>> for HalfInterval<T>
+impl<T> TrySub<FiniteInterval<T>> for HalfInterval<T>
 where
     T: Sub,
-    <T as Sub>::Output: Element + Zero,
+    <T as Sub>::Output: Element,
 {
     type Output = EnumInterval<<T as Sub>::Output>;
+    type Error = Error;
 
-    fn sub(self, rhs: FiniteInterval<T>) -> Self::Output {
-        // (<-, c) - (a, b) => (-inf - b, c - a) => (<-, c - a)
-        // (c, ->) - (a, b) => (c - b, inf - a) => (c - b, ->)
+    fn try_sub(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
+        // (<-, c) - (a, b) => (<-, c - a)
+        // (c, ->) - (a, b) => (c - b, ->)
         let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
-            return EnumInterval::empty();
+            return Ok(EnumInterval::empty());
         };
 
         let (side, bound) = self.into_raw();
         let offset = side.select(rhs_max, rhs_min);
-        EnumInterval::half_bounded(side, bound - offset)
+        EnumInterval::try_half_bounded(side, bound - offset)
     }
 }
 
-macro_rules! dispatch_lhs_sub_impl {
+macro_rules! dispatch_lhs_try_sub_impl {
     ($t_rhs:ty) => {
-        impl<T> Sub<$t_rhs> for EnumInterval<T>
+        impl<T> TrySub<$t_rhs> for EnumInterval<T>
         where
             T: Sub,
-            <T as Sub>::Output: Element + Zero,
+            <T as Sub>::Output: Element,
         {
             type Output = EnumInterval<<T as Sub>::Output>;
+            type Error = Error;
 
             #[inline]
-            fn sub(self, rhs: $t_rhs) -> Self::Output {
+            fn try_sub(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
                 match self {
-                    Finite(inner) => (inner - rhs).into(),
-                    Half(inner) => (inner - rhs).into(),
+                    Finite(inner) => inner.try_sub(rhs).map(EnumInterval::from),
+                    Half(inner) => inner.try_sub(rhs).map(EnumInterval::from),
                     Unbounded => {
                         if rhs.is_empty() {
-                            EnumInterval::empty()
+                            Ok(EnumInterval::empty())
                         } else {
-                            Unbounded
+                            Ok(Unbounded)
                         }
                     }
                 }
             }
         }
-
-        // by ref?
     };
 }
 
-dispatch_lhs_sub_impl!(FiniteInterval<T>);
-dispatch_lhs_sub_impl!(HalfInterval<T>);
-dispatch_lhs_sub_impl!(EnumInterval<T>);
+dispatch_lhs_try_sub_impl!(FiniteInterval<T>);
+dispatch_lhs_try_sub_impl!(HalfInterval<T>);
+dispatch_lhs_try_sub_impl!(EnumInterval<T>);
 
-macro_rules! dispatch_rhs_sub_impl {
+macro_rules! dispatch_rhs_try_sub_impl {
     ($t_lhs:ty) => {
-        impl<T> Sub<EnumInterval<T>> for $t_lhs
+        impl<T> TrySub<EnumInterval<T>> for $t_lhs
         where
             T: Sub,
-            <T as Sub>::Output: Element + Zero,
+            <T as Sub>::Output: Element,
         {
             type Output = EnumInterval<<T as Sub>::Output>;
+            type Error = Error;
 
             #[inline]
-            fn sub(self, rhs: EnumInterval<T>) -> Self::Output {
+            fn try_sub(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
                 match rhs {
-                    Finite(rhs) => (self - rhs).into(),
-                    Half(rhs) => (self - rhs).into(),
+                    Finite(rhs) => self.try_sub(rhs).map(EnumInterval::from),
+                    Half(rhs) => self.try_sub(rhs).map(EnumInterval::from),
                     Unbounded => {
                         if self.is_empty() {
-                            EnumInterval::empty()
+                            Ok(EnumInterval::empty())
                         } else {
-                            Unbounded
+                            Ok(Unbounded)
                         }
                     }
                 }
             }
         }
-
-        // by ref?
     };
 }
 
-dispatch_rhs_sub_impl!(FiniteInterval<T>);
-dispatch_rhs_sub_impl!(HalfInterval<T>);
+dispatch_rhs_try_sub_impl!(FiniteInterval<T>);
+dispatch_rhs_try_sub_impl!(HalfInterval<T>);
 
 #[cfg(test)]
 mod tests {
@@ -172,12 +237,12 @@ mod tests {
 
     #[test]
     fn test_finite_sub() {
-        let x = EnumInterval::closed(100.0, 200.0);
-        let y = EnumInterval::closed(100.0, 200.0);
-        assert_eq!(x - y, EnumInterval::closed(-100.0, 100.0));
+        let x = EnumInterval::closed(100, 200);
+        let y = EnumInterval::closed(100, 200);
+        assert_eq!(x - y, EnumInterval::closed(-100, 100));
 
-        let y = EnumInterval::open_closed(100.0, 200.0);
-        assert_eq!(x - y, EnumInterval::closed_open(-100.0, 100.0));
+        let y = EnumInterval::open_closed(100, 200);
+        assert_eq!(x - y, EnumInterval::closed_open(-100, 100));
 
         let e = EnumInterval::empty();
         assert_eq!(x - e, e);
@@ -186,13 +251,13 @@ mod tests {
 
     #[test]
     fn test_half_sub() {
-        let x = EnumInterval::closed_unbound(100.0);
-        let y = EnumInterval::closed_unbound(100.0);
+        let x = EnumInterval::closed_unbound(100);
+        let y = EnumInterval::closed_unbound(100);
         assert_eq!(x - y, EnumInterval::unbounded());
         assert_eq!(y - x, EnumInterval::unbounded());
 
-        let y = EnumInterval::unbound_open(100.0);
-        assert_eq!(x - y, EnumInterval::open_unbound(0.0));
+        let y = EnumInterval::unbound_open(100);
+        assert_eq!(x - y, EnumInterval::open_unbound(0));
 
         let e = EnumInterval::empty();
         assert_eq!(x - e, e);
@@ -201,36 +266,71 @@ mod tests {
 
     #[test]
     fn test_finite_half_sub() {
-        let x = EnumInterval::closed(0.0, 10.0);
-        let y = EnumInterval::closed_unbound(7.0);
-        assert_eq!(x - y, EnumInterval::unbound_closed(3.0));
-        assert_eq!(y - x, EnumInterval::closed_unbound(-3.0));
+        let x = EnumInterval::closed(0, 10);
+        let y = EnumInterval::closed_unbound(7);
+        assert_eq!(x - y, EnumInterval::unbound_closed(3));
+        assert_eq!(y - x, EnumInterval::closed_unbound(-3));
 
-        let x = EnumInterval::closed(-5.0, 5.0);
-        let y = EnumInterval::unbound_open(-7.0);
-        assert_eq!(x - y, EnumInterval::open_unbound(2.0));
-        assert_eq!(y - x, EnumInterval::unbound_open(-2.0));
+        let x = EnumInterval::closed(-5, 5);
+        let y = EnumInterval::unbound_open(-7);
+        assert_eq!(x - y, EnumInterval::open_unbound(2));
+        assert_eq!(y - x, EnumInterval::unbound_open(-2));
     }
 
     #[test]
     fn test_unbounded_sub() {
-        let u = EnumInterval::<f32>::unbounded();
+        let u = EnumInterval::<i32>::unbounded();
         assert_eq!(u - u, u);
 
-        let x = EnumInterval::closed(100.0, 200.0);
+        let x = EnumInterval::closed(100, 200);
         assert_eq!(x - u, u);
         assert_eq!(u - x, u);
 
-        let x = EnumInterval::closed_unbound(100.0);
+        let x = EnumInterval::closed_unbound(100);
         assert_eq!(x - u, u);
         assert_eq!(u - x, u);
 
-        let x = EnumInterval::unbound_closed(100.0);
+        let x = EnumInterval::unbound_closed(100);
         assert_eq!(x - u, u);
         assert_eq!(u - x, u);
 
         let x = EnumInterval::empty();
         assert_eq!(x - u, x);
         assert_eq!(u - x, x);
+    }
+
+    /// Verify that OrderedFloat<f64> satisfies the infix Sub operator
+    /// bounds. Confirms wrapping floats with OrderedFloat restores
+    /// access to the infix arithmetic operators.
+    #[cfg(feature = "ordered-float")]
+    #[test]
+    fn test_ord_float_sub() {
+        use ordered_float::OrderedFloat as O;
+
+        // finite - finite
+        let x = EnumInterval::closed(O(100.0), O(200.0));
+        let y = EnumInterval::closed(O(100.0), O(200.0));
+        assert_eq!(x - y, EnumInterval::closed(O(-100.0), O(100.0)));
+
+        let y = EnumInterval::open_closed(O(100.0), O(200.0));
+        assert_eq!(x - y, EnumInterval::closed_open(O(-100.0), O(100.0)));
+
+        // half - half: same side = unbounded, opposite = half-bounded
+        let cu = EnumInterval::closed_unbound(O(100.0));
+        assert_eq!(cu - cu, EnumInterval::unbounded());
+
+        let uo = EnumInterval::unbound_open(O(100.0));
+        assert_eq!(cu - uo, EnumInterval::open_unbound(O(0.0)));
+
+        // finite - half (and reverse)
+        let x = EnumInterval::closed(O(0.0), O(10.0));
+        let y = EnumInterval::closed_unbound(O(7.0));
+        assert_eq!(x - y, EnumInterval::unbound_closed(O(3.0)));
+        assert_eq!(y - x, EnumInterval::closed_unbound(O(-3.0)));
+
+        // empty propagation
+        let e = EnumInterval::empty();
+        assert_eq!(x - e, e);
+        assert_eq!(e - x, e);
     }
 }

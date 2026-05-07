@@ -11,13 +11,15 @@ use crate::factory::FiniteFactory;
 use crate::numeric::{Element, Zero};
 use crate::try_cmp::TryCmp;
 
-/// todo
+/// Internal storage for [`FiniteInterval`]: either empty or a pair
+/// of finite bounds `(lhs, rhs)` with `lhs <= rhs`.
+///
+/// `Deserialize` is intentionally **not** derived: validation is performed
+/// by [`FiniteInterval`]'s `try_from` proxy so that no path produces an
+/// unvalidated inner. `Serialize` is derived because the outer type's
+/// writer path delegates here.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
-)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 enum FiniteIntervalInner<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
@@ -27,7 +29,10 @@ impl<T> OrdBounded<T> for FiniteIntervalInner<T> {
     fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
         match self {
             Self::Empty => OrdBoundPair::empty(),
-            Self::Bounded(lhs, rhs) => OrdBoundPair::new(lhs.ord(Side::Left), rhs.ord(Side::Right)),
+            Self::Bounded(lhs, rhs) => {
+                // Bounded is a validated FiniteInterval pair: invariants hold.
+                OrdBoundPair::new_assume_valid(lhs.ord(Side::Left), rhs.ord(Side::Right))
+            }
         }
     }
 }
@@ -43,33 +48,112 @@ impl<T> SetBounds<T> for FiniteIntervalInner<T> {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawFiniteInterval<T>"))]
 #[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
 )]
 pub struct FiniteInterval<T>(FiniteIntervalInner<T>);
 
+/// Wire-format mirror of [`FiniteInterval`] used to drive validation
+/// during `Deserialize`. Identical layout, no invariants.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "FiniteInterval")]
+struct RawFiniteInterval<T>(RawFiniteIntervalInner<T>);
+
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "FiniteIntervalInner")]
+enum RawFiniteIntervalInner<T> {
+    Empty,
+    Bounded(FiniteBound<T>, FiniteBound<T>),
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawFiniteInterval<T>> for FiniteInterval<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawFiniteInterval<T>) -> Result<Self, Self::Error> {
+        match raw.0 {
+            RawFiniteIntervalInner::Empty => Ok(Self::empty()),
+            // try_new is strict about crossed bounds, which is what
+            // we want here — deserialize never legitimately receives
+            // a Bounded with lhs > rhs.
+            RawFiniteIntervalInner::Bounded(lhs, rhs) => Self::try_new(lhs, rhs),
+        }
+    }
+}
+
 impl<T: Element> FiniteInterval<T> {
-    /// Creates a FiniteInterval.
+    /// Creates a `FiniteInterval`. Strict — panics on any malformed input.
+    ///
+    /// Discrete bounds are normalized to closed form. After normalization,
+    /// if `lhs > rhs` or either value is incomparable (e.g. NaN), this
+    /// panics. Use [`try_new`](Self::try_new) for the fallible variant,
+    /// or [`try_new_or_empty`](Self::try_new_or_empty) when crossed
+    /// bounds should produce empty.
     ///
     /// # Panics
     ///
-    /// Panics if lhs and rhs are not comparable
+    /// Panics if either bound's value is incomparable (NaN), or if the
+    /// normalized `lhs > rhs`.
     pub fn new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        Self::new_strict(lhs, rhs).unwrap()
+        Self::try_new(lhs, rhs).unwrap()
     }
 
-    /// Creates a new FiniteInterval or Error; Should never panic.
-    pub fn new_strict(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
+    /// Strict validating constructor: returns `Err` for any malformed
+    /// input. Discrete bounds are normalized to closed form before
+    /// validation.
+    ///
+    /// # Errors
+    ///
+    /// - `Err(TotalOrderError)` — a bound value is incomparable (e.g. NaN).
+    /// - `Err(InvalidBoundPair)` — after normalization, `lhs > rhs`.
+    ///
+    /// # When to use what
+    ///
+    /// - **Pure validation** (this function): use when `Bounded(lhs, rhs)`
+    ///   is what you mean and you want to reject anything else. The
+    ///   `Deserialize` path uses this — the wire format never legitimately
+    ///   produces crossed bounds, so an Err signals malformed input.
+    /// - **Crossed → empty**: use [`try_new_or_empty`](Self::try_new_or_empty)
+    ///   when "crossed bounds means empty set" is the correct
+    ///   interpretation (Range conversions, split-at-boundary).
+    /// - **Intersection-shape internal ops**: use
+    ///   [`try_new_assume_normed`](Self::try_new_assume_normed) or
+    ///   [`new_assume_normed`](Self::new_assume_normed), which assume
+    ///   bounds are pre-normalized and silently collapse crossed pairs
+    ///   to empty.
+    ///
+    /// See the crate-level "Construction at boundaries" section in
+    /// [`lib`](crate) for the broader principle.
+    pub fn try_new(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
         let lhs = lhs.normalized(Left);
         let rhs = rhs.normalized(Right);
         let order = lhs.value().try_cmp(rhs.value())?;
 
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
-            // SAFETY: normalized & comparable & lhs <= rhs
-            unsafe { Ok(Self::new_unchecked(lhs, rhs)) }
+            // normalized & comparable & lhs <= rhs
+            Ok(Self::new_assume_valid(lhs, rhs))
         } else {
-            Ok(Self::empty())
+            Err(Error::InvalidBoundPair)
+        }
+    }
+
+    /// Construct, returning `Self::empty()` for crossed-bound inputs but
+    /// surfacing NaN / incomparable values as `Err`.
+    ///
+    /// This is the right choice for code that produces bounds via a
+    /// computation that *may* cross (Range conversions where the user
+    /// passed a reversed range, split operations at a boundary point,
+    /// etc.) but where pure validation through [`try_new`](Self::try_new)
+    /// would be wrong because crossed input has a defensible
+    /// "empty set" reading.
+    pub fn try_new_or_empty(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
+        match Self::try_new(lhs, rhs) {
+            Err(Error::InvalidBoundPair) => Ok(Self::empty()),
+            other => other,
         }
     }
 }
@@ -77,15 +161,18 @@ impl<T: Element> FiniteInterval<T> {
 impl<T: PartialOrd> FiniteInterval<T> {
     /// Creates a FiniteInterval; assuming normalized & comparable.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring that invariants are satisfied.
+    /// Both bounds must be normalized (discrete types in closed form) and
+    /// comparable. Violating this yields incorrect results but no
+    /// undefined behavior.
     #[inline]
-    pub unsafe fn new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+    pub fn new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+        debug_assert!(lhs.value().partial_cmp(rhs.value()).is_some());
         if lhs.value() < rhs.value()
             || (lhs.value() == rhs.value() && lhs.is_closed() && rhs.is_closed())
         {
-            Self::new_unchecked(lhs, rhs)
+            Self::new_assume_valid(lhs, rhs)
         } else {
             Self::empty()
         }
@@ -93,21 +180,47 @@ impl<T: PartialOrd> FiniteInterval<T> {
 
     /// Creates a FiniteInterval; assumes normalized.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring that bounds are normed.
-    /// Bounds checking is done but may not be correct if not normed.
+    /// Both bounds must be normalized. Bounds checking is done via
+    /// [`TryCmp`] but may not be correct if not normalized. No undefined
+    /// behavior on violation.
     #[inline(always)]
-    pub unsafe fn new_strict_assume_normed(
-        lhs: FiniteBound<T>,
-        rhs: FiniteBound<T>,
-    ) -> Result<Self, Error> {
+    pub fn try_new_assume_normed(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self, Error> {
         let order = lhs.value().try_cmp(rhs.value())?;
         if order == Less || (order == Equal && lhs.is_closed() && rhs.is_closed()) {
-            Ok(Self::new_unchecked(lhs, rhs))
+            Ok(Self::new_assume_valid(lhs, rhs))
         } else {
             Ok(Self::empty())
         }
+    }
+
+    /// Constructs without checking invariants.
+    ///
+    /// # Preconditions
+    ///
+    /// 1. lhs <= rhs
+    /// 2. discrete bounds are normalized to closed form.
+    ///
+    /// Violating either yields incorrect results but no undefined
+    /// behavior; in debug builds it trips a `debug_assert!`.
+    /// Discrete normalization (precondition 2) is not asserted here —
+    /// it requires the [`Element`] bound;
+    /// callers reach this constructor via paths that already go
+    /// through normalizing constructors like
+    /// [`try_new`](Self::try_new).
+    #[inline]
+    pub fn new_assume_valid(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
+        debug_assert!(
+            lhs.value().partial_cmp(rhs.value()).is_some(),
+            "bounds must be comparable (NaN check)"
+        );
+        debug_assert!(
+            lhs.value() < rhs.value()
+                || (lhs.value() == rhs.value() && lhs.is_closed() && rhs.is_closed()),
+            "bounds must satisfy lhs <= rhs (closed-closed at equality)"
+        );
+        Self(FiniteIntervalInner::Bounded(lhs, rhs))
     }
 }
 
@@ -115,16 +228,6 @@ impl<T> FiniteInterval<T> {
     #[inline(always)]
     pub const fn empty() -> Self {
         Self(FiniteIntervalInner::Empty)
-    }
-
-    /// # Safety
-    ///
-    /// The user must ensure invariants are satisfied:
-    /// 1. lhs <= rhs
-    /// 2. discrete bounds are normalized to closed form.
-    #[inline]
-    pub const unsafe fn new_unchecked(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {
-        Self(FiniteIntervalInner::Bounded(lhs, rhs))
     }
 
     #[inline]
@@ -164,44 +267,69 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     fn bound(&self, side: Side) -> Option<&FiniteBound<T>> {
         self.0.bound(side)
     }
-
-    // fn into_bounds(self) -> Option<(Option<FiniteBound<T>>, Option<FiniteBound<T>>)> {
-    //     self.map(|lhs, rhs| (Some(lhs), Some(rhs))).ok()
-    // }
 }
 
-/// todo...
+/// An interval bounded on exactly one side. The `side` field marks
+/// which end is finite; the other end is implicitly unbounded.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawHalfInterval<T>"))]
 #[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
 )]
 pub struct HalfInterval<T> {
     side: Side,
     bound: FiniteBound<T>,
 }
 
-impl<T> HalfInterval<T> {
+/// Wire-format mirror of [`HalfInterval`] used to drive validation
+/// during `Deserialize`.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "HalfInterval")]
+struct RawHalfInterval<T> {
+    side: Side,
+    bound: FiniteBound<T>,
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawHalfInterval<T>> for HalfInterval<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawHalfInterval<T>) -> Result<Self, Self::Error> {
+        Self::try_new(raw.side, raw.bound)
+    }
+}
+
+impl<T: PartialOrd> HalfInterval<T> {
     /// Creates a new half interval without checking invariants.
     ///
-    /// # Safety
+    /// # Preconditions
     ///
-    /// The user is responsible for ensuring that `bound` is comparable. This
-    /// is assumed if the bound is taken from an existing set.
-    pub const unsafe fn new_unchecked(side: Side, bound: FiniteBound<T>) -> Self {
+    /// `bound` must be comparable (e.g., a non-NaN float). This is
+    /// assumed if the bound is taken from an existing set. Violating
+    /// this yields incorrect results but no undefined behavior; in
+    /// debug builds it trips a `debug_assert!`.
+    pub fn new_assume_valid(side: Side, bound: FiniteBound<T>) -> Self {
+        debug_assert!(
+            bound.value().partial_cmp(bound.value()).is_some(),
+            "bound value must be comparable to itself (NaN check)"
+        );
         Self { side, bound }
     }
 }
 
-impl<T: Element + Zero> HalfInterval<T> {
+impl<T: Element> HalfInterval<T> {
     pub fn new(side: Side, bound: FiniteBound<T>) -> Self {
-        Self::new_strict(side, bound).expect("Bound should have been comparable")
+        Self::try_new(side, bound).expect("Bound should have been comparable")
     }
 
-    pub fn new_strict(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
-        // make sure bound is comparable
-        let _ = T::zero()
+    pub fn try_new(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
+        // probe comparability without requiring T: Zero - a value compared to
+        // itself is Some(Equal) for any properly-ordered type and None for NaN.
+        let _ = bound
+            .value()
             .partial_cmp(bound.value())
             .ok_or(TotalOrderError)?;
         let bound = bound.normalized(side);
@@ -256,11 +384,11 @@ impl<T> OrdBounded<T> for HalfInterval<T> {
         match self.side {
             Side::Left => {
                 let left = OrdBound::left(&self.bound);
-                OrdBoundPair::new(left, OrdBound::RightUnbounded)
+                OrdBoundPair::new_assume_valid(left, OrdBound::RightUnbounded)
             }
             Side::Right => {
                 let right = OrdBound::right(&self.bound);
-                OrdBoundPair::new(OrdBound::LeftUnbounded, right)
+                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, right)
             }
         }
     }
@@ -274,27 +402,43 @@ impl<T> SetBounds<T> for HalfInterval<T> {
             None
         }
     }
-
-    // fn into_bounds(self) -> Option<(Option<FiniteBound<T>>, Option<FiniteBound<T>>)> {
-    //     let bounds = match self.side {
-    //         Side::Left => (Some(self.bound), None),
-    //         Side::Right => (None, Some(self.bound)),
-    //     };
-    //     Some(bounds)
-    // }
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawEnumInterval<T>"))]
 #[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
 )]
 #[allow(missing_docs)]
 pub enum EnumInterval<T> {
     Finite(FiniteInterval<T>),
     Half(HalfInterval<T>),
     Unbounded,
+}
+
+/// Wire-format mirror of [`EnumInterval`]. The variants hold the
+/// already-validated public types, so the `TryFrom` is total.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "EnumInterval")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
+enum RawEnumInterval<T> {
+    Finite(FiniteInterval<T>),
+    Half(HalfInterval<T>),
+    Unbounded,
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> From<RawEnumInterval<T>> for EnumInterval<T> {
+    fn from(raw: RawEnumInterval<T>) -> Self {
+        match raw {
+            RawEnumInterval::Finite(inner) => Self::Finite(inner),
+            RawEnumInterval::Half(inner) => Self::Half(inner),
+            RawEnumInterval::Unbounded => Self::Unbounded,
+        }
+    }
 }
 
 impl<T> EnumInterval<T> {
@@ -318,7 +462,9 @@ impl<T> OrdBounded<T> for EnumInterval<T> {
         match self {
             Self::Finite(inner) => inner.ord_bound_pair(),
             Self::Half(inner) => inner.ord_bound_pair(),
-            Self::Unbounded => OrdBoundPair::new(OrdBound::LeftUnbounded, OrdBound::RightUnbounded),
+            Self::Unbounded => {
+                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
+            }
         }
     }
 }
@@ -333,7 +479,11 @@ impl<T> SetBounds<T> for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Zero> Zero for FiniteInterval<T> {
+// num_traits::Zero requires Self: Add<Self, Output = Self>; the infix
+// Add impls on FiniteInterval/EnumInterval require T: Ord. Likewise One
+// requires Self: Mul<Self, Output = Self>, so T must satisfy the Mul
+// bounds too (Ord + Clone + Zero).
+impl<T: Element + Ord + Zero> Zero for FiniteInterval<T> {
     fn zero() -> Self {
         Self::closed(T::zero(), T::zero())
     }
@@ -344,7 +494,7 @@ impl<T: Element + Zero> Zero for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Zero> Zero for EnumInterval<T> {
+impl<T: Element + Ord + Zero> Zero for EnumInterval<T> {
     fn zero() -> Self {
         Self::from(FiniteInterval::<T>::zero())
     }
@@ -357,13 +507,13 @@ impl<T: Element + Zero> Zero for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for FiniteInterval<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for FiniteInterval<T> {
     fn one() -> Self {
         FiniteInterval::closed(T::one(), T::one())
     }
 }
 
-impl<T: Element + Clone + Zero + One> One for EnumInterval<T> {
+impl<T: Element + Ord + Clone + Zero + One> One for EnumInterval<T> {
     fn one() -> Self {
         EnumInterval::from(FiniteInterval::one())
     }
@@ -416,6 +566,123 @@ mod tests {
 
         assert_eq!(x.left().unwrap(), &FiniteBound::closed(0));
         assert_eq!(x.right().unwrap(), &FiniteBound::closed(10));
+    }
+
+    mod try_new_strict {
+        use super::*;
+        use crate::error::Error;
+
+        #[test]
+        fn try_new_errors_on_crossed_continuous() {
+            let result =
+                FiniteInterval::try_new(FiniteBound::closed(10.0_f32), FiniteBound::closed(0.0));
+            assert!(matches!(result, Err(Error::InvalidBoundPair)));
+        }
+
+        #[test]
+        fn try_new_errors_on_crossed_discrete_after_normalization() {
+            // open(10, 10) for i32 normalizes to closed(11, 9) which is crossed.
+            let result = FiniteInterval::try_new(FiniteBound::open(10_i32), FiniteBound::open(10));
+            assert!(matches!(result, Err(Error::InvalidBoundPair)));
+        }
+
+        #[test]
+        fn try_new_errors_on_nan() {
+            let result =
+                FiniteInterval::try_new(FiniteBound::closed(f32::NAN), FiniteBound::closed(0.0));
+            assert!(matches!(result, Err(Error::TotalOrderError(_))));
+        }
+
+        #[test]
+        fn try_new_or_empty_returns_empty_on_crossed() {
+            let result = FiniteInterval::try_new_or_empty(
+                FiniteBound::closed(10.0_f32),
+                FiniteBound::closed(0.0),
+            )
+            .unwrap();
+            assert_eq!(result, FiniteInterval::empty());
+        }
+
+        #[test]
+        fn try_new_or_empty_propagates_nan() {
+            let result = FiniteInterval::try_new_or_empty(
+                FiniteBound::closed(f32::NAN),
+                FiniteBound::closed(0.0),
+            );
+            assert!(matches!(result, Err(Error::TotalOrderError(_))));
+        }
+
+        #[test]
+        #[should_panic(expected = "InvalidBoundPair")]
+        fn new_panics_on_crossed() {
+            let _ = FiniteInterval::new(FiniteBound::closed(10_i32), FiniteBound::closed(0));
+        }
+
+        #[test]
+        fn factory_open_coerces_crossed_to_empty() {
+            // Factory remains coercive: ergonomic for callers who treat
+            // crossed bounds as "the set described is empty."
+            let x = FiniteInterval::<f32>::open(10.0, 0.0);
+            assert_eq!(x, FiniteInterval::empty());
+        }
+
+        #[test]
+        #[allow(clippy::reversed_empty_ranges)]
+        fn from_reversed_range_is_empty() {
+            // Rust's Range semantics: reversed → iterates nothing.
+            // The From impl preserves that.
+            let x: FiniteInterval<i32> = (10..0).into();
+            assert_eq!(x, FiniteInterval::empty());
+
+            let x: FiniteInterval<i32> = (10..=0).into();
+            assert_eq!(x, FiniteInterval::empty());
+        }
+    }
+
+    /// Debug-mode tripwires on Tier 4 `*_assume_valid` bypass.
+    ///
+    /// Each test constructs a deliberately invariant-violating input
+    /// and confirms the corresponding `debug_assert!` panics. Gated
+    /// to `cfg(debug_assertions)` because the asserts are compiled
+    /// out in release; release behavior is exercised by the
+    /// `#[cfg(not(debug_assertions))]` tests in `category.rs`.
+    #[cfg(debug_assertions)]
+    mod assume_valid_tripwires {
+        use super::*;
+
+        #[test]
+        #[should_panic(expected = "NaN check")]
+        fn finite_interval_new_assume_valid_panics_on_nan() {
+            let _ = FiniteInterval::new_assume_valid(
+                FiniteBound::closed(f32::NAN),
+                FiniteBound::closed(0.0),
+            );
+        }
+
+        #[test]
+        #[should_panic(expected = "lhs <= rhs")]
+        fn finite_interval_new_assume_valid_panics_on_crossed() {
+            let _ = FiniteInterval::new_assume_valid(
+                FiniteBound::closed(10_i32),
+                FiniteBound::closed(0_i32),
+            );
+        }
+
+        #[test]
+        #[should_panic(expected = "lhs <= rhs")]
+        fn finite_interval_new_assume_valid_panics_on_equal_open() {
+            // (5, 5) violates the closed-closed-at-equality clause.
+            let _ = FiniteInterval::new_assume_valid(
+                FiniteBound::open(5_i32),
+                FiniteBound::open(5_i32),
+            );
+        }
+
+        #[test]
+        #[should_panic(expected = "NaN check")]
+        fn half_interval_new_assume_valid_panics_on_nan() {
+            let _ = HalfInterval::new_assume_valid(Side::Left, FiniteBound::closed(f32::NAN));
+        }
     }
 
     #[test]

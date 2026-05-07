@@ -2,8 +2,12 @@
 name = "book"
 version = "0.0.0"
 edition = "2021"
+publish = false
 
 [dependencies]
 doc-comment = "0.3.3"
-intervalsets = { version = "0.1.0-alpha.2", path = "../intervalsets" }
-intervalsets-core = { version = "0.1.0-alpha.2", path = "../intervalsets-core" }
+intervalsets = { path = "../intervalsets" }
+intervalsets-core = { workspace = true }
+
+[lints]
+workspace = true

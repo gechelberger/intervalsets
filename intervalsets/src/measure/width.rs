@@ -105,7 +105,7 @@ mod tests {
         let cd = Interval::open(c, d);
 
         let expected = f32::max(0.0, b - a) + f32::max(0.0, d - c);
-        let x = IntervalSet::new(vec![ab.clone(), cd.clone()]);
+        let x = IntervalSet::new(vec![ab, cd]);
 
         if ab.intersects(&cd) {
             x.width().finite() <= expected
@@ -131,7 +131,7 @@ mod tests {
         }
 
         let expected = ab + cd;
-        let x = IntervalSet::new(vec![ab_ivl.clone(), cd_ivl.clone()]);
+        let x = IntervalSet::new(vec![ab_ivl, cd_ivl]);
 
         // subadditivity
         if ab_ivl.intersects(&cd_ivl) {

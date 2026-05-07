@@ -37,7 +37,7 @@ mod tests {
 
     fn unstructured_data(n: usize) -> Vec<u8> {
         let mut rng = rand::thread_rng();
-        (0..n).into_iter().map(|_| rng.gen::<u8>()).collect()
+        (0..n).map(|_| rng.gen::<u8>()).collect()
     }
 
     #[test]

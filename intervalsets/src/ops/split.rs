@@ -9,13 +9,10 @@ impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn strict_split(
-        self,
-        at: T,
-        closed: Side,
-    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error> {
         self.0
-            .strict_split(at, closed)
+            .try_split(at, closed)
+            .map_err(Into::into)
             .map(|(l, r)| (l.into(), r.into()))
     }
 }
@@ -24,11 +21,7 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
-    fn strict_split(
-        self,
-        at: T,
-        closed: Side,
-    ) -> Result<(Self::Output, Self::Output), Self::Error> {
+    fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error> {
         if self.is_empty() {
             return Ok((Self::Output::empty(), Self::Output::empty()));
         }
@@ -39,7 +32,7 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
         // iter is faster than a binary search for small (typical) N.
         for subset in self.into_iter() {
             if subset.contains(&at) {
-                let split = subset.strict_split(at.clone(), closed)?;
+                let split = subset.try_split(at.clone(), closed)?;
                 if !split.0.is_empty() {
                     left.push(split.0);
                 }
@@ -47,7 +40,7 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
                     right.push(split.1);
                 }
             } else if let Some(rbound) = subset.right() {
-                if !rbound.strict_contains(Side::Right, &at)? {
+                if !rbound.try_contains(Side::Right, &at)? {
                     left.push(subset);
                 } else {
                     right.push(subset);
@@ -57,16 +50,13 @@ impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
             }
         }
 
-        // SAFETY:
         // 1. no input subsets may be empty. split subsets are checked for empty.
         // 2. original subset order is maintained
         // 3. if intervals were unconnected in original set then that is preserved
         //    in split child sets.
-        unsafe {
-            let left_set = Self::Output::new_unchecked(left);
-            let right_set = Self::Output::new_unchecked(right);
-            Ok((left_set, right_set))
-        }
+        let left_set = Self::Output::new_assume_valid(left);
+        let right_set = Self::Output::new_assume_valid(right);
+        Ok((left_set, right_set))
     }
 }
 
@@ -104,28 +94,28 @@ mod tests {
     #[test]
     fn test_split_interval_on_bound() {
         let x = Interval::closed(0, 10);
-        let (left, right) = x.clone().split(0, Side::Left);
+        let (left, right) = x.split(0, Side::Left);
         assert_eq!(left, [0, 0].into());
         assert_eq!(right, [1, 10].into());
 
-        let (left, right) = x.clone().split(0, Side::Right);
+        let (left, right) = x.split(0, Side::Right);
         assert_eq!(left, Interval::empty());
         assert_eq!(right, x);
 
         let x = Interval::closed(0.0, 10.0);
-        let (left, right) = x.clone().split(0.0, Side::Left);
+        let (left, right) = x.split(0.0, Side::Left);
         assert_eq!(left, [0.0, 0.0].into());
         assert_eq!(right, Interval::open_closed(0.0, 10.0));
 
-        let (left, right) = x.clone().split(0.0, Side::Right);
+        let (left, right) = x.split(0.0, Side::Right);
         assert_eq!(left, Interval::empty());
         assert_eq!(right, x.clone());
 
-        let (left, right) = x.clone().split(10.0, Side::Left);
+        let (left, right) = x.split(10.0, Side::Left);
         assert_eq!(left, x.clone());
         assert_eq!(right, Interval::empty());
 
-        let (left, right) = x.clone().split(10.0, Side::Right);
+        let (left, right) = x.split(10.0, Side::Right);
         assert_eq!(left, Interval::closed_open(0.0, 10.0));
         assert_eq!(right, [10.0, 10.0].into());
     }
@@ -185,11 +175,11 @@ mod tests {
             Interval::closed(50, 60),
         ]);
 
-        let (left, right) = iset.clone().strict_split(30, Side::Right).unwrap();
+        let (left, right) = iset.clone().try_split(30, Side::Right).unwrap();
         assert_eq!(left, IntervalSet::from_iter([[10, 20]]));
         assert_eq!(right, IntervalSet::from_iter([[30, 40], [50, 60]]));
 
-        let (left, right) = iset.strict_split(40, Side::Left).unwrap();
+        let (left, right) = iset.try_split(40, Side::Left).unwrap();
         assert_eq!(left, IntervalSet::from_iter([[10, 20], [30, 40]]));
         assert_eq!(right, IntervalSet::from_iter([[50, 60]]));
     }
