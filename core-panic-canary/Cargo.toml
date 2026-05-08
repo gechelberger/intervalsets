@@ -23,4 +23,4 @@ publish = false
 intervalsets-core = { path = "../intervalsets-core", features = ["panic-free-check"] }
 
 [package.metadata.kani.flags]
-default-unwind = 4
+default-unwind = "4"
