@@ -718,6 +718,41 @@ mod impls {
     }
 }
 
+// === Value-level primitive impls (E2) ===
+
+use super::macros::{impl_try_div_checked, impl_try_div_float_finite};
+
+impl_try_div_checked!(i8);
+impl_try_div_checked!(i16);
+impl_try_div_checked!(i32);
+impl_try_div_checked!(i64);
+impl_try_div_checked!(i128);
+impl_try_div_checked!(isize);
+impl_try_div_checked!(u8);
+impl_try_div_checked!(u16);
+impl_try_div_checked!(u32);
+impl_try_div_checked!(u64);
+impl_try_div_checked!(u128);
+impl_try_div_checked!(usize);
+
+impl_try_div_float_finite!(f32);
+impl_try_div_float_finite!(f64);
+
+/// `Option<T>` delegates to the inner `T` impl. See [`TryAdd`](super::TryAdd)'s
+/// `Option` impl for the convention.
+impl<T: TryDiv> TryDiv for Option<T> {
+    type Output = Option<<T as TryDiv>::Output>;
+    type Error = <T as TryDiv>::Error;
+
+    #[inline]
+    fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        match (self, rhs) {
+            (Some(a), Some(b)) => a.try_div(b).map(Some),
+            _ => Ok(None),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -847,5 +882,46 @@ mod tests {
         // half / half
         let cu_pos = EnumInterval::closed_unbound(O(10.0));
         assert_eq!(cu_pos / cu_pos, EnumInterval::open_unbound(O(0.0)).into());
+    }
+
+    // -- value-level primitive smoke tests (E2) --
+
+    use crate::error::MathError;
+
+    #[test]
+    fn primitive_signed_div() {
+        assert_eq!(<i32 as TryDiv>::try_div(10, 2), Ok(5));
+        assert_eq!(<i32 as TryDiv>::try_div(1, 0), Err(MathError::Domain));
+        // signed `MIN / -1` would overflow — caught as Range, not Domain
+        assert_eq!(
+            <i32 as TryDiv>::try_div(i32::MIN, -1),
+            Err(MathError::Range)
+        );
+    }
+
+    #[test]
+    fn primitive_unsigned_div() {
+        assert_eq!(<u32 as TryDiv>::try_div(10, 2), Ok(5));
+        assert_eq!(<u32 as TryDiv>::try_div(1, 0), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn primitive_float_div() {
+        assert_eq!(<f64 as TryDiv>::try_div(10.0, 2.0), Ok(5.0));
+        // 1.0 / 0.0 = INF → non-finite → Domain (single is_finite() check)
+        assert_eq!(<f64 as TryDiv>::try_div(1.0, 0.0), Err(MathError::Domain));
+        // 0.0 / 0.0 = NaN → non-finite → Domain
+        assert_eq!(<f64 as TryDiv>::try_div(0.0, 0.0), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn option_div_matrix() {
+        assert_eq!(Some(10_i32).try_div(Some(2)), Ok(Some(5)));
+        assert_eq!(Some(10_i32).try_div(None), Ok(None));
+        assert_eq!(None::<i32>.try_div(Some(2)), Ok(None));
+        assert_eq!(None::<i32>.try_div(None), Ok(None));
+
+        let r: Result<Option<i32>, MathError> = Some(1).try_div(Some(0));
+        assert_eq!(r, Err(MathError::Domain));
     }
 }

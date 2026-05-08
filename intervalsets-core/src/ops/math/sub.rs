@@ -231,6 +231,41 @@ macro_rules! dispatch_rhs_try_sub_impl {
 dispatch_rhs_try_sub_impl!(FiniteInterval<T>);
 dispatch_rhs_try_sub_impl!(HalfInterval<T>);
 
+// === Value-level primitive impls (E2) ===
+
+use super::macros::{impl_try_sub_checked, impl_try_sub_float_finite};
+
+impl_try_sub_checked!(i8);
+impl_try_sub_checked!(i16);
+impl_try_sub_checked!(i32);
+impl_try_sub_checked!(i64);
+impl_try_sub_checked!(i128);
+impl_try_sub_checked!(isize);
+impl_try_sub_checked!(u8);
+impl_try_sub_checked!(u16);
+impl_try_sub_checked!(u32);
+impl_try_sub_checked!(u64);
+impl_try_sub_checked!(u128);
+impl_try_sub_checked!(usize);
+
+impl_try_sub_float_finite!(f32);
+impl_try_sub_float_finite!(f64);
+
+/// `Option<T>` delegates to the inner `T` impl. See [`TryAdd`](super::TryAdd)'s
+/// `Option` impl for the convention.
+impl<T: TrySub> TrySub for Option<T> {
+    type Output = Option<<T as TrySub>::Output>;
+    type Error = <T as TrySub>::Error;
+
+    #[inline]
+    fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        match (self, rhs) {
+            (Some(a), Some(b)) => a.try_sub(b).map(Some),
+            _ => Ok(None),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -332,5 +367,41 @@ mod tests {
         let e = EnumInterval::empty();
         assert_eq!(x - e, e);
         assert_eq!(e - x, e);
+    }
+
+    // -- value-level primitive smoke tests (E2) --
+
+    use crate::error::MathError;
+
+    #[test]
+    fn primitive_signed_sub() {
+        assert_eq!(<i32 as TrySub>::try_sub(5, 3), Ok(2));
+        assert_eq!(<i32 as TrySub>::try_sub(i32::MIN, 1), Err(MathError::Range));
+    }
+
+    #[test]
+    fn primitive_unsigned_sub() {
+        assert_eq!(<u32 as TrySub>::try_sub(5, 3), Ok(2));
+        assert_eq!(<u32 as TrySub>::try_sub(0, 1), Err(MathError::Range));
+    }
+
+    #[test]
+    fn primitive_float_sub() {
+        assert_eq!(<f64 as TrySub>::try_sub(5.0, 3.0), Ok(2.0));
+        assert_eq!(
+            <f64 as TrySub>::try_sub(f64::INFINITY, f64::INFINITY),
+            Err(MathError::Domain)
+        );
+    }
+
+    #[test]
+    fn option_sub_matrix() {
+        assert_eq!(Some(5_i32).try_sub(Some(3)), Ok(Some(2)));
+        assert_eq!(Some(5_i32).try_sub(None), Ok(None));
+        assert_eq!(None::<i32>.try_sub(Some(3)), Ok(None));
+        assert_eq!(None::<i32>.try_sub(None), Ok(None));
+
+        let r: Result<Option<u32>, MathError> = Some(0_u32).try_sub(Some(1));
+        assert_eq!(r, Err(MathError::Range));
     }
 }

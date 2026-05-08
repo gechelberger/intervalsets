@@ -1,9 +1,13 @@
+use core::convert::Infallible;
+
 use num_bigint::{BigInt, BigUint};
-use num_traits::{CheckedAdd, CheckedSub, One};
+use num_traits::{CheckedAdd, CheckedSub, One, Zero};
 
 use crate::bound::Side::{self, *};
 use crate::default_countable_impl;
+use crate::error::MathError;
 use crate::numeric::{Element, Midpoint};
+use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 impl Element for BigInt {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
@@ -45,6 +49,100 @@ impl Midpoint for BigUint {
     /// of any pair is always representable.
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
         Ok((self + other) >> 1)
+    }
+}
+
+// === Value-level TryOp impls (E3) ===
+//
+// `BigInt` and `BigUint` are arbitrary precision: `Add`, `Mul`, and
+// (for BigInt) `Sub` cannot fail, so they expose `Error = Infallible`.
+// `BigUint::Sub` *can* fail when `rhs > self` (no negative repr), and
+// `Div` panics on `/0` for both — those return `MathError`.
+
+impl TryAdd for BigInt {
+    type Output = BigInt;
+    type Error = Infallible;
+
+    #[inline]
+    fn try_add(self, rhs: Self) -> Result<Self, Self::Error> {
+        Ok(self + rhs)
+    }
+}
+
+impl TrySub for BigInt {
+    type Output = BigInt;
+    type Error = Infallible;
+
+    #[inline]
+    fn try_sub(self, rhs: Self) -> Result<Self, Self::Error> {
+        Ok(self - rhs)
+    }
+}
+
+impl TryMul for BigInt {
+    type Output = BigInt;
+    type Error = Infallible;
+
+    #[inline]
+    fn try_mul(self, rhs: Self) -> Result<Self, Self::Error> {
+        Ok(self * rhs)
+    }
+}
+
+impl TryDiv for BigInt {
+    type Output = BigInt;
+    type Error = MathError;
+
+    #[inline]
+    fn try_div(self, rhs: Self) -> Result<Self, Self::Error> {
+        if rhs.is_zero() {
+            return Err(MathError::Domain);
+        }
+        Ok(self / rhs)
+    }
+}
+
+impl TryAdd for BigUint {
+    type Output = BigUint;
+    type Error = Infallible;
+
+    #[inline]
+    fn try_add(self, rhs: Self) -> Result<Self, Self::Error> {
+        Ok(self + rhs)
+    }
+}
+
+impl TrySub for BigUint {
+    type Output = BigUint;
+    type Error = MathError;
+
+    #[inline]
+    fn try_sub(self, rhs: Self) -> Result<Self, Self::Error> {
+        // BigUint has no negative representation; `rhs > self` underflows.
+        self.checked_sub(&rhs).ok_or(MathError::Range)
+    }
+}
+
+impl TryMul for BigUint {
+    type Output = BigUint;
+    type Error = Infallible;
+
+    #[inline]
+    fn try_mul(self, rhs: Self) -> Result<Self, Self::Error> {
+        Ok(self * rhs)
+    }
+}
+
+impl TryDiv for BigUint {
+    type Output = BigUint;
+    type Error = MathError;
+
+    #[inline]
+    fn try_div(self, rhs: Self) -> Result<Self, Self::Error> {
+        if rhs.is_zero() {
+            return Err(MathError::Domain);
+        }
+        Ok(self / rhs)
     }
 }
 
@@ -99,6 +197,47 @@ mod tests {
         let huge: BigUint = BigUint::from(1u32) << 200;
         let mid = huge.clone().midpoint(BigUint::from(0u32)).unwrap();
         assert_eq!(mid, huge >> 1);
+    }
+
+    #[test]
+    fn test_try_ops_bigint() {
+        use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
+
+        let a = BigInt::from(10);
+        let b = BigInt::from(3);
+        assert_eq!(a.clone().try_add(b.clone()).unwrap(), BigInt::from(13));
+        assert_eq!(a.clone().try_sub(b.clone()).unwrap(), BigInt::from(7));
+        assert_eq!(a.clone().try_mul(b.clone()).unwrap(), BigInt::from(30));
+        assert_eq!(a.clone().try_div(b.clone()).unwrap(), BigInt::from(3));
+
+        // /0 is the only failure path
+        assert_eq!(
+            a.try_div(BigInt::from(0)),
+            Err(crate::error::MathError::Domain)
+        );
+    }
+
+    #[test]
+    fn test_try_ops_biguint() {
+        use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
+
+        let a = BigUint::from(10u32);
+        let b = BigUint::from(3u32);
+        assert_eq!(a.clone().try_add(b.clone()).unwrap(), BigUint::from(13u32));
+        assert_eq!(a.clone().try_sub(b.clone()).unwrap(), BigUint::from(7u32));
+        assert_eq!(a.clone().try_mul(b.clone()).unwrap(), BigUint::from(30u32));
+        assert_eq!(a.clone().try_div(b.clone()).unwrap(), BigUint::from(3u32));
+
+        // BigUint underflow (would-be-negative)
+        assert_eq!(
+            BigUint::from(3u32).try_sub(BigUint::from(10u32)),
+            Err(crate::error::MathError::Range)
+        );
+        // /0
+        assert_eq!(
+            a.try_div(BigUint::from(0u32)),
+            Err(crate::error::MathError::Domain)
+        );
     }
 
     #[test]

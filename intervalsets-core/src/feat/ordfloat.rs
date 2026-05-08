@@ -1,9 +1,10 @@
 use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
-use crate::error::MidpointError;
+use crate::error::{MathError, MidpointError};
 use crate::factory::Converter;
 use crate::numeric::{Element, Midpoint};
+use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 impl<T: FloatCore + Element> Element for NotNan<T> {
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
@@ -57,6 +58,56 @@ impl<T: Midpoint<Error = MidpointError>> Midpoint for OrderedFloat<T> {
     }
 }
 
+// === Value-level TryOp impls (E3) ===
+//
+// Both wrappers report any non-finite result (INF or NaN) as
+// `MathError::Domain`, mirroring the bare `f32`/`f64` impls.
+//
+// `OrderedFloat::add/sub/mul/div` do not panic on NaN (the wrapper
+// admits NaN under its total order) — we just check `is_finite()` on
+// the result. `NotNan`'s ops panic if the result would be NaN, so we
+// route through the inner `T` first and only re-wrap once `is_finite`
+// confirms the result is non-NaN.
+
+macro_rules! ordfloat_impl_try {
+    ($trait:ident, $method:ident, $op:tt) => {
+        impl<T: FloatCore> $trait for OrderedFloat<T> {
+            type Output = OrderedFloat<T>;
+            type Error = MathError;
+
+            #[inline]
+            fn $method(self, rhs: Self) -> Result<Self, MathError> {
+                let r = OrderedFloat(self.0 $op rhs.0);
+                if r.0.is_finite() {
+                    Ok(r)
+                } else {
+                    Err(MathError::Domain)
+                }
+            }
+        }
+
+        impl<T: FloatCore> $trait for NotNan<T> {
+            type Output = NotNan<T>;
+            type Error = MathError;
+
+            #[inline]
+            fn $method(self, rhs: Self) -> Result<Self, MathError> {
+                let r = self.into_inner() $op rhs.into_inner();
+                if r.is_finite() {
+                    Ok(NotNan::new(r).expect("finite result is non-NaN by definition"))
+                } else {
+                    Err(MathError::Domain)
+                }
+            }
+        }
+    };
+}
+
+ordfloat_impl_try!(TryAdd, try_add, +);
+ordfloat_impl_try!(TrySub, try_sub, -);
+ordfloat_impl_try!(TryMul, try_mul, *);
+ordfloat_impl_try!(TryDiv, try_div, /);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -97,6 +148,61 @@ mod tests {
         let inf = NotNan::new(f32::INFINITY).unwrap();
         let zero = NotNan::new(0.0_f32).unwrap();
         assert!(inf.midpoint(zero).is_err());
+    }
+
+    #[test]
+    fn test_try_ops_ord_float() {
+        let two = OrderedFloat(2.0_f64);
+        let three = OrderedFloat(3.0_f64);
+        let zero = OrderedFloat(0.0_f64);
+
+        assert_eq!(two.try_add(three).unwrap(), OrderedFloat(5.0));
+        assert_eq!(two.try_sub(three).unwrap(), OrderedFloat(-1.0));
+        assert_eq!(two.try_mul(three).unwrap(), OrderedFloat(6.0));
+        assert_eq!(OrderedFloat(6.0_f64).try_div(two).unwrap(), three);
+
+        // Non-finite results: all surface as `Domain`.
+        assert_eq!(
+            OrderedFloat(f64::MAX).try_add(OrderedFloat(f64::MAX)),
+            Err(MathError::Domain)
+        );
+        // 1.0 / 0.0 = INF → Domain
+        assert_eq!(OrderedFloat(1.0_f64).try_div(zero), Err(MathError::Domain));
+        // 0.0 / 0.0 = NaN → Domain
+        assert_eq!(zero.try_div(zero), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn test_try_ops_not_nan() {
+        let two = NotNan::new(2.0_f64).unwrap();
+        let three = NotNan::new(3.0_f64).unwrap();
+        let zero = NotNan::new(0.0_f64).unwrap();
+
+        assert_eq!(two.try_add(three).unwrap(), NotNan::new(5.0).unwrap());
+        assert_eq!(two.try_sub(three).unwrap(), NotNan::new(-1.0).unwrap());
+        assert_eq!(two.try_mul(three).unwrap(), NotNan::new(6.0).unwrap());
+        assert_eq!(NotNan::new(6.0_f64).unwrap().try_div(two).unwrap(), three);
+
+        // INF + (-INF) would yield NaN — must surface as `Domain`, not panic.
+        let inf = NotNan::new(f64::INFINITY).unwrap();
+        let neg_inf = NotNan::new(f64::NEG_INFINITY).unwrap();
+        assert_eq!(inf.try_add(neg_inf), Err(MathError::Domain));
+
+        // 1.0 / 0.0 = INF → Domain
+        assert_eq!(
+            NotNan::new(1.0_f64).unwrap().try_div(zero),
+            Err(MathError::Domain)
+        );
+        // 0.0 / 0.0 would be NaN → Domain (no panic)
+        assert_eq!(zero.try_div(zero), Err(MathError::Domain));
+
+        // Overflow → INF → Domain
+        assert_eq!(
+            NotNan::new(f64::MAX)
+                .unwrap()
+                .try_add(NotNan::new(f64::MAX).unwrap()),
+            Err(MathError::Domain)
+        );
     }
 
     #[test]

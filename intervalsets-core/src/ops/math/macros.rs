@@ -1,23 +1,28 @@
 //! Internal macros that implement the [`TryAdd`](super::TryAdd) /
 //! [`TrySub`](super::TrySub) / [`TryMul`](super::TryMul) /
-//! [`TryDiv`](super::TryDiv) traits for primitive integer types via the
-//! standard `checked_*` API.
+//! [`TryDiv`](super::TryDiv) traits for value-level primitive types.
 //!
-//! These macros are `pub(crate)` and intended to be invoked by the
-//! per-feature-crate primitive instantiations (E2/E3 of the math
-//! recontract). Production primitive instantiations are not in this
-//! module — only the macro definitions and their unit tests live here.
+//! Two lineups:
+//!
+//! - `impl_try_*_checked!` — for types with a `checked_*` API (signed
+//!   and unsigned integer primitives, plus feature-crate types like
+//!   `Decimal` and `Fixed*`). Uses the `checked_*` family directly.
+//! - `impl_try_*_float_finite!` — for IEEE-754 floats. Performs the op
+//!   raw and reports any non-finite result as
+//!   [`MathError::Domain`](crate::error::MathError::Domain). The single
+//!   `is_finite()` check classifies both `INF` and `NaN` as `Domain`;
+//!   see `MathError::Domain`'s docs for the rationale.
+//!
+//! These macros are `pub(crate)`. Production primitive instantiations
+//! live in the per-op `add.rs` / `sub.rs` / `mul.rs` / `div.rs` files
+//! (and per-feature `feat/<crate>.rs` files); only the macro
+//! definitions and their unit tests live here.
 //!
 //! Each generated impl returns [`MathError`](crate::error::MathError):
 //! - `Range` — `checked_*` returned `None` (integer overflow, including
 //!   signed `MIN / -1` for division).
-//! - `Domain` — divisor is zero (division only).
-
-// E1 lands the macros without any production-code invocation; E2/E3 add the
-// callsites. Until then, the macro definitions and their `pub(crate) use`
-// re-exports look dead to the non-test build — silence those warnings here
-// rather than peppering each macro with its own `#[allow(...)]`.
-#![allow(unused_macros, unused_imports)]
+//! - `Domain` — divisor is zero (integer division), or the result is
+//!   non-finite (floats).
 
 macro_rules! impl_try_add_checked {
     ($t:ty) => {
@@ -81,6 +86,91 @@ macro_rules! impl_try_div_checked {
     };
 }
 pub(crate) use impl_try_div_checked;
+
+// IEEE-754 float macros. Each performs the op raw and reports any
+// non-finite result (INF or NaN) as `MathError::Domain`. Division
+// inherits the same treatment — `1.0 / 0.0 = INF` and `0.0 / 0.0 = NaN`
+// both surface as `Domain` without an explicit zero pre-check.
+
+macro_rules! impl_try_add_float_finite {
+    ($t:ty) => {
+        impl $crate::ops::math::TryAdd for $t {
+            type Output = $t;
+            type Error = $crate::error::MathError;
+
+            #[inline]
+            fn try_add(self, rhs: $t) -> ::core::result::Result<$t, $crate::error::MathError> {
+                let r = self + rhs;
+                if r.is_finite() {
+                    ::core::result::Result::Ok(r)
+                } else {
+                    ::core::result::Result::Err($crate::error::MathError::Domain)
+                }
+            }
+        }
+    };
+}
+pub(crate) use impl_try_add_float_finite;
+
+macro_rules! impl_try_sub_float_finite {
+    ($t:ty) => {
+        impl $crate::ops::math::TrySub for $t {
+            type Output = $t;
+            type Error = $crate::error::MathError;
+
+            #[inline]
+            fn try_sub(self, rhs: $t) -> ::core::result::Result<$t, $crate::error::MathError> {
+                let r = self - rhs;
+                if r.is_finite() {
+                    ::core::result::Result::Ok(r)
+                } else {
+                    ::core::result::Result::Err($crate::error::MathError::Domain)
+                }
+            }
+        }
+    };
+}
+pub(crate) use impl_try_sub_float_finite;
+
+macro_rules! impl_try_mul_float_finite {
+    ($t:ty) => {
+        impl $crate::ops::math::TryMul for $t {
+            type Output = $t;
+            type Error = $crate::error::MathError;
+
+            #[inline]
+            fn try_mul(self, rhs: $t) -> ::core::result::Result<$t, $crate::error::MathError> {
+                let r = self * rhs;
+                if r.is_finite() {
+                    ::core::result::Result::Ok(r)
+                } else {
+                    ::core::result::Result::Err($crate::error::MathError::Domain)
+                }
+            }
+        }
+    };
+}
+pub(crate) use impl_try_mul_float_finite;
+
+macro_rules! impl_try_div_float_finite {
+    ($t:ty) => {
+        impl $crate::ops::math::TryDiv for $t {
+            type Output = $t;
+            type Error = $crate::error::MathError;
+
+            #[inline]
+            fn try_div(self, rhs: $t) -> ::core::result::Result<$t, $crate::error::MathError> {
+                let r = self / rhs;
+                if r.is_finite() {
+                    ::core::result::Result::Ok(r)
+                } else {
+                    ::core::result::Result::Err($crate::error::MathError::Domain)
+                }
+            }
+        }
+    };
+}
+pub(crate) use impl_try_div_float_finite;
 
 #[cfg(test)]
 mod tests {
@@ -169,5 +259,104 @@ mod tests {
     #[test]
     fn div_range_on_min_neg_one() {
         assert_eq!(I8(i8::MIN).try_div(I8(-1)), Err(MathError::Range));
+    }
+
+    // Crate-local newtype around `f64` so the float-finite macro tests
+    // exercise the macros without colliding with any production-surface
+    // impls on bare primitives.
+    #[derive(Debug, Copy, Clone, PartialEq)]
+    struct F64(f64);
+
+    impl ::core::ops::Add for F64 {
+        type Output = F64;
+        #[inline]
+        fn add(self, rhs: Self) -> Self {
+            F64(self.0 + rhs.0)
+        }
+    }
+    impl ::core::ops::Sub for F64 {
+        type Output = F64;
+        #[inline]
+        fn sub(self, rhs: Self) -> Self {
+            F64(self.0 - rhs.0)
+        }
+    }
+    impl ::core::ops::Mul for F64 {
+        type Output = F64;
+        #[inline]
+        fn mul(self, rhs: Self) -> Self {
+            F64(self.0 * rhs.0)
+        }
+    }
+    impl ::core::ops::Div for F64 {
+        type Output = F64;
+        #[inline]
+        fn div(self, rhs: Self) -> Self {
+            F64(self.0 / rhs.0)
+        }
+    }
+    impl F64 {
+        #[inline]
+        fn is_finite(self) -> bool {
+            self.0.is_finite()
+        }
+    }
+
+    super::impl_try_add_float_finite!(F64);
+    super::impl_try_sub_float_finite!(F64);
+    super::impl_try_mul_float_finite!(F64);
+    super::impl_try_div_float_finite!(F64);
+
+    #[test]
+    fn float_add_ok() {
+        assert_eq!(F64(1.0).try_add(F64(2.0)), Ok(F64(3.0)));
+    }
+
+    #[test]
+    fn float_add_overflow_to_inf_is_domain() {
+        assert_eq!(F64(f64::MAX).try_add(F64(f64::MAX)), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn float_add_inf_minus_inf_is_domain() {
+        assert_eq!(
+            F64(f64::INFINITY).try_add(F64(f64::NEG_INFINITY)),
+            Err(MathError::Domain)
+        );
+    }
+
+    #[test]
+    fn float_sub_ok() {
+        assert_eq!(F64(5.0).try_sub(F64(3.0)), Ok(F64(2.0)));
+    }
+
+    #[test]
+    fn float_sub_inf_minus_inf_is_domain() {
+        assert_eq!(
+            F64(f64::INFINITY).try_sub(F64(f64::INFINITY)),
+            Err(MathError::Domain)
+        );
+    }
+
+    #[test]
+    fn float_mul_ok() {
+        assert_eq!(F64(6.0).try_mul(F64(7.0)), Ok(F64(42.0)));
+    }
+
+    #[test]
+    fn float_mul_overflow_is_domain() {
+        assert_eq!(F64(f64::MAX).try_mul(F64(2.0)), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn float_div_ok() {
+        assert_eq!(F64(10.0).try_div(F64(2.0)), Ok(F64(5.0)));
+    }
+
+    #[test]
+    fn float_div_by_zero_is_domain() {
+        // 1.0 / 0.0 = INF; 0.0 / 0.0 = NaN. Both are non-finite → Domain.
+        assert_eq!(F64(1.0).try_div(F64(0.0)), Err(MathError::Domain));
+        assert_eq!(F64(0.0).try_div(F64(0.0)), Err(MathError::Domain));
     }
 }

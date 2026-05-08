@@ -1,6 +1,9 @@
 // lint doesn't detect usage inside macro
 #[allow(unused_imports)]
-use num_traits::{CheckedAdd, CheckedSub};
+use num_traits::{CheckedAdd, CheckedSub, Zero};
+
+use crate::error::MathError;
+use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 /// private macro for Element on fixed crate types.
 macro_rules! fixed_domain {
@@ -80,6 +83,73 @@ fixed_midpoint_delegate_impl!(
     fixed::FixedU128<N>,
 );
 
+// === Value-level TryOp impls (E3) ===
+//
+// Fixed-point types have bounded precision; all four ops can overflow
+// → `MathError::Range`. `checked_div` returns `None` for both `/0`
+// and overflow, so we pre-check zero to surface `/0` as `Domain`.
+
+// `checked_mul` and `checked_div` on Fixed<N> require their matching
+// `LeEqU*` bound on `N` (e.g. `FixedI16<N>` needs `N: LeEqU16`), so the
+// macro takes the bound per type.
+macro_rules! fixed_try_ops_impl {
+    ($t:ty, $bound:path) => {
+        impl<N: $bound> TryAdd for $t {
+            type Output = $t;
+            type Error = MathError;
+
+            #[inline]
+            fn try_add(self, rhs: Self) -> Result<Self, MathError> {
+                self.checked_add(rhs).ok_or(MathError::Range)
+            }
+        }
+
+        impl<N: $bound> TrySub for $t {
+            type Output = $t;
+            type Error = MathError;
+
+            #[inline]
+            fn try_sub(self, rhs: Self) -> Result<Self, MathError> {
+                self.checked_sub(rhs).ok_or(MathError::Range)
+            }
+        }
+
+        impl<N: $bound> TryMul for $t {
+            type Output = $t;
+            type Error = MathError;
+
+            #[inline]
+            fn try_mul(self, rhs: Self) -> Result<Self, MathError> {
+                self.checked_mul(rhs).ok_or(MathError::Range)
+            }
+        }
+
+        impl<N: $bound> TryDiv for $t {
+            type Output = $t;
+            type Error = MathError;
+
+            #[inline]
+            fn try_div(self, rhs: Self) -> Result<Self, MathError> {
+                if rhs.is_zero() {
+                    return Err(MathError::Domain);
+                }
+                self.checked_div(rhs).ok_or(MathError::Range)
+            }
+        }
+    };
+}
+
+fixed_try_ops_impl!(fixed::FixedI8<N>, fixed::types::extra::LeEqU8);
+fixed_try_ops_impl!(fixed::FixedU8<N>, fixed::types::extra::LeEqU8);
+fixed_try_ops_impl!(fixed::FixedI16<N>, fixed::types::extra::LeEqU16);
+fixed_try_ops_impl!(fixed::FixedU16<N>, fixed::types::extra::LeEqU16);
+fixed_try_ops_impl!(fixed::FixedI32<N>, fixed::types::extra::LeEqU32);
+fixed_try_ops_impl!(fixed::FixedU32<N>, fixed::types::extra::LeEqU32);
+fixed_try_ops_impl!(fixed::FixedI64<N>, fixed::types::extra::LeEqU64);
+fixed_try_ops_impl!(fixed::FixedU64<N>, fixed::types::extra::LeEqU64);
+fixed_try_ops_impl!(fixed::FixedI128<N>, fixed::types::extra::LeEqU128);
+fixed_try_ops_impl!(fixed::FixedU128<N>, fixed::types::extra::LeEqU128);
+
 #[cfg(test)]
 mod tests {
     use fixed::types::{I6F2, U6F2};
@@ -135,5 +205,50 @@ mod tests {
 
         // No overflow at MAX.
         assert_eq!(U6F2::MAX.midpoint(U6F2::MAX).unwrap(), U6F2::MAX);
+    }
+
+    #[test]
+    fn test_try_ops_fixed_signed() {
+        use crate::error::MathError;
+        use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
+
+        let a = I6F2::from_num(2.0);
+        let b = I6F2::from_num(1.0);
+
+        assert_eq!(a.try_add(b).unwrap(), I6F2::from_num(3.0));
+        assert_eq!(a.try_sub(b).unwrap(), I6F2::from_num(1.0));
+        assert_eq!(a.try_mul(b).unwrap(), I6F2::from_num(2.0));
+        assert_eq!(a.try_div(b).unwrap(), I6F2::from_num(2.0));
+
+        // /0 → Domain
+        assert_eq!(a.try_div(I6F2::from_num(0.0)), Err(MathError::Domain));
+
+        // Overflow at MAX → Range
+        assert_eq!(
+            I6F2::MAX.try_add(I6F2::from_num(1.0)),
+            Err(MathError::Range)
+        );
+        assert_eq!(
+            I6F2::MIN.try_sub(I6F2::from_num(1.0)),
+            Err(MathError::Range)
+        );
+    }
+
+    #[test]
+    fn test_try_ops_fixed_unsigned() {
+        use crate::error::MathError;
+        use crate::ops::math::{TryDiv, TrySub};
+
+        // unsigned underflow → Range
+        assert_eq!(
+            U6F2::from_num(0.0).try_sub(U6F2::from_num(1.0)),
+            Err(MathError::Range)
+        );
+
+        // /0 → Domain
+        assert_eq!(
+            U6F2::from_num(1.0).try_div(U6F2::from_num(0.0)),
+            Err(MathError::Domain)
+        );
     }
 }
