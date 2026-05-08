@@ -28,9 +28,10 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
+approx = { version = "0.5.1", default-features = false, optional = true }
 arbitrary = { version = "1.4.1", optional = true }
-intervalsets-core = { version = "0.1.0-alpha.3", path = "../intervalsets-core" }
-itertools = "0.13.0"
+intervalsets-core = { workspace = true }
+itertools = "0.14.0"
 num-traits = "0.2.19"
 quickcheck = { version = "1.0.3", optional = true }
 serde = { version = "1.0.215", optional = true, features = ["derive"] }
@@ -41,7 +42,7 @@ approx = "0.5.1"
 bigdecimal = "0.4.6"
 fixed = "1.28.0"
 num-bigint = "0.4.6"
-ordered-float = "4.5.0"
+ordered-float = "5.3.0"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 rand = "0.8.5"
@@ -51,6 +52,7 @@ serde_json = "1.0.132"
 siphasher = "1.0.1"
 
 [features]
+approx = ["dep:approx", "intervalsets-core/approx"]
 ordered-float = [ "intervalsets-core/ordered-float"]
 rust_decimal = [ "intervalsets-core/rust_decimal"]
 bigdecimal = ["intervalsets-core/bigdecimal"]
@@ -59,3 +61,6 @@ num-bigint = ["intervalsets-core/num-bigint"]
 quickcheck = ["dep:quickcheck", "intervalsets-core/quickcheck"]
 arbitrary = ["dep:arbitrary", "intervalsets-core/arbitrary"]
 serde = ["dep:serde", "intervalsets-core/serde"]
+
+[lints]
+workspace = true

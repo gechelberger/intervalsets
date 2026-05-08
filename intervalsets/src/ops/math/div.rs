@@ -165,7 +165,7 @@ mod tests {
     }
 
     #[test]
-    fn test_div_halfs() {
+    fn test_div_halves() {
         let x = Interval::closed_unbound(O(-1.0));
         let y = Interval::unbound_closed(O(-10.0));
         assert_eq!(x / y, Interval::unbound_closed(O(0.1)).into());

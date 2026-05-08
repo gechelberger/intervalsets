@@ -48,7 +48,7 @@ impl<T: Element + Clone> Intersection<Interval<T>> for IntervalSet<T> {
             .map(|subset| (subset).intersection(rhs.clone()))
             .filter(|iv| !iv.is_empty());
 
-        // 1. empty intervals are explicity filtered out
+        // 1. empty intervals are explicitly filtered out
         // 2. inputs are sorted per invariants
         // 3. inputs are unconnected per invariants so intersection will be too.
         IntervalSet::new_assume_valid(intervals)
@@ -104,7 +104,7 @@ impl<T: Element + Clone> Intersection<&Interval<T>> for &IntervalSet<T> {
             .map(|subset| subset.intersection(rhs))
             .filter(|iv| !iv.is_empty());
 
-        // 1. empty intervals are explicity filtered out
+        // 1. empty intervals are explicitly filtered out
         // 2. inputs are sorted per invariants
         // 3. inputs are unconnected per invariants so intersection will be too.
         IntervalSet::new_assume_valid(intervals)

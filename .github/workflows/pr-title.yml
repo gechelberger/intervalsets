@@ -1,0 +1,38 @@
+name: PR Title
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Allowed conventional-commit types — must mirror CONTRIBUTING.md.
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            style
+            build
+            ci
+            chore
+            revert
+          requireScope: false
+          # PR titles aren't sentences; lowercase first word fits conventional-commits style.
+          # Pattern must consume the full subject — the action checks match[0].length === subject.length,
+          # so a bare lookahead like `^(?![A-Z])` rejects everything (it matches empty string at position 0).
+          subjectPattern: ^(?![A-Z]).+$
+          subjectPatternError: |
+            The PR title subject "{subject}" must start with a lowercase letter
+            (per Conventional Commits style). Update the title and re-run.

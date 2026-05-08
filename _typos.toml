@@ -1,0 +1,14 @@
+# typos configuration. https://github.com/crate-ci/typos
+# Run via: just typos  (or: typos)
+
+[default.extend-words]
+# project-specific allowlist (add as needed)
+fo = "fo"
+numer = "numer"
+
+[files]
+extend-exclude = [
+    "CHANGELOG.md",
+    "target/",
+    "book/book/",
+]

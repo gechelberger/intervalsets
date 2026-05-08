@@ -50,10 +50,10 @@ pub mod traits {
     pub use super::{EmptyFactory, FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 }
 
-/// Convert an arbitrary type to one implemnting [`Element`].
+/// Convert an arbitrary type to one implementing [`Element`].
 ///
 /// The [`Converter`] trait provides a mechanism to wrap
-/// or coerse a type into one that is compatible with interval bounds. This is
+/// or coerce a type into one that is compatible with interval bounds. This is
 /// particularly useful when working with 3rd party crates with unsupported types.
 ///
 /// # Structure

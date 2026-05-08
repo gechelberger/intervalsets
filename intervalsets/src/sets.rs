@@ -593,7 +593,7 @@ mod tests {
         if a == b {
             assert_eq!(do_hash(a), do_hash(b));
         } else {
-            // hash collissions are allowed, but highly unlikely
+            // hash collisions are allowed, but highly unlikely
             assert_ne!(do_hash(a), do_hash(b));
         }
     }

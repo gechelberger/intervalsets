@@ -1,0 +1,16 @@
+# Git hooks managed by lefthook. Install via: just setup-hooks  (or: lefthook install)
+# Skip ad hoc with: LEFTHOOK=0 git commit ...
+# CI is the source of truth — this hook exists for fast local feedback only.
+# See https://lefthook.dev/configuration/ for full reference.
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: fmt
+      glob: "*.rs"
+      run: just fmt-check
+    - name: clippy
+      glob: "*.rs"
+      run: just clippy
+    - name: typos
+      run: just typos

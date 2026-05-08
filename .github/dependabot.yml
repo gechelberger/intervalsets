@@ -11,6 +11,16 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # Dependabot does not read `rust-version` — bumps that violate MSRV
+    # land here unless explicitly ignored. The `msrv-check` CI job catches
+    # them; when one trips, close the PR and pin the offending range under
+    # `ignore:` below. Re-audit every time MSRV is raised — see
+    # CONTRIBUTING.md "Dependency updates and MSRV".
+    #
+    # Example:
+    #   ignore:
+    #     - dependency-name: "some-crate"
+    #       versions: [">= 2.0.0"]  # requires rustc >= 1.NN
 
   - package-ecosystem: "github-actions"
     directory: "/"

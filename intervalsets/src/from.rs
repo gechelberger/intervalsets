@@ -208,7 +208,5 @@ mod tests {
 
         let _ = IntervalSet::from_iter([(0, 5), (20, 25)]);
         let _ = IntervalSet::from_iter([(0.0, 5.0)]);
-
-        //let zzz = IntervalSet::coerse([(0, 10), (20, 30), (40, 50)]);
     }
 }
