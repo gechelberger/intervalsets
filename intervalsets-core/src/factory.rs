@@ -95,8 +95,8 @@ pub mod traits {
 ///
 /// impl Converter<Timestamp> for u64 {
 ///     type To = u64; // impl Element
-///     fn convert(value: Timestamp) -> Self::To {
-///         (value.seconds as u64) << 32 | value.nanos as u64
+///     fn convert(value: Timestamp) -> Option<Self::To> {
+///         Some((value.seconds as u64) << 32 | value.nanos as u64)
 ///     }
 /// }
 ///
@@ -110,23 +110,30 @@ pub mod traits {
 /// // char and u32 are not local so we can't implement Converter on either one.
 /// impl Converter<char> for CharCvt {
 ///     type To = u32;
-///     fn convert(value: char) -> Self::To {
-///         value as u32
+///     fn convert(value: char) -> Option<Self::To> {
+///         Some(value as u32)
 ///     }
 /// }
 ///
 /// type Fct2 = EIFactory<char, CharCvt>;
 /// let x = Fct2::closed('a', 'z');
-/// assert_eq!(x.contains(&CharCvt::convert('c')), true);
-/// assert_eq!(x.contains(&CharCvt::convert('C')), false);
-/// assert_eq!(x.contains(&CharCvt::convert('0')), false);
+/// assert_eq!(x.contains(&CharCvt::convert('c').unwrap()), true);
+/// assert_eq!(x.contains(&CharCvt::convert('C').unwrap()), false);
+/// assert_eq!(x.contains(&CharCvt::convert('0').unwrap()), false);
 /// ```
 pub trait Converter<From> {
     /// The underlying storage type.
     type To: Element;
 
-    /// Creates a new value of the associated type.
-    fn convert(value: From) -> Self::To;
+    /// Convert `value` into the storage type, or return `None` if the
+    /// input cannot be wrapped (e.g. `NotNan::new(NaN)` would panic).
+    /// `None` collapses into
+    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
+    /// at the factory boundary, matching the
+    /// [`Element::validate`](crate::numeric::Element::validate)
+    /// rejection path. Conversions that cannot fail return
+    /// `Some(...)` unconditionally.
+    fn convert(value: From) -> Option<Self::To>;
 }
 
 /// [`Identity`] is the default [`Converter`] implementation and is a NOOP.
@@ -135,8 +142,9 @@ pub struct Identity;
 impl<T: Element> Converter<T> for Identity {
     type To = T;
 
-    fn convert(value: T) -> Self::To {
-        value
+    #[inline]
+    fn convert(value: T) -> Option<Self::To> {
+        Some(value)
     }
 }
 
@@ -155,6 +163,17 @@ where
     /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
     /// without per-method conversion plumbing.
     type Error: From<Error>;
+
+    /// Apply the factory's [`Converter`] and surface failure as
+    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit).
+    /// Convenience for `try_*` constructors that take raw `T` inputs;
+    /// keeps the conversion-failure path aligned with the
+    /// [`Element::validate`](crate::numeric::Element::validate)
+    /// rejection path.
+    #[inline]
+    fn try_convert(value: T) -> Result<C::To, Error> {
+        C::convert(value).ok_or(Error::InvalidBoundLimit)
+    }
 }
 
 /// Panic message for the panicking convenience methods that funnel
@@ -212,29 +231,29 @@ where
     /// Fallible closed-closed finite interval, validating each limit
     /// via [`FiniteBound::try_closed`].
     fn try_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        let lhs = FiniteBound::try_closed(C::convert(lhs))?;
-        let rhs = FiniteBound::try_closed(C::convert(rhs))?;
+        let lhs = FiniteBound::try_closed(Self::try_convert(lhs)?)?;
+        let rhs = FiniteBound::try_closed(Self::try_convert(rhs)?)?;
         Self::try_finite(lhs, rhs)
     }
 
     /// Fallible open-open finite interval.
     fn try_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        let lhs = FiniteBound::try_open(C::convert(lhs))?;
-        let rhs = FiniteBound::try_open(C::convert(rhs))?;
+        let lhs = FiniteBound::try_open(Self::try_convert(lhs)?)?;
+        let rhs = FiniteBound::try_open(Self::try_convert(rhs)?)?;
         Self::try_finite(lhs, rhs)
     }
 
     /// Fallible open-closed finite interval.
     fn try_open_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        let lhs = FiniteBound::try_open(C::convert(lhs))?;
-        let rhs = FiniteBound::try_closed(C::convert(rhs))?;
+        let lhs = FiniteBound::try_open(Self::try_convert(lhs)?)?;
+        let rhs = FiniteBound::try_closed(Self::try_convert(rhs)?)?;
         Self::try_finite(lhs, rhs)
     }
 
     /// Fallible closed-open finite interval.
     fn try_closed_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        let lhs = FiniteBound::try_closed(C::convert(lhs))?;
-        let rhs = FiniteBound::try_open(C::convert(rhs))?;
+        let lhs = FiniteBound::try_closed(Self::try_convert(lhs)?)?;
+        let rhs = FiniteBound::try_open(Self::try_convert(rhs)?)?;
         Self::try_finite(lhs, rhs)
     }
 
@@ -434,22 +453,22 @@ where
 
     /// Fallible (a, ->) — open left bound, unbounded right.
     fn try_open_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_left_bounded(FiniteBound::try_open(C::convert(lhs))?)
+        Self::try_left_bounded(FiniteBound::try_open(Self::try_convert(lhs)?)?)
     }
 
     /// Fallible [a, ->) — closed left bound, unbounded right.
     fn try_closed_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_left_bounded(FiniteBound::try_closed(C::convert(lhs))?)
+        Self::try_left_bounded(FiniteBound::try_closed(Self::try_convert(lhs)?)?)
     }
 
     /// Fallible (<-, b) — unbounded left, open right bound.
     fn try_unbound_open(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_right_bounded(FiniteBound::try_open(C::convert(rhs))?)
+        Self::try_right_bounded(FiniteBound::try_open(Self::try_convert(rhs)?)?)
     }
 
     /// Fallible (<-, b] — unbounded left, closed right bound.
     fn try_unbound_closed(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_right_bounded(FiniteBound::try_closed(C::convert(rhs))?)
+        Self::try_right_bounded(FiniteBound::try_closed(Self::try_convert(rhs)?)?)
     }
 }
 

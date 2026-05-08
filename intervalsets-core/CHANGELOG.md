@@ -23,6 +23,7 @@ version and are released together via `cargo-release`. See the repo
 
 - **Behavioral break:** Factory methods now reject `±INF` for `f32`/`f64`/`OrderedFloat<f*>`/`NotNan<f*>`. The fallible `try_*` variants return `Err(Error::InvalidBoundLimit)`; NaN handling is unchanged but now reports as `InvalidBoundLimit` rather than `TotalOrderError` for paths that funnel through the new chokepoint. `ConvertingFactory::Error` now requires `From<Error>` so factory-level convenience methods can propagate validation failures uniformly. All in-tree implementors already satisfy this.
 - Implementors of the factory traits now implement `TryFiniteFactory` / `TryHalfBoundedFactory` (the fallible halves) and pick up `FiniteFactory` / `HalfBoundedFactory` for free via blanket impl. External users with custom factory types must rename `fn finite`/`fn half_bounded` overrides to `fn try_finite`/`fn try_half_bounded` and drop the panicking method bodies.
+- **Behavioral break:** `Converter::convert` is now fallible (`-> Option<Self::To>`). The bundled `NotNan<T>` impl previously called `NotNan::new(value).unwrap()` and would panic on NaN behind `try_*`'s back; it now returns `None`, which the factory layer surfaces as `Error::InvalidBoundLimit`. External `Converter` impls must adapt the signature; conversions that cannot fail return `Some(...)` unconditionally.
 
 ### Deprecated
 

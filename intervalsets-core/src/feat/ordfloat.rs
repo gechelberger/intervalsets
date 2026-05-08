@@ -35,15 +35,25 @@ impl<T: FloatCore + Element> Element for OrderedFloat<T> {
 
 impl<T: FloatCore + Element> Converter<T> for NotNan<T> {
     type To = Self;
-    fn convert(value: T) -> Self::To {
-        NotNan::new(value).unwrap()
+
+    /// `NotNan::new` rejects NaN at construction. Returning `None`
+    /// here surfaces that as `Error::InvalidBoundLimit` at the factory
+    /// boundary instead of panicking inside `unwrap`.
+    #[inline]
+    fn convert(value: T) -> Option<Self::To> {
+        NotNan::new(value).ok()
     }
 }
 
 impl<T: FloatCore + Element> Converter<T> for OrderedFloat<T> {
     type To = Self;
-    fn convert(value: T) -> Self::To {
-        OrderedFloat(value)
+
+    /// `OrderedFloat` admits any `T` (including NaN / ±INF) under its
+    /// total order; the `Element::validate` override handles
+    /// non-finite rejection downstream.
+    #[inline]
+    fn convert(value: T) -> Option<Self::To> {
+        Some(OrderedFloat(value))
     }
 }
 
@@ -139,6 +149,31 @@ mod tests {
             x,
             EnumInterval::closed(NotNan::new(0.0).unwrap(), NotNan::new(10.0).unwrap())
         );
+    }
+
+    #[test]
+    fn test_not_nan_converter_rejects_nan() {
+        // Pre-fallible-Converter, this hit `NotNan::new(NaN).unwrap()`
+        // inside `Converter::convert` and panicked behind `try_*`'s
+        // back. Now it surfaces as `Error::InvalidBoundLimit`.
+        use crate::error::Error;
+        use crate::factory::{Converter, EIFactory, TryFiniteFactory, TryHalfBoundedFactory};
+
+        type F = EIFactory<f32, NotNan<f32>>;
+
+        assert!(<NotNan<f32> as Converter<f32>>::convert(f32::NAN).is_none());
+
+        let r = F::try_closed(f32::NAN, 1.0);
+        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+        let r = F::try_open_unbound(f32::NAN);
+        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+        // ±INF flows through Converter (NotNan admits it) and is then
+        // rejected by `Element::validate` — same outcome, different
+        // gate.
+        let r = F::try_closed(0.0, f32::INFINITY);
+        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
     }
 
     #[test]
