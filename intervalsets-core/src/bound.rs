@@ -13,7 +13,7 @@
 
 use core::cmp::Ordering::{Equal, Greater, Less};
 
-use crate::error::TotalOrderError;
+use crate::error::{Error, TotalOrderError};
 use crate::numeric::Element;
 
 /// An interface to query the left and right bounds of a set.
@@ -119,17 +119,31 @@ impl BoundType {
 pub struct FiniteBound<T>(BoundType, T);
 
 impl<T> FiniteBound<T> {
-    /// Creates a new [`FiniteBound`]
+    /// Creates a new [`FiniteBound`] without running
+    /// [`Element::validate`](crate::numeric::Element::validate).
+    ///
+    /// This is the Tier-4 bypass: `const`, no bound on `T`, no
+    /// checking. Caller is responsible for ensuring `limit` is a
+    /// valid finite-bound value for `T` (i.e. `T::validate(limit)`
+    /// would return `Some`). Violating this yields incorrect results
+    /// downstream but no undefined behavior.
+    ///
+    /// Internal hot paths and `ConstZero` / `ConstOne` impls use
+    /// this; user code should prefer
+    /// [`try_new`](Self::try_new) — or the factory layer on the
+    /// containing interval type — to get validation.
     pub const fn new(bound_type: BoundType, limit: T) -> Self {
         Self(bound_type, limit)
     }
 
-    /// Creates a new closed `FiniteBound` constrained at `limit`.
+    /// Creates a new closed `FiniteBound` constrained at `limit`,
+    /// without validation. See [`new`](Self::new) for the contract.
     pub const fn closed(limit: T) -> Self {
         Self(BoundType::Closed, limit)
     }
 
-    /// Creates a new open `Bound` constrained at `limit`.
+    /// Creates a new open `FiniteBound` constrained at `limit`,
+    /// without validation. See [`new`](Self::new) for the contract.
     pub const fn open(limit: T) -> Self {
         Self(BoundType::Open, limit)
     }
@@ -444,6 +458,40 @@ impl<T: Element> FiniteBound<T> {
             },
             BoundType::Closed => self,
         }
+    }
+
+    /// Validates `limit` via [`Element::validate`] and constructs a
+    /// `FiniteBound`. The single chokepoint where validation fires for
+    /// every non-bypass construction path.
+    ///
+    /// Library float types (`f32`, `f64`, `OrderedFloat<f*>`,
+    /// `NotNan<f*>`) reject `±INF` and `NaN` here.
+    ///
+    /// # Errors
+    ///
+    /// Returns
+    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
+    /// when `T::validate` returns `None`.
+    #[inline]
+    pub fn try_new(bound_type: BoundType, limit: T) -> Result<Self, Error> {
+        match limit.validate() {
+            Some(v) => Ok(Self(bound_type, v)),
+            None => Err(Error::InvalidBoundLimit),
+        }
+    }
+
+    /// Validates `limit` and constructs a closed `FiniteBound`. See
+    /// [`try_new`](Self::try_new).
+    #[inline]
+    pub fn try_closed(limit: T) -> Result<Self, Error> {
+        Self::try_new(BoundType::Closed, limit)
+    }
+
+    /// Validates `limit` and constructs an open `FiniteBound`. See
+    /// [`try_new`](Self::try_new).
+    #[inline]
+    pub fn try_open(limit: T) -> Result<Self, Error> {
+        Self::try_new(BoundType::Open, limit)
     }
 }
 
@@ -1132,5 +1180,86 @@ mod test {
         assert_eq!(FiniteBound::min_max_assume_valid(Side::Right, a, b), (b, a));
 
         assert_eq!(FiniteBound::min_max_assume_valid(Side::Right, b, a), (b, a))
+    }
+
+    mod try_new_validates_limit {
+        use super::*;
+        use crate::error::Error;
+
+        #[test]
+        fn rejects_positive_infinity_f64() {
+            let r = FiniteBound::<f64>::try_closed(f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+            let r = FiniteBound::<f64>::try_open(f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+            let r = FiniteBound::<f64>::try_new(BoundType::Closed, f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn rejects_negative_infinity_f64() {
+            let r = FiniteBound::<f64>::try_closed(f64::NEG_INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn rejects_nan_f64() {
+            let r = FiniteBound::<f64>::try_closed(f64::NAN);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn rejects_non_finite_f32() {
+            assert!(matches!(
+                FiniteBound::<f32>::try_closed(f32::INFINITY),
+                Err(Error::InvalidBoundLimit)
+            ));
+            assert!(matches!(
+                FiniteBound::<f32>::try_closed(f32::NEG_INFINITY),
+                Err(Error::InvalidBoundLimit)
+            ));
+            assert!(matches!(
+                FiniteBound::<f32>::try_closed(f32::NAN),
+                Err(Error::InvalidBoundLimit)
+            ));
+        }
+
+        #[test]
+        fn accepts_finite_f64() {
+            assert_eq!(
+                FiniteBound::<f64>::try_closed(0.0).unwrap(),
+                FiniteBound::closed(0.0)
+            );
+            assert_eq!(
+                FiniteBound::<f64>::try_open(-1.5).unwrap(),
+                FiniteBound::open(-1.5)
+            );
+        }
+
+        #[test]
+        fn default_validate_accepts_integers() {
+            assert_eq!(
+                FiniteBound::<i64>::try_closed(5).unwrap(),
+                FiniteBound::closed(5)
+            );
+            assert_eq!(
+                FiniteBound::<i32>::try_new(BoundType::Open, -100).unwrap(),
+                FiniteBound::open(-100)
+            );
+        }
+
+        #[test]
+        fn factory_paths_reject_infinity() {
+            use crate::factory::FiniteFactory;
+            use crate::sets::FiniteInterval;
+
+            let r = FiniteInterval::<f64>::try_closed(0.0, f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+            let r = FiniteInterval::<f64>::try_open(f64::NEG_INFINITY, 0.0);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
     }
 }

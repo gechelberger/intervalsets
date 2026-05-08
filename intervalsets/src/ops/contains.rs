@@ -105,7 +105,7 @@ mod tests {
 
     #[quickcheck]
     fn check_finite_contains_finite_float(a: f32, b: f32) {
-        if a.is_nan() || b.is_nan() {
+        if !a.is_finite() || !b.is_finite() {
             return;
         }
 

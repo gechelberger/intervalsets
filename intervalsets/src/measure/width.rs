@@ -97,7 +97,7 @@ mod tests {
 
     #[quickcheck]
     fn check_set_width_float(a: f32, b: f32, c: f32, d: f32) -> bool {
-        if a.is_nan() || b.is_nan() || c.is_nan() || d.is_nan() {
+        if !a.is_finite() || !b.is_finite() || !c.is_finite() || !d.is_finite() {
             return true;
         }
 

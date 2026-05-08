@@ -141,8 +141,12 @@
 //! * `NAN` is not part of the default ordering, though there is a `total_cmp`
 //!   available now.
 //! * rounding errors can cause issues with testing values near a set bound.
-//! * `FiniteBound(f32::INFINITY)` and `FiniteBound(f32::NEG_INFINITY)`are both
-//!   valid syntax, though all manner of headache semantically speaking.
+//! * `±INF` and `NaN` are rejected at the validating
+//!   construction chokepoint
+//!   ([`FiniteBound::try_new`](crate::bound::FiniteBound::try_new) and
+//!   every factory path that funnels through it). The Tier-4 bypass
+//!   constructors ([`FiniteBound::new`](crate::bound::FiniteBound::new),
+//!   `closed`, `open`) accept them silently — wrong answer, never UB.
 //!
 //! Sometimes, floats are still the right tool for the job, and it is left to the
 //! user to choose the right approach for the given problem. Fixed precision

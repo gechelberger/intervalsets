@@ -319,15 +319,14 @@ impl<'a, T: Element + Clone> ConvexHull<&'a EnumInterval<T>> for EnumInterval<T>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::error::TotalOrderError;
 
     #[test]
     fn test_hull_t() {
         let x = FiniteInterval::try_hull([f32::NAN]);
-        assert_eq!(x, Err(Error::TotalOrderError(TotalOrderError)));
+        assert_eq!(x, Err(Error::InvalidBoundLimit));
 
         let x = FiniteInterval::try_hull([&f32::NAN]);
-        assert_eq!(x, Err(Error::TotalOrderError(TotalOrderError)));
+        assert_eq!(x, Err(Error::InvalidBoundLimit));
 
         let data = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
 

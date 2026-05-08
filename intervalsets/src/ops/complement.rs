@@ -72,7 +72,7 @@ mod test {
 
     #[quickcheck]
     fn test_set_complement_f32(a: f32, b: f32, c: f32) {
-        if f32::is_nan(a) || f32::is_nan(b) || f32::is_nan(c) {
+        if !a.is_finite() || !b.is_finite() || !c.is_finite() {
             return;
         }
 

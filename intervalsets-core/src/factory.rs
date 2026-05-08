@@ -146,9 +146,18 @@ where
     /// The type that this factory produces
     type Output;
 
-    /// The error type for fallible (try_*) factory fns
-    type Error;
+    /// The error type for fallible (try_*) factory fns. Required to be
+    /// `From<Error>` so the factory's bound-validation chokepoint can
+    /// propagate
+    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
+    /// without per-method conversion plumbing.
+    type Error: From<Error>;
 }
+
+/// Panic message for the panicking convenience methods that funnel
+/// through `FiniteBound::try_new`. The backtrace already names the
+/// originating method; the message just states the cause.
+const REJECT_PANIC: &str = "bound limit rejected by Element::validate";
 
 /// Constructs the empty set.
 pub trait EmptyFactory<T, C>: ConvertingFactory<T, C>
@@ -218,7 +227,10 @@ where
     /// // NaN still panics.
     /// let _ = EnumInterval::closed(f32::NAN, 0.0);
     /// ```
-    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output;
+    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
+        Self::try_finite(lhs, rhs)
+            .unwrap_or_else(|_| panic!("bound limit rejected by Element::validate"))
+    }
 
     /// Creates a new finite interval. **Coercive** — bounds that
     /// describe an empty set produce `Ok(Empty)`; only NaN /
@@ -248,17 +260,13 @@ where
     /// assert_eq!(x.contains(&0), false);
     /// ```
     fn closed(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::closed(C::convert(left)),
-            FiniteBound::closed(C::convert(right)),
-        )
+        Self::try_closed(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::closed(C::convert(lhs)),
-            FiniteBound::closed(C::convert(rhs)),
-        )
+        let lhs = FiniteBound::try_closed(C::convert(lhs))?;
+        let rhs = FiniteBound::try_closed(C::convert(rhs))?;
+        Self::try_finite(lhs, rhs)
     }
 
     /// Creates a new singleton finite interval
@@ -309,51 +317,39 @@ where
     /// assert_eq!(y, EnumInterval::closed(1, 9));
     /// ```
     fn open(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::open(C::convert(left)),
-            FiniteBound::open(C::convert(right)),
-        )
+        Self::try_open(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::open(C::convert(lhs)),
-            FiniteBound::open(C::convert(rhs)),
-        )
+        let lhs = FiniteBound::try_open(C::convert(lhs))?;
+        let rhs = FiniteBound::try_open(C::convert(rhs))?;
+        Self::try_finite(lhs, rhs)
     }
 
     /// Creates a left open finite interval or Empty
     ///
     ///  (a, b] = { x in T | a < x <= b }
     fn open_closed(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::open(C::convert(left)),
-            FiniteBound::closed(C::convert(right)),
-        )
+        Self::try_open_closed(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_open_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::open(C::convert(lhs)),
-            FiniteBound::closed(C::convert(rhs)),
-        )
+        let lhs = FiniteBound::try_open(C::convert(lhs))?;
+        let rhs = FiniteBound::try_closed(C::convert(rhs))?;
+        Self::try_finite(lhs, rhs)
     }
 
     /// Creates a right open finite interval or Empty
     ///
     ///  [a, b) = { x in T | a <= x < b }
     fn closed_open(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::closed(C::convert(left)),
-            FiniteBound::open(C::convert(right)),
-        )
+        Self::try_closed_open(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_closed_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::closed(C::convert(lhs)),
-            FiniteBound::open(C::convert(rhs)),
-        )
+        let lhs = FiniteBound::try_closed(C::convert(lhs))?;
+        let rhs = FiniteBound::try_open(C::convert(rhs))?;
+        Self::try_finite(lhs, rhs)
     }
 }
 
@@ -401,44 +397,44 @@ where
     ///
     ///  (a, ->) = { x in T | a < x }
     fn open_unbound(left: T) -> Self::Output {
-        Self::left_bounded(FiniteBound::open(C::convert(left)))
+        Self::try_open_unbound(left).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_open_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_left_bounded(FiniteBound::open(C::convert(lhs)))
+        Self::try_left_bounded(FiniteBound::try_open(C::convert(lhs))?)
     }
 
     /// Returns a new closed, right-unbound interval
     ///
     ///  [a, ->) = {x in T | a <= x }
     fn closed_unbound(left: T) -> Self::Output {
-        Self::half_bounded(Side::Left, FiniteBound::closed(C::convert(left)))
+        Self::try_closed_unbound(left).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_closed_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_left_bounded(FiniteBound::closed(C::convert(lhs)))
+        Self::try_left_bounded(FiniteBound::try_closed(C::convert(lhs))?)
     }
 
     /// Returns a new open, left-unbound interval
     ///
     /// (a, ->) = { x in T | a < x }
     fn unbound_open(right: T) -> Self::Output {
-        Self::half_bounded(Side::Right, FiniteBound::open(C::convert(right)))
+        Self::try_unbound_open(right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_unbound_open(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_right_bounded(FiniteBound::open(C::convert(rhs)))
+        Self::try_right_bounded(FiniteBound::try_open(C::convert(rhs))?)
     }
 
     /// Returns a new closed, left-unbound interval
     ///
     ///  [a, ->) = { x in T | a <= x }
     fn unbound_closed(right: T) -> Self::Output {
-        Self::half_bounded(Side::Right, FiniteBound::closed(C::convert(right)))
+        Self::try_unbound_closed(right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 
     fn try_unbound_closed(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_right_bounded(FiniteBound::closed(C::convert(rhs)))
+        Self::try_right_bounded(FiniteBound::try_closed(C::convert(rhs))?)
     }
 }
 

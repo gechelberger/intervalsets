@@ -25,6 +25,17 @@ pub enum Error {
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
 
+    /// A `FiniteBound`'s limit value was rejected by
+    /// [`Element::validate`](crate::numeric::Element::validate).
+    ///
+    /// Library float types reject `±INF` and `NaN` here; user types
+    /// override `validate` to enforce their own predicate (e.g. a
+    /// `Money` type rejecting non-canonical currencies). Raised by
+    /// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new) and
+    /// every constructor that funnels through it.
+    #[error("bound limit rejected by Element::validate")]
+    InvalidBoundLimit,
+
     /// Arithmetic-on-bounds failure. Wraps [`MathError`].
     #[error(transparent)]
     Math(#[from] MathError),

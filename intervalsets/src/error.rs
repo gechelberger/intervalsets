@@ -54,6 +54,13 @@ pub enum Error {
     /// and the `Deserialize` path on outer-crate set types.
     #[error("interval set invariants violated")]
     InvalidIntervalSet,
+
+    /// A `FiniteBound`'s limit value was rejected by
+    /// [`Element::validate`](intervalsets_core::numeric::Element::validate).
+    /// Library float types reject `±INF` and `NaN` here; user types
+    /// override `validate` to enforce their own predicate.
+    #[error("bound limit rejected by Element::validate")]
+    InvalidBoundLimit,
 }
 
 impl From<CoreError> for Error {
@@ -61,6 +68,7 @@ impl From<CoreError> for Error {
         match e {
             CoreError::TotalOrderError(e) => Error::TotalOrderError(e),
             CoreError::InvalidBoundPair => Error::InvalidBoundPair,
+            CoreError::InvalidBoundLimit => Error::InvalidBoundLimit,
             // CoreError is #[non_exhaustive]; if a new variant is added,
             // this `From` lift must be extended to map it. The wildcard
             // surfaces the gap as a runtime panic on first conversion.

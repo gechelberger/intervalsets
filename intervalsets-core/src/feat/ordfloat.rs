@@ -10,11 +10,26 @@ impl<T: FloatCore + Element> Element for NotNan<T> {
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
     }
+
+    /// Rejects ±INF. `NotNan<T>` already excludes NaN by construction,
+    /// but its inner `T` can still be infinite — and `Element::validate`
+    /// must reject non-finite for the `FiniteBound` chokepoint to hold.
+    #[inline]
+    fn validate(self) -> Option<Self> {
+        self.into_inner().is_finite().then_some(self)
+    }
 }
 
 impl<T: FloatCore + Element> Element for OrderedFloat<T> {
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
+    }
+
+    /// Rejects NaN and ±INF. `OrderedFloat<T>` admits NaN under its
+    /// total order, but NaN is never a valid finite-bound limit.
+    #[inline]
+    fn validate(self) -> Option<Self> {
+        self.into_inner().is_finite().then_some(self)
     }
 }
 
@@ -203,6 +218,41 @@ mod tests {
                 .try_add(NotNan::new(f64::MAX).unwrap()),
             Err(MathError::Domain)
         );
+    }
+
+    #[test]
+    fn test_validate_rejects_non_finite() {
+        use crate::bound::{BoundType, FiniteBound};
+        use crate::error::Error;
+
+        // OrderedFloat: validate rejects ±INF and NaN.
+        assert_eq!(OrderedFloat(f64::INFINITY).validate(), None);
+        assert_eq!(OrderedFloat(f64::NEG_INFINITY).validate(), None);
+        assert_eq!(OrderedFloat(f64::NAN).validate(), None);
+        assert_eq!(
+            OrderedFloat(1.5_f64).validate(),
+            Some(OrderedFloat(1.5_f64))
+        );
+
+        // NotNan: still rejects ±INF post-validate (NotNan only blocks NaN
+        // by construction).
+        let inf = NotNan::new(f64::INFINITY).unwrap();
+        let neg_inf = NotNan::new(f64::NEG_INFINITY).unwrap();
+        let one = NotNan::new(1.0_f64).unwrap();
+        assert_eq!(inf.validate(), None);
+        assert_eq!(neg_inf.validate(), None);
+        assert_eq!(one.validate(), Some(one));
+
+        // FiniteBound chokepoint: factory-style construction surfaces
+        // the rejection as `Error::InvalidBoundLimit`.
+        assert!(matches!(
+            FiniteBound::try_new(BoundType::Closed, OrderedFloat(f64::INFINITY)),
+            Err(Error::InvalidBoundLimit)
+        ));
+        assert!(matches!(
+            FiniteBound::try_new(BoundType::Closed, NotNan::new(f64::INFINITY).unwrap()),
+            Err(Error::InvalidBoundLimit)
+        ));
     }
 
     #[test]
