@@ -2,7 +2,7 @@
 
 [graph]
 all-features = true
-exclude = ["book", "benchmarks"]
+exclude = ["benchmarks"]
 
 [advisories]
 # Per cargo-deny v0.16+ schema

@@ -10,5 +10,4 @@ numer = "numer"
 extend-exclude = [
     "CHANGELOG.md",
     "target/",
-    "book/book/",
 ]
