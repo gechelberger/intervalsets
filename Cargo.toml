@@ -1,5 +1,5 @@
 [workspace]
-members = [ "benchmarks", "book","intervalsets", "intervalsets-core"]
+members = [ "benchmarks", "intervalsets", "intervalsets-core"]
 default-members = ["intervalsets", "intervalsets-core"]
 resolver = "3"
 
@@ -8,7 +8,7 @@ version = "0.1.0-alpha.3"
 authors = ["Greg Echelberger"]
 edition = "2021"
 rust-version = "1.87.0"
-homepage = "https://gechelberger.github.io/intervalsets/"
+homepage = "https://docs.rs/intervalsets"
 repository = "https://github.com/gechelberger/intervalsets"
 license = "MIT OR Apache-2.0"
 

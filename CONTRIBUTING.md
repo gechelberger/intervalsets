@@ -33,7 +33,7 @@ just --list         # discover all dev-ops commands
 - Build tools (via `cargo-binstall` — fast, prebuilt binaries):
   `cargo-nextest`, `cargo-deny`, `cargo-semver-checks`, `typos-cli`,
   `cargo-hack`, `cargo-criterion`, `cargo-llvm-cov`, `cargo-expand`,
-  `cargo-udeps`, `cargo-release`, `mdbook`, `static-web-server`
+  `cargo-udeps`, `cargo-release`, `static-web-server`
 
 Re-run `just update-tools` periodically to keep the toolchain current.
 
