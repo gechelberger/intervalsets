@@ -86,6 +86,27 @@ jobs:
           tool: cargo-criterion,just
       - run: just check-bench
 
+  check-kani:
+    runs-on: ubuntu-latest
+    env:
+      # Pin to match the local dev environment so "passes locally / fails
+      # in CI" surprises stay rare. Bump alongside any harness changes.
+      KANI_VERSION: 0.67.0
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: kani-verifier@${{ env.KANI_VERSION }},just
+      - name: Cache CBMC backend
+        uses: actions/cache@v4
+        with:
+          path: ~/.kani
+          key: ${{ runner.os }}-kani-${{ env.KANI_VERSION }}
+      - name: Kani setup (downloads CBMC on cache miss)
+        run: cargo kani setup
+      - run: just check-kani
+
   check-docs:
     runs-on: ubuntu-latest
     steps:

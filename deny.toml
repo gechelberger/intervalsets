@@ -2,7 +2,7 @@
 
 [graph]
 all-features = true
-exclude = ["benchmarks"]
+exclude = ["benchmarks", "core-panic-canary"]
 
 [advisories]
 # Per cargo-deny v0.16+ schema

@@ -1,5 +1,5 @@
 [workspace]
-members = [ "benchmarks", "intervalsets", "intervalsets-core"]
+members = [ "benchmarks", "core-panic-canary", "intervalsets", "intervalsets-core"]
 default-members = ["intervalsets", "intervalsets-core"]
 resolver = "3"
 

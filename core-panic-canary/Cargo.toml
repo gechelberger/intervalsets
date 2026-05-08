@@ -1,0 +1,17 @@
+[package]
+name = "core-panic-canary"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# Internal workspace member that verifies the panic-free claims
+# documented in `intervalsets-core/src/ops/mod.rs` via Kani symbolic
+# execution. `#[cfg(kani)]` modules under `src/proofs/` enumerate every
+# input within each harness's bounds and prove no panic edge is
+# reachable. See README.md for the harness layout and run commands.
+
+[dependencies]
+intervalsets-core = { path = "../intervalsets-core" }
+
+[package.metadata.kani.flags]
+default-unwind = "4"
