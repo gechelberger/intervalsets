@@ -43,9 +43,6 @@ update-tools: update-binstall
     # watch the docs as you work
     cargo binstall static-web-server --locked --no-confirm
 
-    # markdown book for higher level docs
-    cargo binstall mdbook --locked --no-confirm
-
     # parallel test runner
     cargo binstall cargo-nextest --locked --no-confirm
 
