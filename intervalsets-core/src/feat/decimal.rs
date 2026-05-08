@@ -1,8 +1,9 @@
 use rust_decimal::Decimal;
 
 use crate::continuous_domain_impl;
-use crate::error::MidpointError;
+use crate::error::{MathError, MidpointError};
 use crate::numeric::Midpoint;
+use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 continuous_domain_impl!(Decimal);
 
@@ -25,6 +26,56 @@ impl Midpoint for Decimal {
         (self / Decimal::TWO)
             .checked_add(other / Decimal::TWO)
             .ok_or(MidpointError)
+    }
+}
+
+// === Value-level TryOp impls (E3) ===
+//
+// `Decimal` has bounded precision (≈ ±7.92e28); all four ops can
+// overflow → `MathError::Range`. `Decimal::checked_div` returns `None`
+// for both `/0` and overflow, so we pre-check zero to surface `/0` as
+// `MathError::Domain`.
+
+impl TryAdd for Decimal {
+    type Output = Decimal;
+    type Error = MathError;
+
+    #[inline]
+    fn try_add(self, rhs: Self) -> Result<Self, Self::Error> {
+        self.checked_add(rhs).ok_or(MathError::Range)
+    }
+}
+
+impl TrySub for Decimal {
+    type Output = Decimal;
+    type Error = MathError;
+
+    #[inline]
+    fn try_sub(self, rhs: Self) -> Result<Self, Self::Error> {
+        self.checked_sub(rhs).ok_or(MathError::Range)
+    }
+}
+
+impl TryMul for Decimal {
+    type Output = Decimal;
+    type Error = MathError;
+
+    #[inline]
+    fn try_mul(self, rhs: Self) -> Result<Self, Self::Error> {
+        self.checked_mul(rhs).ok_or(MathError::Range)
+    }
+}
+
+impl TryDiv for Decimal {
+    type Output = Decimal;
+    type Error = MathError;
+
+    #[inline]
+    fn try_div(self, rhs: Self) -> Result<Self, Self::Error> {
+        if rhs.is_zero() {
+            return Err(MathError::Domain);
+        }
+        self.checked_div(rhs).ok_or(MathError::Range)
     }
 }
 
@@ -75,5 +126,28 @@ mod test {
         // half rounds up, pushing the sum above MAX.
         assert!(Decimal::MAX.midpoint(Decimal::MAX).is_err());
         assert!(Decimal::MIN.midpoint(Decimal::MIN).is_err());
+    }
+
+    #[test]
+    fn test_try_ops_decimal() {
+        use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
+
+        let a = Decimal::new(10, 0);
+        let b = Decimal::new(3, 0);
+
+        assert_eq!(a.try_add(b).unwrap(), Decimal::new(13, 0));
+        assert_eq!(a.try_sub(b).unwrap(), Decimal::new(7, 0));
+        assert_eq!(a.try_mul(b).unwrap(), Decimal::new(30, 0));
+        assert_eq!(
+            Decimal::new(10, 0).try_div(Decimal::new(2, 0)).unwrap(),
+            Decimal::new(5, 0)
+        );
+
+        // Domain on /0
+        assert_eq!(a.try_div(Decimal::ZERO), Err(MathError::Domain));
+
+        // Range on overflow (MAX + MAX)
+        assert_eq!(Decimal::MAX.try_add(Decimal::MAX), Err(MathError::Range));
+        assert_eq!(Decimal::MAX.try_mul(Decimal::MAX), Err(MathError::Range));
     }
 }

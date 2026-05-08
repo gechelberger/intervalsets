@@ -43,6 +43,7 @@
 
 mod add;
 mod div;
+pub(crate) mod macros;
 mod mul;
 mod sub;
 

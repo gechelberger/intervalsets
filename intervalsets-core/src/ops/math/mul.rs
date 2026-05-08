@@ -466,6 +466,41 @@ mod impls {
     }
 }
 
+// === Value-level primitive impls (E2) ===
+
+use super::macros::{impl_try_mul_checked, impl_try_mul_float_finite};
+
+impl_try_mul_checked!(i8);
+impl_try_mul_checked!(i16);
+impl_try_mul_checked!(i32);
+impl_try_mul_checked!(i64);
+impl_try_mul_checked!(i128);
+impl_try_mul_checked!(isize);
+impl_try_mul_checked!(u8);
+impl_try_mul_checked!(u16);
+impl_try_mul_checked!(u32);
+impl_try_mul_checked!(u64);
+impl_try_mul_checked!(u128);
+impl_try_mul_checked!(usize);
+
+impl_try_mul_float_finite!(f32);
+impl_try_mul_float_finite!(f64);
+
+/// `Option<T>` delegates to the inner `T` impl. See [`TryAdd`](super::TryAdd)'s
+/// `Option` impl for the convention.
+impl<T: TryMul> TryMul for Option<T> {
+    type Output = Option<<T as TryMul>::Output>;
+    type Error = <T as TryMul>::Error;
+
+    #[inline]
+    fn try_mul(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+        match (self, rhs) {
+            (Some(a), Some(b)) => a.try_mul(b).map(Some),
+            _ => Ok(None),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -644,5 +679,38 @@ mod tests {
         let h = HalfInterval::closed_unbound(O(-1.0));
         let u: EnumInterval<O<f64>> = EnumInterval::unbounded();
         assert_eq!(h * h, u);
+    }
+
+    // -- value-level primitive smoke tests (E2) --
+
+    use crate::error::MathError;
+
+    #[test]
+    fn primitive_signed_mul() {
+        assert_eq!(<i32 as TryMul>::try_mul(6, 7), Ok(42));
+        assert_eq!(<i32 as TryMul>::try_mul(i32::MAX, 2), Err(MathError::Range));
+    }
+
+    #[test]
+    fn primitive_unsigned_mul() {
+        assert_eq!(<u32 as TryMul>::try_mul(6, 7), Ok(42));
+        assert_eq!(<u32 as TryMul>::try_mul(u32::MAX, 2), Err(MathError::Range));
+    }
+
+    #[test]
+    fn primitive_float_mul() {
+        assert_eq!(<f64 as TryMul>::try_mul(6.0, 7.0), Ok(42.0));
+        assert_eq!(
+            <f64 as TryMul>::try_mul(f64::MAX, 2.0),
+            Err(MathError::Domain)
+        );
+    }
+
+    #[test]
+    fn option_mul_matrix() {
+        assert_eq!(Some(6_i32).try_mul(Some(7)), Ok(Some(42)));
+        assert_eq!(Some(6_i32).try_mul(None), Ok(None));
+        assert_eq!(None::<i32>.try_mul(Some(7)), Ok(None));
+        assert_eq!(None::<i32>.try_mul(None), Ok(None));
     }
 }
