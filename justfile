@@ -259,6 +259,34 @@ panic-check:
 kani filter="" jobs="1":
     cargo kani -p core-panic-canary {{ if jobs != "1" { "-j " + jobs + " --output-format terse" } else { "" } }} {{ if filter == "" { "" } else { "--harness " + filter } }}
 
+# kani CI smoke: one fast representative harness per fully-verified proof
+# group. Catches Kani install / harness-wiring breakage without paying the
+# full per-harness cost. STATUS.md is the source of truth for per-harness
+# verification state — keep this list in sync.
+#
+# When a partial group becomes fully verified, add its representative below
+# and drop it from the SKIPPED list. Pick the fastest variant per STATUS.md.
+#
+# SKIPPED groups (partial / wip — see STATUS.md):
+#   tier3_div  — 1/9 verified
+#   tier3_mul  — 1/9 verified
+#   tier3_hull — 6/10 verified
+[env("RUSTFLAGS", "-C debug-assertions=off")]
+check-kani:
+    cargo kani -p core-panic-canary --output-format terse \
+        --harness contains_finite_i64_no_panic \
+        --harness complement_half_i64_no_panic \
+        --harness intersection_finite_finite_i64_no_panic \
+        --harness union_finite_finite_i64_no_panic \
+        --harness difference_half_half_i64_no_panic \
+        --harness into_finite_finite_i64_no_panic \
+        --harness into_elements_finite_i64_no_panic \
+        --harness merge_connected_finite_finite_i64_no_panic \
+        --harness try_add_finite_finite_i64_no_panic \
+        --harness try_sub_finite_finite_i64_no_panic \
+        --harness try_split_finite_i64_no_panic \
+        --harness try_with_left_finite_i64_no_panic
+
 # scan codebase for pre-release markers
 loose-ends:
     rg --glob !justfile --ignore-case 'dbg!|fixme|todo|wip|xxx' .
