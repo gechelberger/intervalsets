@@ -1,6 +1,6 @@
 pub use intervalsets_core::factory::{
     traits, Converter, ConvertingFactory, EIFactory, EmptyFactory, FiniteFactory,
-    HalfBoundedFactory, Identity, UnboundedFactory,
+    HalfBoundedFactory, Identity, TryFiniteFactory, TryHalfBoundedFactory, UnboundedFactory,
 };
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -19,11 +19,7 @@ impl<T: Element> EmptyFactory<T, Identity> for Interval<T> {
     }
 }
 
-impl<T: Element> FiniteFactory<T, Identity> for Interval<T> {
-    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
-    }
-
+impl<T: Element> TryFiniteFactory<T, Identity> for Interval<T> {
     fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         FiniteInterval::try_new_or_empty(lhs, rhs)
             .map_err(Into::into)
@@ -31,15 +27,8 @@ impl<T: Element> FiniteFactory<T, Identity> for Interval<T> {
     }
 }
 
-impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for Interval<T> {
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        HalfInterval::new(side, bound).into()
-    }
-
-    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>
-    where
-        T: num_traits::Zero,
-    {
+impl<T: Element + Zero> TryHalfBoundedFactory<T, Identity> for Interval<T> {
+    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         HalfInterval::try_new(side, bound)
             .map_err(Into::into)
             .map(Interval::from)
@@ -63,11 +52,7 @@ impl<T: Element> EmptyFactory<T, Identity> for IntervalSet<T> {
     }
 }
 
-impl<T: Element> FiniteFactory<T, Identity> for IntervalSet<T> {
-    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
-    }
-
+impl<T: Element> TryFiniteFactory<T, Identity> for IntervalSet<T> {
     fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         FiniteInterval::try_new_or_empty(lhs, rhs)
             .map_err(Into::into)
@@ -75,15 +60,8 @@ impl<T: Element> FiniteFactory<T, Identity> for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for IntervalSet<T> {
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        HalfInterval::new(side, bound).into()
-    }
-
-    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>
-    where
-        T: num_traits::Zero,
-    {
+impl<T: Element + Zero> TryHalfBoundedFactory<T, Identity> for IntervalSet<T> {
+    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         HalfInterval::try_new(side, bound)
             .map_err(Into::into)
             .map(IntervalSet::from)
@@ -117,15 +95,11 @@ where
     }
 }
 
-impl<T, C> FiniteFactory<T, C> for IFactory<T, C>
+impl<T, C> TryFiniteFactory<T, C> for IFactory<T, C>
 where
     C: Converter<T>,
     C::To: Element,
 {
-    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
-        Interval::from(EIFactory::<T, C>::finite(lhs, rhs))
-    }
-
     fn try_finite(
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
@@ -136,15 +110,11 @@ where
     }
 }
 
-impl<T, C> HalfBoundedFactory<T, C> for IFactory<T, C>
+impl<T, C> TryHalfBoundedFactory<T, C> for IFactory<T, C>
 where
     C: Converter<T>,
     C::To: Element + Zero,
 {
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
-        Interval::from(EIFactory::<T, C>::half_bounded(side, bound))
-    }
-
     fn try_half_bounded(
         side: Side,
         bound: FiniteBound<C::To>,
@@ -186,15 +156,11 @@ where
     }
 }
 
-impl<T, C> FiniteFactory<T, C> for ISFactory<T, C>
+impl<T, C> TryFiniteFactory<T, C> for ISFactory<T, C>
 where
     C: Converter<T>,
     C::To: Element,
 {
-    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
-        IFactory::<T, C>::finite(lhs, rhs).into()
-    }
-
     fn try_finite(
         lhs: FiniteBound<C::To>,
         rhs: FiniteBound<C::To>,
@@ -203,15 +169,11 @@ where
     }
 }
 
-impl<T, C> HalfBoundedFactory<T, C> for ISFactory<T, C>
+impl<T, C> TryHalfBoundedFactory<T, C> for ISFactory<T, C>
 where
     C: Converter<T>,
     C::To: Element + Zero,
 {
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
-        IFactory::<T, C>::half_bounded(side, bound).into()
-    }
-
     fn try_half_bounded(
         side: Side,
         bound: FiniteBound<C::To>,

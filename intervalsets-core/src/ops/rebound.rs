@@ -1,7 +1,7 @@
 use crate::bound::{FiniteBound, Side};
 #[allow(unused_imports)]
-// FiniteFactory provides ::closed et al. via re-export through `use super::*` in tests
-use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
+// Pulled in for tests' `use super::*;` to reach the panicking + try_* factory methods.
+use crate::factory::traits::*;
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 

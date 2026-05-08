@@ -4,7 +4,7 @@ use super::TryMul;
 use crate::bound::FiniteBound;
 use crate::bound::Side::{Left, Right};
 use crate::error::Error;
-use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
+use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 

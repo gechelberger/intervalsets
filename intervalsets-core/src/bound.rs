@@ -1252,7 +1252,7 @@ mod test {
 
         #[test]
         fn factory_paths_reject_infinity() {
-            use crate::factory::FiniteFactory;
+            use crate::factory::TryFiniteFactory;
             use crate::sets::FiniteInterval;
 
             let r = FiniteInterval::<f64>::try_closed(0.0, f64::INFINITY);
