@@ -141,7 +141,8 @@ doc:
         --workspace \
         --all-features \
         --no-deps \
-        --exclude benchmarks
+        --exclude benchmarks \
+        --exclude core-panic-canary
 
 alias d := doc
 
