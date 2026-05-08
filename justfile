@@ -8,6 +8,12 @@ MSRV := "1.87.0"
 # the target rust version
 RV := "stable"
 
+# the kani symbolic-execution toolkit version. .github/workflows/rust.yml
+# pins the same value — keep them in sync. Dependabot can't track this
+# (kani-verifier isn't a cargo dep), so `update-kani` prints a warning
+# when a newer release is on crates.io.
+KANI_VERSION := "0.67.0"
+
 # just run the tests
 default: test
 
@@ -97,10 +103,31 @@ setup-hooks: install-lefthook-bin
     # wire up git hooks (configured via lefthook.yml at repo root)
     lefthook install
 
-# install Kani symbolic-execution tooling (used by the panic-free proofs)
-update-static-analysis-tools:
-    cargo binstall kani-verifier --locked --no-confirm
+# Pinned to KANI_VERSION (kept in sync with .github/workflows/rust.yml).
+# Chains check-kani-version afterward to surface upstream releases that
+# dependabot can't see (kani-verifier isn't a cargo dep).
+#
+# install pinned Kani symbolic-execution tooling (used by the panic-free proofs)
+update-kani: && check-kani-version
+    cargo binstall kani-verifier@{{ KANI_VERSION }} --locked --no-confirm
     cargo kani setup
+
+# Bumping the pin is a two-line change (justfile + .github/workflows/rust.yml).
+#
+# warn when crates.io has a newer kani-verifier than KANI_VERSION
+[unix]
+check-kani-version:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    latest="$(cargo search kani-verifier --limit 1 2>/dev/null | sed -n 's/^kani-verifier = "\([^"]*\)".*/\1/p')"
+    if [ -n "$latest" ] && [ "$latest" != "{{ KANI_VERSION }}" ]; then
+        printf '\n  WARN: kani-verifier %s is available (pinned: %s).\n        Bump KANI_VERSION in justfile and .github/workflows/rust.yml.\n\n' "$latest" "{{ KANI_VERSION }}"
+    fi
+
+[windows]
+check-kani-version:
+    @echo "kani-verifier pinned to {{ KANI_VERSION }}; latest on crates.io:"
+    @cargo search kani-verifier --limit 1
 
 # `-A missing-docs` and `-A rustdoc::missing-crate-level-docs` are transitional
 # opt-outs matching the clippy CI job — workspace lints stay "warn" but doc
@@ -229,7 +256,7 @@ bench-main pattern="":
     just bench "--bench intervalsets {{ pattern }}"
 
 # check the ci targets locally
-ci: fmt-check clippy typos doc test test-doc check-msrv check-no-std check-bench deny semver-checks
+ci: fmt-check clippy typos doc test test-doc check-msrv check-no-std check-bench check-kani deny semver-checks
     @echo "CI checks complete"
 
 # canary: link-time verification that the panic-free claims hold at the
@@ -255,22 +282,24 @@ panic-check:
 # "no panic AND no overflow" rather than just "no panic in release".
 # Signed integer division overflow (e.g. `i64::MIN / -1`) panics under
 # any setting — Rust always panics on `/` and `%` overflow.
+#
+# run kani symbolic-execution proofs (filter='' runs all; jobs>1 runs in parallel)
 [env("RUSTFLAGS", "-C debug-assertions=off")]
 kani filter="" jobs="1":
     cargo kani -p core-panic-canary {{ if jobs != "1" { "-j " + jobs + " --output-format terse" } else { "" } }} {{ if filter == "" { "" } else { "--harness " + filter } }}
 
-# kani CI smoke: one fast representative harness per fully-verified proof
-# group. Catches Kani install / harness-wiring breakage without paying the
-# full per-harness cost. STATUS.md is the source of truth for per-harness
-# verification state — keep this list in sync.
-#
-# When a partial group becomes fully verified, add its representative below
-# and drop it from the SKIPPED list. Pick the fastest variant per STATUS.md.
+# Catches Kani install / harness-wiring breakage without paying the full
+# per-harness cost. STATUS.md is the source of truth for per-harness
+# verification state — keep this list in sync. Pick the fastest variant
+# per group; when a partial group becomes fully verified, add a
+# representative below and drop it from SKIPPED.
 #
 # SKIPPED groups (partial / wip — see STATUS.md):
 #   tier3_div  — 1/9 verified
 #   tier3_mul  — 1/9 verified
 #   tier3_hull — 6/10 verified
+#
+# CI smoke gate — one fast representative kani proof per verified group
 [env("RUSTFLAGS", "-C debug-assertions=off")]
 check-kani:
     cargo kani -p core-panic-canary --output-format terse \
