@@ -19,10 +19,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rustfmt
-      - run: cargo fmt --all -- --check
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: just fmt-check
 
   build:
     runs-on: ubuntu-latest
@@ -31,10 +34,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: taiki-e/install-action@v2
         with:
-          tool: cargo-nextest
-      - run: cargo nextest run --all-features --no-fail-fast
+          tool: cargo-nextest,just
+      - run: just test
       - name: Run doctests
-        run: cargo test --all-features --doc
+        run: just test-doc
 
   clippy:
     runs-on: ubuntu-latest
@@ -43,10 +46,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
-      # `-A missing-docs` is a transitional opt-out: workspace lint stays at
-      # `warn` so authors see warnings locally, but CI doesn't gate on it
-      # until the existing backlog is fixed. Tracked in #TRACKING_ISSUE.
-      - run: cargo clippy --all-features --all-targets -- -D warnings -A missing-docs
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: just
+      - run: just clippy
 
   no-std:
     runs-on: ubuntu-latest
