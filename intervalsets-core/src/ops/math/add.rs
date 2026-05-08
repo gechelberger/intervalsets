@@ -84,10 +84,6 @@ where
     type Error = Error;
 
     #[inline]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
             return Ok(FiniteInterval::empty());
@@ -110,10 +106,6 @@ where
     type Error = Error;
 
     #[inline]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let (l_side, l_bound) = self.into_raw();
         let (r_side, r_bound) = rhs.into_raw();
@@ -134,10 +126,6 @@ where
     type Error = Error;
 
     #[inline]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_add(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         let Some((min, max)) = rhs.into_raw() else {
             return Ok(EnumInterval::empty());
@@ -160,10 +148,6 @@ macro_rules! dispatch_try_add_impl {
             type Error = Error;
 
             #[inline]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn try_add(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
                 match self {
                     Finite(inner) => inner.try_add(rhs).map(EnumInterval::from),
@@ -196,10 +180,6 @@ macro_rules! commutative_try_add_impl {
             type Error = Error;
 
             #[inline]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn try_add(self, rhs: $t_rhs) -> Result<Self::Output, Self::Error> {
                 rhs.try_add(self)
             }

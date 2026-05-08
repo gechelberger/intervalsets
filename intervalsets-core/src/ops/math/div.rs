@@ -48,10 +48,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         impls::finite_by_finite(self, rhs)
     }
@@ -65,10 +61,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         impls::half_by_half(self, rhs)
     }
@@ -82,10 +74,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::finite_by_half(self, rhs)
     }
@@ -99,10 +87,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         impls::half_by_finite(self, rhs)
     }
@@ -116,10 +100,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(lhs) => lhs.try_div(rhs),
@@ -137,10 +117,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(lhs) => lhs.try_div(rhs),
@@ -158,10 +134,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(lhs) => lhs.try_div(rhs),
@@ -179,10 +151,6 @@ where
     type Error = Error;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         match rhs {
             EnumInterval::Finite(rhs) => self.try_div(rhs),
@@ -204,10 +172,6 @@ where
     type Output = MaybeDisjoint<T>;
     type Error = Error;
 
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_div(self, rhs: EnumInterval<T>) -> Result<Self::Output, Self::Error> {
         match rhs {
             EnumInterval::Finite(rhs) => self.try_div(rhs),

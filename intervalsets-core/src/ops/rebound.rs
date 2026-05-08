@@ -83,10 +83,6 @@ impl<T: Element> Rebound<T> for FiniteInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((_, rhs)) = self.into_raw() else {
             return Ok(Self::Output::empty());
@@ -100,10 +96,6 @@ impl<T: Element> Rebound<T> for FiniteInterval<T> {
         }
     }
 
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let Some((lhs, _)) = self.into_raw() else {
             return Ok(Self::Output::empty()); // empty
@@ -120,10 +112,6 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
@@ -144,10 +132,6 @@ impl<T: Element> Rebound<T> for HalfInterval<T> {
         }
     }
 
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         let (side, current_bound) = self.into_raw();
         match side {
@@ -173,10 +157,6 @@ impl<T: Element> Rebound<T> for EnumInterval<T> {
     type Output = EnumInterval<T>;
     type Error = crate::error::Error;
 
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_with_left(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(inner) => inner.try_with_left(bound),
@@ -188,10 +168,6 @@ impl<T: Element> Rebound<T> for EnumInterval<T> {
         }
     }
 
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn try_with_right(self, bound: Option<FiniteBound<T>>) -> Result<Self::Output, Self::Error> {
         match self {
             Self::Finite(inner) => inner.try_with_right(bound),

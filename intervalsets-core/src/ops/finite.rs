@@ -32,10 +32,6 @@ impl<T> IntoFinite for FiniteInterval<T> {
     type Output = Self;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn into_finite(self) -> Self::Output {
         self
     }
@@ -45,10 +41,6 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn into_finite(self) -> Self::Output {
         let (side, bound) = self.into_raw();
         match side {
@@ -66,10 +58,6 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for EnumInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn into_finite(self) -> Self::Output {
         match self {
             Self::Finite(inner) => inner.into_finite(),

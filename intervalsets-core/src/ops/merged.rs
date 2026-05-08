@@ -67,10 +67,6 @@ impl<T: Element> MergeConnected<Self> for FiniteInterval<T> {
     type Output = Self;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.connects(&rhs) {
             let Some((lhs_min, lhs_max)) = self.into_raw() else {
@@ -103,10 +99,6 @@ impl<T: Element + Clone> MergeConnected<Self> for &FiniteInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.connects(rhs) {
             let Some((lhs_min, lhs_max)) = self.view_raw() else {
@@ -137,10 +129,6 @@ impl<T: Element> MergeConnected<Self> for HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
@@ -164,10 +152,6 @@ impl<T: Element + Clone> MergeConnected<Self> for &HalfInterval<T> {
     type Output = EnumInterval<T>;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
         if self.side() == rhs.side() {
             if self.contains(rhs.finite_ord_bound()) {
@@ -187,10 +171,6 @@ impl<T: Element> MergeConnected<FiniteInterval<T>> for HalfInterval<T> {
     type Output = HalfInterval<T>;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn merge_connected(self, rhs: FiniteInterval<T>) -> Option<Self::Output> {
         if self.connects(&rhs) {
             let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
@@ -216,10 +196,6 @@ impl<T: Element + Clone> MergeConnected<&FiniteInterval<T>> for &HalfInterval<T>
     type Output = HalfInterval<T>;
 
     #[inline(always)]
-    #[cfg_attr(
-        all(feature = "panic-free-check", not(debug_assertions)),
-        no_panic::no_panic
-    )]
     fn merge_connected(self, rhs: &FiniteInterval<T>) -> Option<Self::Output> {
         if self.connects(rhs) {
             let Some((rhs_min, rhs_max)) = rhs.view_raw() else {
@@ -246,10 +222,6 @@ macro_rules! dispatch_merge_connected_impl {
         impl<T: $crate::numeric::Element> MergeConnected<$t_rhs> for EnumInterval<T> {
             type Output = EnumInterval<T>;
             #[inline(always)]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn merge_connected(self, rhs: $t_rhs) -> Option<Self::Output> {
                 match self {
                     Finite(lhs) => lhs.merge_connected(rhs).map(EnumInterval::from),
@@ -261,10 +233,6 @@ macro_rules! dispatch_merge_connected_impl {
         impl<T: $crate::numeric::Element + Clone> MergeConnected<&$t_rhs> for &EnumInterval<T> {
             type Output = EnumInterval<T>;
             #[inline(always)]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn merge_connected(self, rhs: &$t_rhs) -> Option<Self::Output> {
                 match self {
                     Finite(lhs) => lhs.merge_connected(rhs).map(EnumInterval::from),
@@ -285,10 +253,6 @@ macro_rules! commutative_merge_connected_impl {
         impl<T: $crate::numeric::Element> MergeConnected<$t_rhs> for $t_lhs {
             type Output = $t_ret;
             #[inline(always)]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn merge_connected(self, rhs: $t_rhs) -> Option<Self::Output> {
                 rhs.merge_connected(self)
             }
@@ -297,10 +261,6 @@ macro_rules! commutative_merge_connected_impl {
         impl<T: $crate::numeric::Element + Clone> MergeConnected<&$t_rhs> for &$t_lhs {
             type Output = $t_ret;
             #[inline(always)]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn merge_connected(self, rhs: &$t_rhs) -> Option<Self::Output> {
                 rhs.merge_connected(self)
             }

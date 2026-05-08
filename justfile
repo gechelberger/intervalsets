@@ -259,21 +259,10 @@ bench-main pattern="":
 ci: fmt-check clippy typos doc test test-doc check-msrv check-no-std check-bench check-kani deny semver-checks
     @echo "CI checks complete"
 
-# canary: link-time verification that the panic-free claims hold at the
-# instantiations exercised by each example. One example per tier so the
-# Tier 1 ("any input") and Tier 2 ("invariant-respecting input") scopes
-# stay distinct. Local-only — release builds are slow and the canary is
-# opt-in. Add new tier examples to this target as they land.
-[working-directory('core-panic-canary')]
-panic-check:
-    cargo +{{ RV }} build --release --bins
-
 # kani: symbolic-execution proof that the panic-free claims hold for all
-# inputs within each harness's bounds. Stronger than `panic-check` (it
-# doesn't depend on optimizer cleverness), but per-harness and slow.
+# inputs within each harness's bounds. See core-panic-canary/README.md.
 #
-# `debug-assertions=off` matches the `#[no_panic]` cfg gate
-# (`not(debug_assertions)`) so debug_asserts aren't treated as panics.
+# `debug-assertions=off` so debug_asserts aren't treated as panics.
 #
 # Note: Kani requires `overflow-checks=on` for sound analysis, which is
 # stricter than release-mode `+ - *` semantics (release wraps silently;

@@ -57,10 +57,6 @@ macro_rules! union_via_merge {
         {
             type Output = MaybeDisjoint<T>;
 
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn union(self, rhs: $rhs) -> Self::Output {
                 // Try to merge first; if connected, return a single piece.
                 // Otherwise, order the operands and return a disjoint pair.
@@ -103,10 +99,6 @@ macro_rules! union_via_merge_ref {
         {
             type Output = MaybeDisjoint<T>;
 
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn union(self, rhs: &$rhs) -> Self::Output {
                 match self.merge_connected(rhs) {
                     Some(merged) => EnumInterval::from(merged).into(),

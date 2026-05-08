@@ -12,10 +12,6 @@ macro_rules! commutative_op_move_impl {
             type Output = $t_out;
 
             #[inline(always)]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn $fn(self, rhs: $t_rhs) -> Self::Output {
                 rhs.$fn(self)
             }
@@ -34,10 +30,6 @@ macro_rules! commutative_predicate_impl {
     ($tt:ident, $fn:ident, $t_lhs:ty, $t_rhs:ty) => {
         impl<T: $crate::numeric::Element> $tt<&$t_rhs> for $t_lhs {
             #[inline(always)]
-            #[cfg_attr(
-                all(feature = "panic-free-check", not(debug_assertions)),
-                no_panic::no_panic
-            )]
             fn $fn(&self, rhs: &$t_rhs) -> bool {
                 rhs.$fn(self)
             }
