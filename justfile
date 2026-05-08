@@ -95,15 +95,17 @@ install-lefthook-bin:
 install-lefthook-bin:
     brew install lefthook
 
+# install lefthook pre-commit hooks
 setup-hooks: install-lefthook-bin
     # wire up git hooks (configured via lefthook.yml at repo root)
     lefthook install
 
-# build the docs
 # `-A missing-docs` and `-A rustdoc::missing-crate-level-docs` are transitional
 # opt-outs matching the clippy CI job — workspace lints stay "warn" but doc
 # build doesn't gate on them until the existing backlog is fixed.
 # Tracked in #TRACKING_ISSUE.
+#
+# build the docs
 [env("RUSTDOCFLAGS", "-D warnings -A missing-docs -A rustdoc::missing-crate-level-docs --cfg docsrs")]
 doc:
     cargo +nightly doc \
@@ -130,7 +132,7 @@ doc-check: doc-check-core doc-check-main
 
 # run the tests
 test pattern="":
-    cargo +{{ RV }} nextest run --all-features {{ pattern }}
+    cargo +{{ RV }} nextest run --all-features --no-fail-fast {{ pattern }}
 
 alias t := test
 
@@ -138,12 +140,8 @@ alias t := test
 test-doc:
     cargo +{{ RV }} test --all-features --doc
 
-book-serve:
-    mdbook serve book
-
-book-test:
-    mdbook build book
-    cargo +{{ RV }} test --package book --doc
+# run unit tests and doctests
+test-all: test test-doc
 
 # format the code base
 fmt:
@@ -151,7 +149,14 @@ fmt:
 
 # verify formatting (used by lefthook + ci)
 fmt-check:
-    cargo +{{ RV }} fmt --all -- --check
+    cargo +nightly fmt --all -- --check
+
+# run clippy with the workspace gate (used by lefthook + ci)
+# `-A missing-docs` is a transitional opt-out matching the CI clippy job —
+# workspace lint stays at "warn" so authors see warnings locally, but the
+# gate doesn't fail on the existing backlog. Tracked in #TRACKING_ISSUE.
+clippy:
+    cargo +{{ RV }} clippy --all-features --all-targets -- -D warnings -A missing-docs
 
 # license / advisory / source checks
 deny:
@@ -222,7 +227,7 @@ bench-main pattern="":
     just bench "--bench intervalsets {{ pattern }}"
 
 # check the ci targets locally
-ci: fmt-check typos doc test test-doc check-msrv check-no-std check-bench deny semver-checks
+ci: fmt-check clippy typos doc test test-doc check-msrv check-no-std check-bench deny semver-checks
     @echo "CI checks complete"
 
 # scan codebase for pre-release markers

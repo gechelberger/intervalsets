@@ -8,9 +8,9 @@ pre-commit:
   jobs:
     - name: fmt
       glob: "*.rs"
-      run: cargo fmt --all -- --check
+      run: just fmt-check
     - name: clippy
       glob: "*.rs"
-      run: cargo clippy --all-features --all-targets -- -D warnings
+      run: just clippy
     - name: typos
-      run: typos
+      run: just typos
