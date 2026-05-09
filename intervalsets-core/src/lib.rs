@@ -307,7 +307,6 @@
 //!
 //! # Diving Deeper
 //! * [Implement custom storage data types](numeric)
-//! * [Adapt unsupported data types with factory converters](factory::Converter)
 //!
 #![no_std]
 #![deny(bad_style)]

@@ -2,7 +2,6 @@ use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
 use crate::error::{MathError, MidpointError};
-use crate::factory::Converter;
 use crate::numeric::{Element, Midpoint};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
@@ -30,30 +29,6 @@ impl<T: FloatCore + Element> Element for OrderedFloat<T> {
     #[inline]
     fn validate(self) -> Option<Self> {
         self.into_inner().is_finite().then_some(self)
-    }
-}
-
-impl<T: FloatCore + Element> Converter<T> for NotNan<T> {
-    type To = Self;
-
-    /// `NotNan::new` rejects NaN at construction. Returning `None`
-    /// here surfaces that as `Error::InvalidBoundLimit` at the factory
-    /// boundary instead of panicking inside `unwrap`.
-    #[inline]
-    fn convert(value: T) -> Option<Self::To> {
-        NotNan::new(value).ok()
-    }
-}
-
-impl<T: FloatCore + Element> Converter<T> for OrderedFloat<T> {
-    type To = Self;
-
-    /// `OrderedFloat` admits any `T` (including NaN / ±INF) under its
-    /// total order; the `Element::validate` override handles
-    /// non-finite rejection downstream.
-    #[inline]
-    fn convert(value: T) -> Option<Self::To> {
-        Some(OrderedFloat(value))
     }
 }
 
@@ -136,55 +111,45 @@ ordfloat_impl_try!(TryDiv, try_div, /);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::{EIFactory, FiniteFactory};
+    use crate::bound::SetBounds;
+    use crate::factory::traits::*;
     use crate::EnumInterval;
 
     #[test]
-    fn test_not_nan_converter() {
-        type F = EIFactory<f32, NotNan<f32>>;
-
-        let x = F::closed(0.0, 10.0);
-
-        assert_eq!(
-            x,
-            EnumInterval::closed(NotNan::new(0.0).unwrap(), NotNan::new(10.0).unwrap())
+    fn test_not_nan_factory_construction() {
+        let x = EnumInterval::closed(
+            NotNan::new(0.0_f32).unwrap(),
+            NotNan::new(10.0_f32).unwrap(),
         );
+        assert_eq!(x.left().unwrap().value(), &NotNan::new(0.0).unwrap());
+        assert_eq!(x.right().unwrap().value(), &NotNan::new(10.0).unwrap());
     }
 
     #[test]
-    fn test_not_nan_converter_rejects_nan() {
-        // Pre-fallible-Converter, this hit `NotNan::new(NaN).unwrap()`
-        // inside `Converter::convert` and panicked behind `try_*`'s
-        // back. Now it surfaces as `Error::InvalidBoundLimit`.
+    fn test_ord_float_factory_construction() {
+        let x = EnumInterval::closed(OrderedFloat(0.0_f32), OrderedFloat(10.0_f32));
+        assert_eq!(x.left().unwrap().value(), &OrderedFloat(0.0));
+        assert_eq!(x.right().unwrap().value(), &OrderedFloat(10.0));
+    }
+
+    #[test]
+    fn test_validate_rejects_inf_for_ordfloat_wrappers() {
+        // NotNan refuses NaN at its own constructor, so the only path
+        // for non-finite to reach a `FiniteBound` is via ±INF — which
+        // `Element::validate` then rejects.
         use crate::error::Error;
-        use crate::factory::{Converter, EIFactory, TryFiniteFactory, TryHalfBoundedFactory};
 
-        type F = EIFactory<f32, NotNan<f32>>;
-
-        assert!(<NotNan<f32> as Converter<f32>>::convert(f32::NAN).is_none());
-
-        let r = F::try_closed(f32::NAN, 1.0);
+        let inf = NotNan::new(f32::INFINITY).unwrap();
+        let zero = NotNan::new(0.0_f32).unwrap();
+        let r = EnumInterval::try_closed(zero, inf);
         assert!(matches!(r, Err(Error::InvalidBoundLimit)));
 
-        let r = F::try_open_unbound(f32::NAN);
+        // OrderedFloat admits any T; both NaN and ±INF reach validate.
+        let r = EnumInterval::try_closed(OrderedFloat(0.0_f32), OrderedFloat(f32::NAN));
         assert!(matches!(r, Err(Error::InvalidBoundLimit)));
 
-        // ±INF flows through Converter (NotNan admits it) and is then
-        // rejected by `Element::validate` — same outcome, different
-        // gate.
-        let r = F::try_closed(0.0, f32::INFINITY);
+        let r = EnumInterval::try_closed(OrderedFloat(0.0_f32), OrderedFloat(f32::INFINITY));
         assert!(matches!(r, Err(Error::InvalidBoundLimit)));
-    }
-
-    #[test]
-    fn test_ord_float_converter() {
-        type F = EIFactory<f32, OrderedFloat<f32>>;
-
-        let x = F::closed(0.0, 10.0);
-        assert_eq!(
-            x,
-            EnumInterval::closed(OrderedFloat(0.0), OrderedFloat(10.0),)
-        );
     }
 
     #[test]
