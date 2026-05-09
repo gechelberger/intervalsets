@@ -1,3 +1,13 @@
+//! `IntoFiniteInterval` itruncates a `Set` to the smallest FiniteInterval that
+//! covers the elements of the original `Set` which can be represented by the
+//! storage-type T: Bounded + Element.
+//!
+//! # Notes
+//!
+//! todo: require min/max of T, some elements (BigDecimal) inherently do not have this, so
+//! for truncation to FiniteInterval, instead need to define some Subset on T that defines
+//! the desired universe and intersect with that.
+
 use crate::bound::{FiniteBound, Side};
 use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
@@ -46,10 +56,10 @@ impl<T: Element + num_traits::Bounded> IntoFinite for HalfInterval<T> {
         let (side, bound) = self.into_raw();
         match side {
             Side::Left => {
-                FiniteInterval::new_assume_normed(bound, FiniteBound::closed(T::max_value()))
+                FiniteInterval::new_assume_valid(bound, FiniteBound::closed(T::max_value()))
             }
             Side::Right => {
-                FiniteInterval::new_assume_normed(FiniteBound::closed(T::min_value()), bound)
+                FiniteInterval::new_assume_valid(FiniteBound::closed(T::min_value()), bound)
             }
         }
     }
