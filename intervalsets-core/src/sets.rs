@@ -158,7 +158,7 @@ impl<T: Element> FiniteInterval<T> {
     }
 }
 
-impl<T: PartialOrd> FiniteInterval<T> {
+impl<T: Element> FiniteInterval<T> {
     /// Creates a FiniteInterval; assuming normalized & comparable.
     ///
     /// # Preconditions
@@ -203,11 +203,10 @@ impl<T: PartialOrd> FiniteInterval<T> {
     /// 2. discrete bounds are normalized to closed form.
     ///
     /// Violating either yields incorrect results but no undefined
-    /// behavior; in debug builds it trips a `debug_assert!`.
-    /// Discrete normalization (precondition 2) is not asserted here —
-    /// it requires the [`Element`] bound;
-    /// callers reach this constructor via paths that already go
-    /// through normalizing constructors like
+    /// behavior; in debug builds the ordering check (precondition 1)
+    /// trips a `debug_assert!`. Normalization (precondition 2) is not
+    /// currently asserted; callers reach this constructor via paths
+    /// that already go through normalizing constructors like
     /// [`try_new`](Self::try_new).
     #[inline]
     pub fn new_assume_valid(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self {

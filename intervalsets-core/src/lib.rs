@@ -102,17 +102,45 @@
 //!
 //! # Invariants
 //!
-//! For an interval or set to be valid it must satisfy certain invariants.
-//! These are validated on construction and panic if violated (or return an
-//! error from the fallible (try_*) api).
+//! For an interval or set to be valid it must satisfy four invariants,
+//! which split into two pairs:
 //!
-//! 1. Discrete types are always normalized to closed form so that there is only
-//!    a single valid bit-pattern for each possible `Set`.
-//! 2. lhs <= rhs. All non-empty sets have a left and right hand side, though
-//!    they may be implicit and/or unbounded.
-//! 3. A FiniteBound's limit value must be a member of some set S ⊆ T where
-//!    T is the set of the underlying data-type which may be partially ordered,
-//!    but S has a strict total order. (S is a chain)
+//! ## Canonicalization (one bit-pattern per logical set)
+//!
+//! 1. **Empty-canonical** — the empty set is represented only by the
+//!    `Empty` discriminant; a `Bounded(lhs, rhs)` is never used to
+//!    encode it. Inputs that describe an empty set are either
+//!    rejected (strict constructors) or collapsed to `Empty`
+//!    (coercive constructors).
+//!
+//! 2. **Discrete-normalized** — for discrete `T` (those with
+//!    [`Element::try_adjacent`](crate::numeric::Element::try_adjacent)
+//!    returning `Some(_)`), bounds are stored in **closed** form.
+//!    `(0, 10)` for `i32` normalizes to `[1, 9]` so the same set has
+//!    a single valid bit-pattern.
+//!
+//! ## Well-formedness (the contained pair makes sense)
+//!
+//! 3. **Limit-valid** — each [`FiniteBound`](crate::bound::FiniteBound)'s
+//!    limit value must lie in some totally-ordered subdomain `S ⊆ T`.
+//!    `T` may be only partially ordered (`f32`, user types), but `S`
+//!    is a chain. Library float types reject `NaN` and `±INF`; user
+//!    types enforce their own predicate via
+//!    [`Element::validate`](crate::numeric::Element::validate).
+//!
+//! 4. **Ordered** — for any non-empty `Bounded(lhs, rhs)`,
+//!    `lhs.value() <= rhs.value()`, with equality requiring both
+//!    bounds to be `Closed` (an open-open pair at the same point
+//!    describes the empty set and collapses to `Empty` per (1)).
+//!
+//! Invariants are enforced on construction: strict constructors
+//! ([`FiniteInterval::new`] / [`FiniteInterval::try_new`]) reject
+//! violations; coercive constructors (factory methods,
+//! [`FiniteInterval::try_new_or_empty`]) collapse "describes empty"
+//! inputs to `Empty` and surface limit-validity failures as errors
+//! (or panics on the panicking siblings). See
+//! "[Construction at boundaries](#construction-at-boundaries)" below
+//! for the layered escape hatch.
 //!
 //! # Foot guns
 //!

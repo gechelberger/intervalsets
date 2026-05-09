@@ -1,4 +1,5 @@
 use crate::bound::{FiniteBound, Side};
+use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Truncates a set to the universe of elements representable by the generic data type.
@@ -37,7 +38,7 @@ impl<T> IntoFinite for FiniteInterval<T> {
     }
 }
 
-impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
+impl<T: Element + num_traits::Bounded> IntoFinite for HalfInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
@@ -54,7 +55,7 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
     }
 }
 
-impl<T: num_traits::Bounded + PartialOrd> IntoFinite for EnumInterval<T> {
+impl<T: Element + num_traits::Bounded> IntoFinite for EnumInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
