@@ -13,8 +13,10 @@
 //! [`Error`] wraps [`intervalsets_core::error::Error`] so the variants
 //! it carries can grow alloc-enabled context (messages, source chains,
 //! the offending value) without touching core's no-alloc contract.
-//! [`TotalOrderError`] is re-exported from core verbatim — it has no
-//! payload to enrich.
+//! [`TotalOrderError`] is re-exported from core verbatim — it's the
+//! return type of `TryCmp::try_cmp` for callers that want the precise
+//! single-bit "incomparable" failure; in the umbrella `Error` it
+//! collapses to [`InvalidBoundLimit`](Error::InvalidBoundLimit).
 
 use intervalsets_core::error::Error as CoreError;
 pub use intervalsets_core::error::TotalOrderError;
@@ -24,9 +26,6 @@ use thiserror::Error as ThisError;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, ThisError)]
 #[non_exhaustive]
 pub enum Error {
-    #[error(transparent)]
-    TotalOrderError(#[from] TotalOrderError),
-
     /// Bound-pair invariants violated. Covers two related conditions:
     ///
     /// 1. **Crossed bounds in a `FiniteInterval`** — `lhs > rhs` after
@@ -55,18 +54,23 @@ pub enum Error {
     #[error("interval set invariants violated")]
     InvalidIntervalSet,
 
-    /// A `FiniteBound`'s limit value was rejected by
-    /// [`Element::validate`](intervalsets_core::numeric::Element::validate).
-    /// Library float types reject `±INF` and `NaN` here; user types
-    /// override `validate` to enforce their own predicate.
-    #[error("bound limit rejected by Element::validate")]
+    /// A bound's limit value was rejected as a valid bound limit.
+    /// Covers both `Element::validate` rejection and `partial_cmp`
+    /// failure (NaN-style incomparability) — see the core variant
+    /// docs for details.
+    #[error("bound limit rejected (validate or partial_cmp failure)")]
     InvalidBoundLimit,
+}
+
+impl From<TotalOrderError> for Error {
+    fn from(_: TotalOrderError) -> Self {
+        Error::InvalidBoundLimit
+    }
 }
 
 impl From<CoreError> for Error {
     fn from(e: CoreError) -> Self {
         match e {
-            CoreError::TotalOrderError(e) => Error::TotalOrderError(e),
             CoreError::InvalidBoundPair => Error::InvalidBoundPair,
             CoreError::InvalidBoundLimit => Error::InvalidBoundLimit,
             // CoreError is #[non_exhaustive]; if a new variant is added,

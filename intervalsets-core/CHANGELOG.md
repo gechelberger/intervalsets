@@ -31,6 +31,7 @@ version and are released together via `cargo-release`. See the repo
 ### Removed
 
 - **Removed** the `Converter` trait, the `Identity` converter, the `EIFactory<T, C>` type-level factory, and `ConvertingFactory::try_convert`. The trait was a tutorial-quality nicety for end users wanting to construct `OrderedFloat`/`NotNan`-wrapped intervals from raw `f32`/`f64` values; nothing internal used it. Migration: wrap the value directly at the call site — `EnumInterval::closed(NotNan::new(0.0).unwrap(), NotNan::new(10.0).unwrap())` or define a project-local helper. `OrderedFloat::from(value: T)` exists for the infallible case.
+- **Removed** the `Error::TotalOrderError(TotalOrderError)` variant from the umbrella enum. `From<TotalOrderError> for Error` now collapses to `Error::InvalidBoundLimit` — same destination as `Element::validate` rejection, since both gates fire on the same root cause (a bound's value isn't a usable limit). The `TotalOrderError` struct itself is unchanged and remains the precise return type of `TryCmp::try_cmp`. Migration: replace `Err(Error::TotalOrderError(_))` matchers with `Err(Error::InvalidBoundLimit)`.
 
 ### Fixed
 

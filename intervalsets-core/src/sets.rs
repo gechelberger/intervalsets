@@ -590,7 +590,7 @@ mod tests {
         fn try_new_errors_on_nan() {
             let result =
                 FiniteInterval::try_new(FiniteBound::closed(f32::NAN), FiniteBound::closed(0.0));
-            assert!(matches!(result, Err(Error::TotalOrderError(_))));
+            assert!(matches!(result, Err(Error::InvalidBoundLimit)));
         }
 
         #[test]
@@ -609,7 +609,7 @@ mod tests {
                 FiniteBound::closed(f32::NAN),
                 FiniteBound::closed(0.0),
             );
-            assert!(matches!(result, Err(Error::TotalOrderError(_))));
+            assert!(matches!(result, Err(Error::InvalidBoundLimit)));
         }
 
         #[test]

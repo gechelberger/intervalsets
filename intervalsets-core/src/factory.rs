@@ -105,8 +105,8 @@ pub trait TryFiniteFactory<T: Element>: Factory<T> {
     /// method via the factory `try_*` defaults guarantees both
     /// bounds have already been validated by `Element::validate`;
     /// direct callers passing `FiniteBound::closed(NaN)` via the
-    /// Tier-4 bypass can still surface
-    /// [`Error::TotalOrderError`](crate::error::Error::TotalOrderError)
+    /// Tier-4 bypass surface
+    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
     /// from the underlying `try_cmp`.
     fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error>;
 

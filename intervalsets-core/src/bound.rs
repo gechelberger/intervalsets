@@ -991,7 +991,7 @@ mod test {
                 OrdBound::closed(f32::NAN),
             )
             .unwrap_err();
-            assert!(matches!(err, Error::TotalOrderError(_)));
+            assert!(matches!(err, Error::InvalidBoundLimit));
         }
 
         #[test]
