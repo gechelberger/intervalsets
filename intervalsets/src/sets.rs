@@ -621,7 +621,6 @@ mod tests {
 
     #[quickcheck]
     fn check_hash_interval_set(a: i8, b: i8) {
-        // Skip crossed pairs: factory is strict-by-default and would panic.
         if a > b {
             return;
         }
@@ -633,7 +632,6 @@ mod tests {
 
     #[quickcheck]
     fn check_hash_stable_interval(a: i8, b: i8) {
-        // Skip crossed pairs: factory is strict-by-default and would panic.
         if a > b {
             return;
         }

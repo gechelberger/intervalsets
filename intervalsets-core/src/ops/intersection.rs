@@ -28,16 +28,18 @@ use crate::sets::{FiniteInterval, HalfInterval};
 /// Violating the preconditions yields incorrect results but no
 /// undefined behavior; release builds do not check them.
 ///
-/// # Why this is private
+/// # Visibility
 ///
-/// Today the only consumer is intersection. Exposing a Tier-3
-/// inherent on `FiniteInterval` proved to be a temptation to misuse
-/// (callers who weren't actually working with bounds from validated
-/// intervals). If a second op legitimately needs the same shape,
-/// promote this back to a `#[doc(hidden)]` inherent on
-/// `FiniteInterval`.
+/// `pub(super)` so siblings under [`crate::ops`] (currently
+/// `intersection` and `finite::IntoFinite`) can reach it without
+/// re-exposing a Tier-3 inherent on `FiniteInterval`. A public
+/// inherent proved to be a misuse temptation for callers who weren't
+/// actually working with bounds from validated intervals.
 #[inline]
-fn from_normed_pair<T: Element>(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> FiniteInterval<T> {
+pub(super) fn from_normed_pair<T: Element>(
+    lhs: FiniteBound<T>,
+    rhs: FiniteBound<T>,
+) -> FiniteInterval<T> {
     debug_assert!(
         lhs.value().partial_cmp(rhs.value()).is_some(),
         "from_normed_pair: bounds must be comparable (NaN check)"

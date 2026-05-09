@@ -94,7 +94,6 @@ mod tests {
 
     #[quickcheck]
     fn check_finite_contains_finite_integer(a: i8, b: i8) {
-        // Skip crossed pairs: factory is strict-by-default and would panic.
         if a > b {
             return;
         }
@@ -109,7 +108,6 @@ mod tests {
         if !a.is_finite() || !b.is_finite() {
             return;
         }
-        // Skip crossed pairs: factory is strict-by-default and would panic.
         if a >= b {
             return;
         }
@@ -133,7 +131,6 @@ mod tests {
 
     #[quickcheck]
     fn check_half_contains_finite_integer(a: i8, b: i8) {
-        // Skip crossed pairs: factory is strict-by-default and would panic.
         if a > b {
             return;
         }
@@ -145,7 +142,6 @@ mod tests {
 
     #[quickcheck]
     fn check_unbounded_contains_finite_integer(a: i8, b: i8) {
-        // Skip crossed pairs: factory is strict-by-default and would panic.
         if a > b {
             return;
         }

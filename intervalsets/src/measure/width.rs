@@ -86,8 +86,8 @@ mod tests {
         if f32::is_nan(a) || f32::is_nan(b) || f32::is_infinite(a) || f32::is_infinite(b) {
             return;
         }
-        // Skip crossed pairs: factory is strict-by-default and would panic.
-        if a > b {
+        // open(a, a) panics under strict semantics; require a < b.
+        if a >= b {
             return;
         }
 
@@ -104,8 +104,7 @@ mod tests {
         if !a.is_finite() || !b.is_finite() || !c.is_finite() || !d.is_finite() {
             return true;
         }
-        // Skip crossed pairs: factory is strict-by-default and would panic.
-        if a > b || c > d {
+        if a >= b || c >= d {
             return true;
         }
 
@@ -127,7 +126,6 @@ mod tests {
         if b.checked_sub(a).is_none() || d.checked_sub(c).is_none() {
             return true; // overflow panic
         }
-        // Skip crossed pairs: factory is strict-by-default and would panic.
         if a > b || c > d {
             return true;
         }
