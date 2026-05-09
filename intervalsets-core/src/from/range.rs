@@ -1,27 +1,28 @@
 use core::ops::{Range, RangeFrom, RangeFull, RangeInclusive, RangeTo, RangeToInclusive};
 
 use crate::bound::FiniteBound;
+use crate::factory::SatisfyFiniteInterval;
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T: Element> From<Range<T>> for FiniteInterval<T> {
     fn from(value: Range<T>) -> Self {
-        // try_new_or_empty: a reversed Range (start > end) is treated as
+        // satisfy_bounds: a reversed Range (start > end) is treated as
         // empty, matching Rust's stdlib semantic for iterating reversed
-        // ranges. NaN bounds still panic via .unwrap().
-        FiniteInterval::try_new_or_empty(
+        // ranges. Range types natively encode this; preserving the
+        // coercive behavior at the conversion boundary is the right
+        // match. NaN bounds still panic.
+        FiniteInterval::satisfy_bounds(
             FiniteBound::closed(value.start),
             FiniteBound::open(value.end),
         )
-        .unwrap()
     }
 }
 
 impl<T: Element> From<RangeInclusive<T>> for FiniteInterval<T> {
     fn from(value: RangeInclusive<T>) -> Self {
         let (start, end) = value.into_inner();
-        FiniteInterval::try_new_or_empty(FiniteBound::closed(start), FiniteBound::closed(end))
-            .unwrap()
+        FiniteInterval::satisfy_bounds(FiniteBound::closed(start), FiniteBound::closed(end))
     }
 }
 

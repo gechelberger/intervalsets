@@ -640,7 +640,7 @@ mod impls {
             EI::try_left_bounded(min).map(MaybeDisjoint::from)
         } else {
             let max = div_assume_nonzero(numer, denom);
-            EI::try_finite(min, max).map(MaybeDisjoint::from)
+            EI::try_satisfy_bounds(min, max).map(MaybeDisjoint::from)
         }
     }
 
@@ -668,7 +668,7 @@ mod impls {
             EI::try_right_bounded(max).map(MaybeDisjoint::from)
         } else {
             let min = div_assume_nonzero(numer, denom);
-            EI::try_finite(min, max).map(MaybeDisjoint::from)
+            EI::try_satisfy_bounds(min, max).map(MaybeDisjoint::from)
         }
     }
 
@@ -709,7 +709,7 @@ mod impls {
         if denom.value() == &T::zero() {
             Ok(EI::unbounded().into())
         } else {
-            EI::try_finite(
+            EI::try_satisfy_bounds(
                 div_assume_nonzero(num_to_min, denom.clone()),
                 div_assume_nonzero(num_to_max, denom),
             )

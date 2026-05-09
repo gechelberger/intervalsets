@@ -3,7 +3,8 @@ mod range;
 mod try_from;
 
 use crate::bound::ord::{OrdBound, OrdBoundPair};
-use crate::bound::{FiniteBound, Side};
+use crate::bound::Side;
+use crate::factory::FiniteFactory;
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -13,20 +14,27 @@ impl<T> From<()> for FiniteInterval<T> {
     }
 }
 
+// Tuple and array conversions are **strict**: a typed value pair is
+// not a Range, and crossed input is treated as a producer bug. For
+// the coercive (`a > b → empty`) semantic, use a Rust `Range` type
+// as the source instead — it natively encodes that. Note: Rust's
+// blanket `impl<T, U> TryFrom<U> for T where U: Into<T>` precludes
+// providing a custom fallible `TryFrom` alongside `From`. Callers
+// wanting fallible construction use the strict factory methods
+// directly (`FiniteInterval::try_open(start, end)` etc.) instead of
+// `.try_into()`.
+
 impl<T: Element> From<(T, T)> for FiniteInterval<T> {
+    /// Strict open-open conversion. Panics on crossed bounds
+    /// (`start > end`) or invalid limits (NaN / ±INF).
     fn from(value: (T, T)) -> Self {
-        // (a, b) with a > b is treated as empty (matches Range semantics).
-        Self::try_new_or_empty(FiniteBound::open(value.0), FiniteBound::open(value.1)).unwrap()
+        FiniteInterval::open(value.0, value.1)
     }
 }
 
 impl<T: Element + Clone> From<&(T, T)> for FiniteInterval<T> {
     fn from(value: &(T, T)) -> Self {
-        Self::try_new_or_empty(
-            FiniteBound::open(value.0.clone()),
-            FiniteBound::open(value.1.clone()),
-        )
-        .unwrap()
+        FiniteInterval::open(value.0.clone(), value.1.clone())
     }
 }
 
@@ -43,14 +51,11 @@ impl<T> From<()> for EnumInterval<T> {
 }
 
 impl<T: Element> From<[T; 2]> for FiniteInterval<T> {
+    /// Strict closed-closed conversion. Panics on crossed bounds
+    /// (`start > end`) or invalid limits (NaN / ±INF).
     fn from(value: [T; 2]) -> Self {
-        let mut iter = value.into_iter();
-        // [a, b] with a > b is treated as empty (matches Range semantics).
-        FiniteInterval::try_new_or_empty(
-            FiniteBound::closed(iter.next().unwrap()),
-            FiniteBound::closed(iter.next().unwrap()),
-        )
-        .unwrap()
+        let [start, end] = value;
+        FiniteInterval::closed(start, end)
     }
 }
 

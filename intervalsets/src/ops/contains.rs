@@ -94,13 +94,14 @@ mod tests {
 
     #[quickcheck]
     fn check_finite_contains_finite_integer(a: i8, b: i8) {
+        // Skip crossed pairs: factory is strict-by-default and would panic.
+        if a > b {
+            return;
+        }
         let interval = Interval::closed(-50, 50);
         let candidate = Interval::closed(a, b);
 
-        assert_eq!(
-            interval.contains(&candidate),
-            (-50 <= a && b <= 50) || a > b
-        );
+        assert_eq!(interval.contains(&candidate), -50 <= a && b <= 50);
     }
 
     #[quickcheck]
@@ -108,14 +109,15 @@ mod tests {
         if !a.is_finite() || !b.is_finite() {
             return;
         }
+        // Skip crossed pairs: factory is strict-by-default and would panic.
+        if a >= b {
+            return;
+        }
 
         let interval = Interval::open(-100.0, 100.0);
         let candidate = Interval::open(a, b);
 
-        assert_eq!(
-            interval.contains(&candidate),
-            (-100.0 < a && b < 100.0) || a >= b
-        )
+        assert_eq!(interval.contains(&candidate), -100.0 < a && b < 100.0)
     }
 
     #[quickcheck]
@@ -131,14 +133,22 @@ mod tests {
 
     #[quickcheck]
     fn check_half_contains_finite_integer(a: i8, b: i8) {
+        // Skip crossed pairs: factory is strict-by-default and would panic.
+        if a > b {
+            return;
+        }
         let interval = Interval::open_unbound(0);
 
         let finite = Interval::closed(a, b);
-        assert_eq!(interval.contains(&finite), 0 < a || a > b);
+        assert_eq!(interval.contains(&finite), 0 < a);
     }
 
     #[quickcheck]
     fn check_unbounded_contains_finite_integer(a: i8, b: i8) {
+        // Skip crossed pairs: factory is strict-by-default and would panic.
+        if a > b {
+            return;
+        }
         let interval = Interval::<i8>::unbounded();
 
         let finite = Interval::closed(a, b);

@@ -19,6 +19,7 @@
 //! both `i64::MIN` and any sum-induced i64 boundary), so they can
 //! prove the rest of try_div is panic-free.
 
+use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::math::TryDiv;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -33,7 +34,10 @@ fn any_bounded() -> i64 {
 }
 
 fn make_finite() -> FiniteInterval<i64> {
-    FiniteInterval::<i64>::closed(any_bounded(), any_bounded())
+    FiniteInterval::<i64>::satisfy_bounds(
+        FiniteBound::closed(any_bounded()),
+        FiniteBound::closed(any_bounded()),
+    )
 }
 
 fn make_half() -> HalfInterval<i64> {
@@ -49,7 +53,10 @@ fn make_enum() -> EnumInterval<i64> {
     let kind: u8 = kani::any();
     kani::assume(kind < 5);
     match kind {
-        0 => EnumInterval::<i64>::closed(any_bounded(), any_bounded()),
+        0 => EnumInterval::<i64>::satisfy_bounds(
+            FiniteBound::closed(any_bounded()),
+            FiniteBound::closed(any_bounded()),
+        ),
         1 => EnumInterval::<i64>::closed_unbound(any_bounded()),
         2 => EnumInterval::<i64>::unbound_closed(any_bounded()),
         3 => EnumInterval::<i64>::unbounded(),

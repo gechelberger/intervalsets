@@ -90,6 +90,10 @@ mod test {
         if a.is_nan() || b.is_nan() || a.is_infinite() || b.is_infinite() {
             return true; // skip malformed inputs
         }
+        // Skip crossed pairs: factory is strict-by-default and would panic.
+        if a > b {
+            return true;
+        }
 
         let a = Interval::closed(a, b);
         let c = a.complement();

@@ -621,6 +621,10 @@ mod tests {
 
     #[quickcheck]
     fn check_hash_interval_set(a: i8, b: i8) {
+        // Skip crossed pairs: factory is strict-by-default and would panic.
+        if a > b {
+            return;
+        }
         let set = IntervalSet::from_iter([Interval::closed(-50, 50)]);
 
         let other: IntervalSet<_> = Interval::closed(a, b).into();
@@ -629,6 +633,10 @@ mod tests {
 
     #[quickcheck]
     fn check_hash_stable_interval(a: i8, b: i8) {
+        // Skip crossed pairs: factory is strict-by-default and would panic.
+        if a > b {
+            return;
+        }
         let interval = Interval::closed(-50, 50);
         check_hash(&interval, &Interval::closed(a, b));
     }

@@ -9,6 +9,7 @@
 //! the desired universe and intersect with that.
 
 use crate::bound::{FiniteBound, Side};
+use crate::factory::SatisfyFiniteInterval;
 use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -53,13 +54,16 @@ impl<T: Element + num_traits::Bounded> IntoFinite for HalfInterval<T> {
 
     #[inline(always)]
     fn into_finite(self) -> Self::Output {
+        // Coercive: an open bound at the type's saturating extreme
+        // (e.g. `(255, ->)` for u8) describes an empty set after
+        // truncation. `satisfy_bounds` returns Empty for that case.
         let (side, bound) = self.into_raw();
         match side {
             Side::Left => {
-                FiniteInterval::new_assume_valid(bound, FiniteBound::closed(T::max_value()))
+                FiniteInterval::satisfy_bounds(bound, FiniteBound::closed(T::max_value()))
             }
             Side::Right => {
-                FiniteInterval::new_assume_valid(FiniteBound::closed(T::min_value()), bound)
+                FiniteInterval::satisfy_bounds(FiniteBound::closed(T::min_value()), bound)
             }
         }
     }
