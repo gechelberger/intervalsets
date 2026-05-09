@@ -924,7 +924,7 @@ mod test {
 
     use super::Side::*;
     use super::*;
-    use crate::try_cmp::{TryMax, TryMin};
+    use crate::try_cmp::TryCmp;
 
     mod ord_bound_pair {
         use crate::bound::ord::FiniteOrdBoundKind::*;

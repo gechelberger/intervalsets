@@ -6,7 +6,7 @@ use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval};
-use crate::try_cmp::{try_ord_tuple, TryMax, TryMin};
+use crate::try_cmp::TryCmp;
 
 /// Try to create the smallest interval which fully contains all elements.
 ///
@@ -59,7 +59,7 @@ pub trait ConvexHull<T>: Sized {
 macro_rules! convex_hull_t_impl {
     ($($t:ident), +) => {
         $(
-            impl<T: Element + Clone + TryMin + TryMax> ConvexHull<T> for $t<T> {
+            impl<T: Element + Clone> ConvexHull<T> for $t<T> {
                 type Error = $crate::error::Error;
 
                 fn try_hull<U: IntoIterator<Item = T>>(iter: U) -> Result<Self, Self::Error> {
@@ -71,8 +71,8 @@ macro_rules! convex_hull_t_impl {
                     };
 
                     for mut candidate in iter {
-                        (left, candidate) = try_ord_tuple(left, candidate)?;
-                        (_, right) = try_ord_tuple(right, candidate)?;
+                        (left, candidate) = left.try_min_max(candidate)?;
+                        right = candidate.try_max(right)?;
                     }
 
                     Self::try_closed(left, right)
@@ -87,7 +87,7 @@ convex_hull_t_impl!(FiniteInterval, EnumInterval);
 macro_rules! convex_hull_ref_t_impl {
     ($($t:ident), +) => {
         $(
-            impl<'a, T: Element + Clone + TryMin + TryMax> ConvexHull<&'a T> for $t<T> {
+            impl<'a, T: Element + Clone> ConvexHull<&'a T> for $t<T> {
                 type Error = $crate::error::Error;
 
                 fn try_hull<U: IntoIterator<Item = &'a T>>(iter: U) -> Result<Self, Self::Error> {
