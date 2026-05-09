@@ -42,14 +42,22 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// Re-exports for `use factory::traits::*` at user call sites.
 pub mod traits {
     pub use super::{
-        ConvertingFactory, EmptyFactory, FiniteFactory, HalfBoundedFactory, TryFiniteFactory,
+        EmptyFactory, Factory, FiniteFactory, HalfBoundedFactory, TryFiniteFactory,
         TryHalfBoundedFactory, UnboundedFactory,
     };
 }
 
-/// Common base for the factory traits — declares the produced type
-/// and the error type for `try_*` constructors.
-pub trait ConvertingFactory<T> {
+/// Shared base for every factory trait in this module. Declares
+/// `Output` and `Error` once so the `Empty` / `Unbounded` /
+/// `Try{Finite,HalfBounded}Factory` (and their panicking siblings)
+/// for a given `Self` all agree on what they produce and what error
+/// they surface.
+///
+/// The trait is unconstrained on `T` — `Empty` and `Unbounded` don't
+/// touch `T` values, so no `T: Element` bound belongs here. The
+/// `Try*` subtraits add the `T: Element` bound where it's actually
+/// load-bearing.
+pub trait Factory<T> {
     /// The type that this factory produces.
     type Output;
 
@@ -66,7 +74,7 @@ pub trait ConvertingFactory<T> {
 const REJECT_PANIC: &str = "bound limit rejected by Element::validate";
 
 /// Constructs the empty set.
-pub trait EmptyFactory<T>: ConvertingFactory<T> {
+pub trait EmptyFactory<T>: Factory<T> {
     /// Returns a new empty set.
     ///
     /// {} = {x | x not in T }
@@ -91,7 +99,7 @@ pub trait EmptyFactory<T>: ConvertingFactory<T> {
 /// The panicking sibling [`FiniteFactory`] has a blanket impl over
 /// every `TryFiniteFactory`, so implementors get the panicking
 /// surface for free.
-pub trait TryFiniteFactory<T: Element>: ConvertingFactory<T> {
+pub trait TryFiniteFactory<T: Element>: Factory<T> {
     /// Creates a new finite interval. **Coercive** — bounds that
     /// describe an empty set produce `Ok(Empty)`. Reaching this
     /// method via the factory `try_*` defaults guarantees both
@@ -287,7 +295,7 @@ impl<T: Element, F: TryFiniteFactory<T>> FiniteFactory<T> for F {
 ///
 /// The panicking sibling [`HalfBoundedFactory`] has a blanket impl
 /// over every `TryHalfBoundedFactory`.
-pub trait TryHalfBoundedFactory<T: Element>: ConvertingFactory<T> {
+pub trait TryHalfBoundedFactory<T: Element>: Factory<T> {
     /// Creates a new half-bounded interval, returning `Err` if the
     /// bound limit is rejected by `Element::validate`.
     fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>;
@@ -390,7 +398,7 @@ impl<T: Element, F: TryHalfBoundedFactory<T>> HalfBoundedFactory<T> for F {
 }
 
 /// Constructs the unbounded interval `(<-, ->)`.
-pub trait UnboundedFactory<T>: ConvertingFactory<T> {
+pub trait UnboundedFactory<T>: Factory<T> {
     /// Returns a new unbounded interval.
     ///
     /// An unbounded interval contains every element in `T`,
@@ -410,7 +418,7 @@ pub trait UnboundedFactory<T>: ConvertingFactory<T> {
     fn unbounded() -> Self::Output;
 }
 
-impl<T: Element> ConvertingFactory<T> for FiniteInterval<T> {
+impl<T: Element> Factory<T> for FiniteInterval<T> {
     type Output = Self;
     type Error = Error;
 }
@@ -427,7 +435,7 @@ impl<T: Element> TryFiniteFactory<T> for FiniteInterval<T> {
     }
 }
 
-impl<T: Element> ConvertingFactory<T> for HalfInterval<T> {
+impl<T: Element> Factory<T> for HalfInterval<T> {
     type Output = Self;
     type Error = Error;
 }
@@ -438,7 +446,7 @@ impl<T: Element> TryHalfBoundedFactory<T> for HalfInterval<T> {
     }
 }
 
-impl<T: Element> ConvertingFactory<T> for EnumInterval<T> {
+impl<T: Element> Factory<T> for EnumInterval<T> {
     type Output = Self;
     type Error = Error;
 }

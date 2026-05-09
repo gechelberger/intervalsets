@@ -1,5 +1,5 @@
 pub use intervalsets_core::factory::{
-    traits, ConvertingFactory, EmptyFactory, FiniteFactory, HalfBoundedFactory, TryFiniteFactory,
+    traits, EmptyFactory, Factory, FiniteFactory, HalfBoundedFactory, TryFiniteFactory,
     TryHalfBoundedFactory, UnboundedFactory,
 };
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -8,7 +8,7 @@ use crate::bound::FiniteBound;
 use crate::numeric::{Element, Zero};
 use crate::{Interval, IntervalSet, Side};
 
-impl<T: Element> ConvertingFactory<T> for Interval<T> {
+impl<T: Element> Factory<T> for Interval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 }
@@ -41,7 +41,7 @@ impl<T: Element> UnboundedFactory<T> for Interval<T> {
     }
 }
 
-impl<T: Element> ConvertingFactory<T> for IntervalSet<T> {
+impl<T: Element> Factory<T> for IntervalSet<T> {
     type Output = Self;
     type Error = crate::error::Error;
 }
