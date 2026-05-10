@@ -58,6 +58,10 @@ update-tools: update-binstall
     # coverage
     cargo binstall cargo-llvm-cov --locked --no-confirm
 
+    # python runner (used by `cov-diff` to fetch diff-cover on demand;
+    # no global Python install, no venv to manage)
+    cargo binstall uv --locked --no-confirm
+
     # debug macros
     cargo binstall cargo-expand --locked --no-confirm
 
@@ -172,6 +176,23 @@ test-doc:
 
 # run unit tests and doctests
 test-all: test test-doc
+
+# Patch coverage = % of *changed* lines covered by tests, computed by
+# overlaying llvm-cov's lcov output onto a git diff via `diff-cover`.
+# `uvx` fetches diff-cover on first use and caches it; no global install.
+# Install uv if missing: `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+# `--doctests` requires nightly (matches .github/workflows/codecov.yml).
+#
+# patch coverage vs. a base branch (default: main; pass e.g. `origin/main`)
+cov-diff branch="main":
+    cargo +nightly llvm-cov --all-features --lcov --doctests --output-path lcov.info
+    uvx diff-cover lcov.info --compare-branch={{ branch }}
+
+# patch coverage for unstaged/uncommitted working-tree changes only
+cov-diff-wip:
+    cargo +nightly llvm-cov --all-features --lcov --doctests --output-path lcov.info
+    git diff > lcov.wip.diff
+    uvx diff-cover lcov.info --diff-file=lcov.wip.diff
 
 # format the code base
 fmt:
