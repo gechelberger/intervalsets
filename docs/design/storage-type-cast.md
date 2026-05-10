@@ -329,10 +329,30 @@ extract bounds via FiniteInterval::into_raw (sets.rs:188)
 
 ### Module placement & prelude
 
-- `intervalsets-core/src/ops/cast.rs` — trait + element/interval impls. Parallel to `ops/math/`.
-- `intervalsets/src/ops/cast.rs` — `Interval`/`IntervalSet` wrappers.
-- `intervalsets-core/src/ops/mod.rs` member list (tier 3a, lines 89-92) — add `TryCast`.
-- Both `prelude.rs` files — re-export `TryCast` (+ `CastError`, + `TryMap` if A3/A5).
+**Recommendation: crate root, paired with `from/`.** The cast traits live in `intervalsets-core/src/cast/` (parallel to the existing `intervalsets-core/src/from/`) and `intervalsets/src/cast/`, not under `ops/`. Files:
+
+- `intervalsets-core/src/cast/mod.rs` (or `cast.rs`) — `Cast` / `LossyCast` / `TryCast` traits + element-layer impls.
+- `intervalsets/src/cast/mod.rs` (or `cast.rs`) — `Interval` / `IntervalSet` wrappers.
+- `intervalsets-core/src/lib.rs` — `pub mod cast;` and prelude re-export.
+- `intervalsets/src/lib.rs` — same.
+- Both `prelude.rs` files — re-export the trait(s), `CastError`, and `TryMap` if A3/A5.
+- `intervalsets-core/src/ops/mod.rs` tier doc (lines 89-92) — cross-reference the cast traits' tiers without listing them as ops members. (Each trait names its own tier in its rustdoc header, mirroring how Try* traits do it.)
+
+**Why crate root over `ops/`** (mild lean — both are workable):
+
+- **Conceptual pairing with `from/`.** The existing `intervalsets-core/src/from/` handles same-`T` type conversions (`TryFrom<EnumInterval<T>> for FiniteInterval<T>`). Cross-`T` casts are the natural peer one step generalized. The team already drew the line that "type conversions between set types" sit at root, not under `ops/`.
+- **Cast is a conversion, not a set-algebra operation.** Everything under `ops/` (complement, intersection, union, difference, hull, math) transforms *set contents* via set-theoretic operations on existing sets. Cast changes the *type parameter* `T`; it doesn't perform set algebra on the input. `From`/`TryFrom`/`Into` in std live at root for the same reason.
+- **`Cast<U>` is conceptually a typed `Into<U>` for set types.** Under Framing 2 the analogy to `From`/`Into` is direct; placement near `from/` reinforces the mental model.
+- **Shorter user paths.** `intervalsets::cast::TryCast` vs `intervalsets::ops::cast::TryCast`. Prelude exports make this moot at use sites, but matters for docs and nested imports.
+
+**Counter-pull toward `ops/cast`** (the argument we're not taking):
+
+- `TryCast` mirrors the `Try*` shape of `TryAdd`/`TryMul` in `ops/math/`. Sibling placement would reinforce the shared trait template.
+- The four-tier contract is documented in `ops/mod.rs:23-116`; physical proximity makes the tier-doc list maintainable.
+
+Both pulls are real. Under Framing 1 (just `TryCast`, no infallible `Cast`/`LossyCast` siblings), the `Try*`-parallel argument is stronger and `ops/cast` would be defensible. Under Framing 2 (three traits including infallible `Cast`), the `From`-cousin argument is stronger and crate root is the better fit. The recommendation assumes Framing 2; if Framing 1 is picked, revisit.
+
+The tier classification doesn't depend on physical location — each trait's rustdoc header names its tier explicitly, matching how Try* traits handle it today.
 
 ### Coverage of user-defined `T`
 

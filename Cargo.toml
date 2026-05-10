@@ -15,6 +15,10 @@ license = "MIT OR Apache-2.0"
 [workspace.lints.rust]
 missing_docs = "warn"
 unsafe_code = "warn"
+# `kani` is set by `cargo kani` symbolic-execution runs; the proofs
+# under `core-panic-canary/src/proofs/` and the user template at
+# `intervalsets-core/examples/user-kani-template.rs` gate on it.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }
 
 [workspace.lints.rustdoc]
 broken_intra_doc_links = "deny"
