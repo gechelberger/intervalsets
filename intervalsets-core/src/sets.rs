@@ -6,7 +6,7 @@ use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
 use super::bound::Side::{self, Left, Right};
 use super::bound::{FiniteBound, SetBounds};
 use crate::bound::ord::FiniteOrdBound;
-use crate::error::{Error, TotalOrderError};
+use crate::error::Error;
 use crate::factory::FiniteFactory;
 use crate::numeric::{Element, Zero};
 use crate::try_cmp::TryCmp;
@@ -60,11 +60,13 @@ pub struct FiniteInterval<T>(FiniteIntervalInner<T>);
 #[cfg(feature = "serde")]
 #[derive(serde::Deserialize)]
 #[serde(rename = "FiniteInterval")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
 struct RawFiniteInterval<T>(RawFiniteIntervalInner<T>);
 
 #[cfg(feature = "serde")]
 #[derive(serde::Deserialize)]
 #[serde(rename = "FiniteIntervalInner")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
 enum RawFiniteIntervalInner<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
@@ -240,6 +242,7 @@ pub struct HalfInterval<T> {
 #[cfg(feature = "serde")]
 #[derive(serde::Deserialize)]
 #[serde(rename = "HalfInterval")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
 struct RawHalfInterval<T> {
     side: Side,
     bound: FiniteBound<T>,
@@ -275,12 +278,6 @@ impl<T: Element> HalfInterval<T> {
     /// - [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit) —
     ///   bound value is incomparable (e.g. NaN).
     pub fn try_new(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
-        // probe comparability without requiring T: Zero - a value compared to
-        // itself is Some(Equal) for any properly-ordered type and None for NaN.
-        let _ = bound
-            .value()
-            .partial_cmp(bound.value())
-            .ok_or(TotalOrderError)?;
         let bound = bound.normalized(side);
         Ok(Self { side, bound })
     }
@@ -567,13 +564,6 @@ mod tests {
         }
 
         #[test]
-        fn try_new_errors_on_nan() {
-            let result =
-                FiniteInterval::try_new(FiniteBound::closed(f32::NAN), FiniteBound::closed(0.0));
-            assert!(matches!(result, Err(Error::InvalidBoundLimit)));
-        }
-
-        #[test]
         fn try_satisfy_bounds_returns_empty_on_crossed() {
             use crate::factory::TrySatisfyFiniteInterval;
             let result = FiniteInterval::try_satisfy_bounds(
@@ -582,16 +572,6 @@ mod tests {
             )
             .unwrap();
             assert_eq!(result, FiniteInterval::empty());
-        }
-
-        #[test]
-        fn try_satisfy_bounds_propagates_nan() {
-            use crate::factory::TrySatisfyFiniteInterval;
-            let result = FiniteInterval::try_satisfy_bounds(
-                FiniteBound::closed(f32::NAN),
-                FiniteBound::closed(0.0),
-            );
-            assert!(matches!(result, Err(Error::InvalidBoundLimit)));
         }
 
         #[test]
@@ -641,15 +621,6 @@ mod tests {
         use super::*;
 
         #[test]
-        #[should_panic(expected = "NaN check")]
-        fn finite_interval_new_assume_valid_panics_on_nan() {
-            let _ = FiniteInterval::new_assume_valid(
-                FiniteBound::closed(f32::NAN),
-                FiniteBound::closed(0.0),
-            );
-        }
-
-        #[test]
         #[should_panic(expected = "lhs <= rhs")]
         fn finite_interval_new_assume_valid_panics_on_crossed() {
             let _ = FiniteInterval::new_assume_valid(
@@ -668,12 +639,6 @@ mod tests {
                 FiniteBound::open(5.0_f32),
                 FiniteBound::open(5.0_f32),
             );
-        }
-
-        #[test]
-        #[should_panic(expected = "NaN check")]
-        fn half_interval_new_assume_valid_panics_on_nan() {
-            let _ = HalfInterval::new_assume_valid(Side::Left, FiniteBound::closed(f32::NAN));
         }
     }
 

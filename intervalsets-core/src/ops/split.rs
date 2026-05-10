@@ -1,5 +1,6 @@
 use super::Contains;
 use crate::bound::{FiniteBound, Side};
+use crate::error::Error;
 use crate::factory::TrySatisfyFiniteInterval;
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
@@ -44,11 +45,20 @@ pub trait Split<T>: Sized {
     fn try_split(self, at: T, closed: Side) -> Result<(Self::Output, Self::Output), Self::Error>;
 }
 
-fn split_bounds_at<T: Clone>(at: T, closed: Side) -> (FiniteBound<T>, FiniteBound<T>) {
-    match closed {
-        Side::Left => (FiniteBound::closed(at.clone()), FiniteBound::open(at)),
-        Side::Right => (FiniteBound::open(at.clone()), FiniteBound::closed(at)),
-    }
+fn split_bounds_at<T: Element + Clone>(
+    at: T,
+    closed: Side,
+) -> Result<(FiniteBound<T>, FiniteBound<T>), Error> {
+    Ok(match closed {
+        Side::Left => (
+            FiniteBound::try_closed(at.clone())?,
+            FiniteBound::try_open(at)?,
+        ),
+        Side::Right => (
+            FiniteBound::try_open(at.clone())?,
+            FiniteBound::try_closed(at)?,
+        ),
+    })
 }
 
 impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
@@ -70,7 +80,7 @@ impl<T: Element + Clone> Split<T> for FiniteInterval<T> {
             return Ok((repacked, Self::empty()));
         }
 
-        let (lhs_max, rhs_min) = split_bounds_at(at, closed);
+        let (lhs_max, rhs_min) = split_bounds_at(at, closed)?;
         // try_satisfy_bounds: splitting at a boundary value with the
         // boundary kind on one side produces a degenerate empty side
         // (e.g. [min, min) when closed = Right and at = min). That's
@@ -93,7 +103,7 @@ impl<T: Element + Clone> Split<T> for HalfInterval<T> {
             };
         }
 
-        let (lhs_max, rhs_min) = split_bounds_at(at, closed);
+        let (lhs_max, rhs_min) = split_bounds_at(at, closed)?;
         let (side, bound) = self.into_raw();
         // try_satisfy_bounds: a split exactly at the half-bounded interval's
         // own boundary produces a degenerate empty side, which is the
@@ -124,7 +134,7 @@ impl<T: Element + Clone> Split<T> for EnumInterval<T> {
                 .map(|(l, r)| (l.into(), r.into())),
             Self::Half(inner) => inner.try_split(at, closed),
             Self::Unbounded => {
-                let (lhs_max, rhs_min) = split_bounds_at(at, closed);
+                let (lhs_max, rhs_min) = split_bounds_at(at, closed)?;
                 let left = HalfInterval::try_new(Side::Right, lhs_max)?;
                 let right = HalfInterval::try_new(Side::Left, rhs_min)?;
                 Ok((left.into(), right.into()))
@@ -140,7 +150,10 @@ impl<T: Element + Clone> Split<T> for EnumInterval<T> {
             }
             Self::Half(inner) => inner.split(at, closed),
             Self::Unbounded => {
-                let (l_max, r_min) = split_bounds_at(at, closed);
+                // `split` is the panicking sibling of `try_split`; an
+                // invalid `at` is documented to panic. `.unwrap()` is
+                // the design, not an "should never fail" claim.
+                let (l_max, r_min) = split_bounds_at(at, closed).unwrap();
                 (
                     HalfInterval::right(l_max).into(),
                     HalfInterval::left(r_min).into(),

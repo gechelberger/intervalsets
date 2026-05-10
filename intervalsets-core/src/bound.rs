@@ -116,38 +116,30 @@ impl BoundType {
 /// a function of this bound **and** which side of the interval it constrains.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawFiniteBound<T>"))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
 pub struct FiniteBound<T>(BoundType, T);
 
+/// Wire-format mirror of [`FiniteBound`] used to drive validation
+/// during `Deserialize`. Identical layout, no invariants.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "FiniteBound")]
+struct RawFiniteBound<T>(BoundType, T);
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawFiniteBound<T>> for FiniteBound<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawFiniteBound<T>) -> Result<Self, Self::Error> {
+        Self::try_new(raw.0, raw.1)
+    }
+}
+
 impl<T> FiniteBound<T> {
-    /// Creates a new [`FiniteBound`] without running
-    /// [`Element::validate`](crate::numeric::Element::validate).
-    ///
-    /// This is the Tier-4 bypass: `const`, no bound on `T`, no
-    /// checking. Caller is responsible for ensuring `limit` is a
-    /// valid finite-bound value for `T` (i.e. `T::validate(limit)`
-    /// would return `Some`). Violating this yields incorrect results
-    /// downstream but no undefined behavior.
-    ///
-    /// Internal hot paths and `ConstZero` / `ConstOne` impls use
-    /// this; user code should prefer
-    /// [`try_new`](Self::try_new) — or the factory layer on the
-    /// containing interval type — to get validation.
-    pub const fn new(bound_type: BoundType, limit: T) -> Self {
-        Self(bound_type, limit)
-    }
-
-    /// Creates a new closed `FiniteBound` constrained at `limit`,
-    /// without validation. See [`new`](Self::new) for the contract.
-    pub const fn closed(limit: T) -> Self {
-        Self(BoundType::Closed, limit)
-    }
-
-    /// Creates a new open `FiniteBound` constrained at `limit`,
-    /// without validation. See [`new`](Self::new) for the contract.
-    pub const fn open(limit: T) -> Self {
-        Self(BoundType::Open, limit)
-    }
-
     /// Unpack a [`FiniteBound`] into ([`BoundType`], `T`)
     pub fn into_raw(self) -> (BoundType, T) {
         (self.0, self.1)
@@ -155,7 +147,7 @@ impl<T> FiniteBound<T> {
 
     /// Converts `&FiniteBound<T>` to `FiniteBound<&T>`.
     pub fn as_ref(&self) -> FiniteBound<&T> {
-        FiniteBound::new(self.0, &self.1)
+        FiniteBound(self.0, &self.1)
     }
 
     /// Creates a `FiniteOrdBound<&T>` view of this `FiniteBound<T>`.
@@ -454,7 +446,7 @@ impl<T: Element> FiniteBound<T> {
         match self.0 {
             BoundType::Open => match self.value().try_adjacent(side.flip()) {
                 None => self,
-                Some(new_limit) => Self::closed(new_limit),
+                Some(new_limit) => Self(BoundType::Closed, new_limit),
             },
             BoundType::Closed => self,
         }
@@ -493,24 +485,78 @@ impl<T: Element> FiniteBound<T> {
     pub fn try_open(limit: T) -> Result<Self, Error> {
         Self::try_new(BoundType::Open, limit)
     }
+
+    /// Panicking constructor. Equivalent to
+    /// [`try_new`](Self::try_new)`.unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is rejected by [`Element::validate`]
+    /// (e.g. `NaN` or `±INF` on library float types).
+    #[inline]
+    pub fn new(bound_type: BoundType, limit: T) -> Self {
+        Self::try_new(bound_type, limit).unwrap()
+    }
+
+    /// Panicking constructor for a closed bound. Equivalent to
+    /// [`try_closed`](Self::try_closed)`.unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is rejected by [`Element::validate`].
+    #[inline]
+    pub fn closed(limit: T) -> Self {
+        Self::try_closed(limit).unwrap()
+    }
+
+    /// Panicking constructor for an open bound. Equivalent to
+    /// [`try_open`](Self::try_open)`.unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is rejected by [`Element::validate`].
+    #[inline]
+    pub fn open(limit: T) -> Self {
+        Self::try_open(limit).unwrap()
+    }
 }
 
 mod math {
-    use core::ops::{Add, Mul};
+    use core::ops::{Add, Mul, Sub};
 
     use num_traits::{ConstOne, ConstZero, One, Zero};
 
     use super::{BoundType, FiniteBound};
+    use crate::numeric::Element;
 
-    impl<T: Add> Add for FiniteBound<T> {
+    impl<T: Add> Add for FiniteBound<T>
+    where
+        <T as Add>::Output: Element,
+    {
         type Output = FiniteBound<<T as Add>::Output>;
 
         fn add(self, rhs: Self) -> Self::Output {
-            FiniteBound::new(self.0.combine(rhs.0), self.1 + rhs.1)
+            FiniteBound::try_new(self.0.combine(rhs.0), self.1 + rhs.1).expect("infallible")
         }
     }
 
-    impl<T: Mul + Zero> Mul for FiniteBound<T> {
+    impl<T: Sub> Sub for FiniteBound<T>
+    where
+        <T as Sub>::Output: Element,
+    {
+        type Output = FiniteBound<<T as Sub>::Output>;
+
+        fn sub(self, rhs: Self) -> Self::Output {
+            let (l_kind, l_val) = self.into_raw();
+            let (r_kind, r_val) = rhs.into_raw();
+            FiniteBound::try_new(l_kind.combine(r_kind), l_val - r_val).expect("infallible")
+        }
+    }
+
+    impl<T: Mul + Zero> Mul for FiniteBound<T>
+    where
+        <T as Mul>::Output: Element,
+    {
         type Output = FiniteBound<<T as Mul>::Output>;
 
         fn mul(self, rhs: Self) -> Self::Output {
@@ -524,13 +570,16 @@ mod math {
             } else {
                 self.0.combine(rhs.0)
             };
-            FiniteBound::new(kind, self.1 * rhs.1)
+            FiniteBound::try_new(kind, self.1 * rhs.1).expect("infallible")
         }
     }
 
-    impl<T: Zero> Zero for FiniteBound<T> {
+    impl<T: Element + Zero> Zero for FiniteBound<T>
+    where
+        <T as core::ops::Add>::Output: Element,
+    {
         fn zero() -> Self {
-            FiniteBound::closed(T::zero())
+            FiniteBound(BoundType::Closed, T::zero())
         }
 
         fn is_zero(&self) -> bool {
@@ -540,19 +589,29 @@ mod math {
 
     // One requires Self: Mul<Self, Output = Self>; the FiniteBound Mul
     // impl now requires T: Zero (for Closed(0) absorption), so the One
-    // and ConstOne impls pick up T: Zero too.
-    impl<T: One + Zero + PartialEq> One for FiniteBound<T> {
+    // and ConstOne impls pick up T: Zero too. T: Element is required
+    // by the Mul impl's `<T as Mul>::Output: Element` bound.
+    impl<T: Element + One + Zero + PartialEq> One for FiniteBound<T>
+    where
+        <T as Mul>::Output: Element,
+    {
         fn one() -> Self {
-            FiniteBound::closed(T::one())
+            FiniteBound(BoundType::Closed, T::one())
         }
     }
 
-    impl<T: ConstZero> ConstZero for FiniteBound<T> {
-        const ZERO: Self = FiniteBound::closed(T::ZERO);
+    impl<T: Element + ConstZero> ConstZero for FiniteBound<T>
+    where
+        <T as core::ops::Add>::Output: Element,
+    {
+        const ZERO: Self = FiniteBound(BoundType::Closed, T::ZERO);
     }
 
-    impl<T: ConstOne + Zero + PartialEq> ConstOne for FiniteBound<T> {
-        const ONE: Self = FiniteBound::closed(T::ONE);
+    impl<T: Element + ConstOne + Zero + PartialEq> ConstOne for FiniteBound<T>
+    where
+        <T as Mul>::Output: Element,
+    {
+        const ONE: Self = FiniteBound(BoundType::Closed, T::ONE);
     }
 
     #[cfg(test)]
@@ -915,6 +974,21 @@ pub mod ord {
                     Ok(Self::new_assume_valid(left, right))
                 }
             }
+        }
+    }
+
+    impl From<FiniteOrdBoundKind> for BoundType {
+        fn from(value: FiniteOrdBoundKind) -> Self {
+            match value {
+                FiniteOrdBoundKind::Closed => BoundType::Closed,
+                FiniteOrdBoundKind::LeftOpen | FiniteOrdBoundKind::RightOpen => BoundType::Open,
+            }
+        }
+    }
+
+    impl<T> From<FiniteOrdBound<T>> for FiniteBound<T> {
+        fn from(value: FiniteOrdBound<T>) -> Self {
+            FiniteBound(BoundType::from(value.1), value.0)
         }
     }
 }

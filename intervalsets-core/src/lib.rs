@@ -171,12 +171,12 @@
 //! * `NAN` is not part of the default ordering, though there is a `total_cmp`
 //!   available now.
 //! * rounding errors can cause issues with testing values near a set bound.
-//! * `±INF` and `NaN` are rejected at the validating
-//!   construction chokepoint
-//!   ([`FiniteBound::try_new`](crate::bound::FiniteBound::try_new) and
-//!   every factory path that funnels through it). The Tier-4 bypass
-//!   constructors ([`FiniteBound::new`](crate::bound::FiniteBound::new),
-//!   `closed`, `open`) accept them silently — wrong answer, never UB.
+//! * `±INF` and `NaN` are rejected at
+//!   [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new)
+//!   (and the `try_closed` / `try_open` aliases) — the only
+//!   construction path. The panicking convenience ctors
+//!   `FiniteBound::new` / `closed` / `open` delegate to `try_new`
+//!   and panic on rejection. There is no validation bypass.
 //!
 //! Sometimes, floats are still the right tool for the job, and it is left to the
 //! user to choose the right approach for the given problem. Fixed precision

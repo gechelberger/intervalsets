@@ -185,16 +185,6 @@ mod tests {
     // tests in `sets.rs`.
     #[cfg(not(debug_assertions))]
     #[test]
-    fn test_try_category_nan() {
-        let bad = FiniteInterval::new_assume_valid(
-            FiniteBound::closed(f32::NAN),
-            FiniteBound::closed(0.0),
-        );
-        assert!(matches!(bad.try_category(), Err(Error::InvalidBoundLimit)));
-    }
-
-    #[cfg(not(debug_assertions))]
-    #[test]
     fn test_try_category_invariant_violation() {
         let bad =
             FiniteInterval::new_assume_valid(FiniteBound::closed(0i32), FiniteBound::open(0i32));

@@ -24,7 +24,7 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// let x = FiniteInterval::closed(0, 10);
 /// assert_eq!(x.with_left_closed(5), [5, 10].into());
 /// ```
-pub trait Rebound<T>: Sized {
+pub trait Rebound<T: Element>: Sized {
     /// The concrete type of `Set`` to create when replacing bounds.
     type Output;
     type Error: core::error::Error;

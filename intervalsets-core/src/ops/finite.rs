@@ -60,12 +60,14 @@ impl<T: Element + num_traits::Bounded> IntoFinite for HalfInterval<T> {
         // satisfiability against the saturating closed bound.
         let (side, bound) = self.into_raw();
         match side {
-            Side::Left => {
-                super::intersection::from_normed_pair(bound, FiniteBound::closed(T::max_value()))
-            }
-            Side::Right => {
-                super::intersection::from_normed_pair(FiniteBound::closed(T::min_value()), bound)
-            }
+            Side::Left => super::intersection::from_normed_pair(
+                bound,
+                FiniteBound::try_closed(T::max_value()).expect("infallible"),
+            ),
+            Side::Right => super::intersection::from_normed_pair(
+                FiniteBound::try_closed(T::min_value()).expect("infallible"),
+                bound,
+            ),
         }
     }
 }
@@ -79,8 +81,8 @@ impl<T: Element + num_traits::Bounded> IntoFinite for EnumInterval<T> {
             Self::Finite(inner) => inner.into_finite(),
             Self::Half(inner) => inner.into_finite(),
             Self::Unbounded => FiniteInterval::new_assume_valid(
-                FiniteBound::closed(T::min_value()),
-                FiniteBound::closed(T::max_value()),
+                FiniteBound::try_closed(T::min_value()).expect("infallible"),
+                FiniteBound::try_closed(T::max_value()).expect("infallible"),
             ),
         }
     }

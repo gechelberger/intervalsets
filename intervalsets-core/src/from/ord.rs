@@ -1,23 +1,8 @@
-use crate::bound::ord::{FiniteOrdBound, FiniteOrdBoundKind, OrdBound, OrdBoundPair};
-use crate::bound::{BoundType, FiniteBound, Side};
+use crate::bound::ord::{OrdBound, OrdBoundPair};
+use crate::bound::{FiniteBound, Side};
 use crate::error::Error;
 use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
-
-impl From<FiniteOrdBoundKind> for BoundType {
-    fn from(value: FiniteOrdBoundKind) -> Self {
-        match value {
-            FiniteOrdBoundKind::Closed => BoundType::Closed,
-            FiniteOrdBoundKind::LeftOpen | FiniteOrdBoundKind::RightOpen => BoundType::Open,
-        }
-    }
-}
-
-impl<T> From<FiniteOrdBound<T>> for FiniteBound<T> {
-    fn from(value: FiniteOrdBound<T>) -> Self {
-        Self::new(BoundType::from(value.1), value.0)
-    }
-}
 
 impl<T: Element> TryFrom<OrdBoundPair<T>> for EnumInterval<T> {
     type Error = Error;

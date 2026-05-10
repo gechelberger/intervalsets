@@ -30,9 +30,13 @@ impl Arbitrary for BoundType {
     }
 }
 
-impl<T: Clone + Arbitrary> Arbitrary for FiniteBound<T> {
+impl<T: Element + Clone + Arbitrary> Arbitrary for FiniteBound<T> {
     fn arbitrary(g: &mut Gen) -> Self {
-        FiniteBound::new(BoundType::arbitrary(g), T::arbitrary(g))
+        loop {
+            if let Ok(b) = FiniteBound::try_new(BoundType::arbitrary(g), T::arbitrary(g)) {
+                return b;
+            }
+        }
     }
 }
 

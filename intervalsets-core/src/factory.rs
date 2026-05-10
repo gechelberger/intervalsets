@@ -125,12 +125,11 @@ pub trait EmptyFactory<T>: Factory<T> {
 pub trait TryFiniteFactory<T: Element>: Factory<T> {
     /// Creates a new finite interval. **Strict** — crossed bounds
     /// produce `Err(InvalidBoundPair)`. On success the result is a
-    /// non-empty `Bounded` pair. Reaching this method via the factory
-    /// `try_*` defaults guarantees both bounds have already been
-    /// validated by `Element::validate`; direct callers passing
-    /// `FiniteBound::closed(NaN)` via the Tier-4 bypass surface
-    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
-    /// from the underlying `try_cmp`.
+    /// non-empty `Bounded` pair. Both `FiniteBound` inputs are already
+    /// validated — they can only have been built via
+    /// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new)
+    /// (or its `try_closed` / `try_open` aliases, or the panicking
+    /// convenience ctors that delegate to them).
     ///
     /// For coercive semantics (crossed bounds collapse to `Empty`),
     /// use
@@ -348,12 +347,11 @@ impl<T: Element, F: TryFiniteFactory<T>> FiniteFactory<T> for F {
 pub trait TrySatisfyFiniteInterval<T: Element>: Factory<T> {
     /// Builds the finite interval whose elements satisfy both
     /// `lhs` and `rhs`. **Coercive** — crossed bounds (or open-open
-    /// at the same point) collapse to `Ok(Empty)`. The only `Err`
-    /// path is
-    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
-    /// from a `FiniteBound` whose limit fails `Element::validate`
-    /// (e.g. `NaN` reaching this method via the Tier-4 bypass
-    /// `FiniteBound::closed`).
+    /// at the same point) collapse to `Ok(Empty)`. Bound inputs are
+    /// already validated (no construction path bypasses
+    /// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new)),
+    /// so this method itself is infallible on well-formed
+    /// `FiniteBound` inputs.
     fn try_satisfy_bounds(
         lhs: FiniteBound<T>,
         rhs: FiniteBound<T>,
@@ -642,12 +640,5 @@ mod tests {
             FiniteInterval::satisfy_bounds(FiniteBound::closed(0), FiniteBound::closed(10)),
             FiniteInterval::closed(0, 10)
         );
-
-        // NaN still errors via InvalidBoundLimit.
-        assert!(EnumInterval::try_satisfy_bounds(
-            FiniteBound::closed(f32::NAN),
-            FiniteBound::closed(0.0)
-        )
-        .is_err());
     }
 }

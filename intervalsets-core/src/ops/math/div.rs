@@ -203,11 +203,11 @@ mod impls {
     #[inline(always)]
     fn div_assume_nonzero<T>(numer: FB<T>, denom: FB<T>) -> FB<T>
     where
-        T: Div<Output = T>,
+        T: Div<Output = T> + Element,
     {
         let (nkind, nval) = numer.into_raw();
         let (dkind, dval) = denom.into_raw();
-        FB::new(nkind.combine(dkind), nval / dval)
+        FB::try_new(nkind.combine(dkind), nval / dval).expect("infallible")
     }
 
     /// anything divided by the zero singleton set.
@@ -224,8 +224,8 @@ mod impls {
 
     #[inline(always)]
     fn all_except_zero<T: Zero + Element>() -> Result<MaybeDisjoint<T>, Error> {
-        let neg = EI::try_right_bounded(FB::open(T::zero()))?;
-        let pos = EI::try_left_bounded(FB::open(T::zero()))?;
+        let neg = EI::try_right_bounded(FB::try_open(T::zero()).expect("infallible"))?;
+        let pos = EI::try_left_bounded(FB::try_open(T::zero()).expect("infallible"))?;
         Ok((neg, pos).into())
     }
 
@@ -368,7 +368,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::open(T::zero());
+                let zero = FB::try_open(T::zero()).expect("infallible");
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound);
 
                 let pair = match cd_side {
@@ -391,7 +391,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::open(T::zero());
+                let zero = FB::try_open(T::zero()).expect("infallible");
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound);
 
                 let pair = match cd_side {
@@ -472,7 +472,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::open(T::zero());
+                let zero = FB::try_open(T::zero()).expect("infallible");
                 let non_zero = div_assume_nonzero(a, cd_bound);
 
                 let pair = match cd_side {
@@ -497,7 +497,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::open(T::zero());
+                let zero = FB::try_open(T::zero()).expect("infallible");
                 let non_zero = div_assume_nonzero(b, cd_bound);
 
                 let pair = match cd_side {
@@ -609,10 +609,10 @@ mod impls {
     /// The new bound is always zero, but open/closed depending
     /// on whether the original interval contained zero.
     #[inline(always)]
-    fn div_inf_bound<T: Zero>(numer: MaybeZero) -> FB<T> {
+    fn div_inf_bound<T: Element + Zero>(numer: MaybeZero) -> FB<T> {
         match numer {
-            MaybeZero::Zero => FB::closed(T::zero()),
-            MaybeZero::NonZero => FB::open(T::zero()),
+            MaybeZero::Zero => FB::try_closed(T::zero()).expect("infallible"),
+            MaybeZero::NonZero => FB::try_open(T::zero()).expect("infallible"),
         }
     }
 
@@ -685,7 +685,7 @@ mod impls {
         T: Div<Output = T> + Element + Zero,
     {
         match nz {
-            MaybeZero::Zero => FB::closed(T::zero()),
+            MaybeZero::Zero => FB::try_closed(T::zero()).expect("infallible"),
             MaybeZero::NonZero => div_assume_nonzero(numer, denom),
         }
     }

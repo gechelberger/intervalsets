@@ -1,21 +1,14 @@
 use core::ops::Sub;
 
 use super::TrySub;
-use crate::bound::FiniteBound;
 use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
-impl<T: Sub> Sub for FiniteBound<T> {
-    type Output = FiniteBound<<T as Sub>::Output>;
-    fn sub(self, rhs: Self) -> Self::Output {
-        let (l_kind, l_val) = self.into_raw();
-        let (r_kind, r_val) = rhs.into_raw();
-        FiniteBound::new(l_kind.combine(r_kind), l_val - r_val)
-    }
-}
+// `Sub for FiniteBound<T>` lives in `crate::bound`'s `math` submodule
+// alongside `Add` and `Mul`.
 
 // The infix Sub operators below all require T: Ord (and the arithmetic
 // output type to also be Ord). For Ord types, partial_cmp on bounds is
