@@ -9,6 +9,58 @@ use crate::numeric::Element;
 use crate::sets::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::sets::{FiniteInterval, HalfInterval};
 
+/// Tier-3 helper: build a `FiniteInterval` from a candidate bound
+/// pair whose per-bound invariants are already satisfied (taken from
+/// validated intervals), evaluating the pair-level satisfiability
+/// question. If `lhs` and `rhs` describe a non-empty set, return the
+/// corresponding `Bounded`; otherwise return `Empty`.
+///
+/// # Preconditions
+///
+/// - **I2 (limit-valid):** each bound's value lies in a totally-
+///   ordered subdomain (no NaN). Tripped by `debug_assert!`.
+/// - **I4 (discrete-normalized):** for discrete `T`, each bound is
+///   already in closed form. Tripped by `debug_assert!` per bound.
+///
+/// I5 (ordered) is the *question* this helper answers, not a
+/// precondition.
+///
+/// Violating the preconditions yields incorrect results but no
+/// undefined behavior; release builds do not check them.
+///
+/// # Visibility
+///
+/// `pub(super)` so siblings under [`crate::ops`] (currently
+/// `intersection` and `finite::IntoFinite`) can reach it without
+/// re-exposing a Tier-3 inherent on `FiniteInterval`. A public
+/// inherent proved to be a misuse temptation for callers who weren't
+/// actually working with bounds from validated intervals.
+#[inline]
+pub(super) fn from_normed_pair<T: Element>(
+    lhs: FiniteBound<T>,
+    rhs: FiniteBound<T>,
+) -> FiniteInterval<T> {
+    debug_assert!(
+        lhs.value().partial_cmp(rhs.value()).is_some(),
+        "from_normed_pair: bounds must be comparable (NaN check)"
+    );
+    debug_assert!(
+        lhs.is_closed() || lhs.value().try_adjacent(Side::Right).is_none(),
+        "from_normed_pair: lhs must be discrete-normalized to closed"
+    );
+    debug_assert!(
+        rhs.is_closed() || rhs.value().try_adjacent(Side::Left).is_none(),
+        "from_normed_pair: rhs must be discrete-normalized to closed"
+    );
+    if lhs.value() < rhs.value()
+        || (lhs.value() == rhs.value() && lhs.is_closed() && rhs.is_closed())
+    {
+        FiniteInterval::new_assume_valid(lhs, rhs)
+    } else {
+        FiniteInterval::empty()
+    }
+}
+
 /// The intersection of two sets.
 ///
 /// ```text
@@ -56,7 +108,7 @@ impl<T: Element> Intersection<Self> for FiniteInterval<T> {
         };
 
         // self and rhs already satisfy invariants -> bounds are normalized & comparable
-        FiniteInterval::new_assume_normed(
+        from_normed_pair(
             FiniteBound::take_max_assume_valid(Left, lhs_min, rhs_min),
             FiniteBound::take_min_assume_valid(Right, lhs_max, rhs_max),
         )
@@ -77,7 +129,7 @@ impl<T: Element + Clone> Intersection<Self> for &FiniteInterval<T> {
         };
 
         // self and rhs already satisfy invariants -> bounds are normalized & comparable
-        FiniteInterval::new_assume_normed(
+        from_normed_pair(
             FiniteBound::max_assume_valid(Left, lhs_min, rhs_min).clone(),
             FiniteBound::min_assume_valid(Right, lhs_max, rhs_max).clone(),
         )
@@ -105,8 +157,8 @@ impl<T: Element> Intersection<HalfInterval<T>> for FiniteInterval<T> {
             let (rhs_side, rhs_bound) = rhs.into_raw();
             // self and rhs already satisfy invariants
             match rhs_side {
-                Left => FiniteInterval::new_assume_normed(rhs_bound, lhs_max),
-                Right => FiniteInterval::new_assume_normed(lhs_min, rhs_bound),
+                Left => from_normed_pair(rhs_bound, lhs_max),
+                Right => from_normed_pair(lhs_min, rhs_bound),
             }
         } else {
             Self::Output::empty()
@@ -134,12 +186,8 @@ impl<T: Element + Clone> Intersection<&HalfInterval<T>> for &FiniteInterval<T> {
         } else if n == 1 {
             // self and rhs already satisfy invariants
             match rhs.side() {
-                Left => {
-                    FiniteInterval::new_assume_normed(rhs.finite_bound().clone(), lhs_max.clone())
-                }
-                Right => {
-                    FiniteInterval::new_assume_normed(lhs_min.clone(), rhs.finite_bound().clone())
-                }
+                Left => from_normed_pair(rhs.finite_bound().clone(), lhs_max.clone()),
+                Right => from_normed_pair(lhs_min.clone(), rhs.finite_bound().clone()),
             }
         } else {
             Self::Output::empty()
@@ -164,8 +212,8 @@ impl<T: Element> Intersection<Self> for HalfInterval<T> {
 
             // self and rhs already satisfy invariants
             let finite = match lhs_side {
-                Side::Left => FiniteInterval::new_assume_normed(lhs_bound, rhs_bound),
-                Side::Right => FiniteInterval::new_assume_normed(rhs_bound, lhs_bound),
+                Side::Left => from_normed_pair(lhs_bound, rhs_bound),
+                Side::Right => from_normed_pair(rhs_bound, lhs_bound),
             };
 
             EnumInterval::from(finite)
@@ -190,8 +238,8 @@ impl<T: Element + Clone> Intersection<Self> for &HalfInterval<T> {
 
             // self and rhs already satisfy invariants
             let result = match self.side() {
-                Left => FiniteInterval::new_assume_normed(lhs, rhs),
-                Right => FiniteInterval::new_assume_normed(rhs, lhs),
+                Left => from_normed_pair(lhs, rhs),
+                Right => from_normed_pair(rhs, lhs),
             };
             Self::Output::from(result)
         } else {

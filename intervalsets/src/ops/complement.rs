@@ -72,7 +72,7 @@ mod test {
 
     #[quickcheck]
     fn test_set_complement_f32(a: f32, b: f32, c: f32) {
-        if f32::is_nan(a) || f32::is_nan(b) || f32::is_nan(c) {
+        if !a.is_finite() || !b.is_finite() || !c.is_finite() {
             return;
         }
 
@@ -89,6 +89,9 @@ mod test {
     fn check_complement_laws_f32(a: f32, b: f32) -> bool {
         if a.is_nan() || b.is_nan() || a.is_infinite() || b.is_infinite() {
             return true; // skip malformed inputs
+        }
+        if a > b {
+            return true;
         }
 
         let a = Interval::closed(a, b);

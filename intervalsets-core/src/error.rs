@@ -3,9 +3,6 @@ use core::convert::Infallible;
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[non_exhaustive]
 pub enum Error {
-    #[error(transparent)]
-    TotalOrderError(#[from] TotalOrderError),
-
     /// Bound-pair invariants violated. Covers two related conditions:
     ///
     /// 1. **Crossed bounds in a `FiniteInterval`** — `lhs > rhs` after
@@ -25,9 +22,35 @@ pub enum Error {
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
 
+    /// A bound's limit value was rejected as a valid bound limit.
+    /// Covers two related conditions:
+    ///
+    /// 1. **Validate rejection** — `Element::validate` returned `None`.
+    ///    Library float types reject `±INF` and `NaN` here; user types
+    ///    override to enforce their own predicate.
+    /// 2. **Comparison failure** — `partial_cmp` returned `None` (i.e.
+    ///    [`TotalOrderError`]) on a value that reached a `try_cmp`
+    ///    site. For library types this means NaN slipped past validate
+    ///    via the Tier-4 bypass; for user types with intrinsic partial
+    ///    order it can mean two individually-valid values are mutually
+    ///    incomparable — surface that condition by tightening
+    ///    `Element::validate` if it matters.
+    ///
+    /// The two contexts share this variant because the user-facing
+    /// answer is the same: "this value isn't a usable bound limit."
+    /// `From<TotalOrderError> for Error` produces this variant.
+    #[error("bound limit rejected (validate or partial_cmp failure)")]
+    InvalidBoundLimit,
+
     /// Arithmetic-on-bounds failure. Wraps [`MathError`].
     #[error(transparent)]
     Math(#[from] MathError),
+}
+
+impl From<TotalOrderError> for Error {
+    fn from(_: TotalOrderError) -> Self {
+        Error::InvalidBoundLimit
+    }
 }
 
 /// Arithmetic-on-bounds failure surfaced by value-level [`TryAdd`],

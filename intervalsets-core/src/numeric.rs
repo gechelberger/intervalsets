@@ -28,20 +28,26 @@
 //! behavior.
 //!
 //! * [`Element`]
-//! > The `Element` trait serves one purpose -- to distinguish between types
-//! > that represent **discrete** vs **continuous** data.
+//! > The `Element` trait serves two purposes:
 //! >
-//! > This allows us to do two important things:
-//! > 1. Normalize discrete sets so that there is only a single valid
-//! >    representations of each possible `Set`.
-//! >    eg. **[1, 9]** == (0, 10) == (0, 9] == [1, 10).
-//! > 2. Properly test the adjacency of sets (union / merge).
+//! > 1. **Distinguish discrete vs continuous data** via
+//! >    [`try_adjacent`](Element::try_adjacent). This lets the crate
+//! >    normalize discrete sets to a canonical bit-pattern (e.g.
+//! >    `[1, 9]` == `(0, 10)` == `(0, 9]` == `[1, 10)`) and test
+//! >    adjacency for union/merge. Continuous-type impls return `None`.
 //! >
-//! > The method [`try_adjacent`](Element::try_adjacent) is the
-//! > mechanism by which both of these goals is accomplished. Implementations
-//! > for **continuous** types should simply return None.
+//! > 2. **Validate (and optionally normalize) bound limits** via
+//! >    [`validate`](Element::validate). Library float types reject
+//! >    `±INF` and `NaN` here so that a `FiniteBound<f*>` is always a
+//! >    finite real number; user types override to enforce their own
+//! >    predicate. The default impl rejects only NaN-style
+//! >    `partial_cmp(&self) == None` values, which is correct for
+//! >    every discrete type with no intrinsic infinities.
 //! >
-//! > The macro [`continuous_domain_impl`](crate::continuous_domain_impl) exists for exactly this purpose.
+//! > The macros [`continuous_domain_impl`](crate::continuous_domain_impl)
+//! > and the integer-domain helpers wire `try_adjacent` for the common
+//! > shapes; `validate` is overridden separately when needed (see the
+//! > `Extended<T>` worked example below).
 //!
 //! * [`Zero`]
 //! > The `Zero` trait is necessary for the [`measure`](crate::measure) module,
@@ -77,6 +83,8 @@
 //!             Side::Right => Self(self.0 + 1),
 //!         })
 //!     }
+//!     // `validate` defaults to `partial_cmp(&self).is_some()` — fine for
+//!     // a discrete `i32`-backed type with no intrinsic infinities.
 //! }
 //!
 //! impl Zero for MyInt {
@@ -112,6 +120,48 @@
 //!     }
 //! }
 //! ```
+//!
+//! ## Worked example: `validate` override for a type with intrinsic infinities
+//!
+//! User types that carry their own `±INF` (or any other "comparable but
+//! not a valid finite-bound limit" value) override `validate` to reject
+//! them. Construction sites that funnel through
+//! [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new) then
+//! surface the rejection as
+//! [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit).
+//!
+//! ```
+//! use intervalsets_core::numeric::Element;
+//! use intervalsets_core::bound::Side;
+//!
+//! /// A toy "extended real" type that admits ±∞ as comparable values.
+//! #[derive(Copy, Clone, PartialEq, PartialOrd)]
+//! enum Extended {
+//!     NegInf,
+//!     Finite(i32),
+//!     PosInf,
+//! }
+//!
+//! impl Element for Extended {
+//!     fn try_adjacent(&self, side: Side) -> Option<Self> {
+//!         match (self, side) {
+//!             (Extended::Finite(n), Side::Left) => Some(Extended::Finite(n - 1)),
+//!             (Extended::Finite(n), Side::Right) => Some(Extended::Finite(n + 1)),
+//!             // ±∞ have no adjacent finite element in this model.
+//!             _ => None,
+//!         }
+//!     }
+//!
+//!     /// Reject the intrinsic infinities — they're comparable, but
+//!     /// they're not valid finite-bound limits.
+//!     fn validate(self) -> Option<Self> {
+//!         match self {
+//!             Extended::NegInf | Extended::PosInf => None,
+//!             Extended::Finite(_) => Some(self),
+//!         }
+//!     }
+//! }
+//! ```
 
 pub use num_traits::{CheckedSub, Zero};
 
@@ -143,6 +193,36 @@ use crate::bound::Side;
 /// bounds elsewhere are deliberate; that's the cost of the split.
 pub trait Element: Sized + PartialEq + PartialOrd {
     fn try_adjacent(&self, side: Side) -> Option<Self>;
+
+    /// Validate (and optionally normalize) `self` as a `FiniteBound` value.
+    ///
+    /// Returns `Some(v)` to accept `self` (where `v` is the canonical
+    /// form to store — possibly the same value), or `None` to reject.
+    /// A `None` return collapses to
+    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
+    /// at construction sites that funnel through
+    /// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new).
+    ///
+    /// # Default behavior
+    ///
+    /// The default impl delegates to `self.partial_cmp(&self)`, which
+    /// rejects values that are incomparable to themselves — i.e. NaN.
+    /// This preserves the historical NaN-rejection behavior the crate's
+    /// `try_cmp`-based validators relied on.
+    ///
+    /// # When to override
+    ///
+    /// Override when the type carries values that are comparable but
+    /// not valid finite bound limits — most commonly intrinsic
+    /// infinities. Library floats (`f32`, `f64`, `OrderedFloat<f*>`,
+    /// `NotNan<f*>`) override to reject non-finite values via
+    /// `is_finite()`. Discrete types (integers, `BigInt`/`BigUint`,
+    /// `Decimal`, `BigDecimal`, `Fixed*`) keep the default — none have
+    /// intrinsic infinities, and NaN is either nonexistent or already
+    /// covered by `partial_cmp`.
+    fn validate(self) -> Option<Self> {
+        self.partial_cmp(&self).map(|_| self)
+    }
 }
 
 /// Automatically implements [`Element`] for a type.
@@ -181,7 +261,28 @@ macro_rules! continuous_domain_impl {
     }
 }
 
-continuous_domain_impl!(f32, f64);
+// Native floats override `validate` to reject non-finite (NaN, ±INF).
+// `continuous_domain_impl!` is reserved for types whose default
+// `validate` is already correct (e.g. `BigDecimal`).
+macro_rules! float_domain_impl {
+    ($($t:ty), +) => {
+        $(
+            impl $crate::numeric::Element for $t {
+                #[inline]
+                fn try_adjacent(&self, _: $crate::bound::Side) -> Option<Self> {
+                    None
+                }
+
+                #[inline]
+                fn validate(self) -> Option<Self> {
+                    self.is_finite().then_some(self)
+                }
+            }
+        )+
+    }
+}
+
+float_domain_impl!(f32, f64);
 
 macro_rules! integer_domain_impl {
     ($($t:ty), +) => {

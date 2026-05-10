@@ -102,17 +102,47 @@
 //!
 //! # Invariants
 //!
-//! For an interval or set to be valid it must satisfy certain invariants.
-//! These are validated on construction and panic if violated (or return an
-//! error from the fallible (try_*) api).
+//! For an interval or set to be valid it must satisfy four invariants,
+//! which split into two pairs:
 //!
-//! 1. Discrete types are always normalized to closed form so that there is only
-//!    a single valid bit-pattern for each possible `Set`.
-//! 2. lhs <= rhs. All non-empty sets have a left and right hand side, though
-//!    they may be implicit and/or unbounded.
-//! 3. A FiniteBound's limit value must be a member of some set S ⊆ T where
-//!    T is the set of the underlying data-type which may be partially ordered,
-//!    but S has a strict total order. (S is a chain)
+//! ## Canonicalization (one bit-pattern per logical set)
+//!
+//! 1. **Empty-canonical** — the empty set is represented only by the
+//!    `Empty` discriminant; a `Bounded(lhs, rhs)` is never used to
+//!    encode it. Inputs that describe an empty set are either
+//!    rejected (strict constructors) or collapsed to `Empty`
+//!    (coercive constructors).
+//!
+//! 2. **Discrete-normalized** — for discrete `T` (those with
+//!    [`Element::try_adjacent`](crate::numeric::Element::try_adjacent)
+//!    returning `Some(_)`), bounds are stored in **closed** form.
+//!    `(0, 10)` for `i32` normalizes to `[1, 9]` so the same set has
+//!    a single valid bit-pattern.
+//!
+//! ## Well-formedness (the contained pair makes sense)
+//!
+//! 3. **Limit-valid** — each [`FiniteBound`](crate::bound::FiniteBound)'s
+//!    limit value must lie in some totally-ordered subdomain `S ⊆ T`.
+//!    `T` may be only partially ordered (`f32`, user types), but `S`
+//!    is a chain. Library float types reject `NaN` and `±INF`; user
+//!    types enforce their own predicate via
+//!    [`Element::validate`](crate::numeric::Element::validate).
+//!
+//! 4. **Ordered** — for any non-empty `Bounded(lhs, rhs)`,
+//!    `lhs.value() <= rhs.value()`, with equality requiring both
+//!    bounds to be `Closed` (an open-open pair at the same point
+//!    describes the empty set and collapses to `Empty` per (1)).
+//!
+//! Invariants are enforced on construction. Every public entry
+//! point is **strict by default**: malformed input — crossed bounds,
+//! invalid limit — produces `Err` on the fallible path and panic on
+//! the panicking sibling. Coercive ("crossed → `Empty`") behavior is
+//! reachable explicitly via the
+//! [`SatisfyFiniteInterval`](crate::factory::SatisfyFiniteInterval) /
+//! [`TrySatisfyFiniteInterval`](crate::factory::TrySatisfyFiniteInterval)
+//! trait family at the `FiniteBound`-taking layer. See
+//! "[Construction at boundaries](#construction-at-boundaries)" below
+//! for the full layered model.
 //!
 //! # Foot guns
 //!
@@ -141,8 +171,12 @@
 //! * `NAN` is not part of the default ordering, though there is a `total_cmp`
 //!   available now.
 //! * rounding errors can cause issues with testing values near a set bound.
-//! * `FiniteBound(f32::INFINITY)` and `FiniteBound(f32::NEG_INFINITY)`are both
-//!   valid syntax, though all manner of headache semantically speaking.
+//! * `±INF` and `NaN` are rejected at
+//!   [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new)
+//!   (and the `try_closed` / `try_open` aliases) — the only
+//!   construction path. The panicking convenience ctors
+//!   `FiniteBound::new` / `closed` / `open` delegate to `try_new`
+//!   and panic on rejection. There is no validation bypass.
 //!
 //! Sometimes, floats are still the right tool for the job, and it is left to the
 //! user to choose the right approach for the given problem. Fixed precision
@@ -168,13 +202,14 @@
 //! use intervalsets_core::prelude::*;
 //! use intervalsets_core::bound::FiniteBound;
 //!
-//! // The factory `open` / `try_open` are coercive: crossed bounds and
-//! // empty-by-construction inputs both produce empty silently.
-//! let x = FiniteInterval::open(1.0, 0.0);
-//! assert_eq!(x, FiniteInterval::empty());
+//! // Factory methods are strict: crossed bounds error / panic.
+//! let x = FiniteInterval::try_open(1.0, 0.0);
+//! assert!(x.is_err());
 //!
-//! let x = FiniteInterval::try_open(1.0, 0.0).unwrap();
-//! assert_eq!(x, FiniteInterval::empty());
+//! let result = std::panic::catch_unwind(|| {
+//!     FiniteInterval::open(1.0, 0.0);
+//! });
+//! assert!(result.is_err());
 //!
 //! // NaN panics on the panicking path, errors on the fallible path.
 //! let result = std::panic::catch_unwind(|| {
@@ -185,14 +220,13 @@
 //! let x = FiniteInterval::try_open(f32::NAN, 0.0);
 //! assert!(x.is_err());
 //!
-//! // The strict primitives (FiniteInterval::new / try_new) reject
-//! // crossed bounds outright. Use them when malformed input should be
-//! // a hard error rather than coerced.
-//! let x = FiniteInterval::try_new(
-//!     FiniteBound::closed(10),
-//!     FiniteBound::closed(0),
+//! // For coercive (crossed → Empty) semantics, use the
+//! // SatisfyFiniteInterval trait family at the FiniteBound layer:
+//! let x = FiniteInterval::satisfy_bounds(
+//!     FiniteBound::open(1.0),
+//!     FiniteBound::open(0.0),
 //! );
-//! assert!(x.is_err());
+//! assert_eq!(x, FiniteInterval::empty());
 //! ```
 //!
 //! Silent failures can still occur in operations that have a defensible
@@ -215,50 +249,65 @@
 //!
 //! # Construction at boundaries
 //!
-//! Construction comes in two flavors at the user-facing API surface:
-//! the **factory methods** (`Interval::open`, `try_closed`, etc.) are
-//! **coercive** — they treat crossed bounds and empty-by-construction
-//! inputs as `Empty`, only surfacing NaN as an error / panic. The
-//! **primitive constructors** ([`FiniteInterval::new`],
-//! [`FiniteInterval::try_new`]) are **strict** — they reject crossed
-//! bounds outright with `InvalidBoundPair`. The strict primitives are
-//! what `Deserialize` routes through (a well-formed serializer never
-//! legitimately produces crossed bounds, so an error signals malformed
-//! input); the coercive factories preserve ergonomics for the common
-//! "give me the interval these bounds describe; empty if they don't
-//! describe one" case.
+//! Construction is **strict by default at every public entry point**.
+//! `Interval::closed(10, 0)` panics; `Interval::try_closed(10, 0)`
+//! returns `Err(InvalidBoundPair)`. A typed value pair the user wrote
+//! is treated as a producer assertion that those values describe a
+//! real interval; silently degrading to `Empty` would mask producer
+//! bugs.
 //!
-//! In full, the constructors form a layered escape hatch:
+//! Coercive ("crossed → `Empty`") behavior is still available, but
+//! only through explicit opt-in:
+//!
+//! - The
+//!   [`SatisfyFiniteInterval`](crate::factory::SatisfyFiniteInterval)
+//!   /
+//!   [`TrySatisfyFiniteInterval`](crate::factory::TrySatisfyFiniteInterval)
+//!   trait family exposes `satisfy_bounds(FiniteBound, FiniteBound)`
+//!   / `try_satisfy_bounds(...)`. There is no value-taking surface;
+//!   the caller constructs `FiniteBound`s explicitly. This matches
+//!   the cases where coercion is the right answer (intersection-shape
+//!   ops, computed bound pairs that may legitimately have no
+//!   solution).
+//!
+//! - The `From<Range*>` family (`Range`, `RangeInclusive`, etc.)
+//!   keeps coercive semantics because Rust's standard library Range
+//!   types natively encode "empty when start ≥ end."
+//!
+//! In full, construction forms a layered model:
 //!
 //! - **Strict primitives** ([`FiniteInterval::new`],
-//!   [`FiniteInterval::try_new`]): reject anything that isn't a
-//!   well-formed `Bounded`. NaN → `Err(TotalOrderError)` (or panic).
-//!   Crossed bounds → `Err(InvalidBoundPair)` (or panic). Used by
-//!   `Deserialize`.
+//!   [`FiniteInterval::try_new`], [`HalfInterval::new`],
+//!   [`HalfInterval::try_new`]): reject anything that isn't a
+//!   well-formed pair. NaN / ±INF →
+//!   `Err(InvalidBoundLimit)` (or panic). Crossed bounds →
+//!   `Err(InvalidBoundPair)` (or panic). Used by `Deserialize`.
 //!
-//! - **Coercive factories**
-//!   (`Interval::open`/`closed`/etc, `try_open`/`try_closed`/etc,
-//!   [`FiniteInterval::try_new_or_empty`]): crossed bounds and
-//!   empty-by-construction inputs → `Empty`, NaN still propagates.
-//!   This is the user-facing default and the right choice for code
-//!   producing bounds via computation (Range conversions, rebound,
-//!   split-at-boundary).
+//! - **Strict factories** (Family A:
+//!   [`Factory`](crate::factory::Factory) /
+//!   [`TryFiniteFactory`](crate::factory::TryFiniteFactory) /
+//!   [`FiniteFactory`](crate::factory::FiniteFactory) and the
+//!   half-bounded factory traits): the user-facing surface for
+//!   ergonomic construction. `closed`, `open`, `try_closed`,
+//!   `try_open`, `fully_bounded`, `try_fully_bounded`, etc. All
+//!   strict. Built on top of the strict primitives.
 //!
-//! - **Pre-normalized** ([`FiniteInterval::new_assume_normed`],
-//!   [`FiniteInterval::try_new_assume_normed`]): caller has already
-//!   normalized; collapse-or-build. Used internally by intersection
-//!   and other ops where bounds are computed from already-valid
-//!   inputs and may legitimately cross.
+//! - **Coercive factory** (Family B:
+//!   [`SatisfyFiniteInterval`](crate::factory::SatisfyFiniteInterval) /
+//!   [`TrySatisfyFiniteInterval`](crate::factory::TrySatisfyFiniteInterval)):
+//!   one operation only — `satisfy_bounds` / `try_satisfy_bounds`
+//!   — at the `FiniteBound`-taking layer. Crossed bounds collapse
+//!   to `Empty`; only error path is invalid limit.
 //!
-//! - **Bypass** ([`FiniteInterval::new_assume_valid`]): caller
-//!   asserts the preconditions; no checking. `forbid(unsafe_code)`
-//!   means a violation produces incorrect results, never undefined
-//!   behavior.
+//! - **Bypass** ([`FiniteInterval::new_assume_valid`],
+//!   [`HalfInterval::new_assume_valid`]): `#[doc(hidden)]`. Caller
+//!   asserts all preconditions; no checking in release.
+//!   `forbid(unsafe_code)` means a violation produces incorrect
+//!   results, never undefined behavior.
 //!
-//! The two-tier split (strict primitives + coercive factories) keeps
-//! the strict semantic available where it matters — at trust
-//! boundaries — without forcing every ergonomic factory call to plumb
-//! a `Result` to handle "the bounds describe an empty set."
+//! Tier-3 ("pre-normalized": per-bound trusted, pair satisfiability
+//! is the question) has no public surface. Today's only consumer is
+//! intersection, which keeps a private free `fn` for the operation.
 //!
 //! # Deserialization
 //!
@@ -303,7 +352,6 @@
 //!
 //! # Diving Deeper
 //! * [Implement custom storage data types](numeric)
-//! * [Adapt unsupported data types with factory converters](factory::Converter)
 //!
 #![no_std]
 #![deny(bad_style)]

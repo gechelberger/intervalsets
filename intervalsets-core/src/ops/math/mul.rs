@@ -4,7 +4,7 @@ use super::TryMul;
 use crate::bound::FiniteBound;
 use crate::bound::Side::{Left, Right};
 use crate::error::Error;
-use crate::factory::{FiniteFactory, HalfBoundedFactory, UnboundedFactory};
+use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -218,10 +218,13 @@ mod impls {
     /// returns Open(5) which is wrong. Violating this yields incorrect
     /// results but no undefined behavior.
     #[inline(always)]
-    fn mul_assume_nonzero<T: Mul>(a: FB<T>, b: FB<T>) -> FB<<T as Mul>::Output> {
+    fn mul_assume_nonzero<T: Mul>(a: FB<T>, b: FB<T>) -> FB<<T as Mul>::Output>
+    where
+        <T as Mul>::Output: Element,
+    {
         let (akind, aval) = a.into_raw();
         let (bkind, bval) = b.into_raw();
-        FiniteBound::new(akind.combine(bkind), aval * bval)
+        FiniteBound::try_new(akind.combine(bkind), aval * bval).expect("infallible")
     }
 
     pub(super) fn finite_x_finite_by_cat<T>(

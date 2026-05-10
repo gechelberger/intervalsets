@@ -1,11 +1,15 @@
 //! Phase 3 — `Union::union` for all 9 (LHS, RHS) pairs at i64.
 
+use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::Union;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 fn make_finite() -> FiniteInterval<i64> {
-    FiniteInterval::<i64>::closed(kani::any(), kani::any())
+    FiniteInterval::<i64>::satisfy_bounds(
+        FiniteBound::closed(kani::any::<i64>()),
+        FiniteBound::closed(kani::any::<i64>()),
+    )
 }
 
 fn make_half() -> HalfInterval<i64> {
@@ -21,7 +25,10 @@ fn make_enum() -> EnumInterval<i64> {
     let kind: u8 = kani::any();
     kani::assume(kind < 5);
     match kind {
-        0 => EnumInterval::<i64>::closed(kani::any(), kani::any()),
+        0 => EnumInterval::<i64>::satisfy_bounds(
+            FiniteBound::closed(kani::any::<i64>()),
+            FiniteBound::closed(kani::any::<i64>()),
+        ),
         1 => EnumInterval::<i64>::closed_unbound(kani::any()),
         2 => EnumInterval::<i64>::unbound_closed(kani::any()),
         3 => EnumInterval::<i64>::unbounded(),

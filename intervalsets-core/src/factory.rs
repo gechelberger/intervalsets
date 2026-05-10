@@ -1,162 +1,100 @@
-//! Factories for intervals.
+//! Factory traits for constructing intervals.
 //!
-//! Factory types are not intended to be constructed. Rather, they provide
-//! associated functions to build intervals of an associated type and may
-//! coerce the input types for convenience using a generic [`Converter`].
+//! Each interval type ([`FiniteInterval`], [`HalfInterval`],
+//! [`EnumInterval`]) implements the relevant factory traits directly;
+//! there are no parameterized factory marker types. Pull the traits
+//! into scope via [`traits`] and call associated functions:
 //!
-//! The Factory traits are intended to provide a common
-//! interface for creating the full spectrum of possible
-//! intervals. [`EnumInterval`] itself is a factory using
-//! the [`Identity`] converter. Use [`EIFactory`] to supply
-//! a custom converter.
-//!
-//! Sometimes it is preferable for the underlying storage
-//! to be a wrapper or NewType. [`Converter`] provides a mechanism
-//! to do so with less boiler plate.
-//!
-//! # Examples
 //! ```
 //! use intervalsets_core::prelude::*;
+//!
 //! let x = EnumInterval::<u32>::closed(0, 10);
 //! let y = EnumInterval::<u32>::closed(5, 15);
 //! assert_eq!(x.intersection(y), EnumInterval::closed(5, 10));
 //! ```
 //!
-//! ```no-compile
+//! Wrapped storage types (`OrderedFloat<f32>`, `NotNan<f32>`,
+//! `BigDecimal`, etc.) are constructed at the call site and passed
+//! through directly:
+//!
+//! ```ignore
 //! use intervalsets_core::prelude::*;
-//! use intervalsets_core::factory::EIFactory;
 //! use ordered_float::NotNan;
 //!
-//! // explicit
 //! let x = EnumInterval::open(
 //!     NotNan::<f32>::new(0.0).unwrap(),
-//!     NotNan::<f32>::new(10.0).unwrap()
+//!     NotNan::<f32>::new(10.0).unwrap(),
 //! );
-//!
-//! // factory with converter
-//! type Fct = EIFactory<f32, NotNan<f32>>;
-//! let y = Fct::open(0.0, 10.0);
-//!
-//! assert_eq!(x, y);
 //! ```
+//!
+//! # Trait shape
+//!
+//! The fallible / panicking pair on `FiniteFactory` and
+//! `HalfBoundedFactory` is split: implementors only provide the
+//! fallible `Try*` half, and pick up the panicking surface for free
+//! via blanket impl. See [`TryFiniteFactory`] / [`FiniteFactory`].
+//!
+//! # Strict by default; coercive is opt-in
+//!
+//! Every public factory entry point is **strict** by default. Crossed
+//! bounds (`lhs > rhs` after normalization, or open-open at the same
+//! point) produce `Err(InvalidBoundPair)` on the fallible path and
+//! panic on the panicking path. Empty-set construction is reachable
+//! through [`EmptyFactory::empty`], not through silent coercion.
+//!
+//! For code that legitimately needs "compute the set satisfying these
+//! bounds, possibly empty" — intersection-shape ops, range
+//! conversions, split, rebound — the parallel
+//! [`SatisfyFiniteInterval`] / [`TrySatisfyFiniteInterval`] family
+//! exposes a single coercive operation
+//! ([`satisfy_bounds`](SatisfyFiniteInterval::satisfy_bounds) /
+//! [`try_satisfy_bounds`](TrySatisfyFiniteInterval::try_satisfy_bounds))
+//! at the `FiniteBound`-taking layer. There are no value-taking
+//! coercive conveniences; if the caller wants the coercive path,
+//! they construct `FiniteBound`s explicitly.
 
 use crate::bound::{FiniteBound, Side};
 use crate::error::Error;
 use crate::numeric::Element;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-/// Can be used instead of the prelude to pull in all factory traits.
+/// Re-exports for `use factory::traits::*` at user call sites.
 pub mod traits {
-    pub use super::{EmptyFactory, FiniteFactory, HalfBoundedFactory, UnboundedFactory};
+    pub use super::{
+        EmptyFactory, Factory, FiniteFactory, HalfBoundedFactory, SatisfyFiniteInterval,
+        TryFiniteFactory, TryHalfBoundedFactory, TrySatisfyFiniteInterval, UnboundedFactory,
+    };
 }
 
-/// Convert an arbitrary type to one implementing [`Element`].
+/// Shared base for every factory trait in this module. Declares
+/// `Output` and `Error` once so the `Empty` / `Unbounded` /
+/// `Try{Finite,HalfBounded}Factory` (and their panicking siblings)
+/// for a given `Self` all agree on what they produce and what error
+/// they surface.
 ///
-/// The [`Converter`] trait provides a mechanism to wrap
-/// or coerce a type into one that is compatible with interval bounds. This is
-/// particularly useful when working with 3rd party crates with unsupported types.
-///
-/// # Structure
-///
-/// ```text
-/// type UserDefinedFactory = IFactory<X, C<From = X>>;
-/// X: the type users will invoke factory methods with
-/// C: the type which implements Converter
-///     - C can implement converter for multiple From types
-///     - X must be one of those implementations
-/// C<X>::To: the underlying storage type for intervals created by the factory.
-/// ```
-///
-/// # Note
-///
-/// The type that this trait is implemented on is somewhat arbitrary and can
-/// therefore be confusing. It is structured as it is to provide flexibility in
-/// satisfying the [orphan rule](https://github.com/Ixrec/rust-orphan-rules).
-/// This allows users to easily create a converter for foreign types.
-///
-/// # Examples
-///
-/// ```
-/// use intervalsets_core::prelude::*;
-/// use intervalsets_core::factory::{EIFactory, Converter};
-///
-/// // Local type converter
-///
-/// #[derive(Copy, Clone)]
-/// struct Timestamp{
-///     seconds: u32,
-///     nanos: u32
-/// };
-/// let a = Timestamp{ seconds: 0, nanos: 0};
-/// let b = Timestamp{ seconds: 10, nanos: 0};
-///
-/// impl Converter<Timestamp> for u64 {
-///     type To = u64; // impl Element
-///     fn convert(value: Timestamp) -> Self::To {
-///         (value.seconds as u64) << 32 | value.nanos as u64
-///     }
-/// }
-///
-/// type Fct = EIFactory<Timestamp, u64>;
-/// let x = Fct::closed(a, b);
-///
-/// // Foreign types
-///
-/// struct CharCvt;
-///
-/// // char and u32 are not local so we can't implement Converter on either one.
-/// impl Converter<char> for CharCvt {
-///     type To = u32;
-///     fn convert(value: char) -> Self::To {
-///         value as u32
-///     }
-/// }
-///
-/// type Fct2 = EIFactory<char, CharCvt>;
-/// let x = Fct2::closed('a', 'z');
-/// assert_eq!(x.contains(&CharCvt::convert('c')), true);
-/// assert_eq!(x.contains(&CharCvt::convert('C')), false);
-/// assert_eq!(x.contains(&CharCvt::convert('0')), false);
-/// ```
-pub trait Converter<From> {
-    /// The underlying storage type.
-    type To: Element;
-
-    /// Creates a new value of the associated type.
-    fn convert(value: From) -> Self::To;
-}
-
-/// [`Identity`] is the default [`Converter`] implementation and is a NOOP.
-pub struct Identity;
-
-impl<T: Element> Converter<T> for Identity {
-    type To = T;
-
-    fn convert(value: T) -> Self::To {
-        value
-    }
-}
-
-/// Enforces a single production type for a factory.
-pub trait ConvertingFactory<T, C = Identity>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    /// The type that this factory produces
+/// The trait is unconstrained on `T` — `Empty` and `Unbounded` don't
+/// touch `T` values, so no `T: Element` bound belongs here. The
+/// `Try*` subtraits add the `T: Element` bound where it's actually
+/// load-bearing.
+pub trait Factory<T> {
+    /// The type that this factory produces.
     type Output;
 
-    /// The error type for fallible (try_*) factory fns
-    type Error;
+    /// The error type for fallible (`try_*`) factory fns. Required to
+    /// be `From<Error>` so factory methods can propagate
+    /// [`Error::InvalidBoundLimit`]
+    /// without per-method conversion plumbing.
+    type Error: From<Error>;
 }
 
+/// Panic message for the panicking convenience methods that funnel
+/// through `FiniteBound::try_new`. The backtrace already names the
+/// originating method; the message just states the cause.
+const REJECT_PANIC: &str = "bound limit rejected by Element::validate";
+
 /// Constructs the empty set.
-pub trait EmptyFactory<T, C>: ConvertingFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    /// Returns a new Empty Set
+pub trait EmptyFactory<T>: Factory<T> {
+    /// Returns a new empty set.
     ///
     /// {} = {x | x not in T }
     ///
@@ -171,26 +109,92 @@ where
     fn empty() -> Self::Output;
 }
 
-pub trait FiniteFactory<T, C>: ConvertingFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    /// Creates a new finite interval of the factory's associated type.
+/// Fallible finite-interval constructors. **Strict** — crossed
+/// bounds (or open-open at the same point) produce
+/// `Err(InvalidBoundPair)`. The implementor provides
+/// [`try_fully_bounded`](Self::try_fully_bounded); the value-taking
+/// defaults (`try_closed` / `try_open` / etc.) compose on it via
+/// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new), so
+/// validation runs at the bound layer for every entry point.
+///
+/// For coercive (crossed → `Empty`) semantics, see
+/// [`TrySatisfyFiniteInterval`].
+///
+/// The panicking sibling [`FiniteFactory`] has a blanket impl over
+/// every `TryFiniteFactory`.
+pub trait TryFiniteFactory<T: Element>: Factory<T> {
+    /// Creates a new finite interval. **Strict** — crossed bounds
+    /// produce `Err(InvalidBoundPair)`. On success the result is a
+    /// non-empty `Bounded` pair. Both `FiniteBound` inputs are already
+    /// validated — they can only have been built via
+    /// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new)
+    /// (or its `try_closed` / `try_open` aliases, or the panicking
+    /// convenience ctors that delegate to them).
     ///
-    /// **Coercive.** Bounds that describe an empty set (crossed values
-    /// after normalization, or open-at-the-same-point) silently produce
-    /// `Empty`. NaN / incomparable values panic.
+    /// For coercive semantics (crossed bounds collapse to `Empty`),
+    /// use
+    /// [`TrySatisfyFiniteInterval::try_satisfy_bounds`].
+    fn try_fully_bounded(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error>;
+
+    /// Fallible closed-closed finite interval, validating each limit
+    /// via [`FiniteBound::try_closed`]. Strict — crossed bounds error.
+    fn try_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        let lhs = FiniteBound::try_closed(lhs)?;
+        let rhs = FiniteBound::try_closed(rhs)?;
+        Self::try_fully_bounded(lhs, rhs)
+    }
+
+    /// Fallible open-open finite interval. Strict — crossed bounds error.
+    fn try_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        let lhs = FiniteBound::try_open(lhs)?;
+        let rhs = FiniteBound::try_open(rhs)?;
+        Self::try_fully_bounded(lhs, rhs)
+    }
+
+    /// Fallible open-closed finite interval. Strict — crossed bounds error.
+    fn try_open_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        let lhs = FiniteBound::try_open(lhs)?;
+        let rhs = FiniteBound::try_closed(rhs)?;
+        Self::try_fully_bounded(lhs, rhs)
+    }
+
+    /// Fallible closed-open finite interval. Strict — crossed bounds error.
+    fn try_closed_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
+        let lhs = FiniteBound::try_closed(lhs)?;
+        let rhs = FiniteBound::try_open(rhs)?;
+        Self::try_fully_bounded(lhs, rhs)
+    }
+
+    /// Fallible singleton (closed-closed at a single point).
+    fn try_singleton(value: T) -> Result<Self::Output, Self::Error>
+    where
+        T: Clone,
+    {
+        Self::try_closed(value.clone(), value)
+    }
+}
+
+/// Panicking sibling of [`TryFiniteFactory`]. Blanket-implemented for
+/// every type that implements `TryFiniteFactory` — implementors do
+/// not (and cannot) provide their own impl. Each method is the
+/// `try_*(...).unwrap_or_else(|_| panic!(REJECT_PANIC))` of its
+/// fallible counterpart.
+///
+/// **Strict** at every entry point. Crossed bounds panic; for
+/// coercive semantics, see [`SatisfyFiniteInterval`].
+pub trait FiniteFactory<T: Element>: TryFiniteFactory<T> {
+    /// Creates a new finite interval from a pair of bounds. **Strict**
+    /// — panics if the bounds are crossed
+    /// ([`Error::InvalidBoundPair`])
+    /// or if either limit is rejected by
+    /// [`Element::validate`]
+    /// ([`Error::InvalidBoundLimit`]).
     ///
-    /// For strict validation that distinguishes "crossed bounds" from
-    /// "bounds describe empty," call
-    /// [`FiniteInterval::try_new`](crate::sets::FiniteInterval::try_new)
-    /// directly.
-    ///
-    /// # Panics
-    ///
-    /// Panics if either bound is incomparable (e.g. NaN). Use
-    /// [`try_finite`](Self::try_finite) to surface that as an `Err`.
+    /// For coercive semantics (crossed → `Empty`), see
+    /// [`SatisfyFiniteInterval::satisfy_bounds`].
     ///
     /// # Example
     ///
@@ -198,41 +202,28 @@ where
     /// use intervalsets_core::prelude::*;
     ///
     /// let x = EnumInterval::open(0, 100);
-    /// let y = EnumInterval::finite(
+    /// let y = EnumInterval::fully_bounded(
     ///     x.right().unwrap().clone().flip(),
     ///     FiniteBound::closed(200)
     /// );
     /// assert_eq!(y, EnumInterval::closed(100, 200));
-    ///
-    /// // Same-point open bounds describe an empty set.
-    /// let x = EnumInterval::open(10, 10);
-    /// assert_eq!(x, EnumInterval::empty());
-    ///
-    /// // Crossed bounds also describe an empty set.
-    /// let x = EnumInterval::open(10, 0);
-    /// assert_eq!(x, EnumInterval::empty());
     /// ```
     ///
     /// ```should_panic
     /// use intervalsets_core::prelude::*;
-    /// // NaN still panics.
+    /// // Crossed bounds panic under strict semantics.
+    /// let _ = EnumInterval::open(10, 0);
+    /// ```
+    ///
+    /// ```should_panic
+    /// use intervalsets_core::prelude::*;
+    /// // NaN is rejected by `Element::validate` and panics.
     /// let _ = EnumInterval::closed(f32::NAN, 0.0);
     /// ```
-    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output;
+    fn fully_bounded(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output;
 
-    /// Creates a new finite interval. **Coercive** — bounds that
-    /// describe an empty set produce `Ok(Empty)`; only NaN /
-    /// incomparable values surface as `Err`.
-    ///
-    /// For strict validation that errors on crossed bounds, use
-    /// [`FiniteInterval::try_new`](crate::sets::FiniteInterval::try_new)
-    /// directly.
-    fn try_finite(
-        lhs: FiniteBound<C::To>,
-        rhs: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error>;
-
-    /// Returns a new closed finite interval or Empty
+    /// Returns a new closed finite interval. **Strict** — panics on
+    /// crossed bounds.
     ///
     /// [a, b] = { x in T | a <= x <= b }
     ///
@@ -247,51 +238,14 @@ where
     /// assert_eq!(x.contains(&20), true);
     /// assert_eq!(x.contains(&0), false);
     /// ```
-    fn closed(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::closed(C::convert(left)),
-            FiniteBound::closed(C::convert(right)),
-        )
-    }
+    fn closed(left: T, right: T) -> Self::Output;
 
-    fn try_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::closed(C::convert(lhs)),
-            FiniteBound::closed(C::convert(rhs)),
-        )
-    }
-
-    /// Creates a new singleton finite interval
+    /// Returns a new open finite interval. **Strict** — panics on
+    /// crossed bounds.
     ///
-    /// [a, a] = { x | x == a }
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// use intervalsets_core::prelude::*;
-    ///
-    /// let x = EnumInterval::singleton(10);
-    /// assert_eq!(x.contains(&10), true);
-    /// assert_eq!(x.intersects(&FiniteInterval::closed(0, 20)), true);
-    /// ```
-    fn singleton(value: T) -> Self::Output
-    where
-        T: Clone,
-    {
-        Self::closed(value.clone(), value)
-    }
-
-    fn try_singleton(value: T) -> Result<Self::Output, Self::Error>
-    where
-        T: Clone,
-    {
-        Self::try_closed(value.clone(), value)
-    }
-
-    /// Returns a new open finite interval or Empty
-    ///
-    /// For discrete data types T, open bounds are **normalized** to closed form.
-    /// Continuous(ish) types (like f32, or chrono::DateTime) are left as is.
+    /// For discrete data types T, open bounds are **normalized** to
+    /// closed form. Continuous(ish) types (like f32, or
+    /// `chrono::DateTime`) are left as is.
     ///
     /// (a, b) = { x in T | a < x < b }
     ///
@@ -308,61 +262,178 @@ where
     /// assert_eq!(y.contains(&5), true);
     /// assert_eq!(y, EnumInterval::closed(1, 9));
     /// ```
-    fn open(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::open(C::convert(left)),
-            FiniteBound::open(C::convert(right)),
-        )
-    }
+    fn open(left: T, right: T) -> Self::Output;
 
-    fn try_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::open(C::convert(lhs)),
-            FiniteBound::open(C::convert(rhs)),
-        )
-    }
-
-    /// Creates a left open finite interval or Empty
+    /// Creates a left-open / right-closed finite interval. **Strict**
+    /// — panics on crossed bounds.
     ///
     ///  (a, b] = { x in T | a < x <= b }
-    fn open_closed(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::open(C::convert(left)),
-            FiniteBound::closed(C::convert(right)),
-        )
-    }
+    fn open_closed(left: T, right: T) -> Self::Output;
 
-    fn try_open_closed(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::open(C::convert(lhs)),
-            FiniteBound::closed(C::convert(rhs)),
-        )
-    }
-
-    /// Creates a right open finite interval or Empty
+    /// Creates a left-closed / right-open finite interval. **Strict**
+    /// — panics on crossed bounds.
     ///
     ///  [a, b) = { x in T | a <= x < b }
-    fn closed_open(left: T, right: T) -> Self::Output {
-        Self::finite(
-            FiniteBound::closed(C::convert(left)),
-            FiniteBound::open(C::convert(right)),
-        )
-    }
+    fn closed_open(left: T, right: T) -> Self::Output;
 
-    fn try_closed_open(lhs: T, rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_finite(
-            FiniteBound::closed(C::convert(lhs)),
-            FiniteBound::open(C::convert(rhs)),
-        )
+    /// Creates a singleton finite interval.
+    ///
+    /// [a, a] = { x | x == a }
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets_core::prelude::*;
+    ///
+    /// let x = EnumInterval::singleton(10);
+    /// assert_eq!(x.contains(&10), true);
+    /// assert_eq!(x.intersects(&FiniteInterval::closed(0, 20)), true);
+    /// ```
+    fn singleton(value: T) -> Self::Output
+    where
+        T: Clone;
+}
+
+impl<T: Element, F: TryFiniteFactory<T>> FiniteFactory<T> for F {
+    #[inline]
+    fn fully_bounded(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
+        Self::try_fully_bounded(lhs, rhs).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
+    }
+    #[inline]
+    fn closed(left: T, right: T) -> Self::Output {
+        Self::try_closed(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
+    }
+    #[inline]
+    fn open(left: T, right: T) -> Self::Output {
+        Self::try_open(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
+    }
+    #[inline]
+    fn open_closed(left: T, right: T) -> Self::Output {
+        Self::try_open_closed(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
+    }
+    #[inline]
+    fn closed_open(left: T, right: T) -> Self::Output {
+        Self::try_closed_open(left, right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
+    }
+    #[inline]
+    fn singleton(value: T) -> Self::Output
+    where
+        T: Clone,
+    {
+        Self::try_singleton(value).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 }
 
-pub trait HalfBoundedFactory<T, C>: ConvertingFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    /// Returns a new half bounded interval.
+/// Coercive bound-pair → finite-interval construction. Provides one
+/// operation: build the set satisfying a pair of bounds, returning
+/// `Empty` if no values satisfy them.
+///
+/// Implementors provide [`try_satisfy_bounds`](Self::try_satisfy_bounds);
+/// the panicking sibling [`SatisfyFiniteInterval`] is
+/// blanket-implemented.
+///
+/// Use this trait when you have a candidate `(lhs, rhs)` pair from a
+/// computation that may legitimately collapse — `From<Range>`
+/// conversions, intersection-shape ops, split, rebound — and "no
+/// solutions" is a meaningful outcome of the operation.
+///
+/// For strict semantics (crossed bounds error), use
+/// [`TryFiniteFactory::try_fully_bounded`].
+///
+/// Note: there is no value-taking surface (no `try_satisfy_closed`,
+/// no `try_satisfy_open`). Coercive semantics is reachable only with
+/// explicit `FiniteBound` construction. The ergonomic value-taking
+/// surface (`closed`, `open`, etc. on [`FiniteFactory`]) is strict.
+pub trait TrySatisfyFiniteInterval<T: Element>: Factory<T> {
+    /// Builds the finite interval whose elements satisfy both
+    /// `lhs` and `rhs`. **Coercive** — crossed bounds (or open-open
+    /// at the same point) collapse to `Ok(Empty)`. Bound inputs are
+    /// already validated (no construction path bypasses
+    /// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new)),
+    /// so this method itself is infallible on well-formed
+    /// `FiniteBound` inputs.
+    fn try_satisfy_bounds(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error>;
+}
+
+/// Panicking sibling of [`TrySatisfyFiniteInterval`].
+/// Blanket-implemented; implementors do not provide their own impl.
+pub trait SatisfyFiniteInterval<T: Element>: TrySatisfyFiniteInterval<T> {
+    /// Builds the finite interval whose elements satisfy both bounds,
+    /// or [`Empty`](EmptyFactory::empty) if no element satisfies them.
+    /// Panics only on `Element::validate` failure.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use intervalsets_core::prelude::*;
+    ///
+    /// // Crossed bounds collapse to Empty under coercive semantics.
+    /// let x = FiniteInterval::satisfy_bounds(
+    ///     FiniteBound::open(10),
+    ///     FiniteBound::open(0),
+    /// );
+    /// assert_eq!(x, FiniteInterval::empty());
+    /// ```
+    fn satisfy_bounds(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output;
+}
+
+impl<T: Element, F: TrySatisfyFiniteInterval<T>> SatisfyFiniteInterval<T> for F {
+    #[inline]
+    fn satisfy_bounds(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
+        Self::try_satisfy_bounds(lhs, rhs).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
+    }
+}
+
+/// Fallible half-bounded constructors. Implementors provide
+/// [`try_half_bounded`](Self::try_half_bounded); the side-specific
+/// and open/closed convenience methods compose on it via
+/// [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new).
+///
+/// The panicking sibling [`HalfBoundedFactory`] has a blanket impl
+/// over every `TryHalfBoundedFactory`.
+pub trait TryHalfBoundedFactory<T: Element>: Factory<T> {
+    /// Creates a new half-bounded interval, returning `Err` if the
+    /// bound limit is rejected by `Element::validate`.
+    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>;
+
+    /// Fallible left-bounded helper.
+    fn try_left_bounded(bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
+        Self::try_half_bounded(Side::Left, bound)
+    }
+
+    /// Fallible right-bounded helper.
+    fn try_right_bounded(bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
+        Self::try_half_bounded(Side::Right, bound)
+    }
+
+    /// Fallible (a, ->) — open left bound, unbounded right.
+    fn try_open_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_left_bounded(FiniteBound::try_open(lhs)?)
+    }
+
+    /// Fallible [a, ->) — closed left bound, unbounded right.
+    fn try_closed_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_left_bounded(FiniteBound::try_closed(lhs)?)
+    }
+
+    /// Fallible (<-, b) — unbounded left, open right bound.
+    fn try_unbound_open(rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_right_bounded(FiniteBound::try_open(rhs)?)
+    }
+
+    /// Fallible (<-, b] — unbounded left, closed right bound.
+    fn try_unbound_closed(rhs: T) -> Result<Self::Output, Self::Error> {
+        Self::try_right_bounded(FiniteBound::try_closed(rhs)?)
+    }
+}
+
+/// Panicking sibling of [`TryHalfBoundedFactory`]. Blanket-implemented
+/// for every type that implements `TryHalfBoundedFactory`.
+pub trait HalfBoundedFactory<T: Element>: TryHalfBoundedFactory<T> {
+    /// Returns a new half-bounded interval.
     ///
     /// # Example
     /// ```
@@ -373,83 +444,63 @@ where
     /// let z = x.merge_connected(y).unwrap();
     /// assert_eq!(z, EnumInterval::Unbounded);
     /// ```
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output;
+    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output;
 
-    /// Creates a new half-bounded interval, returning `Err` if the
-    /// bound is not comparable (e.g. NaN). The panic-free counterpart
-    /// of [`half_bounded`](Self::half_bounded).
-    fn try_half_bounded(side: Side, bound: FiniteBound<C::To>)
-        -> Result<Self::Output, Self::Error>;
+    /// Right-bounded interval (`(<-, b]` or `(<-, b)`).
+    fn right_bounded(bound: FiniteBound<T>) -> Self::Output;
 
-    fn right_bounded(bound: FiniteBound<C::To>) -> Self::Output {
-        Self::half_bounded(Side::Right, bound)
+    /// Left-bounded interval (`[a, ->)` or `(a, ->)`).
+    fn left_bounded(bound: FiniteBound<T>) -> Self::Output;
+
+    /// Returns a new open, right-unbound interval `(a, ->)`.
+    fn open_unbound(left: T) -> Self::Output;
+
+    /// Returns a new closed, right-unbound interval `[a, ->)`.
+    fn closed_unbound(left: T) -> Self::Output;
+
+    /// Returns a new open, left-unbound interval `(<-, b)`.
+    fn unbound_open(right: T) -> Self::Output;
+
+    /// Returns a new closed, left-unbound interval `(<-, b]`.
+    fn unbound_closed(right: T) -> Self::Output;
+}
+
+impl<T: Element, F: TryHalfBoundedFactory<T>> HalfBoundedFactory<T> for F {
+    #[inline]
+    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
+        Self::try_half_bounded(side, bound).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
-
-    fn left_bounded(bound: FiniteBound<C::To>) -> Self::Output {
-        Self::half_bounded(Side::Left, bound)
+    #[inline]
+    fn right_bounded(bound: FiniteBound<T>) -> Self::Output {
+        Self::try_right_bounded(bound).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
-
-    fn try_left_bounded(bound: FiniteBound<C::To>) -> Result<Self::Output, Self::Error> {
-        Self::try_half_bounded(Side::Left, bound)
+    #[inline]
+    fn left_bounded(bound: FiniteBound<T>) -> Self::Output {
+        Self::try_left_bounded(bound).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
-
-    fn try_right_bounded(bound: FiniteBound<C::To>) -> Result<Self::Output, Self::Error> {
-        Self::try_half_bounded(Side::Right, bound)
-    }
-
-    /// Returns a new open, right-unbound interval
-    ///
-    ///  (a, ->) = { x in T | a < x }
+    #[inline]
     fn open_unbound(left: T) -> Self::Output {
-        Self::left_bounded(FiniteBound::open(C::convert(left)))
+        Self::try_open_unbound(left).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
-
-    fn try_open_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_left_bounded(FiniteBound::open(C::convert(lhs)))
-    }
-
-    /// Returns a new closed, right-unbound interval
-    ///
-    ///  [a, ->) = {x in T | a <= x }
+    #[inline]
     fn closed_unbound(left: T) -> Self::Output {
-        Self::half_bounded(Side::Left, FiniteBound::closed(C::convert(left)))
+        Self::try_closed_unbound(left).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
-
-    fn try_closed_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_left_bounded(FiniteBound::closed(C::convert(lhs)))
-    }
-
-    /// Returns a new open, left-unbound interval
-    ///
-    /// (a, ->) = { x in T | a < x }
+    #[inline]
     fn unbound_open(right: T) -> Self::Output {
-        Self::half_bounded(Side::Right, FiniteBound::open(C::convert(right)))
+        Self::try_unbound_open(right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
-
-    fn try_unbound_open(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_right_bounded(FiniteBound::open(C::convert(rhs)))
-    }
-
-    /// Returns a new closed, left-unbound interval
-    ///
-    ///  [a, ->) = { x in T | a <= x }
+    #[inline]
     fn unbound_closed(right: T) -> Self::Output {
-        Self::half_bounded(Side::Right, FiniteBound::closed(C::convert(right)))
-    }
-
-    fn try_unbound_closed(rhs: T) -> Result<Self::Output, Self::Error> {
-        Self::try_right_bounded(FiniteBound::closed(C::convert(rhs)))
+        Self::try_unbound_closed(right).unwrap_or_else(|_| panic!("{REJECT_PANIC}"))
     }
 }
 
-pub trait UnboundedFactory<T, C = Identity>: ConvertingFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
+/// Constructs the unbounded interval `(<-, ->)`.
+pub trait UnboundedFactory<T>: Factory<T> {
     /// Returns a new unbounded interval.
     ///
-    /// An unbounded interval contains every element in `T``,
+    /// An unbounded interval contains every element in `T`,
     /// and therefore is a superset of all sets of `T`.
     ///
     /// (<-, ->) = { x in T }
@@ -466,144 +517,85 @@ where
     fn unbounded() -> Self::Output;
 }
 
-impl<T: Element> ConvertingFactory<T, Identity> for FiniteInterval<T> {
+impl<T: Element> Factory<T> for FiniteInterval<T> {
     type Output = Self;
     type Error = Error;
 }
 
-impl<T: Element> EmptyFactory<T, Identity> for FiniteInterval<T> {
+impl<T: Element> EmptyFactory<T> for FiniteInterval<T> {
     fn empty() -> Self::Output {
         Self::empty()
     }
 }
 
-impl<T: Element> FiniteFactory<T, Identity> for FiniteInterval<T> {
-    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        // Coercive: crossed bounds → empty, NaN → panic.
-        Self::try_new_or_empty(lhs, rhs).unwrap()
-    }
-
-    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
-        Self::try_new_or_empty(lhs, rhs)
+impl<T: Element> TryFiniteFactory<T> for FiniteInterval<T> {
+    fn try_fully_bounded(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        Self::try_new(lhs, rhs)
     }
 }
 
-impl<T: Element> ConvertingFactory<T, Identity> for HalfInterval<T> {
+impl<T: Element> TrySatisfyFiniteInterval<T> for FiniteInterval<T> {
+    fn try_satisfy_bounds(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        match Self::try_new(lhs, rhs) {
+            Err(Error::InvalidBoundPair) => Ok(Self::empty()),
+            other => other,
+        }
+    }
+}
+
+impl<T: Element> Factory<T> for HalfInterval<T> {
     type Output = Self;
     type Error = Error;
 }
 
-impl<T: Element> HalfBoundedFactory<T, Identity> for HalfInterval<T> {
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        Self::new(side, bound)
-    }
-
+impl<T: Element> TryHalfBoundedFactory<T> for HalfInterval<T> {
     fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         Self::try_new(side, bound)
     }
 }
 
-impl<T: Element> ConvertingFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element> Factory<T> for EnumInterval<T> {
     type Output = Self;
     type Error = Error;
 }
 
-impl<T: Element> EmptyFactory<T, Identity> for EnumInterval<T> {
+impl<T: Element> EmptyFactory<T> for EnumInterval<T> {
     fn empty() -> Self::Output {
         Self::empty()
     }
 }
 
-impl<T: Element> FiniteFactory<T, Identity> for EnumInterval<T> {
-    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::finite(lhs, rhs).into()
-    }
-
-    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_finite(lhs, rhs).map(Self::Output::from)
+impl<T: Element> TryFiniteFactory<T> for EnumInterval<T> {
+    fn try_fully_bounded(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_fully_bounded(lhs, rhs).map(Self::Output::from)
     }
 }
 
-impl<T: Element> HalfBoundedFactory<T, Identity> for EnumInterval<T> {
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        HalfInterval::new(side, bound).into()
+impl<T: Element> TrySatisfyFiniteInterval<T> for EnumInterval<T> {
+    fn try_satisfy_bounds(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_satisfy_bounds(lhs, rhs).map(Self::Output::from)
     }
+}
 
+impl<T: Element> TryHalfBoundedFactory<T> for EnumInterval<T> {
     fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         HalfInterval::try_new(side, bound).map(Self::Output::from)
     }
 }
 
-impl<T: Element> UnboundedFactory<T, Identity> for EnumInterval<T> {
-    fn unbounded() -> Self::Output {
-        EnumInterval::Unbounded
-    }
-}
-
-/// A factory type for EnumIntervals.
-///
-/// Use this factory instead of EnumInterval if a custom [`Converter`] is needed.
-pub struct EIFactory<T, C = Identity>(core::marker::PhantomData<(T, C)>);
-
-impl<T, C> ConvertingFactory<T, C> for EIFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    type Output = EnumInterval<C::To>;
-    type Error = Error;
-}
-
-impl<T, C> EmptyFactory<T, C> for EIFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn empty() -> Self::Output {
-        EnumInterval::empty()
-    }
-}
-
-impl<T, C> FiniteFactory<T, C> for EIFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
-        // Coercive: crossed bounds → empty, NaN → panic.
-        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
-    }
-
-    fn try_finite(
-        lhs: FiniteBound<C::To>,
-        rhs: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new_or_empty(lhs, rhs).map(EnumInterval::from)
-    }
-}
-
-impl<T, C> HalfBoundedFactory<T, C> for EIFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
-        HalfInterval::new(side, bound).into()
-    }
-
-    fn try_half_bounded(
-        side: Side,
-        bound: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error> {
-        HalfInterval::try_new(side, bound).map(EnumInterval::from)
-    }
-}
-
-impl<T, C> UnboundedFactory<T, C> for EIFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
+impl<T: Element> UnboundedFactory<T> for EnumInterval<T> {
     fn unbounded() -> Self::Output {
         EnumInterval::Unbounded
     }
@@ -614,25 +606,39 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_interval_factory() {
-        let a = EIFactory::<u32, Identity>::closed(0, 10);
-        let b = EnumInterval::<u32>::closed(0, 10);
-        assert_eq!(a, b);
-    }
+    fn test_try_factory_strict() {
+        // Factory is strict: crossed bounds error.
+        assert!(EnumInterval::try_open(10.0, 0.0).is_err());
+        assert!(EnumInterval::try_closed(10, 0).is_err());
 
-    #[test]
-    fn test_try_factory() {
+        // NaN surfaces as InvalidBoundLimit at the bound chokepoint.
         assert_eq!(EnumInterval::try_singleton(f32::NAN).ok(), None);
-        // Factory is coercive: crossed bounds → Ok(empty).
-        // Use FiniteInterval::try_new directly for strict validation.
-        assert_eq!(
-            EnumInterval::try_open(10.0, 0.0).unwrap(),
-            EnumInterval::empty()
-        );
         assert_eq!(EnumInterval::try_unbound_open(f32::NAN).ok(), None);
+
+        // Well-formed input still works.
         assert_eq!(
             EnumInterval::try_closed_unbound(0.0).ok(),
             Some(EnumInterval::closed_unbound(0.0))
+        );
+    }
+
+    #[test]
+    fn test_try_satisfy_bounds_coercive() {
+        // Coercive entry point: crossed bounds collapse to Empty.
+        assert_eq!(
+            EnumInterval::try_satisfy_bounds(FiniteBound::open(10.0), FiniteBound::open(0.0))
+                .unwrap(),
+            EnumInterval::empty()
+        );
+        assert_eq!(
+            FiniteInterval::satisfy_bounds(FiniteBound::open(10), FiniteBound::open(0)),
+            FiniteInterval::empty()
+        );
+
+        // Non-crossed input builds the corresponding interval.
+        assert_eq!(
+            FiniteInterval::satisfy_bounds(FiniteBound::closed(0), FiniteBound::closed(10)),
+            FiniteInterval::closed(0, 10)
         );
     }
 }

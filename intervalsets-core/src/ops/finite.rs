@@ -1,4 +1,15 @@
+//! `IntoFiniteInterval` itruncates a `Set` to the smallest FiniteInterval that
+//! covers the elements of the original `Set` which can be represented by the
+//! storage-type T: Bounded + Element.
+//!
+//! # Notes
+//!
+//! todo: require min/max of T, some elements (BigDecimal) inherently do not have this, so
+//! for truncation to FiniteInterval, instead need to define some Subset on T that defines
+//! the desired universe and intersect with that.
+
 use crate::bound::{FiniteBound, Side};
+use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
 /// Truncates a set to the universe of elements representable by the generic data type.
@@ -37,24 +48,31 @@ impl<T> IntoFinite for FiniteInterval<T> {
     }
 }
 
-impl<T: num_traits::Bounded + PartialOrd> IntoFinite for HalfInterval<T> {
+impl<T: Element + num_traits::Bounded> IntoFinite for HalfInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
     fn into_finite(self) -> Self::Output {
+        // An open bound at the type's saturating extreme (e.g.
+        // `(255, ->)` for u8) describes an empty set after truncation.
+        // The half-bounded `bound` came from a validated interval, so
+        // I2 + I4 hold; the Tier-3 helper evaluates the pair
+        // satisfiability against the saturating closed bound.
         let (side, bound) = self.into_raw();
         match side {
-            Side::Left => {
-                FiniteInterval::new_assume_normed(bound, FiniteBound::closed(T::max_value()))
-            }
-            Side::Right => {
-                FiniteInterval::new_assume_normed(FiniteBound::closed(T::min_value()), bound)
-            }
+            Side::Left => super::intersection::from_normed_pair(
+                bound,
+                FiniteBound::try_closed(T::max_value()).expect("infallible"),
+            ),
+            Side::Right => super::intersection::from_normed_pair(
+                FiniteBound::try_closed(T::min_value()).expect("infallible"),
+                bound,
+            ),
         }
     }
 }
 
-impl<T: num_traits::Bounded + PartialOrd> IntoFinite for EnumInterval<T> {
+impl<T: Element + num_traits::Bounded> IntoFinite for EnumInterval<T> {
     type Output = FiniteInterval<T>;
 
     #[inline(always)]
@@ -63,8 +81,8 @@ impl<T: num_traits::Bounded + PartialOrd> IntoFinite for EnumInterval<T> {
             Self::Finite(inner) => inner.into_finite(),
             Self::Half(inner) => inner.into_finite(),
             Self::Unbounded => FiniteInterval::new_assume_valid(
-                FiniteBound::closed(T::min_value()),
-                FiniteBound::closed(T::max_value()),
+                FiniteBound::try_closed(T::min_value()).expect("infallible"),
+                FiniteBound::try_closed(T::max_value()).expect("infallible"),
             ),
         }
     }

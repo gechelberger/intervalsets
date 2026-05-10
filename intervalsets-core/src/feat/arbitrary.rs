@@ -28,11 +28,10 @@ impl Arbitrary<'_> for BoundType {
     }
 }
 
-impl<'a, T: Arbitrary<'a>> Arbitrary<'a> for FiniteBound<T> {
+impl<'a, T: Element + Arbitrary<'a>> Arbitrary<'a> for FiniteBound<T> {
     fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
-        let bound = FiniteBound::new(BoundType::arbitrary(u)?, T::arbitrary(u)?);
-
-        Ok(bound)
+        FiniteBound::try_new(BoundType::arbitrary(u)?, T::arbitrary(u)?)
+            .map_err(|_| arbitrary::Error::IncorrectFormat)
     }
 }
 

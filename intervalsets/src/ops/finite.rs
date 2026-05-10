@@ -4,7 +4,7 @@ use intervalsets_core::MaybeEmpty;
 use crate::numeric::Element;
 use crate::{Interval, IntervalSet};
 
-impl<T: num_traits::Bounded + PartialOrd> IntoFinite for Interval<T> {
+impl<T: Element + num_traits::Bounded> IntoFinite for Interval<T> {
     type Output = Self;
 
     #[inline]

@@ -164,7 +164,6 @@ mod from;
 pub mod prelude {
     pub use intervalsets_core::factory::traits::*;
 
-    pub use crate::factory::{Converter, EIFactory};
     pub use crate::measure::{Count, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};

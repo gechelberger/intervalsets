@@ -6,6 +6,7 @@
 //! Kani is actually verifying things before we point it at proofs
 //! whose answers we don't already know.
 
+use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::Contains;
 use intervalsets_core::sets::FiniteInterval;
@@ -16,9 +17,11 @@ fn contains_finite_i64_no_panic() {
     let lmax: i64 = kani::any();
     let elem: i64 = kani::any();
 
-    // `closed(a, b)` factory returns Self with empty fallback when
-    // a > b (no NaN concern at i64), so we don't need kani::assume.
-    let interval = FiniteInterval::<i64>::closed(lmin, lmax);
+    // `satisfy_bounds` is the coercive factory entry point: crossed
+    // pairs collapse to Empty rather than panic. The strict factory
+    // `closed(a, b)` would panic on crossed input.
+    let interval =
+        FiniteInterval::<i64>::satisfy_bounds(FiniteBound::closed(lmin), FiniteBound::closed(lmax));
 
     let _ = interval.contains(&elem);
 }

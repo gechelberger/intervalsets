@@ -53,7 +53,7 @@ impl<T: Zero + PartialOrd> FiniteInterval<T> {
 
     /// Classify this interval relative to zero.
     ///
-    /// Returns `Err(Error::TotalOrderError)` if a bound is not comparable
+    /// Returns `Err(Error::InvalidBoundLimit)` if a bound is not comparable
     /// to zero (e.g. a NaN float bound), or
     /// `Err(Error::InvalidBoundPair)` if the `lhs <= rhs` invariant has
     /// been violated (only reachable via `new_assume_valid` with a
@@ -114,7 +114,7 @@ impl<T: Zero + PartialOrd> HalfInterval<T> {
     }
 
     /// Classify this interval relative to zero, returning
-    /// `Err(Error::TotalOrderError)` if the bound is not comparable to
+    /// `Err(Error::InvalidBoundLimit)` if the bound is not comparable to
     /// zero (e.g. a NaN float bound).
     pub fn try_category(&self) -> Result<ECat, Error> {
         let t_zero = T::zero();
@@ -157,7 +157,7 @@ impl<T: Zero + PartialOrd> EnumInterval<T> {
 
     /// Classify this interval relative to zero.
     ///
-    /// Returns `Err(Error::TotalOrderError)` if a bound is not comparable
+    /// Returns `Err(Error::InvalidBoundLimit)` if a bound is not comparable
     /// to zero (e.g. a NaN float bound), or
     /// `Err(Error::InvalidBoundPair)` if a `FiniteInterval` variant has
     /// a violated `lhs <= rhs` invariant.
@@ -183,16 +183,6 @@ mod tests {
     // a `debug_assert!`, so the tests are gated to release-only here;
     // the debug-build tripwire is exercised by the `#[should_panic]`
     // tests in `sets.rs`.
-    #[cfg(not(debug_assertions))]
-    #[test]
-    fn test_try_category_nan() {
-        let bad = FiniteInterval::new_assume_valid(
-            FiniteBound::closed(f32::NAN),
-            FiniteBound::closed(0.0),
-        );
-        assert!(matches!(bad.try_category(), Err(Error::TotalOrderError(_))));
-    }
-
     #[cfg(not(debug_assertions))]
     #[test]
     fn test_try_category_invariant_violation() {

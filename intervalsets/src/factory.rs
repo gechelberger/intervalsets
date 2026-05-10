@@ -1,6 +1,6 @@
 pub use intervalsets_core::factory::{
-    traits, Converter, ConvertingFactory, EIFactory, EmptyFactory, FiniteFactory,
-    HalfBoundedFactory, Identity, UnboundedFactory,
+    traits, EmptyFactory, Factory, FiniteFactory, HalfBoundedFactory, SatisfyFiniteInterval,
+    TryFiniteFactory, TryHalfBoundedFactory, TrySatisfyFiniteInterval, UnboundedFactory,
 };
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -8,225 +8,97 @@ use crate::bound::FiniteBound;
 use crate::numeric::{Element, Zero};
 use crate::{Interval, IntervalSet, Side};
 
-impl<T: Element> ConvertingFactory<T, Identity> for Interval<T> {
+impl<T: Element> Factory<T> for Interval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 }
 
-impl<T: Element> EmptyFactory<T, Identity> for Interval<T> {
+impl<T: Element> EmptyFactory<T> for Interval<T> {
     fn empty() -> Self::Output {
         FiniteInterval::empty().into()
     }
 }
 
-impl<T: Element> FiniteFactory<T, Identity> for Interval<T> {
-    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
-    }
-
-    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new_or_empty(lhs, rhs)
+impl<T: Element> TryFiniteFactory<T> for Interval<T> {
+    fn try_fully_bounded(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_fully_bounded(lhs, rhs)
             .map_err(Into::into)
             .map(Interval::from)
     }
 }
 
-impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for Interval<T> {
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        HalfInterval::new(side, bound).into()
+impl<T: Element> TrySatisfyFiniteInterval<T> for Interval<T> {
+    fn try_satisfy_bounds(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_satisfy_bounds(lhs, rhs)
+            .map_err(Into::into)
+            .map(Interval::from)
     }
+}
 
-    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>
-    where
-        T: num_traits::Zero,
-    {
+impl<T: Element + Zero> TryHalfBoundedFactory<T> for Interval<T> {
+    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         HalfInterval::try_new(side, bound)
             .map_err(Into::into)
             .map(Interval::from)
     }
 }
 
-impl<T: Element> UnboundedFactory<T, Identity> for Interval<T> {
+impl<T: Element> UnboundedFactory<T> for Interval<T> {
     fn unbounded() -> Self::Output {
         EnumInterval::Unbounded.into()
     }
 }
 
-impl<T: Element> ConvertingFactory<T, Identity> for IntervalSet<T> {
+impl<T: Element> Factory<T> for IntervalSet<T> {
     type Output = Self;
     type Error = crate::error::Error;
 }
 
-impl<T: Element> EmptyFactory<T, Identity> for IntervalSet<T> {
+impl<T: Element> EmptyFactory<T> for IntervalSet<T> {
     fn empty() -> Self::Output {
         IntervalSet::empty()
     }
 }
 
-impl<T: Element> FiniteFactory<T, Identity> for IntervalSet<T> {
-    fn finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Self::Output {
-        FiniteInterval::try_new_or_empty(lhs, rhs).unwrap().into()
-    }
-
-    fn try_finite(lhs: FiniteBound<T>, rhs: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
-        FiniteInterval::try_new_or_empty(lhs, rhs)
+impl<T: Element> TryFiniteFactory<T> for IntervalSet<T> {
+    fn try_fully_bounded(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_fully_bounded(lhs, rhs)
             .map_err(Into::into)
             .map(IntervalSet::from)
     }
 }
 
-impl<T: Element + Zero> HalfBoundedFactory<T, Identity> for IntervalSet<T> {
-    fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output {
-        HalfInterval::new(side, bound).into()
+impl<T: Element> TrySatisfyFiniteInterval<T> for IntervalSet<T> {
+    fn try_satisfy_bounds(
+        lhs: FiniteBound<T>,
+        rhs: FiniteBound<T>,
+    ) -> Result<Self::Output, Self::Error> {
+        FiniteInterval::try_satisfy_bounds(lhs, rhs)
+            .map_err(Into::into)
+            .map(IntervalSet::from)
     }
+}
 
-    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error>
-    where
-        T: num_traits::Zero,
-    {
+impl<T: Element + Zero> TryHalfBoundedFactory<T> for IntervalSet<T> {
+    fn try_half_bounded(side: Side, bound: FiniteBound<T>) -> Result<Self::Output, Self::Error> {
         HalfInterval::try_new(side, bound)
             .map_err(Into::into)
             .map(IntervalSet::from)
     }
 }
 
-impl<T: Element> UnboundedFactory<T, Identity> for IntervalSet<T> {
+impl<T: Element> UnboundedFactory<T> for IntervalSet<T> {
     fn unbounded() -> Self::Output {
         EnumInterval::Unbounded.into()
-    }
-}
-
-pub struct IFactory<T, C>(std::marker::PhantomData<(T, C)>);
-
-impl<T, C> ConvertingFactory<T, C> for IFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    type Output = Interval<C::To>;
-    type Error = crate::error::Error;
-}
-
-impl<T, C> EmptyFactory<T, C> for IFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn empty() -> Self::Output {
-        Interval::empty()
-    }
-}
-
-impl<T, C> FiniteFactory<T, C> for IFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
-        Interval::from(EIFactory::<T, C>::finite(lhs, rhs))
-    }
-
-    fn try_finite(
-        lhs: FiniteBound<C::To>,
-        rhs: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error> {
-        EIFactory::<T, C>::try_finite(lhs, rhs)
-            .map_err(Into::into)
-            .map(Interval::from)
-    }
-}
-
-impl<T, C> HalfBoundedFactory<T, C> for IFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element + Zero,
-{
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
-        Interval::from(EIFactory::<T, C>::half_bounded(side, bound))
-    }
-
-    fn try_half_bounded(
-        side: Side,
-        bound: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error> {
-        EIFactory::<T, C>::try_half_bounded(side, bound)
-            .map_err(Into::into)
-            .map(Interval::from)
-    }
-}
-
-impl<T, C> UnboundedFactory<T, C> for IFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn unbounded() -> Self::Output {
-        Interval::unbounded()
-    }
-}
-
-pub struct ISFactory<T, C>(std::marker::PhantomData<(T, C)>);
-
-impl<T, C> ConvertingFactory<T, C> for ISFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    type Output = IntervalSet<C::To>;
-    type Error = crate::error::Error;
-}
-
-impl<T, C> EmptyFactory<T, C> for ISFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn empty() -> Self::Output {
-        IntervalSet::empty()
-    }
-}
-
-impl<T, C> FiniteFactory<T, C> for ISFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn finite(lhs: FiniteBound<C::To>, rhs: FiniteBound<C::To>) -> Self::Output {
-        IFactory::<T, C>::finite(lhs, rhs).into()
-    }
-
-    fn try_finite(
-        lhs: FiniteBound<C::To>,
-        rhs: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error> {
-        IFactory::<T, C>::try_finite(lhs, rhs).map(IntervalSet::from)
-    }
-}
-
-impl<T, C> HalfBoundedFactory<T, C> for ISFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element + Zero,
-{
-    fn half_bounded(side: Side, bound: FiniteBound<C::To>) -> Self::Output {
-        IFactory::<T, C>::half_bounded(side, bound).into()
-    }
-
-    fn try_half_bounded(
-        side: Side,
-        bound: FiniteBound<C::To>,
-    ) -> Result<Self::Output, Self::Error> {
-        IFactory::<T, C>::try_half_bounded(side, bound).map(IntervalSet::from)
-    }
-}
-
-impl<T, C> UnboundedFactory<T, C> for ISFactory<T, C>
-where
-    C: Converter<T>,
-    C::To: Element,
-{
-    fn unbounded() -> Self::Output {
-        IntervalSet::unbounded()
     }
 }
 
@@ -235,15 +107,32 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_interval_factory() {
-        let a: Interval<_> = EIFactory::<u32, Identity>::closed(0, 10).into();
+    fn test_interval_factory_strict() {
+        let a = Interval::<u32>::closed(0, 10);
         let b = Interval::<u32>::closed(0, 10);
         assert_eq!(a, b);
+
+        // Crossed bounds error under strict semantics.
+        assert!(Interval::<u32>::try_closed(10, 0).is_err());
     }
 
     #[test]
-    fn test_interval_set_factory() {
+    fn test_interval_factory_coercive() {
+        let empty = Interval::<u32>::satisfy_bounds(FiniteBound::open(10), FiniteBound::open(0));
+        assert_eq!(empty, Interval::empty());
+    }
+
+    #[test]
+    fn test_interval_set_factory_strict() {
         let x = IntervalSet::closed(0, 10);
         assert_eq!(x.expect_interval(), Interval::closed(0, 10));
+        assert!(IntervalSet::<u32>::try_closed(10, 0).is_err());
+    }
+
+    #[test]
+    fn test_interval_set_factory_coercive() {
+        let empty: IntervalSet<u32> =
+            IntervalSet::satisfy_bounds(FiniteBound::open(10), FiniteBound::open(0));
+        assert_eq!(empty, IntervalSet::empty());
     }
 }

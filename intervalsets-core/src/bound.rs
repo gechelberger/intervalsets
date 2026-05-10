@@ -13,7 +13,7 @@
 
 use core::cmp::Ordering::{Equal, Greater, Less};
 
-use crate::error::TotalOrderError;
+use crate::error::{Error, TotalOrderError};
 use crate::numeric::Element;
 
 /// An interface to query the left and right bounds of a set.
@@ -116,24 +116,30 @@ impl BoundType {
 /// a function of this bound **and** which side of the interval it constrains.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawFiniteBound<T>"))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
 pub struct FiniteBound<T>(BoundType, T);
 
+/// Wire-format mirror of [`FiniteBound`] used to drive validation
+/// during `Deserialize`. Identical layout, no invariants.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "FiniteBound")]
+struct RawFiniteBound<T>(BoundType, T);
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawFiniteBound<T>> for FiniteBound<T> {
+    type Error = Error;
+
+    fn try_from(raw: RawFiniteBound<T>) -> Result<Self, Self::Error> {
+        Self::try_new(raw.0, raw.1)
+    }
+}
+
 impl<T> FiniteBound<T> {
-    /// Creates a new [`FiniteBound`]
-    pub const fn new(bound_type: BoundType, limit: T) -> Self {
-        Self(bound_type, limit)
-    }
-
-    /// Creates a new closed `FiniteBound` constrained at `limit`.
-    pub const fn closed(limit: T) -> Self {
-        Self(BoundType::Closed, limit)
-    }
-
-    /// Creates a new open `Bound` constrained at `limit`.
-    pub const fn open(limit: T) -> Self {
-        Self(BoundType::Open, limit)
-    }
-
     /// Unpack a [`FiniteBound`] into ([`BoundType`], `T`)
     pub fn into_raw(self) -> (BoundType, T) {
         (self.0, self.1)
@@ -141,7 +147,7 @@ impl<T> FiniteBound<T> {
 
     /// Converts `&FiniteBound<T>` to `FiniteBound<&T>`.
     pub fn as_ref(&self) -> FiniteBound<&T> {
-        FiniteBound::new(self.0, &self.1)
+        FiniteBound(self.0, &self.1)
     }
 
     /// Creates a `FiniteOrdBound<&T>` view of this `FiniteBound<T>`.
@@ -440,29 +446,117 @@ impl<T: Element> FiniteBound<T> {
         match self.0 {
             BoundType::Open => match self.value().try_adjacent(side.flip()) {
                 None => self,
-                Some(new_limit) => Self::closed(new_limit),
+                Some(new_limit) => Self(BoundType::Closed, new_limit),
             },
             BoundType::Closed => self,
         }
     }
+
+    /// Validates `limit` via [`Element::validate`] and constructs a
+    /// `FiniteBound`. The single chokepoint where validation fires for
+    /// every non-bypass construction path.
+    ///
+    /// Library float types (`f32`, `f64`, `OrderedFloat<f*>`,
+    /// `NotNan<f*>`) reject `±INF` and `NaN` here.
+    ///
+    /// # Errors
+    ///
+    /// Returns
+    /// [`Error::InvalidBoundLimit`]
+    /// when `T::validate` returns `None`.
+    #[inline]
+    pub fn try_new(bound_type: BoundType, limit: T) -> Result<Self, Error> {
+        match limit.validate() {
+            Some(v) => Ok(Self(bound_type, v)),
+            None => Err(Error::InvalidBoundLimit),
+        }
+    }
+
+    /// Validates `limit` and constructs a closed `FiniteBound`. See
+    /// [`try_new`](Self::try_new).
+    #[inline]
+    pub fn try_closed(limit: T) -> Result<Self, Error> {
+        Self::try_new(BoundType::Closed, limit)
+    }
+
+    /// Validates `limit` and constructs an open `FiniteBound`. See
+    /// [`try_new`](Self::try_new).
+    #[inline]
+    pub fn try_open(limit: T) -> Result<Self, Error> {
+        Self::try_new(BoundType::Open, limit)
+    }
+
+    /// Panicking constructor. Equivalent to
+    /// [`try_new`](Self::try_new)`.unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is rejected by [`Element::validate`]
+    /// (e.g. `NaN` or `±INF` on library float types).
+    #[inline]
+    pub fn new(bound_type: BoundType, limit: T) -> Self {
+        Self::try_new(bound_type, limit).unwrap()
+    }
+
+    /// Panicking constructor for a closed bound. Equivalent to
+    /// [`try_closed`](Self::try_closed)`.unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is rejected by [`Element::validate`].
+    #[inline]
+    pub fn closed(limit: T) -> Self {
+        Self::try_closed(limit).unwrap()
+    }
+
+    /// Panicking constructor for an open bound. Equivalent to
+    /// [`try_open`](Self::try_open)`.unwrap()`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `limit` is rejected by [`Element::validate`].
+    #[inline]
+    pub fn open(limit: T) -> Self {
+        Self::try_open(limit).unwrap()
+    }
 }
 
 mod math {
-    use core::ops::{Add, Mul};
+    use core::ops::{Add, Mul, Sub};
 
     use num_traits::{ConstOne, ConstZero, One, Zero};
 
     use super::{BoundType, FiniteBound};
+    use crate::numeric::Element;
 
-    impl<T: Add> Add for FiniteBound<T> {
+    impl<T: Add> Add for FiniteBound<T>
+    where
+        <T as Add>::Output: Element,
+    {
         type Output = FiniteBound<<T as Add>::Output>;
 
         fn add(self, rhs: Self) -> Self::Output {
-            FiniteBound::new(self.0.combine(rhs.0), self.1 + rhs.1)
+            FiniteBound::try_new(self.0.combine(rhs.0), self.1 + rhs.1).expect("infallible")
         }
     }
 
-    impl<T: Mul + Zero> Mul for FiniteBound<T> {
+    impl<T: Sub> Sub for FiniteBound<T>
+    where
+        <T as Sub>::Output: Element,
+    {
+        type Output = FiniteBound<<T as Sub>::Output>;
+
+        fn sub(self, rhs: Self) -> Self::Output {
+            let (l_kind, l_val) = self.into_raw();
+            let (r_kind, r_val) = rhs.into_raw();
+            FiniteBound::try_new(l_kind.combine(r_kind), l_val - r_val).expect("infallible")
+        }
+    }
+
+    impl<T: Mul + Zero> Mul for FiniteBound<T>
+    where
+        <T as Mul>::Output: Element,
+    {
         type Output = FiniteBound<<T as Mul>::Output>;
 
         fn mul(self, rhs: Self) -> Self::Output {
@@ -476,13 +570,16 @@ mod math {
             } else {
                 self.0.combine(rhs.0)
             };
-            FiniteBound::new(kind, self.1 * rhs.1)
+            FiniteBound::try_new(kind, self.1 * rhs.1).expect("infallible")
         }
     }
 
-    impl<T: Zero> Zero for FiniteBound<T> {
+    impl<T: Element + Zero> Zero for FiniteBound<T>
+    where
+        <T as core::ops::Add>::Output: Element,
+    {
         fn zero() -> Self {
-            FiniteBound::closed(T::zero())
+            FiniteBound(BoundType::Closed, T::zero())
         }
 
         fn is_zero(&self) -> bool {
@@ -492,19 +589,29 @@ mod math {
 
     // One requires Self: Mul<Self, Output = Self>; the FiniteBound Mul
     // impl now requires T: Zero (for Closed(0) absorption), so the One
-    // and ConstOne impls pick up T: Zero too.
-    impl<T: One + Zero + PartialEq> One for FiniteBound<T> {
+    // and ConstOne impls pick up T: Zero too. T: Element is required
+    // by the Mul impl's `<T as Mul>::Output: Element` bound.
+    impl<T: Element + One + Zero + PartialEq> One for FiniteBound<T>
+    where
+        <T as Mul>::Output: Element,
+    {
         fn one() -> Self {
-            FiniteBound::closed(T::one())
+            FiniteBound(BoundType::Closed, T::one())
         }
     }
 
-    impl<T: ConstZero> ConstZero for FiniteBound<T> {
-        const ZERO: Self = FiniteBound::closed(T::ZERO);
+    impl<T: Element + ConstZero> ConstZero for FiniteBound<T>
+    where
+        <T as core::ops::Add>::Output: Element,
+    {
+        const ZERO: Self = FiniteBound(BoundType::Closed, T::ZERO);
     }
 
-    impl<T: ConstOne + Zero + PartialEq> ConstOne for FiniteBound<T> {
-        const ONE: Self = FiniteBound::closed(T::ONE);
+    impl<T: Element + ConstOne + Zero + PartialEq> ConstOne for FiniteBound<T>
+    where
+        <T as Mul>::Output: Element,
+    {
+        const ONE: Self = FiniteBound(BoundType::Closed, T::ONE);
     }
 
     #[cfg(test)]
@@ -869,6 +976,21 @@ pub mod ord {
             }
         }
     }
+
+    impl From<FiniteOrdBoundKind> for BoundType {
+        fn from(value: FiniteOrdBoundKind) -> Self {
+            match value {
+                FiniteOrdBoundKind::Closed => BoundType::Closed,
+                FiniteOrdBoundKind::LeftOpen | FiniteOrdBoundKind::RightOpen => BoundType::Open,
+            }
+        }
+    }
+
+    impl<T> From<FiniteOrdBound<T>> for FiniteBound<T> {
+        fn from(value: FiniteOrdBound<T>) -> Self {
+            FiniteBound(BoundType::from(value.1), value.0)
+        }
+    }
 }
 #[cfg(test)]
 mod test {
@@ -876,7 +998,7 @@ mod test {
 
     use super::Side::*;
     use super::*;
-    use crate::try_cmp::{TryMax, TryMin};
+    use crate::try_cmp::TryCmp;
 
     mod ord_bound_pair {
         use crate::bound::ord::FiniteOrdBoundKind::*;
@@ -943,7 +1065,7 @@ mod test {
                 OrdBound::closed(f32::NAN),
             )
             .unwrap_err();
-            assert!(matches!(err, Error::TotalOrderError(_)));
+            assert!(matches!(err, Error::InvalidBoundLimit));
         }
 
         #[test]
@@ -1132,5 +1254,86 @@ mod test {
         assert_eq!(FiniteBound::min_max_assume_valid(Side::Right, a, b), (b, a));
 
         assert_eq!(FiniteBound::min_max_assume_valid(Side::Right, b, a), (b, a))
+    }
+
+    mod try_new_validates_limit {
+        use super::*;
+        use crate::error::Error;
+
+        #[test]
+        fn rejects_positive_infinity_f64() {
+            let r = FiniteBound::<f64>::try_closed(f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+            let r = FiniteBound::<f64>::try_open(f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+            let r = FiniteBound::<f64>::try_new(BoundType::Closed, f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn rejects_negative_infinity_f64() {
+            let r = FiniteBound::<f64>::try_closed(f64::NEG_INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn rejects_nan_f64() {
+            let r = FiniteBound::<f64>::try_closed(f64::NAN);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn rejects_non_finite_f32() {
+            assert!(matches!(
+                FiniteBound::<f32>::try_closed(f32::INFINITY),
+                Err(Error::InvalidBoundLimit)
+            ));
+            assert!(matches!(
+                FiniteBound::<f32>::try_closed(f32::NEG_INFINITY),
+                Err(Error::InvalidBoundLimit)
+            ));
+            assert!(matches!(
+                FiniteBound::<f32>::try_closed(f32::NAN),
+                Err(Error::InvalidBoundLimit)
+            ));
+        }
+
+        #[test]
+        fn accepts_finite_f64() {
+            assert_eq!(
+                FiniteBound::<f64>::try_closed(0.0).unwrap(),
+                FiniteBound::closed(0.0)
+            );
+            assert_eq!(
+                FiniteBound::<f64>::try_open(-1.5).unwrap(),
+                FiniteBound::open(-1.5)
+            );
+        }
+
+        #[test]
+        fn default_validate_accepts_integers() {
+            assert_eq!(
+                FiniteBound::<i64>::try_closed(5).unwrap(),
+                FiniteBound::closed(5)
+            );
+            assert_eq!(
+                FiniteBound::<i32>::try_new(BoundType::Open, -100).unwrap(),
+                FiniteBound::open(-100)
+            );
+        }
+
+        #[test]
+        fn factory_paths_reject_infinity() {
+            use crate::factory::TryFiniteFactory;
+            use crate::sets::FiniteInterval;
+
+            let r = FiniteInterval::<f64>::try_closed(0.0, f64::INFINITY);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+            let r = FiniteInterval::<f64>::try_open(f64::NEG_INFINITY, 0.0);
+            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        }
     }
 }

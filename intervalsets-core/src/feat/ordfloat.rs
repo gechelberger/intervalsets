@@ -2,7 +2,6 @@ use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
 use crate::error::{MathError, MidpointError};
-use crate::factory::Converter;
 use crate::numeric::{Element, Midpoint};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
@@ -10,25 +9,26 @@ impl<T: FloatCore + Element> Element for NotNan<T> {
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
     }
+
+    /// Rejects ±INF. `NotNan<T>` already excludes NaN by construction,
+    /// but its inner `T` can still be infinite — and `Element::validate`
+    /// must reject non-finite for the `FiniteBound` chokepoint to hold.
+    #[inline]
+    fn validate(self) -> Option<Self> {
+        self.into_inner().is_finite().then_some(self)
+    }
 }
 
 impl<T: FloatCore + Element> Element for OrderedFloat<T> {
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
     }
-}
 
-impl<T: FloatCore + Element> Converter<T> for NotNan<T> {
-    type To = Self;
-    fn convert(value: T) -> Self::To {
-        NotNan::new(value).unwrap()
-    }
-}
-
-impl<T: FloatCore + Element> Converter<T> for OrderedFloat<T> {
-    type To = Self;
-    fn convert(value: T) -> Self::To {
-        OrderedFloat(value)
+    /// Rejects NaN and ±INF. `OrderedFloat<T>` admits NaN under its
+    /// total order, but NaN is never a valid finite-bound limit.
+    #[inline]
+    fn validate(self) -> Option<Self> {
+        self.into_inner().is_finite().then_some(self)
     }
 }
 
@@ -111,30 +111,45 @@ ordfloat_impl_try!(TryDiv, try_div, /);
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::{EIFactory, FiniteFactory};
+    use crate::bound::SetBounds;
+    use crate::factory::traits::*;
     use crate::EnumInterval;
 
     #[test]
-    fn test_not_nan_converter() {
-        type F = EIFactory<f32, NotNan<f32>>;
-
-        let x = F::closed(0.0, 10.0);
-
-        assert_eq!(
-            x,
-            EnumInterval::closed(NotNan::new(0.0).unwrap(), NotNan::new(10.0).unwrap())
+    fn test_not_nan_factory_construction() {
+        let x = EnumInterval::closed(
+            NotNan::new(0.0_f32).unwrap(),
+            NotNan::new(10.0_f32).unwrap(),
         );
+        assert_eq!(x.left().unwrap().value(), &NotNan::new(0.0).unwrap());
+        assert_eq!(x.right().unwrap().value(), &NotNan::new(10.0).unwrap());
     }
 
     #[test]
-    fn test_ord_float_converter() {
-        type F = EIFactory<f32, OrderedFloat<f32>>;
+    fn test_ord_float_factory_construction() {
+        let x = EnumInterval::closed(OrderedFloat(0.0_f32), OrderedFloat(10.0_f32));
+        assert_eq!(x.left().unwrap().value(), &OrderedFloat(0.0));
+        assert_eq!(x.right().unwrap().value(), &OrderedFloat(10.0));
+    }
 
-        let x = F::closed(0.0, 10.0);
-        assert_eq!(
-            x,
-            EnumInterval::closed(OrderedFloat(0.0), OrderedFloat(10.0),)
-        );
+    #[test]
+    fn test_validate_rejects_inf_for_ordfloat_wrappers() {
+        // NotNan refuses NaN at its own constructor, so the only path
+        // for non-finite to reach a `FiniteBound` is via ±INF — which
+        // `Element::validate` then rejects.
+        use crate::error::Error;
+
+        let inf = NotNan::new(f32::INFINITY).unwrap();
+        let zero = NotNan::new(0.0_f32).unwrap();
+        let r = EnumInterval::try_closed(zero, inf);
+        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+        // OrderedFloat admits any T; both NaN and ±INF reach validate.
+        let r = EnumInterval::try_closed(OrderedFloat(0.0_f32), OrderedFloat(f32::NAN));
+        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+
+        let r = EnumInterval::try_closed(OrderedFloat(0.0_f32), OrderedFloat(f32::INFINITY));
+        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
     }
 
     #[test]
@@ -203,6 +218,41 @@ mod tests {
                 .try_add(NotNan::new(f64::MAX).unwrap()),
             Err(MathError::Domain)
         );
+    }
+
+    #[test]
+    fn test_validate_rejects_non_finite() {
+        use crate::bound::{BoundType, FiniteBound};
+        use crate::error::Error;
+
+        // OrderedFloat: validate rejects ±INF and NaN.
+        assert_eq!(OrderedFloat(f64::INFINITY).validate(), None);
+        assert_eq!(OrderedFloat(f64::NEG_INFINITY).validate(), None);
+        assert_eq!(OrderedFloat(f64::NAN).validate(), None);
+        assert_eq!(
+            OrderedFloat(1.5_f64).validate(),
+            Some(OrderedFloat(1.5_f64))
+        );
+
+        // NotNan: still rejects ±INF post-validate (NotNan only blocks NaN
+        // by construction).
+        let inf = NotNan::new(f64::INFINITY).unwrap();
+        let neg_inf = NotNan::new(f64::NEG_INFINITY).unwrap();
+        let one = NotNan::new(1.0_f64).unwrap();
+        assert_eq!(inf.validate(), None);
+        assert_eq!(neg_inf.validate(), None);
+        assert_eq!(one.validate(), Some(one));
+
+        // FiniteBound chokepoint: factory-style construction surfaces
+        // the rejection as `Error::InvalidBoundLimit`.
+        assert!(matches!(
+            FiniteBound::try_new(BoundType::Closed, OrderedFloat(f64::INFINITY)),
+            Err(Error::InvalidBoundLimit)
+        ));
+        assert!(matches!(
+            FiniteBound::try_new(BoundType::Closed, NotNan::new(f64::INFINITY).unwrap()),
+            Err(Error::InvalidBoundLimit)
+        ));
     }
 
     #[test]

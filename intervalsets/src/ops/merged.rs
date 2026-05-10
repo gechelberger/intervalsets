@@ -46,7 +46,7 @@ mod tests {
 
     #[quickcheck]
     fn check_merge_half_complements_f32(x: f32) {
-        if x.is_nan() {
+        if !x.is_finite() {
             return;
         }
 

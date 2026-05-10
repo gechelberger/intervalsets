@@ -42,28 +42,55 @@ mod tests {
 
     #[test]
     fn test_interval() {
-        let data = unstructured_data(4096);
+        // arbitrary skips invalid bound combinations (NaN/INF f32) by
+        // returning Err; loop until we hit `iterations` successful runs
+        // or exhaust the buffer.
+        let data = unstructured_data(65_536);
         let mut u = arbitrary::Unstructured::new(&data);
 
-        for _ in 0..100 {
-            let interval = Interval::<f32>::arbitrary(&mut u).unwrap();
-            assert_eq!(
-                interval.complement().complement().expect_interval(),
-                interval
-            );
+        let mut iterations = 0;
+        while iterations < 100 {
+            match Interval::<f32>::arbitrary(&mut u) {
+                Ok(interval) => {
+                    assert_eq!(
+                        interval.complement().complement().expect_interval(),
+                        interval
+                    );
+                    iterations += 1;
+                }
+                Err(_) => {
+                    if u.is_empty() {
+                        break;
+                    }
+                }
+            }
         }
+        assert!(iterations > 0, "no successful iterations");
     }
 
     #[test]
     fn test_interval_set() {
-        let data = unstructured_data(8192);
+        // Larger buffer + skip-on-reject: arbitrary now skips invalid
+        // bound combinations (NaN/INF f32 inputs) rather than producing
+        // them, which costs entropy.
+        let data = unstructured_data(65_536);
         let mut u = arbitrary::Unstructured::new(&data);
 
-        for _ in 0..100 {
-            let iset = IntervalSet::<f32>::arbitrary(&mut u).unwrap();
-            assert!(IntervalSet::satisfies_invariants(iset.slice()));
-
-            assert_eq!(iset.clone().complement().complement(), iset);
+        let mut iterations = 0;
+        while iterations < 100 {
+            match IntervalSet::<f32>::arbitrary(&mut u) {
+                Ok(iset) => {
+                    assert!(IntervalSet::satisfies_invariants(iset.slice()));
+                    assert_eq!(iset.clone().complement().complement(), iset);
+                    iterations += 1;
+                }
+                Err(_) => {
+                    if u.is_empty() {
+                        break;
+                    }
+                }
+            }
         }
+        assert!(iterations > 0, "no successful iterations");
     }
 }

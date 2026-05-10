@@ -86,8 +86,12 @@ mod tests {
         if f32::is_nan(a) || f32::is_nan(b) || f32::is_infinite(a) || f32::is_infinite(b) {
             return;
         }
+        // open(a, a) panics under strict semantics; require a < b.
+        if a >= b {
+            return;
+        }
 
-        let expected = f32::max(0.0, b - a);
+        let expected = b - a;
         let open_interval = Interval::open(a, b);
         let closed_interval = Interval::closed(a, b);
 
@@ -97,14 +101,17 @@ mod tests {
 
     #[quickcheck]
     fn check_set_width_float(a: f32, b: f32, c: f32, d: f32) -> bool {
-        if a.is_nan() || b.is_nan() || c.is_nan() || d.is_nan() {
+        if !a.is_finite() || !b.is_finite() || !c.is_finite() || !d.is_finite() {
+            return true;
+        }
+        if a >= b || c >= d {
             return true;
         }
 
         let ab = Interval::open(a, b);
         let cd = Interval::open(c, d);
 
-        let expected = f32::max(0.0, b - a) + f32::max(0.0, d - c);
+        let expected = (b - a) + (d - c);
         let x = IntervalSet::new(vec![ab, cd]);
 
         if ab.intersects(&cd) {
@@ -119,11 +126,14 @@ mod tests {
         if b.checked_sub(a).is_none() || d.checked_sub(c).is_none() {
             return true; // overflow panic
         }
+        if a > b || c > d {
+            return true;
+        }
 
-        let ab = i32::max(0, b - a);
+        let ab = b - a;
         let ab_ivl = Interval::closed(a, b);
 
-        let cd = i32::max(0, d - c);
+        let cd = d - c;
         let cd_ivl = Interval::closed(c, d);
 
         if ab.checked_add(cd).is_none() {
