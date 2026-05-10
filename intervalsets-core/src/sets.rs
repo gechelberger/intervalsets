@@ -96,7 +96,7 @@ impl<T: Element> FiniteInterval<T> {
     /// # Panics
     ///
     /// Panics if either bound's value is rejected by
-    /// [`Element::validate`](crate::numeric::Element::validate)
+    /// [`Element::validate`]
     /// (NaN / ±INF on library float types), or if the normalized
     /// pair is not a non-empty `Bounded`.
     ///
@@ -112,9 +112,9 @@ impl<T: Element> FiniteInterval<T> {
     ///
     /// # Errors
     ///
-    /// - [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit) —
+    /// - [`Error::InvalidBoundLimit`] —
     ///   a bound value is incomparable (e.g. NaN).
-    /// - [`Error::InvalidBoundPair`](crate::error::Error::InvalidBoundPair) —
+    /// - [`Error::InvalidBoundPair`] —
     ///   after normalization, the pair is not a non-empty `Bounded`
     ///   (`lhs > rhs`, or open-open at the same point).
     ///
@@ -260,7 +260,7 @@ impl<T: Element> TryFrom<RawHalfInterval<T>> for HalfInterval<T> {
 impl<T: Element> HalfInterval<T> {
     /// Creates a `HalfInterval`. **Strict** — panics if the bound's
     /// value is rejected by
-    /// [`Element::validate`](crate::numeric::Element::validate)
+    /// [`Element::validate`]
     /// (NaN / ±INF on library float types). Discrete bounds are
     /// normalized to closed form.
     ///
@@ -275,7 +275,7 @@ impl<T: Element> HalfInterval<T> {
     ///
     /// # Errors
     ///
-    /// - [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit) —
+    /// - [`Error::InvalidBoundLimit`] —
     ///   bound value is incomparable (e.g. NaN).
     pub fn try_new(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
         let bound = bound.normalized(side);

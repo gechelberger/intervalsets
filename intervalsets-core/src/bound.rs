@@ -462,7 +462,7 @@ impl<T: Element> FiniteBound<T> {
     /// # Errors
     ///
     /// Returns
-    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
+    /// [`Error::InvalidBoundLimit`]
     /// when `T::validate` returns `None`.
     #[inline]
     pub fn try_new(bound_type: BoundType, limit: T) -> Result<Self, Error> {

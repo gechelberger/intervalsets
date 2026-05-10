@@ -82,7 +82,7 @@ pub trait Factory<T> {
 
     /// The error type for fallible (`try_*`) factory fns. Required to
     /// be `From<Error>` so factory methods can propagate
-    /// [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)
+    /// [`Error::InvalidBoundLimit`]
     /// without per-method conversion plumbing.
     type Error: From<Error>;
 }
@@ -188,10 +188,10 @@ pub trait TryFiniteFactory<T: Element>: Factory<T> {
 pub trait FiniteFactory<T: Element>: TryFiniteFactory<T> {
     /// Creates a new finite interval from a pair of bounds. **Strict**
     /// — panics if the bounds are crossed
-    /// ([`Error::InvalidBoundPair`](crate::error::Error::InvalidBoundPair))
+    /// ([`Error::InvalidBoundPair`])
     /// or if either limit is rejected by
-    /// [`Element::validate`](crate::numeric::Element::validate)
-    /// ([`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit)).
+    /// [`Element::validate`]
+    /// ([`Error::InvalidBoundLimit`]).
     ///
     /// For coercive semantics (crossed → `Empty`), see
     /// [`SatisfyFiniteInterval::satisfy_bounds`].
