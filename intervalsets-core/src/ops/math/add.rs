@@ -7,18 +7,16 @@ use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
-// The infix Add operators below all require T: Ord (and the arithmetic
-// output type to also be Ord). For Ord types, partial_cmp on bounds is
-// total, so try_add is provably infallible and the .unwrap() can never
-// panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
-// use TryAdd::try_add directly.
+// Set-level `TryAdd` binds on `T: TryAdd<Output = T>` and propagates
+// `T::TryAdd::Error` (e.g. `MathError`) into `crate::error::Error`. The
+// infix `+` is panicking sugar over `try_add().unwrap()` (Tier 3b).
 
 macro_rules! add_via_try {
     ($lhs:ty, $rhs:ty, $out:ty) => {
         impl<T> Add<$rhs> for $lhs
         where
-            T: Add + Ord,
-            <T as Add>::Output: Element + Ord,
+            $lhs: TryAdd<$rhs, Output = $out>,
+            <$lhs as TryAdd<$rhs>>::Error: core::fmt::Debug,
         {
             type Output = $out;
             #[inline]
@@ -29,58 +27,22 @@ macro_rules! add_via_try {
     };
 }
 
-add_via_try!(
-    FiniteInterval<T>,
-    FiniteInterval<T>,
-    FiniteInterval<<T as Add>::Output>
-);
-add_via_try!(
-    HalfInterval<T>,
-    HalfInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
-add_via_try!(
-    HalfInterval<T>,
-    FiniteInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
-add_via_try!(
-    EnumInterval<T>,
-    FiniteInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
-add_via_try!(
-    EnumInterval<T>,
-    HalfInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
-add_via_try!(
-    EnumInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
-add_via_try!(
-    FiniteInterval<T>,
-    HalfInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
-add_via_try!(
-    FiniteInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
-add_via_try!(
-    HalfInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<<T as Add>::Output>
-);
+add_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<T>);
+add_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<T>);
+add_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<T>);
+add_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<T>);
+add_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<T>);
+add_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<T>);
+add_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<T>);
+add_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>);
+add_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
 
 impl<T> TryAdd for FiniteInterval<T>
 where
-    T: Add,
-    <T as Add>::Output: Element,
+    T: Element + TryAdd<Output = T>,
+    <T as TryAdd>::Error: Into<Error>,
 {
-    type Output = FiniteInterval<<T as Add>::Output>;
+    type Output = FiniteInterval<T>;
     type Error = Error;
 
     #[inline]
@@ -93,16 +55,16 @@ where
             return Ok(FiniteInterval::empty());
         };
 
-        FiniteInterval::try_new(lhs_min + rhs_min, lhs_max + rhs_max)
+        FiniteInterval::try_new(lhs_min.try_add(rhs_min)?, lhs_max.try_add(rhs_max)?)
     }
 }
 
 impl<T> TryAdd for HalfInterval<T>
 where
-    T: Add,
-    <T as Add>::Output: Element,
+    T: Element + TryAdd<Output = T>,
+    <T as TryAdd>::Error: Into<Error>,
 {
-    type Output = EnumInterval<<T as Add>::Output>;
+    type Output = EnumInterval<T>;
     type Error = Error;
 
     #[inline]
@@ -110,7 +72,7 @@ where
         let (l_side, l_bound) = self.into_raw();
         let (r_side, r_bound) = rhs.into_raw();
         if l_side == r_side {
-            EnumInterval::try_half_bounded(l_side, l_bound + r_bound)
+            EnumInterval::try_half_bounded(l_side, l_bound.try_add(r_bound)?)
         } else {
             Ok(EnumInterval::unbounded())
         }
@@ -119,10 +81,10 @@ where
 
 impl<T> TryAdd<FiniteInterval<T>> for HalfInterval<T>
 where
-    T: Add,
-    <T as Add>::Output: Element,
+    T: Element + TryAdd<Output = T>,
+    <T as TryAdd>::Error: Into<Error>,
 {
-    type Output = EnumInterval<<T as Add>::Output>;
+    type Output = EnumInterval<T>;
     type Error = Error;
 
     #[inline]
@@ -133,7 +95,7 @@ where
 
         let offset = self.side().select(min, max);
         let (side, bound) = self.into_raw();
-        EnumInterval::try_half_bounded(side, bound + offset)
+        EnumInterval::try_half_bounded(side, bound.try_add(offset)?)
     }
 }
 
@@ -141,10 +103,10 @@ macro_rules! dispatch_try_add_impl {
     ($t_rhs:ty) => {
         impl<T> TryAdd<$t_rhs> for EnumInterval<T>
         where
-            T: Add,
-            <T as Add>::Output: Element,
+            T: Element + TryAdd<Output = T>,
+            <T as TryAdd>::Error: Into<Error>,
         {
-            type Output = EnumInterval<<T as Add>::Output>;
+            type Output = EnumInterval<T>;
             type Error = Error;
 
             #[inline]
@@ -173,10 +135,10 @@ macro_rules! commutative_try_add_impl {
     ($t_lhs:ty, $t_rhs:ty) => {
         impl<T> TryAdd<$t_rhs> for $t_lhs
         where
-            T: Add,
-            <T as Add>::Output: $crate::numeric::Element,
+            T: Element + TryAdd<Output = T>,
+            <T as TryAdd>::Error: Into<Error>,
         {
-            type Output = EnumInterval<<T as Add>::Output>;
+            type Output = EnumInterval<T>;
             type Error = Error;
 
             #[inline]
@@ -192,9 +154,6 @@ commutative_try_add_impl!(FiniteInterval<T>, EnumInterval<T>);
 commutative_try_add_impl!(HalfInterval<T>, EnumInterval<T>);
 
 // === Value-level primitive impls (E2) ===
-//
-// These are net-new — set-level math above still binds on `core::ops::Add`,
-// not `TryAdd`. E6 rebinds set-level math onto the value-level TryOp impls.
 
 use super::macros::{impl_try_add_checked, impl_try_add_float_finite};
 
@@ -234,6 +193,7 @@ impl<T: TryAdd> TryAdd for Option<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::MathError;
 
     #[test]
     fn test_finite_add() {
@@ -301,9 +261,8 @@ mod tests {
         assert_eq!(x + u, x);
     }
 
-    /// Verify that OrderedFloat<f64> satisfies the infix Add operator
-    /// bounds. Confirms wrapping floats with OrderedFloat restores
-    /// access to the infix arithmetic operators.
+    /// OrderedFloat<f64> satisfies the infix operator bounds (its
+    /// TryAdd is Infallible-free, panic-free for finite inputs).
     #[cfg(feature = "ordered-float")]
     #[test]
     fn test_ord_float_add() {
@@ -338,8 +297,6 @@ mod tests {
     }
 
     // -- value-level primitive smoke tests (E2) --
-
-    use crate::error::MathError;
 
     #[test]
     fn primitive_signed_add() {
@@ -396,5 +353,31 @@ mod tests {
         // does not widen `T::Error`.
         let r: Result<Option<i32>, MathError> = Some(i32::MAX).try_add(Some(1));
         assert_eq!(r, Err(MathError::Range));
+    }
+
+    // -- E6: set-level overflow surfaces as Err on `try_add`, panics on `+` --
+
+    #[test]
+    fn set_level_int_overflow_returns_err() {
+        let a = FiniteInterval::<i32>::closed(i32::MAX, i32::MAX);
+        let b = FiniteInterval::<i32>::closed(1, 1);
+        let r = a.try_add(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Range))));
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_level_int_overflow_infix_panics() {
+        let a = FiniteInterval::<i32>::closed(i32::MAX, i32::MAX);
+        let b = FiniteInterval::<i32>::closed(1, 1);
+        let _ = a + b;
+    }
+
+    #[test]
+    fn set_level_float_overflow_returns_err() {
+        let a = FiniteInterval::<f64>::closed(f64::MAX, f64::MAX);
+        let b = FiniteInterval::<f64>::closed(f64::MAX, f64::MAX);
+        let r = a.try_add(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Domain))));
     }
 }

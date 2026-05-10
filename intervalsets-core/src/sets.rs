@@ -457,10 +457,14 @@ impl<T> SetBounds<T> for EnumInterval<T> {
 }
 
 // num_traits::Zero requires Self: Add<Self, Output = Self>; the infix
-// Add impls on FiniteInterval/EnumInterval require T: Ord. Likewise One
-// requires Self: Mul<Self, Output = Self>, so T must satisfy the Mul
-// bounds too (Ord + Clone + Zero).
-impl<T: Element + Ord + Zero> Zero for FiniteInterval<T> {
+// Add impl on FiniteInterval/EnumInterval is sugar over try_add, so T
+// must satisfy `TryAdd<Output = T>`. Likewise One requires
+// Self: Mul<Self, Output = Self>, so T must satisfy `TryMul<Output = T>`.
+impl<T> Zero for FiniteInterval<T>
+where
+    T: Element + Zero + crate::ops::math::TryAdd<Output = T>,
+    <T as crate::ops::math::TryAdd>::Error: core::fmt::Debug + Into<Error>,
+{
     fn zero() -> Self {
         Self::closed(T::zero(), T::zero())
     }
@@ -471,7 +475,11 @@ impl<T: Element + Ord + Zero> Zero for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Ord + Zero> Zero for EnumInterval<T> {
+impl<T> Zero for EnumInterval<T>
+where
+    T: Element + Zero + crate::ops::math::TryAdd<Output = T>,
+    <T as crate::ops::math::TryAdd>::Error: core::fmt::Debug + Into<Error>,
+{
     fn zero() -> Self {
         Self::from(FiniteInterval::<T>::zero())
     }
@@ -484,13 +492,21 @@ impl<T: Element + Ord + Zero> Zero for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Ord + Clone + Zero + One> One for FiniteInterval<T> {
+impl<T> One for FiniteInterval<T>
+where
+    T: Element + Clone + Zero + One + crate::ops::math::TryMul<Output = T>,
+    <T as crate::ops::math::TryMul>::Error: core::fmt::Debug + Into<Error>,
+{
     fn one() -> Self {
         FiniteInterval::closed(T::one(), T::one())
     }
 }
 
-impl<T: Element + Ord + Clone + Zero + One> One for EnumInterval<T> {
+impl<T> One for EnumInterval<T>
+where
+    T: Element + Clone + Zero + One + crate::ops::math::TryMul<Output = T>,
+    <T as crate::ops::math::TryMul>::Error: core::fmt::Debug + Into<Error>,
+{
     fn one() -> Self {
         EnumInterval::from(FiniteInterval::one())
     }

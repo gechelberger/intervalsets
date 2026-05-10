@@ -7,21 +7,19 @@ use crate::numeric::Element;
 use crate::EnumInterval::{self, Finite, Half, Unbounded};
 use crate::{FiniteInterval, HalfInterval, MaybeEmpty};
 
-// `Sub for FiniteBound<T>` lives in `crate::bound`'s `math` submodule
-// alongside `Add` and `Mul`.
-
-// The infix Sub operators below all require T: Ord (and the arithmetic
-// output type to also be Ord). For Ord types, partial_cmp on bounds is
-// total, so try_sub is provably infallible and the .unwrap() can never
-// panic. Float users without an Ord wrapper (e.g. OrderedFloat) must
-// use TrySub::try_sub directly.
+// `TrySub for FiniteBound<T>` lives in `crate::bound`'s `math` submodule
+// alongside `TryAdd` and `TryMul`.
+//
+// Set-level `TrySub` binds on `T: TrySub<Output = T>` and propagates
+// `T::TrySub::Error` (e.g. `MathError`) into `crate::error::Error`. The
+// infix `-` is panicking sugar over `try_sub().unwrap()` (Tier 3b).
 
 macro_rules! sub_via_try {
     ($lhs:ty, $rhs:ty, $out:ty) => {
         impl<T> Sub<$rhs> for $lhs
         where
-            T: Sub + Ord,
-            <T as Sub>::Output: Element + Ord,
+            $lhs: TrySub<$rhs, Output = $out>,
+            <$lhs as TrySub<$rhs>>::Error: core::fmt::Debug,
         {
             type Output = $out;
             #[inline]
@@ -32,58 +30,22 @@ macro_rules! sub_via_try {
     };
 }
 
-sub_via_try!(
-    FiniteInterval<T>,
-    FiniteInterval<T>,
-    FiniteInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    HalfInterval<T>,
-    HalfInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    FiniteInterval<T>,
-    HalfInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    HalfInterval<T>,
-    FiniteInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    EnumInterval<T>,
-    FiniteInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    EnumInterval<T>,
-    HalfInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    EnumInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    FiniteInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
-sub_via_try!(
-    HalfInterval<T>,
-    EnumInterval<T>,
-    EnumInterval<<T as Sub>::Output>
-);
+sub_via_try!(FiniteInterval<T>, FiniteInterval<T>, FiniteInterval<T>);
+sub_via_try!(HalfInterval<T>, HalfInterval<T>, EnumInterval<T>);
+sub_via_try!(FiniteInterval<T>, HalfInterval<T>, EnumInterval<T>);
+sub_via_try!(HalfInterval<T>, FiniteInterval<T>, EnumInterval<T>);
+sub_via_try!(EnumInterval<T>, FiniteInterval<T>, EnumInterval<T>);
+sub_via_try!(EnumInterval<T>, HalfInterval<T>, EnumInterval<T>);
+sub_via_try!(EnumInterval<T>, EnumInterval<T>, EnumInterval<T>);
+sub_via_try!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>);
+sub_via_try!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
 
 impl<T> TrySub for FiniteInterval<T>
 where
-    T: Sub,
-    <T as Sub>::Output: Element,
+    T: Element + TrySub<Output = T>,
+    <T as TrySub>::Error: Into<Error>,
 {
-    type Output = FiniteInterval<<T as Sub>::Output>;
+    type Output = FiniteInterval<T>;
     type Error = Error;
 
     fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
@@ -95,16 +57,16 @@ where
             return Ok(FiniteInterval::empty());
         };
 
-        FiniteInterval::try_new(lhs_min - rhs_max, lhs_max - rhs_min)
+        FiniteInterval::try_new(lhs_min.try_sub(rhs_max)?, lhs_max.try_sub(rhs_min)?)
     }
 }
 
 impl<T> TrySub for HalfInterval<T>
 where
-    T: Sub,
-    <T as Sub>::Output: Element,
+    T: Element + TrySub<Output = T>,
+    <T as TrySub>::Error: Into<Error>,
 {
-    type Output = EnumInterval<<T as Sub>::Output>;
+    type Output = EnumInterval<T>;
     type Error = Error;
 
     fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
@@ -113,17 +75,17 @@ where
         if l_side == r_side {
             Ok(EnumInterval::unbounded())
         } else {
-            EnumInterval::try_half_bounded(l_side, l_bound - r_bound)
+            EnumInterval::try_half_bounded(l_side, l_bound.try_sub(r_bound)?)
         }
     }
 }
 
 impl<T> TrySub<HalfInterval<T>> for FiniteInterval<T>
 where
-    T: Sub,
-    <T as Sub>::Output: Element,
+    T: Element + TrySub<Output = T>,
+    <T as TrySub>::Error: Into<Error>,
 {
-    type Output = EnumInterval<<T as Sub>::Output>;
+    type Output = EnumInterval<T>;
     type Error = Error;
 
     fn try_sub(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
@@ -136,16 +98,16 @@ where
         let (side, bound) = rhs.into_raw();
         let side = side.flip();
         let anchor = side.select(lhs_min, lhs_max);
-        EnumInterval::try_half_bounded(side, anchor - bound)
+        EnumInterval::try_half_bounded(side, anchor.try_sub(bound)?)
     }
 }
 
 impl<T> TrySub<FiniteInterval<T>> for HalfInterval<T>
 where
-    T: Sub,
-    <T as Sub>::Output: Element,
+    T: Element + TrySub<Output = T>,
+    <T as TrySub>::Error: Into<Error>,
 {
-    type Output = EnumInterval<<T as Sub>::Output>;
+    type Output = EnumInterval<T>;
     type Error = Error;
 
     fn try_sub(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
@@ -157,7 +119,7 @@ where
 
         let (side, bound) = self.into_raw();
         let offset = side.select(rhs_max, rhs_min);
-        EnumInterval::try_half_bounded(side, bound - offset)
+        EnumInterval::try_half_bounded(side, bound.try_sub(offset)?)
     }
 }
 
@@ -165,10 +127,10 @@ macro_rules! dispatch_lhs_try_sub_impl {
     ($t_rhs:ty) => {
         impl<T> TrySub<$t_rhs> for EnumInterval<T>
         where
-            T: Sub,
-            <T as Sub>::Output: Element,
+            T: Element + TrySub<Output = T>,
+            <T as TrySub>::Error: Into<Error>,
         {
-            type Output = EnumInterval<<T as Sub>::Output>;
+            type Output = EnumInterval<T>;
             type Error = Error;
 
             #[inline]
@@ -197,10 +159,10 @@ macro_rules! dispatch_rhs_try_sub_impl {
     ($t_lhs:ty) => {
         impl<T> TrySub<EnumInterval<T>> for $t_lhs
         where
-            T: Sub,
-            <T as Sub>::Output: Element,
+            T: Element + TrySub<Output = T>,
+            <T as TrySub>::Error: Into<Error>,
         {
-            type Output = EnumInterval<<T as Sub>::Output>;
+            type Output = EnumInterval<T>;
             type Error = Error;
 
             #[inline]
@@ -262,6 +224,7 @@ impl<T: TrySub> TrySub for Option<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::MathError;
 
     #[test]
     fn test_finite_sub() {
@@ -327,9 +290,7 @@ mod tests {
         assert_eq!(u - x, x);
     }
 
-    /// Verify that OrderedFloat<f64> satisfies the infix Sub operator
-    /// bounds. Confirms wrapping floats with OrderedFloat restores
-    /// access to the infix arithmetic operators.
+    /// OrderedFloat<f64> satisfies the infix operator bounds.
     #[cfg(feature = "ordered-float")]
     #[test]
     fn test_ord_float_sub() {
@@ -364,8 +325,6 @@ mod tests {
 
     // -- value-level primitive smoke tests (E2) --
 
-    use crate::error::MathError;
-
     #[test]
     fn primitive_signed_sub() {
         assert_eq!(<i32 as TrySub>::try_sub(5, 3), Ok(2));
@@ -396,5 +355,23 @@ mod tests {
 
         let r: Result<Option<u32>, MathError> = Some(0_u32).try_sub(Some(1));
         assert_eq!(r, Err(MathError::Range));
+    }
+
+    // -- E6: set-level underflow surfaces as Err on `try_sub`, panics on `-` --
+
+    #[test]
+    fn set_level_unsigned_underflow_returns_err() {
+        let a = FiniteInterval::<u32>::closed(0, 5);
+        let b = FiniteInterval::<u32>::closed(10, 20);
+        let r = a.try_sub(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Range))));
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_level_unsigned_underflow_infix_panics() {
+        let a = FiniteInterval::<u32>::closed(0, 5);
+        let b = FiniteInterval::<u32>::closed(10, 20);
+        let _ = a - b;
     }
 }

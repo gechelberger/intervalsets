@@ -70,17 +70,39 @@
 //! ## Tier 3 — `try_*` + panicking sugar
 //!
 //! Accepts user-supplied `T` that may break a logical constraint
-//! (NaN, etc.). The `try_*` form returns
-//! `Result<_, Self::Error>` and never panics; the sugar form is
-//! `try_*().unwrap()` and panics on `Err` by design, with the panic
-//! site documented as part of the contract. Per-impl
-//! `Error: core::error::Error`; some impls are `Infallible` for
-//! already-validated inputs (the
-//! [`ConvexHull::try_hull`]`<&FiniteInterval<T>>` precedent).
+//! (NaN, integer overflow, divide-by-zero, etc.). Tier 3 splits into
+//! two halves with different guarantees:
 //!
-//! Members: [`Split`], [`Rebound`], [`ConvexHull`], plus the
+//! ### Tier 3a — `try_*` (total, panic-free)
+//!
+//! The `try_*` form returns `Result<_, Self::Error>` and **never
+//! panics in release**. `Err` covers user-supplied breakage:
+//! incomparable bounds (NaN), integer overflow / signed `MIN / -1`
+//! (`MathError::Range`), integer divide-by-zero / non-finite float
+//! result (`MathError::Domain`), or any user-defined `Error` from a
+//! custom `T`. Per-impl `Error: core::error::Error`; some impls are
+//! `Infallible` for already-validated inputs (the
+//! [`ConvexHull::try_hull`]`<&FiniteInterval<T>>` precedent). The
+//! `core-panic-canary` crate verifies the panic-free contract
+//! against an external Kani prover.
+//!
+//! Members: [`Split::try_split`], [`Rebound::try_with_left`] /
+//! [`Rebound::try_with_right`], [`ConvexHull::try_hull`], plus
 //! [`math::TryAdd`] / [`math::TrySub`] / [`math::TryMul`] /
-//! [`math::TryDiv`] family.
+//! [`math::TryDiv`].
+//!
+//! ### Tier 3b — infix `+ - * /` and the non-`try_*` ops (panicking sugar)
+//!
+//! Defined as `lhs.try_op(rhs).unwrap()`. **May panic in release
+//! and debug** when the underlying `try_*` would have returned
+//! `Err`. The panic site is part of the documented contract — there
+//! is no `T: Ord`-style "infallibility" claim. Use the `try_*`
+//! sibling for the panic-free contract.
+//!
+//! Members: infix [`core::ops::Add`] / [`core::ops::Sub`] /
+//! [`core::ops::Mul`] / [`core::ops::Div`] for set types, plus
+//! [`Split::split`], [`Rebound::with_left`] / [`Rebound::with_right`],
+//! [`ConvexHull::hull`].
 //!
 //! ## Tier 4 — `*_assume_valid` (bypass)
 //!
