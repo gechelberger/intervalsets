@@ -3,6 +3,7 @@
 use num_traits::{CheckedAdd, CheckedSub, Zero};
 
 use crate::error::MathError;
+use crate::measure::Widthable;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 /// private macro for Element on fixed crate types.
@@ -149,6 +150,31 @@ fixed_try_ops_impl!(fixed::FixedI64<N>, fixed::types::extra::LeEqU64);
 fixed_try_ops_impl!(fixed::FixedU64<N>, fixed::types::extra::LeEqU64);
 fixed_try_ops_impl!(fixed::FixedI128<N>, fixed::types::extra::LeEqU128);
 fixed_try_ops_impl!(fixed::FixedU128<N>, fixed::types::extra::LeEqU128);
+
+// Widthable: fixed-point widths can overflow at extremes (e.g.
+// MAX - MIN); use `checked_sub` to surface overflow as `None`.
+macro_rules! fixed_width_impl {
+    ($t:ty) => {
+        impl<N: typenum::Unsigned> Widthable for $t {
+            type Output = $t;
+
+            fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+                right.checked_sub(left)
+            }
+        }
+    };
+}
+
+fixed_width_impl!(fixed::FixedI8<N>);
+fixed_width_impl!(fixed::FixedU8<N>);
+fixed_width_impl!(fixed::FixedI16<N>);
+fixed_width_impl!(fixed::FixedU16<N>);
+fixed_width_impl!(fixed::FixedI32<N>);
+fixed_width_impl!(fixed::FixedU32<N>);
+fixed_width_impl!(fixed::FixedI64<N>);
+fixed_width_impl!(fixed::FixedU64<N>);
+fixed_width_impl!(fixed::FixedI128<N>);
+fixed_width_impl!(fixed::FixedU128<N>);
 
 #[cfg(test)]
 mod tests {

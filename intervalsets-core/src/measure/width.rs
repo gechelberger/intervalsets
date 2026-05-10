@@ -1,23 +1,49 @@
-use core::ops::Sub;
-
 use super::Measurement;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Zero;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+
+/// The width of a set cannot be represented in
+/// [`Width::Output`] (e.g. width of `[i128::MIN, i128::MAX]` overflows
+/// `u128`, or `f64::MAX - f64::MIN` overflows `f64` to `±INF`).
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
+#[error("width overflows the Width Output type or is non-finite")]
+pub struct WidthOverflowError;
+
+impl From<core::convert::Infallible> for WidthOverflowError {
+    fn from(x: core::convert::Infallible) -> Self {
+        match x {}
+    }
+}
+
+impl From<crate::error::MathError> for WidthOverflowError {
+    /// Lifts a value-level overflow during width summation into the
+    /// width-overflow umbrella. Used by `IntervalSet::try_width` to
+    /// surface mid-fold `TryAdd` overflow as a width-side failure.
+    fn from(_: crate::error::MathError) -> Self {
+        WidthOverflowError
+    }
+}
 
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
-/// The width is defined as the absolute difference between the greatest and
-/// least elements within the interval set. If one or more sides is unbounded
-/// then the width is infinite.
+/// The width is defined as the absolute difference between the
+/// greatest and least elements within the interval set. If one or
+/// more sides is unbounded, the width is infinite.
 ///
 /// > Mathematically speaking, the width of any Countable set is 0.
-/// > We *do* allow calculating the width over the Reals between two integer bounds,
-/// > however unexpected results may occur due to discrete normalization.
+/// > We *do* allow calculating the width over the Reals between two
+/// > integer bounds, however unexpected results may occur due to
+/// > discrete normalization. For discrete `T`, prefer
+/// > [`Count`](crate::measure::Count).
+///
+/// Mirrors [`Count`](crate::measure::Count) in shape: every impl
+/// provides a fallible [`try_width`](Width::try_width) that surfaces
+/// representation overflow, and a default [`width`](Width::width)
+/// that panics on overflow for convenience.
 ///
 /// # Example
 /// ```
 /// use intervalsets_core::prelude::*;
-///
 ///
 /// let interval = EnumInterval::closed(10.0, 100.0);
 /// assert_eq!(interval.width().finite(), 90.0);
@@ -32,130 +58,246 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 /// assert_eq!(a.width().finite(), 10.0);
 ///
 /// let b = EnumInterval::open(0, 10);
-/// assert_eq!(b.width().finite(), 8);
+/// assert_eq!(b.width().finite(), 8u128);
 /// ```
 pub trait Width {
-    #[allow(missing_docs)]
+    /// The type produced by a successful width computation.
+    type Output;
+    /// The error returned when the width cannot be represented in [`Self::Output`].
+    type Error: core::error::Error;
+
+    /// Compute the width measure of this set.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the width cannot be represented in [`Self::Output`]
+    /// (e.g. width of `[i128::MIN, i128::MAX]` overflows `u128`, or a
+    /// float diff overflows to `±INF`). For panic-free width
+    /// computation, use [`try_width`](Width::try_width).
+    fn width(&self) -> Measurement<Self::Output> {
+        self.try_width()
+            .expect("Width::width: representation overflow; use try_width for panic-free")
+    }
+
+    /// Compute the width measure of this set, returning `Err` if the
+    /// width cannot be represented in [`Self::Output`].
+    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error>;
+}
+
+/// Defines whether a set of type `T` has a width measure, and the
+/// type used to represent that width.
+///
+/// [`Width`] delegates to the underlying type that implements
+/// [`Widthable`]. Library impls cover primitive integers (widening to
+/// `u128`), floats, `BigInt`/`BigUint`/`BigDecimal`, `Decimal`, and
+/// the `fixed::Fixed*` family. Downstream users extend via
+/// [`default_width_impl!`](crate::default_width_impl) for
+/// arbitrary-precision types or a bespoke impl for types with
+/// representation overflow.
+pub trait Widthable {
+    /// The type used to represent a width. May be wider than `Self`
+    /// (e.g. primitive integers widen to `u128` so `[i32::MIN, i32::MAX]`
+    /// fits without overflow).
     type Output;
 
-    #[allow(missing_docs)]
-    fn width(&self) -> Measurement<Self::Output>;
+    /// Compute `right - left` as a width. The interval invariant
+    /// guarantees `right >= left`. Returns `None` when the width
+    /// cannot be represented in [`Self::Output`] (e.g. extreme
+    /// `Decimal`, `f64::MIN..f64::MAX` overflowing to `INF`,
+    /// `i128::MIN..i128::MAX` overflowing `u128`).
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output>;
 }
 
-impl<T, Out> Width for FiniteInterval<T>
-where
-    Out: Zero,
-    T: Element,
-    for<'a> &'a T: Sub<Output = Out>, //T: Element + Clone + Sub<T, Output = Out>,
-{
-    type Output = Out;
+/// Implements [`Widthable`] for arbitrary-precision types where
+/// `&T - &T = T` cannot fail.
+#[macro_export]
+macro_rules! default_width_impl {
+    ($t_in_out:ty) => {
+        impl $crate::measure::Widthable for $t_in_out {
+            type Output = $t_in_out;
 
-    fn width(&self) -> Measurement<Self::Output> {
+            fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+                Some(right - left)
+            }
+        }
+    };
+}
+
+/// Implements [`Widthable`] for native primitive integer types
+/// narrower than 128 bits. `Output` is always [`u128`]; the input is
+/// widened to [`i128`] before subtraction, so no intermediate overflow
+/// is possible. Always returns `Some`.
+macro_rules! primitive_width_impl {
+    ($($t:ty),+ $(,)?) => {
+        $(
+            impl $crate::measure::Widthable for $t {
+                type Output = u128;
+
+                fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+                    // Interval invariant: right >= left, so the i128 diff is non-negative.
+                    let diff = (*right as i128) - (*left as i128);
+                    Some(diff as u128)
+                }
+            }
+        )+
+    };
+}
+
+primitive_width_impl!(u8, u16, u32, u64, usize);
+primitive_width_impl!(i8, i16, i32, i64, isize);
+
+// 128-bit types need bespoke handling.
+impl Widthable for u128 {
+    type Output = u128;
+
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+        // Interval invariant: right >= left, so checked_sub never underflows.
+        right.checked_sub(*left)
+    }
+}
+
+impl Widthable for i128 {
+    type Output = u128;
+
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+        // Interval invariant: right >= left. The wrapping i128 difference
+        // reinterpreted as u128 yields the true unsigned distance, up to
+        // 2^128 - 1 (e.g. `[i128::MIN, i128::MAX]` ⇒ u128::MAX).
+        Some(right.wrapping_sub(*left) as u128)
+    }
+}
+
+impl Widthable for f32 {
+    type Output = f32;
+
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+        let d = right - left;
+        // Element::validate already rejects ±INF/NaN bounds at construction;
+        // a non-finite diff means the diff itself overflowed.
+        d.is_finite().then_some(d)
+    }
+}
+
+impl Widthable for f64 {
+    type Output = f64;
+
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+        let d = right - left;
+        d.is_finite().then_some(d)
+    }
+}
+
+impl<T> Width for FiniteInterval<T>
+where
+    T: Widthable,
+    T::Output: Zero,
+{
+    type Output = T::Output;
+    type Error = WidthOverflowError;
+
+    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self.view_raw() {
-            None => Measurement::Finite(Out::zero()),
-            Some((left, right)) => Measurement::Finite(right.value() - left.value()),
+            None => Ok(Measurement::Finite(<Self::Output as Zero>::zero())),
+            Some((left, right)) => match T::width_between(left.value(), right.value()) {
+                Some(w) => Ok(Measurement::Finite(w)),
+                None => Err(WidthOverflowError),
+            },
         }
     }
 }
 
-impl<T, Out> Width for HalfInterval<T>
+impl<T> Width for HalfInterval<T>
 where
-    Out: Zero,
-    T: Element,
-    for<'a> &'a T: Sub<Output = Out>,
+    T: Widthable,
+    T::Output: Zero,
 {
-    type Output = Out;
+    type Output = T::Output;
+    type Error = WidthOverflowError;
 
-    fn width(&self) -> Measurement<Self::Output> {
-        Measurement::Infinite
+    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+        Ok(Measurement::Infinite)
     }
 }
 
-impl<T, Out> Width for EnumInterval<T>
+impl<T> Width for EnumInterval<T>
 where
-    Out: Zero,
-    T: Element,
-    for<'a> &'a T: Sub<Output = Out>,
+    T: Widthable,
+    T::Output: Zero,
 {
-    type Output = Out;
+    type Output = T::Output;
+    type Error = WidthOverflowError;
 
-    fn width(&self) -> crate::measure::Measurement<Self::Output> {
+    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
         match self {
-            Self::Finite(inner) => inner.width(),
-            Self::Half(inner) => inner.width(),
-            Self::Unbounded => Measurement::Infinite,
+            Self::Finite(inner) => inner.try_width(),
+            Self::Half(inner) => inner.try_width(),
+            Self::Unbounded => Ok(Measurement::Infinite),
         }
     }
 }
-
-/*
 
 #[cfg(test)]
 mod tests {
-    use approx::relative_eq;
-
     use super::*;
-    use crate::ops::Intersects;
-    use crate::Factory;
+    use crate::factory::FiniteFactory;
 
-    #[quickcheck]
-    fn check_finite_width(a: f32, b: f32) {
-        if f32::is_nan(a) || f32::is_nan(b) || f32::is_infinite(a) || f32::is_infinite(b) {
-            return;
-        }
-
-        let expected = f32::max(0.0, b - a);
-        let open_interval = Interval::open(a, b);
-        let closed_interval = Interval::closed(a, b);
-
-        assert_eq!(open_interval.width().finite(), expected);
-        assert_eq!(closed_interval.width().finite(), expected);
+    #[test]
+    fn finite_integer_width_widens_to_u128() {
+        let x = EnumInterval::closed(0_i32, 10);
+        assert_eq!(x.width().finite(), 10_u128);
     }
 
-    #[quickcheck]
-    fn check_set_width_float(a: f32, b: f32, c: f32, d: f32) -> bool {
-        if a.is_nan() || b.is_nan() || c.is_nan() || d.is_nan() {
-            return true;
-        }
-
-        let ab = Interval::open(a, b);
-        let cd = Interval::open(c, d);
-
-        let expected = f32::max(0.0, b - a) + f32::max(0.0, d - c);
-        let x = IntervalSet::new(vec![ab.clone(), cd.clone()]);
-
-        if ab.intersects(&cd) {
-            x.width().finite() <= expected
-        } else {
-            relative_eq!(x.width().finite(), expected)
-        }
+    #[test]
+    fn finite_signed_full_range_no_overflow() {
+        // [i32::MIN, i32::MAX] has width 2^32 - 1, fits in u128.
+        let x = EnumInterval::closed(i32::MIN, i32::MAX);
+        assert_eq!(x.width().finite(), u32::MAX as u128);
     }
 
-    #[quickcheck]
-    fn check_set_width_integer(a: i32, b: i32, c: i32, d: i32) -> bool {
-        if b.checked_sub(a).is_none() || d.checked_sub(c).is_none() {
-            return true; // overflow panic
-        }
+    #[test]
+    fn finite_unsigned_full_range_no_overflow() {
+        let x = EnumInterval::closed(0_u64, u64::MAX);
+        assert_eq!(x.width().finite(), u64::MAX as u128);
+    }
 
-        let ab = i32::max(0, b - a);
-        let ab_ivl = Interval::closed(a, b);
+    #[test]
+    fn finite_i128_full_range_at_u128_max() {
+        // [i128::MIN, i128::MAX] has width 2^128 - 1, exactly u128::MAX.
+        let x = EnumInterval::closed(i128::MIN, i128::MAX);
+        assert_eq!(x.try_width().unwrap().finite(), u128::MAX);
+    }
 
-        let cd = i32::max(0, d - c);
-        let cd_ivl = Interval::closed(c, d);
+    #[test]
+    fn finite_float_width() {
+        let x = EnumInterval::closed(0.0_f64, 10.0);
+        assert_eq!(x.width().finite(), 10.0);
+    }
 
-        if ab.checked_add(cd).is_none() {
-            return true; // overflow
-        }
+    #[test]
+    fn float_extreme_range_overflows_to_err() {
+        // f64::MIN..f64::MAX has true width ≈ 3.6e308, overflows f64 to INF.
+        let x = EnumInterval::closed(f64::MIN, f64::MAX);
+        assert!(matches!(x.try_width(), Err(WidthOverflowError)));
+    }
 
-        let expected = ab + cd;
-        let x = IntervalSet::new(vec![ab_ivl.clone(), cd_ivl.clone()]);
+    #[test]
+    #[should_panic]
+    fn float_extreme_range_panics_via_width() {
+        // The panicking sibling is documented to panic on overflow.
+        let x = EnumInterval::closed(f64::MIN, f64::MAX);
+        let _ = x.width();
+    }
 
-        // subadditivity
-        if ab_ivl.intersects(&cd_ivl) {
-            x.width().finite() <= expected
-        } else {
-            x.width().finite() == expected
-        }
+    #[test]
+    fn half_interval_width_is_infinite() {
+        use crate::bound::FiniteBound;
+        let x = HalfInterval::<i32>::left(FiniteBound::closed(0));
+        assert!(x.try_width().unwrap().is_infinite());
+    }
+
+    #[test]
+    fn unbounded_width_is_infinite() {
+        let x: EnumInterval<i32> = EnumInterval::Unbounded;
+        assert!(x.try_width().unwrap().is_infinite());
     }
 }
-*/

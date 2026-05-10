@@ -1,7 +1,10 @@
+use core::convert::Infallible;
+
 use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
-use crate::error::{MathError, MidpointError};
+use crate::error::MathError;
+use crate::measure::Widthable;
 use crate::numeric::{Element, Midpoint};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
@@ -32,29 +35,50 @@ impl<T: FloatCore + Element> Element for OrderedFloat<T> {
     }
 }
 
-impl<T: FloatCore + Midpoint<Error = MidpointError>> Midpoint for NotNan<T> {
-    type Error = MidpointError;
+impl<T: FloatCore + Midpoint<Error = Infallible>> Midpoint for NotNan<T> {
+    type Error = Infallible;
 
-    /// Delegates to the inner `T::midpoint`. Returns
-    /// [`MidpointError`](crate::error::MidpointError) when either
-    /// input is non-finite (per the inner float impl's contract);
-    /// the resulting midpoint is guaranteed finite, so re-wrapping
-    /// in `NotNan` cannot fail.
+    /// Infallible by contract: values stored in any in-tree set type
+    /// are validated finite at construction, and `NotNan` further
+    /// excludes `NaN` by construction. Delegates to the inner
+    /// `T::midpoint`; the resulting midpoint of two finite inputs is
+    /// guaranteed finite, so re-wrapping in `NotNan` cannot fail.
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
-        let mid = self.into_inner().midpoint(other.into_inner())?;
+        let Ok(mid) = self.into_inner().midpoint(other.into_inner());
         Ok(NotNan::new(mid).expect("midpoint of finite floats is non-NaN"))
     }
 }
 
-impl<T: Midpoint<Error = MidpointError>> Midpoint for OrderedFloat<T> {
-    type Error = MidpointError;
+impl<T: FloatCore + Widthable<Output = T>> Widthable for NotNan<T> {
+    type Output = T;
 
-    /// Delegates to the inner `T::midpoint`. Returns
-    /// [`MidpointError`](crate::error::MidpointError) when either
-    /// input is non-finite — even though `OrderedFloat` admits NaN
-    /// under its total order, NaN has no well-defined midpoint.
+    /// Delegates to the inner float's `Widthable`. Returns `None` if
+    /// the diff is non-finite (overflow at extreme inputs).
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+        T::width_between(&**left, &**right)
+    }
+}
+
+impl<T: FloatCore + Widthable<Output = T>> Widthable for OrderedFloat<T> {
+    type Output = T;
+
+    /// Delegates to the inner float's `Widthable`. Returns `None` if
+    /// the diff is non-finite (overflow at extreme inputs).
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+        T::width_between(&left.0, &right.0)
+    }
+}
+
+impl<T: Midpoint<Error = Infallible>> Midpoint for OrderedFloat<T> {
+    type Error = Infallible;
+
+    /// Infallible by contract: values stored in any in-tree set type
+    /// are validated finite at construction (`Element::validate` rejects
+    /// `NaN` and `±INF` for `OrderedFloat`). Delegates to the inner
+    /// `T::midpoint`.
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
-        Ok(OrderedFloat(self.0.midpoint(other.0)?))
+        let Ok(mid) = self.0.midpoint(other.0);
+        Ok(OrderedFloat(mid))
     }
 }
 
@@ -157,12 +181,6 @@ mod tests {
         let a = NotNan::new(2.0_f32).unwrap();
         let b = NotNan::new(4.0_f32).unwrap();
         assert_eq!(a.midpoint(b).unwrap(), NotNan::new(3.0_f32).unwrap());
-
-        // Infinity is admitted by NotNan but rejected as a midpoint
-        // endpoint -- inf.midpoint(-inf) would otherwise produce NaN.
-        let inf = NotNan::new(f32::INFINITY).unwrap();
-        let zero = NotNan::new(0.0_f32).unwrap();
-        assert!(inf.midpoint(zero).is_err());
     }
 
     #[test]
@@ -260,15 +278,5 @@ mod tests {
         let a = OrderedFloat(2.0_f32);
         let b = OrderedFloat(4.0_f32);
         assert_eq!(a.midpoint(b).unwrap(), OrderedFloat(3.0_f32));
-
-        // NaN is admitted by OrderedFloat's total order but rejected
-        // here -- NaN has no well-defined midpoint.
-        let nan = OrderedFloat(f32::NAN);
-        let zero = OrderedFloat(0.0_f32);
-        assert!(nan.midpoint(zero).is_err());
-
-        // Infinity is rejected for the same reason as the float impl.
-        let inf = OrderedFloat(f32::INFINITY);
-        assert!(inf.midpoint(zero).is_err());
     }
 }

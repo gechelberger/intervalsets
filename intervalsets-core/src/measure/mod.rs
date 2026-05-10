@@ -13,13 +13,14 @@
 //!         m(A0 U A1 .. An) <= Sum { m(Ai) for i in 0..n }
 //! ```
 //!
-//! Some common measures are Cardinality, Count, and
-//! the Lebesgue measure which is Width in R1.
+//! Some common measures are Count and the Lebesgue measure
+//! (which is Width in R1).
 
 mod count;
 pub use count::{Count, CountOverflowError, Countable};
+mod midpoint;
 mod width;
-pub use width::Width;
+pub use width::{Width, WidthOverflowError, Widthable};
 
 /// The result of applying a Measure to a `Set`.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq)]
@@ -148,8 +149,8 @@ impl<T> Measurement<T> {
         }
     }
 
-    /// Compose with core::ops binary operations
-    fn binop_map(self, rhs: Self, func: impl Fn(T, T) -> T) -> Self {
+    /// Compose with core::ops binary operations.
+    fn binop_map(self, rhs: Self, func: impl FnOnce(T, T) -> T) -> Self {
         let lhs = match self {
             Self::Finite(inner) => inner,
             Self::Infinite => return Self::Infinite,
@@ -163,30 +164,36 @@ impl<T> Measurement<T> {
         Self::Finite(func(lhs, rhs))
     }
 
-    /// Compose with TryFiniteOp
-    #[allow(dead_code)]
-    fn binop_try_map(self, rhs: Self, func: impl Fn(&T, &T) -> Option<T>) -> Self {
+    /// Compose with a fallible binary operation. `Infinite` short-circuits
+    /// to `Infinite`; `Finite + Finite` runs the closure and propagates
+    /// any error.
+    pub fn try_binop_map<E>(
+        self,
+        rhs: Self,
+        func: impl FnOnce(T, T) -> Result<T, E>,
+    ) -> Result<Self, E> {
         let lhs = match self {
             Self::Finite(inner) => inner,
-            Self::Infinite => return Self::Infinite,
+            Self::Infinite => return Ok(Self::Infinite),
         };
 
         let rhs = match rhs {
             Self::Finite(inner) => inner,
-            Self::Infinite => return Self::Infinite,
+            Self::Infinite => return Ok(Self::Infinite),
         };
 
-        func(&lhs, &rhs).map_or(Self::Infinite, Self::Finite)
+        func(lhs, rhs).map(Self::Finite)
     }
 }
 
 impl<T> core::ops::Add for Measurement<T>
 where
-    T: Clone + core::ops::Add<T, Output = T>,
+    T: core::ops::Add<T, Output = T>,
 {
     type Output = Self;
 
-    /// Add a Measurement with another.
+    /// Add a Measurement with another. `Infinite + _` and `_ + Infinite`
+    /// both yield `Infinite`.
     ///
     /// # Examples
     ///
@@ -205,30 +212,12 @@ where
     }
 }
 
-impl<T> core::ops::Sub for Measurement<T>
-where
-    T: Clone + core::ops::Sub<T, Output = T>,
-{
-    type Output = Self;
-
-    /// Subtract a Measurement from another.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use intervalsets_core::measure::Measurement;
-    ///
-    /// let x = Measurement::Finite(100);
-    /// let y = Measurement::Finite(10);
-    /// assert_eq!(x - y, Measurement::Finite(90));
-    ///
-    /// let x = Measurement::Infinite;
-    /// assert_eq!(x - y, Measurement::Infinite);
-    /// ```
-    fn sub(self, rhs: Self) -> Self::Output {
-        self.binop_map(rhs, T::sub)
-    }
-}
+// `Measurement::Sub` was removed: the prior impl returned `Infinite`
+// whenever either operand was `Infinite`, which is mathematically
+// wrong (`Finite(n) - Infinite` should be `-Infinite` and
+// `Infinite - Infinite` is undefined). Use `try_binop_map` with a
+// caller-supplied checked subtraction if you need a `Sub`-shaped
+// composition.
 
 #[cfg(test)]
 mod tests {

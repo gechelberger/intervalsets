@@ -3,12 +3,13 @@ use core::ops::Add;
 
 use bigdecimal::{BigDecimal, Zero};
 
-use crate::continuous_domain_impl;
 use crate::error::MathError;
 use crate::numeric::Midpoint;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
+use crate::{continuous_domain_impl, default_width_impl};
 
 continuous_domain_impl!(BigDecimal);
+default_width_impl!(BigDecimal);
 
 impl Midpoint for BigDecimal {
     type Error = core::convert::Infallible;

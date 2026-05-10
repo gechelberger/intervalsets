@@ -9,6 +9,21 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 #[error("count overflows the Countable Output type")]
 pub struct CountOverflowError;
 
+impl From<core::convert::Infallible> for CountOverflowError {
+    fn from(x: core::convert::Infallible) -> Self {
+        match x {}
+    }
+}
+
+impl From<crate::error::MathError> for CountOverflowError {
+    /// Lifts a value-level overflow during count summation into the
+    /// count-overflow umbrella. Used by `IntervalSet::try_count` to
+    /// surface mid-fold `TryAdd` overflow as a count-side failure.
+    fn from(_: crate::error::MathError) -> Self {
+        CountOverflowError
+    }
+}
+
 /// Defines the counting measure of a [`Countable`] Set.
 ///
 /// # Example
@@ -198,8 +213,12 @@ where
     }
 }
 
-impl<T> Count for HalfInterval<T> {
-    type Output = ();
+impl<T> Count for HalfInterval<T>
+where
+    T: Countable,
+    T::Output: Zero,
+{
+    type Output = T::Output;
     type Error = CountOverflowError;
 
     fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {

@@ -187,23 +187,6 @@ impl<T> FiniteBound<T> {
         ord::OrdBound::Finite(self.into_finite_ord(side))
     }
 
-    /// Returns a new `Bound`, keeps BoundType, new limit; `self` is consumed.
-    ///
-    /// # Examples
-    /// ```
-    /// use intervalsets_core::prelude::*;
-    ///
-    /// let bound = FiniteBound::closed(10);
-    /// let shift = bound.clone().map(|limit| limit + 10);
-    /// assert_eq!(shift, FiniteBound::closed(20));
-    ///
-    /// let float = bound.map(|limit| limit as f32);
-    /// assert_eq!(float, FiniteBound::closed(10.0));
-    /// ```
-    pub fn map<U>(self, func: impl FnOnce(T) -> U) -> FiniteBound<U> {
-        FiniteBound::<U>(self.0, func(self.1))
-    }
-
     /// Return a new `Bound` keeps limit, flips `BoundType`. `self` is consumed.
     #[inline(always)]
     pub fn flip(self) -> Self {
@@ -232,11 +215,6 @@ impl<T> FiniteBound<T> {
     #[inline(always)]
     pub fn value(&self) -> &T {
         &self.1
-    }
-
-    /// Map a binary operation over `Bound<T>`. `self` is consumed.
-    pub fn binary_map(self, func: impl Fn(T, T) -> T, rhs: T) -> Self {
-        Self(self.0, func(self.1, rhs))
     }
 }
 

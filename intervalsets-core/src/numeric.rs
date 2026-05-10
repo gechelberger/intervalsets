@@ -337,30 +337,23 @@ integer_domain_impl!(i8, i16, i32, i64, i128, isize);
 ///
 /// # Errors
 ///
-/// The associated [`Error`](Midpoint::Error) type lets implementations
-/// surface failure modes specific to the type:
+/// The associated [`Error`](Midpoint::Error) type is a user-extension
+/// hook. Every library-provided impl uses
+/// [`core::convert::Infallible`] except [`Decimal`](rust_decimal::Decimal),
+/// whose bounded precision means rounding the two halves can push their
+/// sum out of range; that impl returns [`MathError::Range`](crate::error::MathError::Range).
 ///
-/// - For total-ordered types where every pair has a well-defined
-///   midpoint (e.g. integers), `Error` is typically
-///   [`core::convert::Infallible`] and the impl never returns `Err`.
-/// - For partial-ordered types (e.g. `f32`/`f64`), the impl may reject
-///   inputs that are degenerate as midpoint endpoints. The float impls
-///   in this crate return [`MidpointError`](crate::error::MidpointError)
-///   when either input is non-finite (NaN, +∞, or −∞) — note that ±∞
-///   are excluded even though they are comparable, because they have
-///   no well-defined midpoint.
+/// In-tree contract: values stored in any in-tree set type
+/// (`FiniteInterval`, `HalfInterval`, `EnumInterval`, `Interval`) are
+/// validated finite at construction (see [`Element::validate`]). When
+/// `T::midpoint` is reached through the set-level
+/// [`midpoint`](crate::sets::FiniteInterval::midpoint) accessors, the
+/// inputs are guaranteed finite, so library impls succeed.
 ///
-/// # Status
-///
-/// This is implemented with an eye towards a Bisect trait, but since we
-/// are in a holding pattern on that and this is feature complete for now,
-/// we can merge this back but keep it as part of the private crate API
-/// until we have a need for it or remove it. There is also a consideration
-/// to drop the error type entirely in favor of Option<Self>. The fact that
-/// we can mark certain impls as Infallible has certain appeal, but may be
-/// more complexity than is worth the tradeoff.
-#[allow(unused)]
-pub(crate) trait Midpoint: Sized {
+/// Direct callers passing arbitrary values (e.g. `f32::midpoint(NAN, 0.0)`)
+/// inherit std's `f*::midpoint` semantics — typically a NaN-tainted
+/// result rather than an error.
+pub trait Midpoint: Sized {
     type Error;
     fn midpoint(self, other: Self) -> Result<Self, Self::Error>;
 }
@@ -390,23 +383,22 @@ macro_rules! float_midpoint_delegate_impl {
     ($($t:ty), +) => {
         $(
             impl $crate::numeric::Midpoint for $t {
-                type Error = $crate::error::MidpointError;
+                type Error = ::core::convert::Infallible;
 
-                /// Delegates to the inherent float `midpoint` method,
+                /// Infallible by contract: values stored in any in-tree
+                /// set type are validated finite at construction
+                /// ([`Element::validate`](crate::numeric::Element::validate)
+                /// rejects `±INF`/`NaN`), so the set-level
+                /// [`midpoint`](crate::sets::FiniteInterval::midpoint)
+                /// accessors only ever reach this impl with finite
+                /// inputs. Delegates to the inherent float `midpoint`,
                 /// which avoids spurious overflow/underflow at extremes.
                 ///
-                /// # Errors
-                ///
-                /// Returns [`MidpointError`](crate::error::MidpointError)
-                /// when either input is non-finite — NaN, +∞, or −∞.
-                /// Infinities are rejected even though they are
-                /// comparable, because their midpoint is not
-                /// well-defined as a finite endpoint.
+                /// Direct callers passing non-finite values bypass the
+                /// in-tree contract and inherit std's `f*::midpoint`
+                /// semantics (typically a NaN-tainted result).
                 #[inline]
                 fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
-                    if !self.is_finite() || !other.is_finite() {
-                        return Err($crate::error::MidpointError);
-                    }
                     Ok(<$t>::midpoint(self, other))
                 }
             }
