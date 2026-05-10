@@ -194,8 +194,8 @@ mod impls {
     use EnumInterval as EI;
 
     use super::*;
-    use crate::bound::FiniteBound as FB;
     use crate::bound::Side::{Left, Right};
+    use crate::bound::{BoundType, FiniteBound as FB};
     use crate::category::{ECat, MaybeZero};
 
     /// Divide two bounds that have a non-branching finite output.
@@ -236,8 +236,8 @@ mod impls {
 
     #[inline(always)]
     fn all_except_zero<T: Zero + Element>() -> Result<MaybeDisjoint<T>, Error> {
-        let neg = EI::try_right_bounded(FB::try_open(T::zero()).expect("infallible"))?;
-        let pos = EI::try_left_bounded(FB::try_open(T::zero()).expect("infallible"))?;
+        let neg = EI::try_right_bounded(FB::try_open(T::zero())?)?;
+        let pos = EI::try_left_bounded(FB::try_open(T::zero())?)?;
         Ok((neg, pos).into())
     }
 
@@ -382,7 +382,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::try_open(T::zero()).expect("infallible");
+                let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
                 let pair = match cd_side {
@@ -405,7 +405,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::try_open(T::zero()).expect("infallible");
+                let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
                 let pair = match cd_side {
@@ -487,7 +487,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::try_open(T::zero()).expect("infallible");
+                let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(a, cd_bound)?;
 
                 let pair = match cd_side {
@@ -512,7 +512,7 @@ mod impls {
                     return all_except_zero();
                 }
 
-                let zero = FB::try_open(T::zero()).expect("infallible");
+                let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(b, cd_bound)?;
 
                 let pair = match cd_side {
@@ -626,10 +626,11 @@ mod impls {
     /// on whether the original interval contained zero.
     #[inline(always)]
     fn div_inf_bound<T: Element + Zero>(numer: MaybeZero) -> FB<T> {
-        match numer {
-            MaybeZero::Zero => FB::try_closed(T::zero()).expect("infallible"),
-            MaybeZero::NonZero => FB::try_open(T::zero()).expect("infallible"),
-        }
+        let bound_type = match numer {
+            MaybeZero::Zero => BoundType::Closed,
+            MaybeZero::NonZero => BoundType::Open,
+        };
+        FB::new_assume_valid(bound_type, T::zero())
     }
 
     /// Create interval with max from num/denom handling denom -> 0.
@@ -708,7 +709,7 @@ mod impls {
         <T as TryDiv>::Error: Into<Error>,
     {
         match nz {
-            MaybeZero::Zero => Ok(FB::try_closed(T::zero()).expect("infallible")),
+            MaybeZero::Zero => FB::try_closed(T::zero()),
             MaybeZero::NonZero => div_assume_nonzero(numer, denom),
         }
     }
