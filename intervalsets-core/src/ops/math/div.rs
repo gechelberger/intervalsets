@@ -1,5 +1,3 @@
-#![allow(unused)]
-
 use core::ops::Div;
 
 use super::TryDiv;
@@ -10,16 +8,18 @@ use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
-// The infix Div operators below all require T: Ord. For Ord types,
-// partial_cmp on bounds is total, so try_div is provably infallible
-// and the .unwrap() can never panic. Float users without an Ord
-// wrapper (e.g. OrderedFloat) must use TryDiv::try_div directly.
+// Set-level `TryDiv` binds on `T: TryDiv<Output = T>` and propagates
+// `T::TryDiv::Error` (e.g. `MathError`) into `crate::error::Error`. The
+// infix `/` is panicking sugar over `try_div().unwrap()` (Tier 3b);
+// integer `iN::MIN / -1` overflow surfaces as `Err(MathError::Range)`
+// at the value level rather than panicking.
 
 macro_rules! div_via_try {
     ($lhs:ty, $rhs:ty) => {
         impl<T> Div<$rhs> for $lhs
         where
-            T: Div<Output = T> + Element + Ord + Zero + Clone,
+            $lhs: TryDiv<$rhs, Output = MaybeDisjoint<T>>,
+            <$lhs as TryDiv<$rhs>>::Error: core::fmt::Debug,
         {
             type Output = MaybeDisjoint<T>;
             #[inline(always)]
@@ -42,7 +42,8 @@ div_via_try!(HalfInterval<T>, EnumInterval<T>);
 
 impl<T> TryDiv for FiniteInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -55,7 +56,8 @@ where
 
 impl<T> TryDiv for HalfInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -68,7 +70,8 @@ where
 
 impl<T> TryDiv<HalfInterval<T>> for FiniteInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -81,7 +84,8 @@ where
 
 impl<T> TryDiv<FiniteInterval<T>> for HalfInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -94,7 +98,8 @@ where
 
 impl<T> TryDiv<FiniteInterval<T>> for EnumInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -111,7 +116,8 @@ where
 
 impl<T> TryDiv<HalfInterval<T>> for EnumInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -128,7 +134,8 @@ where
 
 impl<T> TryDiv<EnumInterval<T>> for EnumInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -145,7 +152,8 @@ where
 
 impl<T> TryDiv<EnumInterval<T>> for FiniteInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -167,7 +175,8 @@ where
 
 impl<T> TryDiv<EnumInterval<T>> for HalfInterval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Zero + Clone + TryDiv<Output = T>,
+    <T as TryDiv>::Error: Into<Error>,
 {
     type Output = MaybeDisjoint<T>;
     type Error = Error;
@@ -185,29 +194,32 @@ mod impls {
     use EnumInterval as EI;
 
     use super::*;
-    use crate::bound::Side::{self, Left, Right};
-    use crate::bound::{FiniteBound as FB, SetBounds};
+    use crate::bound::FiniteBound as FB;
+    use crate::bound::Side::{Left, Right};
     use crate::category::{ECat, MaybeZero};
-    use crate::factory::traits::*;
 
     /// Divide two bounds that have a non-branching finite output.
     ///
+    /// Errors propagate from `T::TryDiv` (e.g. `iN::MIN / -1` →
+    /// `Err(MathError::Range)`).
+    ///
     /// # Preconditions
     ///
-    /// The caller is responsible for making sure that:
-    /// 1. the numerator is not Closed(0) unless the denom is also closed.
-    ///    the numerator is allowed to be Open(0). ie. +/- epsilon.
-    /// 2. the denominator is not allowed to be Open or Closed 0. ie. (-e, 0, +e)
+    /// 1. The numerator is not Closed(0) unless the denom is also closed.
+    ///    The numerator is allowed to be Open(0). ie. +/- epsilon.
+    /// 2. The denominator is not allowed to be Open or Closed 0. ie. (-e, 0, +e)
     ///
     /// Violating these yields incorrect results but no undefined behavior.
     #[inline(always)]
-    fn div_assume_nonzero<T>(numer: FB<T>, denom: FB<T>) -> FB<T>
+    fn div_assume_nonzero<T>(numer: FB<T>, denom: FB<T>) -> Result<FB<T>, Error>
     where
-        T: Div<Output = T> + Element,
+        T: Element + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         let (nkind, nval) = numer.into_raw();
         let (dkind, dval) = denom.into_raw();
-        FB::try_new(nkind.combine(dkind), nval / dval).expect("infallible")
+        let val = nval.try_div(dval).map_err(Into::into)?;
+        FB::try_new(nkind.combine(dkind), val)
     }
 
     /// anything divided by the zero singleton set.
@@ -243,7 +255,8 @@ mod impls {
         cd: FiniteInterval<T>,
     ) -> Result<MaybeDisjoint<T>, Error>
     where
-        T: Div<Output = T> + Element + Clone + Zero,
+        T: Element + Clone + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         let ab_cat = ab.category();
         let cd_cat = cd.category();
@@ -262,7 +275,7 @@ mod impls {
             (ECat::Pos(lz), ECat::Pos(_)) => {
                 // [a>=0, +e<b<+inf] / [c>=0, +e<d<+inf] => {a/d, b/c}
                 // cd Pos(_) => d > +e (never 0 or epsilon)
-                let min = div_assume_denom_nonzero(lz, a, d);
+                let min = div_assume_denom_nonzero(lz, a, d)?;
                 // ab Pos => b > +e (never Closed(0))
                 div_same_sign_max(min, b, c)
             }
@@ -273,26 +286,26 @@ mod impls {
             }
             (ECat::Neg(lz), ECat::Pos(_)) => {
                 // cd Pos(_) => d > +e
-                let max = div_assume_denom_nonzero(lz, b, d);
+                let max = div_assume_denom_nonzero(lz, b, d)?;
                 // ab Neg => a < -e (never Closed(0))
                 div_opp_sign_min(max, a, c)
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // c < -e && d > +e && a != Closed(0)
-                let left = EI::try_right_bounded(div_assume_nonzero(a.clone(), c))?;
-                let right = EI::try_left_bounded(div_assume_nonzero(a, d))?;
+                let left = EI::try_right_bounded(div_assume_nonzero(a.clone(), c)?)?;
+                let right = EI::try_left_bounded(div_assume_nonzero(a, d)?)?;
                 Ok((left, right).into())
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // c < -e && d > +e && b != Closed(0)
-                let left = EI::try_right_bounded(div_assume_nonzero(b.clone(), d))?;
-                let right = EI::try_left_bounded(div_assume_nonzero(b, c))?;
+                let left = EI::try_right_bounded(div_assume_nonzero(b.clone(), d)?)?;
+                let right = EI::try_left_bounded(div_assume_nonzero(b, c)?)?;
                 Ok((left, right).into())
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             (ECat::Pos(lz), ECat::Neg(_)) => {
                 // cd Neg(_) => c < -e
-                let max = div_assume_denom_nonzero(lz, a, c);
+                let max = div_assume_denom_nonzero(lz, a, c)?;
                 // ab Pos(_) => b > +e (never Closed(0))
                 div_opp_sign_min(max, b, d)
             }
@@ -303,7 +316,7 @@ mod impls {
             }
             (ECat::Neg(lz), ECat::Neg(_)) => {
                 // cd Neg(_) => c < -e
-                let min = div_assume_denom_nonzero(lz, b, c);
+                let min = div_assume_denom_nonzero(lz, b, c)?;
                 // ab Neg [a<0, b<=0] => a is never Closed(0)
                 div_same_sign_max(min, a, d)
             }
@@ -316,7 +329,8 @@ mod impls {
         cd: HalfInterval<T>,
     ) -> Result<MaybeDisjoint<T>, Error>
     where
-        T: Div<Output = T> + Element + Clone + Zero,
+        T: Element + Clone + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         let ab_cat = ab.category();
         let cd_cat = cd.category();
@@ -343,7 +357,7 @@ mod impls {
                     Ok(EnumInterval::unbounded().into())
                 } else {
                     // numer != Closed(0) because NegPos; denom > +e checked above
-                    EnumInterval::try_half_bounded(ab_side, div_assume_nonzero(ab_bound, cd_bound))
+                    EnumInterval::try_half_bounded(ab_side, div_assume_nonzero(ab_bound, cd_bound)?)
                         .map(MaybeDisjoint::from)
                 }
             }
@@ -357,7 +371,7 @@ mod impls {
                     // numer != Closed(0) because NegPos; denom < -e checked above
                     EnumInterval::try_half_bounded(
                         ab_side.flip(),
-                        div_assume_nonzero(ab_bound, cd_bound),
+                        div_assume_nonzero(ab_bound, cd_bound)?,
                     )
                     .map(MaybeDisjoint::from)
                 }
@@ -369,7 +383,7 @@ mod impls {
                 }
 
                 let zero = FB::try_open(T::zero()).expect("infallible");
-                let non_zero = div_assume_nonzero(ab_bound, cd_bound);
+                let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
@@ -392,7 +406,7 @@ mod impls {
                 }
 
                 let zero = FB::try_open(T::zero()).expect("infallible");
-                let non_zero = div_assume_nonzero(ab_bound, cd_bound);
+                let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
@@ -421,7 +435,8 @@ mod impls {
         cd: HalfInterval<T>,
     ) -> Result<MaybeDisjoint<T>, Error>
     where
-        T: Div<Output = T> + Element + Clone + Zero,
+        T: Element + Clone + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         let ab_cat = ab.category();
         let cd_cat = cd.category();
@@ -473,7 +488,7 @@ mod impls {
                 }
 
                 let zero = FB::try_open(T::zero()).expect("infallible");
-                let non_zero = div_assume_nonzero(a, cd_bound);
+                let non_zero = div_assume_nonzero(a, cd_bound)?;
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
@@ -498,7 +513,7 @@ mod impls {
                 }
 
                 let zero = FB::try_open(T::zero()).expect("infallible");
-                let non_zero = div_assume_nonzero(b, cd_bound);
+                let non_zero = div_assume_nonzero(b, cd_bound)?;
 
                 let pair = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
@@ -525,7 +540,8 @@ mod impls {
         cd: FiniteInterval<T>,
     ) -> Result<MaybeDisjoint<T>, Error>
     where
-        T: Div<Output = T> + Element + Clone + Zero,
+        T: Element + Clone + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         let ab_cat = ab.category();
         let cd_cat = cd.category();
@@ -541,42 +557,42 @@ mod impls {
                 //[a>=0, b=inf] / [c>=0, +e<d<inf] => {a/d, inf}
                 let a = ab_bound;
                 // cd Pos(_) => d > +e
-                let min = div_assume_denom_nonzero(nz, a, d);
+                let min = div_assume_denom_nonzero(nz, a, d)?;
                 EI::try_left_bounded(min).map(MaybeDisjoint::from)
             }
             (ECat::Neg(nz), ECat::Neg(_)) => {
                 // [a=-inf, b<=0] / [-inf<c<-e, d<=0] => {b/c, inf}
                 let b = ab_bound;
                 // cd Neg(_) => c < -e
-                let min = div_assume_denom_nonzero(nz, b, c);
+                let min = div_assume_denom_nonzero(nz, b, c)?;
                 EI::try_left_bounded(min).map(MaybeDisjoint::from)
             }
             (ECat::Pos(nz), ECat::Neg(_)) => {
                 // [a>=0, b=inf] / [-inf<c<-e, d<=0] => {-inf, a/c}
                 let a = ab_bound;
                 // cd Neg(_) => c < -e
-                let max = div_assume_denom_nonzero(nz, a, c);
+                let max = div_assume_denom_nonzero(nz, a, c)?;
                 EI::try_right_bounded(max).map(MaybeDisjoint::from)
             }
             (ECat::Neg(nz), ECat::Pos(_)) => {
                 // [a=-inf, b<=0] / [c>=0, +e<d<+inf] = {-inf, b/d}
                 let b = ab_bound;
                 // cd Pos(_) => d > +e
-                let max = div_assume_denom_nonzero(nz, b, d);
+                let max = div_assume_denom_nonzero(nz, b, d)?;
                 EI::try_right_bounded(max).map(MaybeDisjoint::from)
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a>0, b=inf] / [c<0, d>0] => {-inf, a/c} U {a/d, +inf}
                 let a = ab_bound;
-                let neg = EI::try_right_bounded(div_assume_nonzero(a.clone(), c))?;
-                let pos = EI::try_left_bounded(div_assume_nonzero(a, d))?;
+                let neg = EI::try_right_bounded(div_assume_nonzero(a.clone(), c)?)?;
+                let pos = EI::try_left_bounded(div_assume_nonzero(a, d)?)?;
                 Ok((neg, pos).into())
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] => {-inf, b/d} U {b/c, +inf}
                 let b = ab_bound;
-                let neg = EI::try_right_bounded(div_assume_nonzero(b.clone(), d))?;
-                let pos = EI::try_right_bounded(div_assume_nonzero(b, c))?;
+                let neg = EI::try_right_bounded(div_assume_nonzero(b.clone(), d)?)?;
+                let pos = EI::try_right_bounded(div_assume_nonzero(b, c)?)?;
                 Ok((neg, pos).into())
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
@@ -586,7 +602,7 @@ mod impls {
                 if c.value() == &T::zero() {
                     Ok(EI::unbounded().into())
                 } else {
-                    EI::try_half_bounded(ab_side, div_assume_nonzero(ab_bound, c))
+                    EI::try_half_bounded(ab_side, div_assume_nonzero(ab_bound, c)?)
                         .map(MaybeDisjoint::from)
                 }
             }
@@ -596,7 +612,7 @@ mod impls {
                 if d.value() == &T::zero() {
                     Ok(EI::unbounded().into())
                 } else {
-                    EI::try_half_bounded(ab_side.flip(), div_assume_nonzero(ab_bound, d))
+                    EI::try_half_bounded(ab_side.flip(), div_assume_nonzero(ab_bound, d)?)
                         .map(MaybeDisjoint::from)
                 }
             }
@@ -633,13 +649,14 @@ mod impls {
         denom: FB<T>,
     ) -> Result<MaybeDisjoint<T>, Error>
     where
-        T: Div<Output = T> + Element + Zero,
+        T: Element + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         if denom.value() == &T::zero() {
             // denom = (0 or +e) | (-e or 0)
             EI::try_left_bounded(min).map(MaybeDisjoint::from)
         } else {
-            let max = div_assume_nonzero(numer, denom);
+            let max = div_assume_nonzero(numer, denom)?;
             EI::try_satisfy_bounds(min, max).map(MaybeDisjoint::from)
         }
     }
@@ -661,13 +678,14 @@ mod impls {
         denom: FB<T>,
     ) -> Result<MaybeDisjoint<T>, Error>
     where
-        T: Div<Output = T> + Element + Zero,
+        T: Element + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         if denom.value() == &T::zero() {
             // denom = (0 or +e) | (0 or -e)
             EI::try_right_bounded(max).map(MaybeDisjoint::from)
         } else {
-            let min = div_assume_nonzero(numer, denom);
+            let min = div_assume_nonzero(numer, denom)?;
             EI::try_satisfy_bounds(min, max).map(MaybeDisjoint::from)
         }
     }
@@ -680,12 +698,17 @@ mod impls {
     ///
     /// Violating these yields incorrect results but no undefined behavior.
     #[inline(always)]
-    fn div_assume_denom_nonzero<T>(nz: MaybeZero, numer: FB<T>, denom: FB<T>) -> FB<T>
+    fn div_assume_denom_nonzero<T>(
+        nz: MaybeZero,
+        numer: FB<T>,
+        denom: FB<T>,
+    ) -> Result<FB<T>, Error>
     where
-        T: Div<Output = T> + Element + Zero,
+        T: Element + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         match nz {
-            MaybeZero::Zero => FB::try_closed(T::zero()).expect("infallible"),
+            MaybeZero::Zero => Ok(FB::try_closed(T::zero()).expect("infallible")),
             MaybeZero::NonZero => div_assume_nonzero(numer, denom),
         }
     }
@@ -704,14 +727,15 @@ mod impls {
         denom: FB<T>,
     ) -> Result<MaybeDisjoint<T>, Error>
     where
-        T: Div<Output = T> + Element + Zero + Clone,
+        T: Element + Zero + Clone + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
     {
         if denom.value() == &T::zero() {
             Ok(EI::unbounded().into())
         } else {
             EI::try_satisfy_bounds(
-                div_assume_nonzero(num_to_min, denom.clone()),
-                div_assume_nonzero(num_to_max, denom),
+                div_assume_nonzero(num_to_min, denom.clone())?,
+                div_assume_nonzero(num_to_max, denom)?,
             )
             .map(MaybeDisjoint::from)
         }
@@ -756,7 +780,7 @@ impl<T: TryDiv> TryDiv for Option<T> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::traits::*;
+    use crate::error::MathError;
 
     // f64 is not Ord, so the infix `/` operator is not available on
     // float intervals. Tests use try_div(rhs).unwrap() to exercise
@@ -773,11 +797,9 @@ mod tests {
         let fc = FiniteInterval::closed;
         let fo = FiniteInterval::open;
         let fco = FiniteInterval::closed_open;
-        //let foc = FiniteInterval::open_closed;
 
         let ecu = EnumInterval::closed_unbound;
         let eou = EnumInterval::open_unbound;
-        //let euc = EnumInterval::unbound_closed;
         let euo = EnumInterval::unbound_open;
 
         // open/closed non-zero, strict pos / strict pos
@@ -841,8 +863,6 @@ mod tests {
         let cu = EnumInterval::closed_unbound;
         let ou = EnumInterval::open_unbound;
         let uc = EnumInterval::unbound_closed;
-        //let uo = EnumInterval::unbound_open;
-        //let u = EnumInterval::unbounded();
 
         assert_eq!(d(cu(10.0), cu(10.0)), ou(0.0).into());
         assert_eq!(d(cu(0.0), cu(10.0)), cu(0.0).into());
@@ -855,10 +875,7 @@ mod tests {
         assert_eq!(d(uc(-10.0), uc(-10.0)), ou(0.0).into());
     }
 
-    /// Verify that OrderedFloat<f64> satisfies the infix Div operator
-    /// bounds: Div<Output = T> + Element + Ord + Zero + Clone. Confirms
-    /// the user-facing claim that wrapping floats with OrderedFloat
-    /// restores access to the infix arithmetic operators.
+    /// OrderedFloat<f64> satisfies the infix Div operator bounds.
     #[cfg(feature = "ordered-float")]
     #[test]
     fn test_ord_float_div() {
@@ -885,8 +902,6 @@ mod tests {
     }
 
     // -- value-level primitive smoke tests (E2) --
-
-    use crate::error::MathError;
 
     #[test]
     fn primitive_signed_div() {
@@ -923,5 +938,25 @@ mod tests {
 
         let r: Result<Option<i32>, MathError> = Some(1).try_div(Some(0));
         assert_eq!(r, Err(MathError::Domain));
+    }
+
+    // -- E6: set-level signed `MIN / -1` overflow surfaces as Err on
+    //    `try_div`, panics on `/`. Regression test for the `bb430ae`
+    //    div-panic case that motivated the per-op TryDiv routing.
+
+    #[test]
+    fn set_level_signed_min_div_neg_one_returns_err() {
+        let a = FiniteInterval::<i32>::singleton(i32::MIN);
+        let b = FiniteInterval::<i32>::singleton(-1);
+        let r = a.try_div(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Range))));
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_level_signed_min_div_neg_one_infix_panics() {
+        let a = FiniteInterval::<i32>::singleton(i32::MIN);
+        let b = FiniteInterval::<i32>::singleton(-1);
+        let _ = a / b;
     }
 }

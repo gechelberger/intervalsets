@@ -522,61 +522,155 @@ impl<T: Element> FiniteBound<T> {
 }
 
 mod math {
-    use core::ops::{Add, Mul, Sub};
+    use core::fmt::Debug;
+    use core::ops::{Add, Div, Mul, Sub};
 
     use num_traits::{ConstOne, ConstZero, One, Zero};
 
     use super::{BoundType, FiniteBound};
+    use crate::error::Error;
     use crate::numeric::Element;
+    use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
-    impl<T: Add> Add for FiniteBound<T>
+    impl<T> TryAdd for FiniteBound<T>
     where
-        <T as Add>::Output: Element,
+        T: Element + TryAdd<Output = T>,
+        <T as TryAdd>::Error: Into<Error>,
     {
-        type Output = FiniteBound<<T as Add>::Output>;
+        type Output = FiniteBound<T>;
+        type Error = Error;
 
-        fn add(self, rhs: Self) -> Self::Output {
-            FiniteBound::try_new(self.0.combine(rhs.0), self.1 + rhs.1).expect("infallible")
-        }
-    }
-
-    impl<T: Sub> Sub for FiniteBound<T>
-    where
-        <T as Sub>::Output: Element,
-    {
-        type Output = FiniteBound<<T as Sub>::Output>;
-
-        fn sub(self, rhs: Self) -> Self::Output {
+        fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> {
             let (l_kind, l_val) = self.into_raw();
             let (r_kind, r_val) = rhs.into_raw();
-            FiniteBound::try_new(l_kind.combine(r_kind), l_val - r_val).expect("infallible")
+            let val = l_val.try_add(r_val).map_err(Into::into)?;
+            FiniteBound::try_new(l_kind.combine(r_kind), val)
         }
     }
 
-    impl<T: Mul + Zero> Mul for FiniteBound<T>
+    impl<T> TrySub for FiniteBound<T>
     where
-        <T as Mul>::Output: Element,
+        T: Element + TrySub<Output = T>,
+        <T as TrySub>::Error: Into<Error>,
     {
-        type Output = FiniteBound<<T as Mul>::Output>;
+        type Output = FiniteBound<T>;
+        type Error = Error;
 
-        fn mul(self, rhs: Self) -> Self::Output {
+        fn try_sub(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+            let (l_kind, l_val) = self.into_raw();
+            let (r_kind, r_val) = rhs.into_raw();
+            let val = l_val.try_sub(r_val).map_err(Into::into)?;
+            FiniteBound::try_new(l_kind.combine(r_kind), val)
+        }
+    }
+
+    impl<T> TryMul for FiniteBound<T>
+    where
+        T: Element + Zero + TryMul<Output = T>,
+        <T as TryMul>::Error: Into<Error>,
+    {
+        type Output = FiniteBound<T>;
+        type Error = Error;
+
+        fn try_mul(self, rhs: Self) -> Result<Self::Output, Self::Error> {
             // Closed(0) absorbs: 0 * x = 0, the value 0 is achieved
             // regardless of the other operand's openness, so the result
             // bound is Closed even if the other operand is Open.
             let absorbing = (self.0 == BoundType::Closed && self.1.is_zero())
                 || (rhs.0 == BoundType::Closed && rhs.1.is_zero());
+            let (l_kind, l_val) = self.into_raw();
+            let (r_kind, r_val) = rhs.into_raw();
+            let val = l_val.try_mul(r_val).map_err(Into::into)?;
             let kind = if absorbing {
                 BoundType::Closed
             } else {
-                self.0.combine(rhs.0)
+                l_kind.combine(r_kind)
             };
-            FiniteBound::try_new(kind, self.1 * rhs.1).expect("infallible")
+            FiniteBound::try_new(kind, val)
         }
     }
 
-    impl<T: Element + Zero> Zero for FiniteBound<T>
+    impl<T> TryDiv for FiniteBound<T>
     where
-        <T as core::ops::Add>::Output: Element,
+        T: Element + Zero + TryDiv<Output = T>,
+        <T as TryDiv>::Error: Into<Error>,
+    {
+        type Output = FiniteBound<T>;
+        type Error = Error;
+
+        fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
+            // Closed(0) numerator absorbs: 0 / nonzero = 0, regardless
+            // of the denominator's openness.
+            let absorbing = self.0 == BoundType::Closed && self.1.is_zero();
+            let (l_kind, l_val) = self.into_raw();
+            let (r_kind, r_val) = rhs.into_raw();
+            let val = l_val.try_div(r_val).map_err(Into::into)?;
+            let kind = if absorbing {
+                BoundType::Closed
+            } else {
+                l_kind.combine(r_kind)
+            };
+            FiniteBound::try_new(kind, val)
+        }
+    }
+
+    // Infix `+ - * /` for `FiniteBound<T>` is panicking sugar over
+    // `try_*().unwrap()`. May panic per Tier 3b; the panic site is the
+    // documented contract.
+
+    impl<T> Add for FiniteBound<T>
+    where
+        Self: TryAdd<Output = Self>,
+        <Self as TryAdd>::Error: Debug,
+    {
+        type Output = Self;
+        fn add(self, rhs: Self) -> Self::Output {
+            self.try_add(rhs).unwrap()
+        }
+    }
+
+    impl<T> Sub for FiniteBound<T>
+    where
+        Self: TrySub<Output = Self>,
+        <Self as TrySub>::Error: Debug,
+    {
+        type Output = Self;
+        fn sub(self, rhs: Self) -> Self::Output {
+            self.try_sub(rhs).unwrap()
+        }
+    }
+
+    impl<T> Mul for FiniteBound<T>
+    where
+        Self: TryMul<Output = Self>,
+        <Self as TryMul>::Error: Debug,
+    {
+        type Output = Self;
+        fn mul(self, rhs: Self) -> Self::Output {
+            self.try_mul(rhs).unwrap()
+        }
+    }
+
+    impl<T> Div for FiniteBound<T>
+    where
+        Self: TryDiv<Output = Self>,
+        <Self as TryDiv>::Error: Debug,
+    {
+        type Output = Self;
+        fn div(self, rhs: Self) -> Self::Output {
+            self.try_div(rhs).unwrap()
+        }
+    }
+
+    // num_traits::Zero requires Self: Add<Self, Output = Self>; One
+    // requires Self: Mul<Self, Output = Self>. The infix Add/Mul impls
+    // above are sugar over Try*, so Zero/One pick up the same
+    // Try*<Output = T> + Error: Debug bounds transitively.
+
+    impl<T> Zero for FiniteBound<T>
+    where
+        T: Element + Zero + TryAdd<Output = T>,
+        <T as TryAdd>::Error: Debug + Into<Error>,
     {
         fn zero() -> Self {
             FiniteBound(BoundType::Closed, T::zero())
@@ -587,29 +681,28 @@ mod math {
         }
     }
 
-    // One requires Self: Mul<Self, Output = Self>; the FiniteBound Mul
-    // impl now requires T: Zero (for Closed(0) absorption), so the One
-    // and ConstOne impls pick up T: Zero too. T: Element is required
-    // by the Mul impl's `<T as Mul>::Output: Element` bound.
-    impl<T: Element + One + Zero + PartialEq> One for FiniteBound<T>
+    impl<T> One for FiniteBound<T>
     where
-        <T as Mul>::Output: Element,
+        T: Element + One + Zero + PartialEq + TryMul<Output = T>,
+        <T as TryMul>::Error: Debug + Into<Error>,
     {
         fn one() -> Self {
             FiniteBound(BoundType::Closed, T::one())
         }
     }
 
-    impl<T: Element + ConstZero> ConstZero for FiniteBound<T>
+    impl<T> ConstZero for FiniteBound<T>
     where
-        <T as core::ops::Add>::Output: Element,
+        T: Element + ConstZero + TryAdd<Output = T>,
+        <T as TryAdd>::Error: Debug + Into<Error>,
     {
         const ZERO: Self = FiniteBound(BoundType::Closed, T::ZERO);
     }
 
-    impl<T: Element + ConstOne + Zero + PartialEq> ConstOne for FiniteBound<T>
+    impl<T> ConstOne for FiniteBound<T>
     where
-        <T as Mul>::Output: Element,
+        T: Element + ConstOne + Zero + PartialEq + TryMul<Output = T>,
+        <T as TryMul>::Error: Debug + Into<Error>,
     {
         const ONE: Self = FiniteBound(BoundType::Closed, T::ONE);
     }

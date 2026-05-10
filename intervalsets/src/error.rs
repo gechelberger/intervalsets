@@ -19,7 +19,7 @@
 //! collapses to [`InvalidBoundLimit`](Error::InvalidBoundLimit).
 
 use intervalsets_core::error::Error as CoreError;
-pub use intervalsets_core::error::TotalOrderError;
+pub use intervalsets_core::error::{MathError, TotalOrderError};
 use thiserror::Error as ThisError;
 
 /// Errors returned by fallible `intervalsets` APIs.
@@ -60,6 +60,13 @@ pub enum Error {
     /// docs for details.
     #[error("bound limit rejected (validate or partial_cmp failure)")]
     InvalidBoundLimit,
+
+    /// Arithmetic-on-bounds failure surfaced by a `try_*` math impl —
+    /// integer overflow / signed `MIN / -1` (`MathError::Range`),
+    /// integer divide-by-zero or non-finite float result
+    /// (`MathError::Domain`).
+    #[error(transparent)]
+    Math(#[from] MathError),
 }
 
 impl From<TotalOrderError> for Error {
@@ -73,6 +80,7 @@ impl From<CoreError> for Error {
         match e {
             CoreError::InvalidBoundPair => Error::InvalidBoundPair,
             CoreError::InvalidBoundLimit => Error::InvalidBoundLimit,
+            CoreError::Math(m) => Error::Math(m),
             // CoreError is #[non_exhaustive]; if a new variant is added,
             // this `From` lift must be extended to map it. The wildcard
             // surfaces the gap as a runtime panic on first conversion.

@@ -1,16 +1,25 @@
 use core::ops::Add;
 
+use intervalsets_core::sets::EnumInterval;
+
 use crate::error::Error;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::ops::{TryAdd, Union};
 use crate::{Interval, IntervalSet};
 
+// Wrapper-crate set-level math delegates to the core impls and lifts
+// any `intervalsets_core::error::Error` to `crate::error::Error` via
+// the `From<CoreError>` impl in `crate::error`. The bounds talk only
+// in terms of "the wrapped type can do the op" + "its error converts
+// to ours", so callers don't see core's error type at the wrapper
+// surface.
+
 impl<T> TryAdd for Interval<T>
 where
-    T: Add,
-    <T as Add>::Output: Element,
+    EnumInterval<T>: TryAdd<EnumInterval<T>, Output = EnumInterval<T>>,
+    <EnumInterval<T> as TryAdd<EnumInterval<T>>>::Error: Into<Error>,
 {
-    type Output = Interval<<T as Add>::Output>;
+    type Output = Interval<T>;
     type Error = Error;
 
     #[inline]
@@ -24,26 +33,23 @@ where
 
 impl<T> Add for Interval<T>
 where
-    T: Add + Ord + Clone + Zero,
-    <T as Add>::Output: Element + Ord + Zero,
+    Self: TryAdd<Output = Self>,
+    <Self as TryAdd>::Error: core::fmt::Debug,
 {
-    type Output = Interval<<T as Add>::Output>;
+    type Output = Self;
 
     #[inline]
     fn add(self, rhs: Self) -> Self::Output {
-        // T: Ord makes partial_cmp on bounds total, so try_add is provably
-        // infallible -- no path inside reaches a TotalOrderError.
-        self.try_add(rhs)
-            .expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs).unwrap()
     }
 }
 
 impl<T> TryAdd<Interval<T>> for IntervalSet<T>
 where
-    T: Add + Element + Clone,
-    <T as Add>::Output: Element,
+    T: Element + Clone,
+    Interval<T>: TryAdd<Interval<T>, Output = Interval<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Add>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     // Union-fold: each subset is already a valid Interval and Self maintains
@@ -59,23 +65,22 @@ where
 
 impl<T> Add<Interval<T>> for IntervalSet<T>
 where
-    T: Add + Element + Ord + Clone + Zero,
-    <T as Add>::Output: Element + Ord + Zero,
+    Self: TryAdd<Interval<T>, Output = Self>,
+    <Self as TryAdd<Interval<T>>>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Add>::Output>;
+    type Output = Self;
 
     fn add(self, rhs: Interval<T>) -> Self::Output {
-        self.try_add(rhs)
-            .expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs).unwrap()
     }
 }
 
 impl<T> TryAdd<IntervalSet<T>> for Interval<T>
 where
-    T: Add + Element + Clone,
-    <T as Add>::Output: Element,
+    T: Element + Clone,
+    IntervalSet<T>: TryAdd<Interval<T>, Output = IntervalSet<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Add>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     fn try_add(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
@@ -86,20 +91,20 @@ where
 
 impl<T> Add<IntervalSet<T>> for Interval<T>
 where
-    T: Add + Element + Ord + Clone + Zero,
-    <T as Add>::Output: Element + Ord + Zero,
+    Self: TryAdd<IntervalSet<T>, Output = IntervalSet<T>>,
+    <Self as TryAdd<IntervalSet<T>>>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Add>::Output>;
+    type Output = IntervalSet<T>;
 
     fn add(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_add(rhs)
-            .expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs).unwrap()
     }
 }
 
 impl<T> TryAdd for IntervalSet<T>
 where
-    T: Add<T, Output = T> + Element + Clone,
+    T: Element + Clone,
+    Interval<T>: TryAdd<Interval<T>, Output = Interval<T>, Error = Error>,
 {
     type Output = IntervalSet<T>;
     type Error = Error;
@@ -120,13 +125,13 @@ where
 
 impl<T> Add for IntervalSet<T>
 where
-    T: Add<T, Output = T> + Ord + Clone + Zero + Element,
+    Self: TryAdd<Output = Self>,
+    <Self as TryAdd>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<T>;
+    type Output = Self;
 
     fn add(self, rhs: Self) -> Self::Output {
-        self.try_add(rhs)
-            .expect("infix Add invariants guarantee try_add infallibility")
+        self.try_add(rhs).unwrap()
     }
 }
 
@@ -144,10 +149,30 @@ mod try_tests {
         let b = Interval::open(10.0_f64, 20.0);
         assert_eq!(a.try_add(b).unwrap(), Interval::open(10.0_f64, 30.0));
     }
+
+    /// Set-level integer overflow surfaces as `Err` on `try_add` and
+    /// panics on `+` (Tier 3b).
+    #[test]
+    fn set_level_int_overflow_returns_err() {
+        use intervalsets_core::error::MathError;
+
+        let a = Interval::<i32>::closed(i32::MAX, i32::MAX);
+        let b = Interval::<i32>::closed(1, 1);
+        let r = a.try_add(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Range))));
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_level_int_overflow_infix_panics() {
+        let a = Interval::<i32>::closed(i32::MAX, i32::MAX);
+        let b = Interval::<i32>::closed(1, 1);
+        let _ = a + b;
+    }
 }
 
-// Float arithmetic tests use OrderedFloat<f64> because the infix Add
-// operator now requires T: Ord and raw f64 doesn't satisfy that.
+// OrderedFloat tests — exercise the infix path, since OrderedFloat
+// satisfies the Try* bounds via the core's macro-generated impls.
 #[cfg(all(test, feature = "ordered-float"))]
 mod tests {
     use ordered_float::OrderedFloat as O;

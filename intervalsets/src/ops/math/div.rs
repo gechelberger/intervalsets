@@ -1,19 +1,23 @@
 use core::ops::Div;
 
+use intervalsets_core::disjoint::MaybeDisjoint;
+use intervalsets_core::sets::EnumInterval;
+
 use crate::error::Error;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::ops::{TryDiv, Union};
 use crate::{Interval, IntervalSet};
 
 impl<T> TryDiv for Interval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    EnumInterval<T>: TryDiv<EnumInterval<T>, Output = MaybeDisjoint<T>>,
+    <EnumInterval<T> as TryDiv<EnumInterval<T>>>::Error: Into<Error>,
 {
     type Output = IntervalSet<T>;
     type Error = Error;
 
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
-        let divided = self.0.try_div(rhs.0)?;
+        let divided = self.0.try_div(rhs.0).map_err(Into::into)?;
         // MaybeDisjoint guarantees sorted, disjoint, non-empty intervals.
         Ok(IntervalSet::new_assume_valid(divided.map(Interval::from)))
     }
@@ -21,19 +25,20 @@ where
 
 impl<T> Div for Interval<T>
 where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
+    Self: TryDiv<Output = IntervalSet<T>>,
+    <Self as TryDiv>::Error: core::fmt::Debug,
 {
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self.try_div(rhs)
-            .expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> TryDiv<Interval<T>> for IntervalSet<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Clone,
+    Interval<T>: TryDiv<Interval<T>, Output = IntervalSet<T>, Error = Error>,
 {
     type Output = IntervalSet<T>;
     type Error = Error;
@@ -48,19 +53,20 @@ where
 
 impl<T> Div<Interval<T>> for IntervalSet<T>
 where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
+    Self: TryDiv<Interval<T>, Output = Self>,
+    <Self as TryDiv<Interval<T>>>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<T>;
+    type Output = Self;
 
     fn div(self, rhs: Interval<T>) -> Self::Output {
-        self.try_div(rhs)
-            .expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> TryDiv<IntervalSet<T>> for Interval<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Clone,
+    Self: TryDiv<Interval<T>, Output = IntervalSet<T>, Error = Error>,
 {
     type Output = IntervalSet<T>;
     type Error = Error;
@@ -75,19 +81,20 @@ where
 
 impl<T> Div<IntervalSet<T>> for Interval<T>
 where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
+    Self: TryDiv<IntervalSet<T>, Output = IntervalSet<T>>,
+    <Self as TryDiv<IntervalSet<T>>>::Error: core::fmt::Debug,
 {
     type Output = IntervalSet<T>;
 
     fn div(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_div(rhs)
-            .expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs).unwrap()
     }
 }
 
 impl<T> TryDiv for IntervalSet<T>
 where
-    T: Div<Output = T> + Element + Zero + Clone,
+    T: Element + Clone,
+    Interval<T>: TryDiv<IntervalSet<T>, Output = IntervalSet<T>, Error = Error>,
 {
     type Output = IntervalSet<T>;
     type Error = Error;
@@ -102,13 +109,13 @@ where
 
 impl<T> Div for IntervalSet<T>
 where
-    T: Div<Output = T> + Element + Ord + Zero + Clone,
+    Self: TryDiv<Output = Self>,
+    <Self as TryDiv>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<T>;
+    type Output = Self;
 
     fn div(self, rhs: Self) -> Self::Output {
-        self.try_div(rhs)
-            .expect("infix Div invariants guarantee try_div infallibility")
+        self.try_div(rhs).unwrap()
     }
 }
 
@@ -126,10 +133,30 @@ mod try_tests {
         let b = Interval::closed_unbound(10.0_f64);
         assert_eq!(a.try_div(b).unwrap(), Interval::open(0.0_f64, 2.0).into());
     }
+
+    /// `iN::MIN / -1` regression test: previously panicked at the
+    /// element-level `/` operator (release-mode integer overflow); now
+    /// surfaces as `Err(MathError::Range)` from `try_div` and panics
+    /// only via the Tier 3b infix sugar.
+    #[test]
+    fn set_level_signed_min_div_neg_one_returns_err() {
+        use intervalsets_core::error::MathError;
+
+        let a = Interval::<i32>::singleton(i32::MIN);
+        let b = Interval::<i32>::singleton(-1);
+        let r = a.try_div(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Range))));
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_level_signed_min_div_neg_one_infix_panics() {
+        let a = Interval::<i32>::singleton(i32::MIN);
+        let b = Interval::<i32>::singleton(-1);
+        let _ = a / b;
+    }
 }
 
-// Float arithmetic tests use OrderedFloat<f64> because the infix Div
-// operator now requires T: Ord and raw f64 doesn't satisfy that.
 #[cfg(all(test, feature = "ordered-float"))]
 mod tests {
     use ordered_float::OrderedFloat as O;

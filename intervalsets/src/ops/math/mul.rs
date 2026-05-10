@@ -1,16 +1,18 @@
 use core::ops::Mul;
 
+use intervalsets_core::sets::EnumInterval;
+
 use crate::error::Error;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::ops::{TryMul, Union};
 use crate::{Interval, IntervalSet};
 
 impl<T> TryMul for Interval<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    EnumInterval<T>: TryMul<EnumInterval<T>, Output = EnumInterval<T>>,
+    <EnumInterval<T> as TryMul<EnumInterval<T>>>::Error: Into<Error>,
 {
-    type Output = Interval<<T as Mul>::Output>;
+    type Output = Interval<T>;
     type Error = Error;
 
     #[inline]
@@ -24,24 +26,23 @@ where
 
 impl<T> Mul for Interval<T>
 where
-    T: Mul + Element + Ord + Clone + Zero,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
+    Self: TryMul<Output = Self>,
+    <Self as TryMul>::Error: core::fmt::Debug,
 {
-    type Output = Interval<<T as Mul>::Output>;
+    type Output = Self;
 
     #[inline]
     fn mul(self, rhs: Self) -> Self::Output {
-        self.try_mul(rhs)
-            .expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> TryMul<Interval<T>> for IntervalSet<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Element + Clone,
+    Interval<T>: TryMul<Interval<T>, Output = Interval<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Mul>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     // Union-fold over already-valid subsets; bypasses IntervalSet::new's
@@ -56,23 +57,22 @@ where
 
 impl<T> Mul<Interval<T>> for IntervalSet<T>
 where
-    T: Mul + Element + Ord + Clone + Zero,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
+    Self: TryMul<Interval<T>, Output = Self>,
+    <Self as TryMul<Interval<T>>>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Mul>::Output>;
+    type Output = Self;
 
     fn mul(self, rhs: Interval<T>) -> Self::Output {
-        self.try_mul(rhs)
-            .expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> TryMul<IntervalSet<T>> for Interval<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Element + Clone,
+    IntervalSet<T>: TryMul<Interval<T>, Output = IntervalSet<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Mul>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     fn try_mul(self, rhs: IntervalSet<T>) -> Result<Self::Output, Self::Error> {
@@ -83,23 +83,22 @@ where
 
 impl<T> Mul<IntervalSet<T>> for Interval<T>
 where
-    T: Mul + Element + Ord + Clone + Zero,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
+    Self: TryMul<IntervalSet<T>, Output = IntervalSet<T>>,
+    <Self as TryMul<IntervalSet<T>>>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Mul>::Output>;
+    type Output = IntervalSet<T>;
 
     fn mul(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_mul(rhs)
-            .expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs).unwrap()
     }
 }
 
 impl<T> TryMul<IntervalSet<T>> for IntervalSet<T>
 where
-    T: Mul + Element + Clone + Zero,
-    <T as Mul>::Output: Element + Zero + Clone,
+    T: Element + Clone,
+    Interval<T>: TryMul<Interval<T>, Output = Interval<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Mul>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     // Cartesian product results are unsorted; union-fold incrementally maintains
@@ -118,14 +117,13 @@ where
 
 impl<T> Mul<IntervalSet<T>> for IntervalSet<T>
 where
-    T: Mul + Element + Ord + Clone + Zero,
-    <T as Mul>::Output: Element + Ord + Zero + Clone,
+    Self: TryMul<Output = Self>,
+    <Self as TryMul>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Mul>::Output>;
+    type Output = Self;
 
     fn mul(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_mul(rhs)
-            .expect("infix Mul invariants guarantee try_mul infallibility")
+        self.try_mul(rhs).unwrap()
     }
 }
 
@@ -143,16 +141,22 @@ mod try_tests {
         let b = Interval::open(3.0_f64, 5.0);
         assert_eq!(a.try_mul(b).unwrap(), Interval::open(6.0_f64, 20.0));
     }
-}
-
-#[cfg(test)]
-mod tests {
 
     #[test]
-    fn test_foo() {
-        let nz: f32 = -0.0;
-        let pz: f32 = 0.0;
+    fn set_level_int_overflow_returns_err() {
+        use intervalsets_core::error::MathError;
 
-        assert_eq!(nz, pz);
+        let a = Interval::<i32>::closed(i32::MAX, i32::MAX);
+        let b = Interval::<i32>::closed(2, 2);
+        let r = a.try_mul(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Range))));
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_level_int_overflow_infix_panics() {
+        let a = Interval::<i32>::closed(i32::MAX, i32::MAX);
+        let b = Interval::<i32>::closed(2, 2);
+        let _ = a * b;
     }
 }

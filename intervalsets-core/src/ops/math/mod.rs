@@ -8,21 +8,29 @@
 //!
 //! # Panicking and fallible forms
 //!
-//! Each operation is offered in two flavors:
+//! Each operation is offered in two flavors per Tier 3 (see
+//! [`crate::ops`]):
 //!
-//! - The infix operator (`+ - * /`) is the panicking, ergonomic
-//!   form. It requires `T: Ord` so that `partial_cmp` on bounds is
-//!   total and arithmetic on bounds is provably infallible; the
-//!   underlying try-form's `.unwrap()` can never panic.
-//! - The corresponding [`TryAdd`] / [`TrySub`] / [`TryMul`] /
-//!   [`TryDiv`] trait returns `Result<_, Error>` and requires only
-//!   `T: PartialOrd`. NaN-induced incomparability surfaces as
-//!   `Err`, never as a panic.
+//! - The [`TryAdd`] / [`TrySub`] / [`TryMul`] / [`TryDiv`] traits
+//!   are **Tier 3a**: total, panic-free in release. `Err` covers
+//!   incomparable bounds (NaN), integer overflow / signed
+//!   `MIN / -1` (`MathError::Range`), integer divide-by-zero /
+//!   non-finite float result (`MathError::Domain`), or any
+//!   user-defined error. Bound: `T: PartialOrd` (raw floats are
+//!   accepted; they surface their failure modes as `Err`).
+//! - The infix operators (`+ - * /`) are **Tier 3b**: panicking
+//!   sugar defined as `lhs.try_op(rhs).unwrap()`. They **may panic
+//!   in release and debug** when the corresponding `try_*` would
+//!   have returned `Err`. The panic site is part of the documented
+//!   contract.
 //!
-//! Float users without an [`Ord`]-providing wrapper (raw `f32` /
-//! `f64`) cannot satisfy the infix operator bounds. Wrap floats in
-//! `OrderedFloat` (with the `ordered-float` feature) to restore the
-//! infix operators, or use the `Try*` traits directly.
+//! Floats without an [`Ord`]-providing wrapper (raw `f32` / `f64`)
+//! used to be barred from the infix operators by a `T: Ord` bound.
+//! That bound is gone — they are now barred by the more honest fact
+//! that `<T as TryAdd>::Error: Debug` is required for the unwrap.
+//! Wrap floats in `OrderedFloat` (with the `ordered-float` feature)
+//! to access the infix operators ergonomically; use the `Try*`
+//! traits directly for the panic-free contract.
 //!
 //! # Output shape
 //!
@@ -34,12 +42,14 @@
 //! # Overflow
 //!
 //! Arithmetic on bounds delegates to the underlying type's
-//! [`Add`](::core::ops::Add) / [`Sub`](::core::ops::Sub) /
-//! [`Mul`](::core::ops::Mul) / [`Div`](::core::ops::Div). Overflow
-//! behavior is whatever those impls do — `i32` panics in debug and
-//! wraps in release, `Wrapping<T>` always wraps, `checked_*` is not
-//! used. Callers needing defined overflow should pick a numeric type
-//! that provides it.
+//! [`TryAdd`] / [`TrySub`] / [`TryMul`] / [`TryDiv`]. Library
+//! integer impls use `checked_*` and surface overflow as
+//! `Err(MathError::Range)`; library float impls check
+//! `is_finite()` after each op and surface `INF`/`NaN` as
+//! `Err(MathError::Domain)`. The infix operators panic on these
+//! errors per Tier 3b. Callers needing wrapping behavior should use
+//! a `Wrapping<T>` newtype that supplies the wrapping semantics in
+//! its own `TryAdd` impl, or pre-validate operands.
 
 mod add;
 mod div;

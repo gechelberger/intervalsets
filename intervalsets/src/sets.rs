@@ -1,3 +1,4 @@
+use intervalsets_core::factory::FiniteFactory;
 use intervalsets_core::ops::MergeSortedByValue;
 use intervalsets_core::sets::EnumInterval;
 use num_traits::{One, Zero};
@@ -470,45 +471,72 @@ impl<T> MaybeEmpty for IntervalSet<T> {
     }
 }
 
-// The Ord bound on T is transitive only: num_traits::Zero / One require
-// Self: Add<Self> / Mul<Self> as super-traits, and our infix Add / Mul
-// require T: Ord. The bodies themselves never inspect ordering -- T: Ord
-// is a tax for num_traits interop, not a semantic requirement of zero / one.
-impl<T: Element + Ord + Clone + Zero> Zero for Interval<T> {
+// num_traits::Zero / One require `Self: Add<Self>` / `Self: Mul<Self>`
+// as super-traits. Our infix `Add` / `Mul` are sugar over the Try*
+// forms; the bound chain (Add → TryAdd → wrapped EnumInterval's
+// TryAdd → T's TryAdd) is expanded transitively at use sites, so we
+// only state `Self: Add<Self, Output = Self>` here. The bodies
+// construct directly via `EnumInterval::singleton` to avoid pulling
+// in the core's `Zero` / `One` impls on `EnumInterval` (which would
+// re-introduce the same expanded bound chain).
+impl<T> Zero for Interval<T>
+where
+    Self: core::ops::Add<Self, Output = Self>,
+    T: Element + Clone + Zero,
+{
     #[inline]
     fn zero() -> Self {
-        Self::from(EnumInterval::zero())
+        Interval(EnumInterval::singleton(T::zero()))
     }
 
     #[inline]
     fn is_zero(&self) -> bool {
-        self.0.is_zero()
+        let z = T::zero();
+        self.lval() == Some(&z) && self.rval() == Some(&z)
     }
 }
 
-impl<T: Element + Ord + Clone + Zero> Zero for IntervalSet<T> {
+impl<T> Zero for IntervalSet<T>
+where
+    Self: core::ops::Add<Self, Output = Self>,
+    T: Element + Clone + Zero,
+{
     #[inline]
     fn zero() -> Self {
-        Self::from(Interval::zero())
+        Self::from(Interval(EnumInterval::singleton(T::zero())))
     }
 
     #[inline]
     fn is_zero(&self) -> bool {
-        *self == Self::zero()
+        match self.intervals.as_slice() {
+            [single] => {
+                let z = T::zero();
+                single.lval() == Some(&z) && single.rval() == Some(&z)
+            }
+            _ => false,
+        }
     }
 }
 
-impl<T: Element + Ord + Clone + Zero + One> One for Interval<T> {
+impl<T> One for Interval<T>
+where
+    Self: core::ops::Mul<Self, Output = Self>,
+    T: Element + Clone + One,
+{
     #[inline]
     fn one() -> Self {
-        Self::from(EnumInterval::one())
+        Interval(EnumInterval::singleton(T::one()))
     }
 }
 
-impl<T: Element + Ord + Clone + Zero + One> One for IntervalSet<T> {
+impl<T> One for IntervalSet<T>
+where
+    Self: core::ops::Mul<Self, Output = Self>,
+    T: Element + Clone + One,
+{
     #[inline]
     fn one() -> Self {
-        Self::from(Interval::one())
+        Self::from(Interval(EnumInterval::singleton(T::one())))
     }
 }
 
@@ -695,7 +723,6 @@ mod decimal_tests {
 #[cfg(all(test, feature = "serde"))]
 mod malformed_deserialize {
     use super::*;
-    use crate::prelude::*;
 
     #[test]
     fn rejects_unsorted_intervals() {

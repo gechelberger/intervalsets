@@ -1,16 +1,18 @@
 use core::ops::Sub;
 
+use intervalsets_core::sets::EnumInterval;
+
 use crate::error::Error;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::ops::{TrySub, Union};
 use crate::{Interval, IntervalSet};
 
 impl<T> TrySub for Interval<T>
 where
-    T: Sub,
-    <T as Sub>::Output: Element,
+    EnumInterval<T>: TrySub<EnumInterval<T>, Output = EnumInterval<T>>,
+    <EnumInterval<T> as TrySub<EnumInterval<T>>>::Error: Into<Error>,
 {
-    type Output = Interval<<T as Sub>::Output>;
+    type Output = Interval<T>;
     type Error = Error;
 
     #[inline]
@@ -24,24 +26,23 @@ where
 
 impl<T> Sub for Interval<T>
 where
-    T: Sub + Ord,
-    <T as Sub>::Output: Element + Ord + Zero,
+    Self: TrySub<Output = Self>,
+    <Self as TrySub>::Error: core::fmt::Debug,
 {
-    type Output = Interval<<T as Sub>::Output>;
+    type Output = Self;
 
     #[inline]
     fn sub(self, rhs: Self) -> Self::Output {
-        self.try_sub(rhs)
-            .expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs).unwrap()
     }
 }
 
 impl<T> TrySub<Interval<T>> for IntervalSet<T>
 where
-    T: Sub + Element + Clone,
-    <T as Sub>::Output: Element,
+    T: Element + Clone,
+    Interval<T>: TrySub<Interval<T>, Output = Interval<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Sub>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     // Union-fold over already-valid subsets; bypasses IntervalSet::new's
@@ -56,23 +57,22 @@ where
 
 impl<T> Sub<Interval<T>> for IntervalSet<T>
 where
-    T: Sub + Element + Ord + Clone,
-    <T as Sub>::Output: Element + Ord + Zero,
+    Self: TrySub<Interval<T>, Output = Self>,
+    <Self as TrySub<Interval<T>>>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Sub>::Output>;
+    type Output = Self;
 
     fn sub(self, rhs: Interval<T>) -> Self::Output {
-        self.try_sub(rhs)
-            .expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs).unwrap()
     }
 }
 
 impl<T> TrySub<IntervalSet<T>> for Interval<T>
 where
-    T: Sub + Element + Clone,
-    <T as Sub>::Output: Element,
+    T: Element + Clone,
+    Self: TrySub<Interval<T>, Output = Interval<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Sub>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     // Sub doesn't commute, so we can't delegate -- iterate rhs directly.
@@ -89,23 +89,22 @@ where
 
 impl<T> Sub<IntervalSet<T>> for Interval<T>
 where
-    T: Sub + Element + Ord + Clone,
-    <T as Sub>::Output: Element + Ord + Zero,
+    Self: TrySub<IntervalSet<T>, Output = IntervalSet<T>>,
+    <Self as TrySub<IntervalSet<T>>>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Sub>::Output>;
+    type Output = IntervalSet<T>;
 
     fn sub(self, rhs: IntervalSet<T>) -> Self::Output {
-        self.try_sub(rhs)
-            .expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs).unwrap()
     }
 }
 
 impl<T> TrySub for IntervalSet<T>
 where
-    T: Sub + Element + Clone,
-    <T as Sub>::Output: Element,
+    T: Element + Clone,
+    Interval<T>: TrySub<Interval<T>, Output = Interval<T>, Error = Error>,
 {
-    type Output = IntervalSet<<T as Sub>::Output>;
+    type Output = IntervalSet<T>;
     type Error = Error;
 
     // Cartesian product results are unsorted; union-fold incrementally maintains
@@ -124,14 +123,13 @@ where
 
 impl<T> Sub for IntervalSet<T>
 where
-    T: Sub + Element + Ord + Clone,
-    <T as Sub>::Output: Element + Ord + Zero,
+    Self: TrySub<Output = Self>,
+    <Self as TrySub>::Error: core::fmt::Debug,
 {
-    type Output = IntervalSet<<T as Sub>::Output>;
+    type Output = Self;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        self.try_sub(rhs)
-            .expect("infix Sub invariants guarantee try_sub infallibility")
+        self.try_sub(rhs).unwrap()
     }
 }
 
@@ -148,10 +146,26 @@ mod try_tests {
         let a = Interval::open(0.0_f64, 10.0);
         assert_eq!(a.try_sub(a).unwrap(), Interval::open(-10.0_f64, 10.0));
     }
+
+    #[test]
+    fn set_level_unsigned_underflow_returns_err() {
+        use intervalsets_core::error::MathError;
+
+        let a = Interval::<u32>::closed(0, 5);
+        let b = Interval::<u32>::closed(10, 20);
+        let r = a.try_sub(b);
+        assert!(matches!(r, Err(Error::Math(MathError::Range))));
+    }
+
+    #[test]
+    #[should_panic]
+    fn set_level_unsigned_underflow_infix_panics() {
+        let a = Interval::<u32>::closed(0, 5);
+        let b = Interval::<u32>::closed(10, 20);
+        let _ = a - b;
+    }
 }
 
-// Float arithmetic tests use OrderedFloat<f64> because the infix Sub
-// operator now requires T: Ord and raw f64 doesn't satisfy that.
 #[cfg(all(test, feature = "ordered-float"))]
 mod tests {
     use ordered_float::OrderedFloat as O;
