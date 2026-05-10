@@ -194,8 +194,8 @@ mod impls {
     use EnumInterval as EI;
 
     use super::*;
-    use crate::bound::FiniteBound as FB;
     use crate::bound::Side::{Left, Right};
+    use crate::bound::{BoundType, FiniteBound as FB};
     use crate::category::{ECat, MaybeZero};
 
     /// Divide two bounds that have a non-branching finite output.
@@ -342,12 +342,12 @@ mod impls {
             (ECat::Pos(nz), ECat::Pos(_)) | (ECat::Neg(nz), ECat::Neg(_)) => {
                 // CASE 0: [a>=0, b>+e] / [c>=0, d>+e] = {0, +inf}
                 // CASE 1: [a<-e, b<=0] / [c<-e, d<=0] = {0, +inf}
-                EI::try_left_bounded(div_inf_bound(nz)?).map(MaybeDisjoint::from)
+                EI::try_left_bounded(div_inf_bound(nz)).map(MaybeDisjoint::from)
             }
             (ECat::Neg(nz), ECat::Pos(_)) | (ECat::Pos(nz), ECat::Neg(_)) => {
                 // CASE 0: [a<-e, b<=0] / [c>=0, d>+e] = {-inf, 0}
                 // CASE 1: [a>=0, b>+e] / [c<-e, d<=0] = {-inf, 0}
-                EI::try_right_bounded(div_inf_bound(nz)?).map(MaybeDisjoint::from)
+                EI::try_right_bounded(div_inf_bound(nz)).map(MaybeDisjoint::from)
             }
             (ECat::NegPos, ECat::Pos(_)) => {
                 // CASE 0: [a<0, b>0] / [0<=c<+e, d=inf] = {-inf, +inf}
@@ -450,24 +450,24 @@ mod impls {
         match (ab_cat, cd_cat) {
             (ECat::Zero, _) => zero_by_non_zero(),
             (ECat::Pos(nz), ECat::Pos(_)) => {
-                let min = div_inf_bound(nz)?;
+                let min = div_inf_bound(nz);
                 // ab Pos => [a>=0, b>0] => b is not Closed(0)
                 div_same_sign_max(min, b, cd_bound)
             }
             (ECat::Neg(nz), ECat::Neg(_)) => {
-                let min = div_inf_bound(nz)?;
+                let min = div_inf_bound(nz);
                 // ab Neg => [a<0, b<=0] => a is not Closed(0)
                 div_same_sign_max(min, a, cd_bound)
             }
             (ECat::Pos(nz), ECat::Neg(_)) => {
                 // [a>=0, b>0] / [c=-inf, d<=0] => {b/d, a/c} => {b/d, 0}
-                let max = div_inf_bound(nz)?;
+                let max = div_inf_bound(nz);
                 // ab Pos => b is never Closed(0)
                 div_opp_sign_min(max, b, cd_bound)
             }
             (ECat::Neg(nz), ECat::Pos(_)) => {
                 // [a<0, b<=0] / [c>=0, d=+inf] => {a/c, b/d} => {a/c, 0}
-                let max = div_inf_bound(nz)?;
+                let max = div_inf_bound(nz);
                 // ab Neg => a is never Closed(0)
                 div_opp_sign_min(max, a, cd_bound)
             }
@@ -625,11 +625,12 @@ mod impls {
     /// The new bound is always zero, but open/closed depending
     /// on whether the original interval contained zero.
     #[inline(always)]
-    fn div_inf_bound<T: Element + Zero>(numer: MaybeZero) -> Result<FB<T>, Error> {
-        match numer {
-            MaybeZero::Zero => FB::try_closed(T::zero()),
-            MaybeZero::NonZero => FB::try_open(T::zero()),
-        }
+    fn div_inf_bound<T: Element + Zero>(numer: MaybeZero) -> FB<T> {
+        let bound_type = match numer {
+            MaybeZero::Zero => BoundType::Closed,
+            MaybeZero::NonZero => BoundType::Open,
+        };
+        FB::new_assume_valid(bound_type, T::zero())
     }
 
     /// Create interval with max from num/denom handling denom -> 0.

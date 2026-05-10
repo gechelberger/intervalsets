@@ -140,6 +140,16 @@ impl<T: Element> TryFrom<RawFiniteBound<T>> for FiniteBound<T> {
 }
 
 impl<T> FiniteBound<T> {
+    /// Tier 4 bypass: construct a `FiniteBound` without running
+    /// `Element::validate`. Caller asserts that `limit` is a valid
+    /// element. For panic-free op sites that can prove validity by
+    /// local context (e.g. `T::zero()` or `T::min_value()` for types
+    /// where those are always valid).
+    #[inline(always)]
+    pub(crate) const fn new_assume_valid(bound_type: BoundType, limit: T) -> Self {
+        Self(bound_type, limit)
+    }
+
     /// Unpack a [`FiniteBound`] into ([`BoundType`], `T`)
     pub fn into_raw(self) -> (BoundType, T) {
         (self.0, self.1)

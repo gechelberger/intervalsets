@@ -8,7 +8,7 @@
 //! for truncation to FiniteInterval, instead need to define some Subset on T that defines
 //! the desired universe and intersect with that.
 
-use crate::bound::{FiniteBound, Side};
+use crate::bound::{BoundType, FiniteBound, Side};
 use crate::numeric::Element;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -62,10 +62,10 @@ impl<T: Element + num_traits::Bounded> IntoFinite for HalfInterval<T> {
         match side {
             Side::Left => super::intersection::from_normed_pair(
                 bound,
-                FiniteBound::try_closed(T::max_value()).expect("infallible"),
+                FiniteBound::new_assume_valid(BoundType::Closed, T::max_value()),
             ),
             Side::Right => super::intersection::from_normed_pair(
-                FiniteBound::try_closed(T::min_value()).expect("infallible"),
+                FiniteBound::new_assume_valid(BoundType::Closed, T::min_value()),
                 bound,
             ),
         }
@@ -81,8 +81,8 @@ impl<T: Element + num_traits::Bounded> IntoFinite for EnumInterval<T> {
             Self::Finite(inner) => inner.into_finite(),
             Self::Half(inner) => inner.into_finite(),
             Self::Unbounded => FiniteInterval::new_assume_valid(
-                FiniteBound::try_closed(T::min_value()).expect("infallible"),
-                FiniteBound::try_closed(T::max_value()).expect("infallible"),
+                FiniteBound::new_assume_valid(BoundType::Closed, T::min_value()),
+                FiniteBound::new_assume_valid(BoundType::Closed, T::max_value()),
             ),
         }
     }
