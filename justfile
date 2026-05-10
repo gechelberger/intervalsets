@@ -325,7 +325,10 @@ check-kani:
         --harness try_add_finite_finite_i64_no_panic \
         --harness try_sub_finite_finite_i64_no_panic \
         --harness try_split_finite_i64_no_panic \
-        --harness try_with_left_finite_i64_no_panic
+        --harness try_with_left_finite_i64_no_panic \
+        --harness try_count_finite_i64_no_panic \
+        --harness try_width_finite_i64_no_panic \
+        --harness midpoint_finite_i64_no_panic
 
 # scan codebase for pre-release markers
 loose-ends:

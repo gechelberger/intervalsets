@@ -13,6 +13,12 @@ version and are released together via `cargo-release`. See the repo
 
 ### Added
 
+- `numeric::Midpoint` is now `pub`. Library impls use `Error = Infallible` for integers / `f32` / `f64` / `OrderedFloat` / `NotNan` / `BigInt` / `BigUint` / `BigDecimal` / `Fixed*`. `Decimal` uses `Error = MathError` (`Range` on rounding overflow at extreme values).
+- `FiniteInterval::midpoint`, `HalfInterval::midpoint`, `EnumInterval::midpoint` — each `(&self) -> Result<T, MathError>`. Empty / half-bounded / unbounded inputs return `Err(MathError::Domain)`.
+- `Width::try_width` and `Width::Error`; mirrors the existing `Count::try_count` shape. `Width::width` becomes a default panicking sibling of `try_width`.
+- `WidthOverflowError` (parallel to `CountOverflowError`) plus `From<Infallible>` / `From<MathError>` lifts on both umbrella errors.
+- `Widthable` trait + `default_width_impl!` macro, mirroring `Countable` / `default_countable_impl!`. Library impls cover primitive integers (widening to `u128`), `i128` / `u128` (widening to `u128`), `f32` / `f64`, `BigInt` / `BigUint` / `BigDecimal`, `Decimal`, `Fixed*`, `OrderedFloat<T>` / `NotNan<T>`. Downstream extension via the macro for arbitrary-precision types or a bespoke impl for types with representation overflow.
+- `Measurement::try_binop_map` (`pub(crate)`) — short-circuits on `Infinite`, runs the closure on `Finite + Finite` and propagates its error. Used by the wrapper crate's `IntervalSet::try_count` and `IntervalSet::try_width` summations.
 - Optional `approx` feature with `AbsDiffEq` / `RelativeEq` / `UlpsEq` impls for `FiniteBound`, `FiniteInterval`, `HalfInterval`, `EnumInterval`, and `MaybeDisjoint` ([#215](https://github.com/gechelberger/intervalsets/pull/215)).
 - `error::MathError` enum (`Range` / `Domain`) for value-level arithmetic failure, plus `From<Infallible> for MathError` and a new `Error::Math` variant. ([#240](https://github.com/gechelberger/intervalsets/pull/240))
 - try_op impls for lib supported bound of set types and `Option<T>` wrapper. ([#240](https://github.com/gechelberger/intervalsets/pull/240))
@@ -30,6 +36,11 @@ version and are released together via `cargo-release`. See the repo
 - **Behavioral break:** Infix `+` / `-` / `*` / `/` on set types (`FiniteInterval` / `HalfInterval` / `EnumInterval`) is now explicit panicking sugar over `try_op().unwrap()`. The previous `T: Ord`-backed "provably infallible" framing is dropped; the bound becomes `Self: TryAdd<Output = Self>` plus `<Self as TryAdd>::Error: Debug` (analogous for sub/mul/div). Infix **may panic in release** when the corresponding `try_*` returns `Err`. The panic site is part of the documented contract.
 - `FiniteBound<T>` infix `Add` / `Sub` / `Mul` re-bound the same way: the bound flips to `T: TryAdd<Output = T>` (etc.) and the impl bodies become `try_op().unwrap()`. The output type tightens from `FiniteBound<<T as Add>::Output>` to `FiniteBound<T>` because `T: TryAdd<Output = T>` locks the inner output. `Zero` / `One` / `ConstZero` / `ConstOne` impls on `FiniteBound` and on `FiniteInterval` / `EnumInterval` pick up the new `Try*` bound chain transitively.
 - Tier 3 documentation in `ops/mod.rs` is split into **Tier 3a** (`try_*`: total, panic-free in release, canary-verified) and **Tier 3b** (infix sugar: may panic in release and debug). The `ops/math/mod.rs` "Panicking and fallible forms" section is rewritten to drop the `T: Ord`-makes-unwrap-safe claim and frame infix as honest panicking sugar.
+- **Behavioral break:** `Width::Output` for primitive integer `T` widens from `T` to `u128` (mirroring `Count::Output`). Previously `EnumInterval::closed(i32::MIN, i32::MAX).width()` panicked in debug / produced a *negative width* in release; now it returns `Ok(Measurement::Finite(u32::MAX as u128))`. Callers who held `Width<i32>::Output = i32` need a cast at the boundary. Float widths are unchanged in `Output` but now surface `±INF` overflow as `Err(WidthOverflowError)` from `try_width` instead of returning `Finite(INF)` silently.
+- **Behavioral break:** `Width` is rebound from `for<'a> &'a T: Sub<Output = Out>` onto a new `Widthable` trait. Custom `T`s implementing `Width` via the old `Sub` bound need to add a `Widthable` impl (use `default_width_impl!` for arbitrary-precision types).
+- **Behavioral break:** `HalfInterval::Count::Output` is now `T::Output` (was `()`). The direct-call signature now matches `FiniteInterval` / `EnumInterval` — previously direct `half.count()` returned `Measurement<()>` while `enum.count()` returned `Measurement<u128>`. Migration: anyone using the `()` output was reading no information; switch to the `T::Output`-typed value or stop calling `count()` on `HalfInterval` (always `Infinite`).
+- `IntervalSet::try_count` and `IntervalSet::try_width` summations now surface representation overflow via `TryAdd`-based folds rather than panicking in debug / wrapping in release. `IntervalSet`-level `Count` bounds tighten from `Out: Add<Out, Output = Out>` to `Out: TryAdd<Out, Output = Out>` with `<Out as TryAdd>::Error: Into<CountOverflowError>` (analogous for `Width`).
+- Float `Midpoint` impls (`f32`, `f64`, `OrderedFloat`, `NotNan`) drop the runtime non-finite check now that `Element::validate` rejects non-finite at the `FiniteBound` chokepoint (see #241). Direct callers passing non-finite values bypass the in-tree contract and inherit std's `f*::midpoint` semantics (typically a NaN-tainted result rather than `Err`).
 
 ### Deprecated
 
@@ -37,7 +48,15 @@ version and are released together via `cargo-release`. See the repo
 
 - **Removed** the `Converter` trait, the `Identity` converter, the `EIFactory<T, C>` type-level factory, and `ConvertingFactory::try_convert`. The trait was a tutorial-quality nicety for end users wanting to construct `OrderedFloat`/`NotNan`-wrapped intervals from raw `f32`/`f64` values; nothing internal used it. Migration: wrap the value directly at the call site — `EnumInterval::closed(NotNan::new(0.0).unwrap(), NotNan::new(10.0).unwrap())` or define a project-local helper. `OrderedFloat::from(value: T)` exists for the infallible case.
 - **Removed** the `Error::TotalOrderError(TotalOrderError)` variant from the umbrella enum. `From<TotalOrderError> for Error` now collapses to `Error::InvalidBoundLimit` — same destination as `Element::validate` rejection, since both gates fire on the same root cause (a bound's value isn't a usable limit). The `TotalOrderError` struct itself is unchanged and remains the precise return type of `TryCmp::try_cmp`. Migration: replace `Err(Error::TotalOrderError(_))` matchers with `Err(Error::InvalidBoundLimit)`.
+- **Removed** `error::MidpointError` (was `pub(crate)`; never user-visible). External `Midpoint` impls that aliased it should adopt `MathError` (or `Infallible`) for `type Error`.
+- **Removed** `Measurement::Sub` impl. The previous impl returned `Infinite` whenever either operand was `Infinite`, which is mathematically wrong (`Finite(n) - Infinite` should be `-Infinite`; `Infinite - Infinite` is undefined). No in-repo callers; downstream consumers can compose with `Measurement::try_binop_map` plus a caller-supplied checked subtraction.
+- **Removed** unused `Measurement::binop_try_map` helper (was `#[allow(dead_code)]`).
+- **Removed** dead `T: Clone` bound on `Measurement::Add` (the `binop_map` it dispatches through consumes by value).
 
 ### Fixed
+
+- `Width` on integer intervals no longer panics in debug / produces a *negative width* in release on `[i32::MIN, i32::MAX]` and similar full-range cases. The primitive integer `Out` widens to `u128` so the diff always fits, and `try_width` surfaces `i128`/`u128` full-range cases through `WidthOverflowError`.
+- `IntervalSet::try_count` summation is now panic-free at every step — previously the per-interval count was checked but the fold-step `Add` was not, so a set whose individual counts fit `u128` but whose sum did not would panic in debug / wrap in release.
+- `measure` ops (`try_count`, `try_width`, `midpoint`) are now covered by the panic-free canary (`tier2_measure`).
 
 ### Security

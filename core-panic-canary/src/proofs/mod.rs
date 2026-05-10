@@ -4,6 +4,7 @@ pub mod tier2_difference;
 pub mod tier2_elem_iter;
 pub mod tier2_finite;
 pub mod tier2_intersection;
+pub mod tier2_measure;
 pub mod tier2_merged;
 pub mod tier2_union;
 pub mod tier3_add;

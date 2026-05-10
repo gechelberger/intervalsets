@@ -85,7 +85,7 @@
 //! assert_eq!(right, EnumInterval::closed(6, 10));
 //!
 //! let width: Measurement<_> = a.width();
-//! assert_eq!(width.finite(), 10);
+//! assert_eq!(width.finite(), 10u128);
 //!
 //! let count: Measurement<_> = a.count();
 //! assert_eq!(count.finite(), 11u128);

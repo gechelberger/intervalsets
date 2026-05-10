@@ -1,14 +1,25 @@
 use rust_decimal::Decimal;
 
 use crate::continuous_domain_impl;
-use crate::error::{MathError, MidpointError};
+use crate::error::MathError;
+use crate::measure::Widthable;
 use crate::numeric::Midpoint;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 continuous_domain_impl!(Decimal);
 
+impl Widthable for Decimal {
+    type Output = Decimal;
+
+    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+        // Decimal has bounded precision (≈ ±7.92e28); the diff can
+        // overflow at extremes (e.g. `Decimal::MAX - Decimal::MIN`).
+        right.checked_sub(*left)
+    }
+}
+
 impl Midpoint for Decimal {
-    type Error = MidpointError;
+    type Error = MathError;
 
     /// Computes the midpoint as `(self / 2) + (other / 2)`, halving
     /// each input first so the leading addition cannot overflow the
@@ -18,14 +29,14 @@ impl Midpoint for Decimal {
     ///
     /// # Errors
     ///
-    /// Returns [`MidpointError`] when rounding each half pushes the
+    /// Returns [`MathError::Range`] when rounding each half pushes the
     /// addition out of range — for example `Decimal::MAX.midpoint(MAX)`,
     /// where `MAX / 2` rounds up by 0.5 and the two halves sum to
     /// `MAX + 1`. Symmetric on the negative side for `MIN`.
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
         (self / Decimal::TWO)
             .checked_add(other / Decimal::TWO)
-            .ok_or(MidpointError)
+            .ok_or(MathError::Range)
     }
 }
 
@@ -124,8 +135,8 @@ mod test {
 
         // The extreme pair -- both at MAX -- still fails because each
         // half rounds up, pushing the sum above MAX.
-        assert!(Decimal::MAX.midpoint(Decimal::MAX).is_err());
-        assert!(Decimal::MIN.midpoint(Decimal::MIN).is_err());
+        assert_eq!(Decimal::MAX.midpoint(Decimal::MAX), Err(MathError::Range));
+        assert_eq!(Decimal::MIN.midpoint(Decimal::MIN), Err(MathError::Range));
     }
 
     #[test]

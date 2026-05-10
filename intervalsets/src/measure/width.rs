@@ -1,13 +1,16 @@
-use super::Measurement;
+use intervalsets_core::ops::math::TryAdd;
+
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
-/// The width is defined as the absolute difference between the greatest and
-/// least elements within the interval set. If one or more sides is unbounded
-/// then the width is infinite.
+/// The width is defined as the absolute difference between the
+/// greatest and least elements within the interval set. If one or
+/// more sides is unbounded, the width is infinite.
 ///
 /// > Mathematically speaking, the width of any Countable set is 0.
-/// > We *do* allow calculating the width over the Reals between two integer bounds,
-/// > however unexpected results may occur due to discrete normalization.
+/// > We *do* allow calculating the width over the Reals between two
+/// > integer bounds, however unexpected results may occur due to
+/// > discrete normalization. For discrete `T`, prefer
+/// > [`Count`](crate::measure::Count).
 ///
 /// # Example
 /// ```
@@ -20,7 +23,7 @@ use super::Measurement;
 /// assert_eq!(interval.width().finite(), 90.0);
 ///
 /// let interval = Interval::closed(0, 10);
-/// assert_eq!(interval.width().finite(), 10);
+/// assert_eq!(interval.width().finite(), 10u128);
 ///
 /// let set = Interval::closed(0.0, 10.0)
 ///     .union(Interval::closed(5.0, 15.0))
@@ -39,37 +42,45 @@ use super::Measurement;
 ///
 /// let b = Interval::closed(0, 10);
 /// let b = b.difference(Interval::closed(5, 15));
-/// assert_eq!(b.width().finite(), 4);
+/// assert_eq!(b.width().finite(), 4u128);
 /// ```
-use super::Width;
-use crate::numeric::{Element, Zero};
+use super::{Measurement, Width, WidthOverflowError, Widthable};
+use crate::numeric::Zero;
 use crate::{Interval, IntervalSet};
 
-impl<T, Out> Width for Interval<T>
+impl<T> Width for Interval<T>
 where
-    Out: Zero,
-    T: Element,
-    for<'a> &'a T: core::ops::Sub<Output = Out>,
+    T: Widthable,
+    T::Output: Zero,
 {
-    type Output = Out;
+    type Output = T::Output;
+    type Error = WidthOverflowError;
 
-    fn width(&self) -> Measurement<Self::Output> {
-        self.0.width()
+    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+        self.0.try_width()
     }
 }
 
 impl<T, Out> Width for IntervalSet<T>
 where
-    T: Element,
-    for<'a> &'a T: core::ops::Sub<Output = Out>,
-    Out: Zero + core::ops::Add<Out, Output = Out> + Clone,
+    T: Widthable<Output = Out>,
+    Out: Zero + TryAdd<Out, Output = Out>,
+    <Out as TryAdd>::Error: Into<WidthOverflowError>,
 {
     type Output = Out;
+    type Error = WidthOverflowError;
 
-    fn width(&self) -> Measurement<Self::Output> {
-        self.iter()
-            .map(|subset| subset.width())
-            .fold(Measurement::Finite(Out::zero()), |accum, item| accum + item)
+    /// Sum per-component widths via [`TryAdd`] so a summation that
+    /// exceeds `Out`'s representable range surfaces as
+    /// `WidthOverflowError` rather than panicking in debug / wrapping
+    /// in release.
+    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+        self.iter().try_fold(
+            Measurement::Finite(<Out as Zero>::zero()),
+            |accum, subset| {
+                accum.try_binop_map(subset.try_width()?, |a, b| a.try_add(b).map_err(Into::into))
+            },
+        )
     }
 }
 
@@ -92,6 +103,11 @@ mod tests {
         }
 
         let expected = b - a;
+        // Filter cases where the diff itself overflows to ±INF; those
+        // surface as Err on try_width and panic on width().
+        if !expected.is_finite() {
+            return;
+        }
         let open_interval = Interval::open(a, b);
         let closed_interval = Interval::closed(a, b);
 
@@ -112,6 +128,9 @@ mod tests {
         let cd = Interval::open(c, d);
 
         let expected = (b - a) + (d - c);
+        if !expected.is_finite() {
+            return true;
+        }
         let x = IntervalSet::new(vec![ab, cd]);
 
         if ab.intersects(&cd) {
@@ -123,22 +142,15 @@ mod tests {
 
     #[quickcheck]
     fn check_set_width_integer(a: i32, b: i32, c: i32, d: i32) -> bool {
-        if b.checked_sub(a).is_none() || d.checked_sub(c).is_none() {
-            return true; // overflow panic
-        }
         if a > b || c > d {
             return true;
         }
 
-        let ab = b - a;
+        let ab = (b as i64 - a as i64) as u128;
         let ab_ivl = Interval::closed(a, b);
 
-        let cd = d - c;
+        let cd = (d as i64 - c as i64) as u128;
         let cd_ivl = Interval::closed(c, d);
-
-        if ab.checked_add(cd).is_none() {
-            return true; // overflow
-        }
 
         let expected = ab + cd;
         let x = IntervalSet::new(vec![ab_ivl, cd_ivl]);

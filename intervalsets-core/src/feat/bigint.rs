@@ -4,10 +4,10 @@ use num_bigint::{BigInt, BigUint};
 use num_traits::{CheckedAdd, CheckedSub, One, Zero};
 
 use crate::bound::Side::{self, *};
-use crate::default_countable_impl;
 use crate::error::MathError;
 use crate::numeric::{Element, Midpoint};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
+use crate::{default_countable_impl, default_width_impl};
 
 impl Element for BigInt {
     fn try_adjacent(&self, side: Side) -> Option<Self> {
@@ -19,6 +19,7 @@ impl Element for BigInt {
 }
 
 default_countable_impl!(BigInt);
+default_width_impl!(BigInt);
 
 impl Midpoint for BigInt {
     type Error = core::convert::Infallible;
@@ -41,6 +42,7 @@ impl Element for BigUint {
 }
 
 default_countable_impl!(BigUint);
+default_width_impl!(BigUint);
 
 impl Midpoint for BigUint {
     type Error = core::convert::Infallible;

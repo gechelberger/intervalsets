@@ -107,11 +107,3 @@ impl From<Infallible> for MathError {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("incomparable values")]
 pub struct TotalOrderError;
-
-/// Returned when a [`Midpoint`](crate::numeric::Midpoint) impl cannot
-/// produce a result for the given inputs. The specific conditions that
-/// trigger this are documented by each [`Midpoint`] impl, since the
-/// trait deliberately delegates failure semantics to its implementors.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
-#[error("midpoint could not be computed")]
-pub(crate) struct MidpointError;

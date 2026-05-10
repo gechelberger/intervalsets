@@ -13,12 +13,15 @@
 //!         m(A0 U A1 .. An) <= Sum { m(Ai) for i in 0..n }
 //! ```
 //!
-//! Some common measures are Cardinality, Count, and
-//! the Lebesgue measure which is Width in R1.
+//! Some common measures are Count and the Lebesgue measure
+//! (which is Width in R1).
 
-pub use intervalsets_core::measure::{Count, CountOverflowError, Countable, Measurement, Width};
+pub use intervalsets_core::measure::{
+    Count, CountOverflowError, Countable, Measurement, Width, WidthOverflowError, Widthable,
+};
 
 mod count;
+mod midpoint;
 mod width;
 
 #[cfg(test)]
