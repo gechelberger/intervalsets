@@ -33,11 +33,11 @@
 //!
 //! [`TryCast`] always routes through the strict (`try_new`) chokepoints.
 //! [`LossyCast`] routes through coercive siblings where one exists
-//! (`try_satisfy_bounds` for [`FiniteInterval`], `IntervalSet::new` for
-//! [`IntervalSet`]) — consistent with "we already discarded distinctions
-//! at the element layer". [`Cast`] uses Tier 4 bypass constructors
-//! because monotonic widenings are guaranteed to preserve every
-//! invariant.
+//! (`try_satisfy_bounds` for [`FiniteInterval`](crate::sets::FiniteInterval),
+//! `IntervalSet::new` for the outer-crate `IntervalSet`) — consistent
+//! with "we already discarded distinctions at the element layer".
+//! [`Cast`] uses Tier 4 bypass constructors because monotonic widenings
+//! are guaranteed to preserve every invariant.
 
 mod element;
 mod sets;
@@ -73,11 +73,12 @@ pub trait Cast<U> {
 /// distinction at the discarded boundary is meaningless once the
 /// out-of-range region has been projected away.
 ///
-/// At the set layer, `LossyCast` for [`FiniteInterval`] routes crossed
+/// At the set layer, `LossyCast` for
+/// [`FiniteInterval`](crate::sets::FiniteInterval) routes crossed
 /// bounds (two distinct `T`s collapsing to the same `U`) to `Empty`
-/// rather than erroring, and `LossyCast` for `IntervalSet` routes
-/// through the repairing constructor — consistent with "we already
-/// discarded distinctions".
+/// rather than erroring, and `LossyCast` for the outer-crate
+/// `IntervalSet` routes through the repairing constructor —
+/// consistent with "we already discarded distinctions".
 ///
 /// # NaN caveat
 ///
