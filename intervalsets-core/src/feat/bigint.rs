@@ -378,7 +378,7 @@ where
 
 impl<U> LossyCastElement<U> for BigInt
 where
-    U: NumCast + Bounded,
+    U: NumCast + Bounded + crate::cast::Primitive,
 {
     fn lossy_cast_element(self) -> U {
         let is_negative = self.is_negative();
@@ -394,7 +394,7 @@ where
 
 impl<U> LossyCastElement<U> for BigUint
 where
-    U: NumCast + Bounded,
+    U: NumCast + Bounded + crate::cast::Primitive,
 {
     fn lossy_cast_element(self) -> U {
         NumCast::from(self).unwrap_or_else(U::max_value)

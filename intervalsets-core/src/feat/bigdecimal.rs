@@ -156,7 +156,7 @@ impl CastElement<BigDecimal> for BigDecimal {
 // `U::max_value()` based on sign.
 impl<U> LossyCastElement<U> for BigDecimal
 where
-    U: NumCast + Bounded,
+    U: NumCast + Bounded + crate::cast::Primitive,
 {
     fn lossy_cast_element(self) -> U {
         // Capture sign before the value is consumed by `NumCast::from`.

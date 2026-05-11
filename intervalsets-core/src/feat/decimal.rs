@@ -205,7 +205,7 @@ where
 
 impl<U> LossyCastElement<U> for Decimal
 where
-    U: NumCast + Bounded,
+    U: NumCast + Bounded + crate::cast::Primitive,
 {
     fn lossy_cast_element(self) -> U {
         let is_negative = self.is_sign_negative();
