@@ -17,9 +17,9 @@
 //!   produced by narrowing surface as
 //!   [`Error::InvalidIntervalSet`].
 
-use intervalsets_core::cast::{Cast, LossyCast, LossyCastElement, TryCast};
+use intervalsets_core::cast::{Cast, LossyCast, LossyCastElement, TryCast, TryCastElement};
 use intervalsets_core::sets::EnumInterval;
-use num_traits::{Bounded, NumCast, ToPrimitive};
+use num_traits::Bounded;
 
 use crate::error::Error;
 use crate::numeric::Element;
@@ -59,8 +59,8 @@ where
 
 impl<T, U> TryCast<Interval<U>> for Interval<T>
 where
-    T: ToPrimitive,
-    U: NumCast + Element,
+    T: TryCastElement<U>,
+    U: Element,
 {
     type Output = Interval<U>;
     type Error = Error;
@@ -114,8 +114,8 @@ where
 
 impl<T, U> TryCast<IntervalSet<U>> for IntervalSet<T>
 where
-    T: ToPrimitive,
-    U: NumCast + Element,
+    T: TryCastElement<U>,
+    U: Element,
 {
     type Output = IntervalSet<U>;
     type Error = Error;

@@ -42,6 +42,11 @@
 mod element;
 mod sets;
 
+// Re-export the sealed `Primitive` marker for use by `feat/*.rs`
+// modules that need to bound generic impls on "the std numeric
+// primitives only" (e.g. `BigDecimal -> U_primitive` impls).
+pub(crate) use element::Primitive;
+
 /// Infallible storage-type cast. **Tier 1**.
 ///
 /// Implemented for pairs where the element conversion is contractually
@@ -129,4 +134,23 @@ pub trait TryCast<U> {
 pub trait LossyCastElement<U> {
     /// Projects `self` onto the nearest representable `U`.
     fn lossy_cast_element(self) -> U;
+}
+
+/// Element-layer hook for [`TryCast`]. Returns `None` when the value
+/// cannot be represented in `U` (overflow, NaN, etc.).
+///
+/// All primitive pairs are blanket-implemented via
+/// [`NumCast`](num_traits::NumCast); see `cast::element` for the
+/// implementation. Feature-gated storage types
+/// (`bigdecimal::BigDecimal`, `num_bigint::BigInt`,
+/// `rust_decimal::Decimal`, `fixed::Fixed*`) cannot impl
+/// `NumCast` themselves (orphan rule) and instead provide their own
+/// `TryCastElement` impls in their `feat/<type>.rs` modules.
+///
+/// Implementers of new `T` types should impl this trait for each `U`
+/// they want to support as a cast target / source.
+pub trait TryCastElement<U> {
+    /// Attempts to cast `self` to its `U` representation. Returns
+    /// `None` if the value doesn't fit (overflow, NaN, etc.).
+    fn try_cast_element(self) -> Option<U>;
 }

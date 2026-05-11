@@ -8,9 +8,9 @@
 //! `try_satisfy_bounds` is the coercive sibling used by `LossyCast`
 //! on `FiniteInterval` (crossed bounds → `Empty`).
 
-use num_traits::{Bounded, NumCast, ToPrimitive};
+use num_traits::Bounded;
 
-use super::{Cast, LossyCast, LossyCastElement, TryCast};
+use super::{Cast, LossyCast, LossyCastElement, TryCast, TryCastElement};
 use crate::bound::{BoundType, FiniteBound};
 use crate::error::Error;
 use crate::factory::TrySatisfyFiniteInterval;
@@ -60,8 +60,8 @@ where
 
 impl<T, U> TryCast<FiniteBound<U>> for FiniteBound<T>
 where
-    T: ToPrimitive,
-    U: NumCast + Element,
+    T: TryCastElement<U>,
+    U: Element,
 {
     type Output = FiniteBound<U>;
     type Error = Error;
@@ -69,7 +69,7 @@ where
     #[inline]
     fn try_cast(self) -> Result<Self::Output, Self::Error> {
         let (bt, v) = self.into_raw();
-        let u = NumCast::from(v).ok_or(Error::InvalidBoundLimit)?;
+        let u = v.try_cast_element().ok_or(Error::InvalidBoundLimit)?;
         FiniteBound::try_new(bt, u)
     }
 }
@@ -131,8 +131,8 @@ where
 
 impl<T, U> TryCast<FiniteInterval<U>> for FiniteInterval<T>
 where
-    T: ToPrimitive,
-    U: NumCast + Element,
+    T: TryCastElement<U>,
+    U: Element,
 {
     type Output = FiniteInterval<U>;
     type Error = Error;
@@ -184,8 +184,8 @@ where
 
 impl<T, U> TryCast<HalfInterval<U>> for HalfInterval<T>
 where
-    T: ToPrimitive,
-    U: NumCast + Element,
+    T: TryCastElement<U>,
+    U: Element,
 {
     type Output = HalfInterval<U>;
     type Error = Error;
@@ -235,8 +235,8 @@ where
 
 impl<T, U> TryCast<EnumInterval<U>> for EnumInterval<T>
 where
-    T: ToPrimitive,
-    U: NumCast + Element,
+    T: TryCastElement<U>,
+    U: Element,
 {
     type Output = EnumInterval<U>;
     type Error = Error;

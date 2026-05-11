@@ -3,7 +3,7 @@ use core::convert::Infallible;
 use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
-use crate::cast::LossyCastElement;
+use crate::cast::{LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::measure::Widthable;
 use crate::numeric::{Element, Midpoint};
@@ -176,6 +176,33 @@ where
         // keeps the safety floor without a measurable cost.
         let raw = self.into_inner().lossy_cast_element();
         NotNan::new(raw).expect("LossyCast of finite NotNan produces non-NaN")
+    }
+}
+
+// `TryCastElement` for wrapper-pair narrowing/widening. Delegates to
+// the wrapper's `NumCast` impl (ordered-float provides
+// `NumCast for OrderedFloat<T> where T: NumCast` and
+// `NumCast for NotNan<T> where T: FloatCore`).
+
+impl<T, U> TryCastElement<OrderedFloat<U>> for OrderedFloat<T>
+where
+    T: num_traits::ToPrimitive,
+    U: num_traits::NumCast,
+{
+    #[inline]
+    fn try_cast_element(self) -> Option<OrderedFloat<U>> {
+        <OrderedFloat<U> as num_traits::NumCast>::from(self)
+    }
+}
+
+impl<T, U> TryCastElement<NotNan<U>> for NotNan<T>
+where
+    T: FloatCore,
+    U: FloatCore,
+{
+    #[inline]
+    fn try_cast_element(self) -> Option<NotNan<U>> {
+        <NotNan<U> as num_traits::NumCast>::from(self)
     }
 }
 

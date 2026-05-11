@@ -1,8 +1,10 @@
 use core::convert::Infallible;
 use core::ops::Add;
 
-use bigdecimal::{BigDecimal, Zero};
+use bigdecimal::{BigDecimal, Signed, Zero};
+use num_traits::{Bounded, NumCast};
 
+use crate::cast::{LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::numeric::Midpoint;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
@@ -72,6 +74,109 @@ impl TryDiv for BigDecimal {
     }
 }
 
+// === Cast support ===
+//
+// `Cast<Interval<BigDecimal>> for Interval<{i*, u*}>` works out of the
+// box: `BigDecimal` has `From<i*>`/`From<u*>` impls upstream, so the
+// set-level `Cast<U> where T: Into<U>` bound is satisfied. Lossless
+// widening.
+//
+// `BigDecimal` does not impl `NumCast` (orphan rule blocks us from
+// adding it), so the rest of the cast surface needs explicit
+// `TryCastElement` / `LossyCastElement` impls below.
+//
+// `LossyCast` targeting `BigDecimal` is intentionally not provided:
+// `BigDecimal` is arbitrary precision (no `Bounded` impl, no
+// saturation extremum), so the trait's snap-to-extremum semantics have
+// no meaningful interpretation. `Cast` covers integer→BigDecimal
+// losslessly.
+
+// `LossyCastElement<U> for BigDecimal` (primitive `U`) — saturating
+// downcast. Out-of-range values clamp to `U::min_value()` /
+// `U::max_value()` based on sign.
+impl<U> LossyCastElement<U> for BigDecimal
+where
+    U: NumCast + Bounded,
+{
+    fn lossy_cast_element(self) -> U {
+        // Capture sign before the value is consumed by `NumCast::from`.
+        let is_negative = self.is_negative();
+        NumCast::from(self).unwrap_or_else(|| {
+            if is_negative {
+                U::min_value()
+            } else {
+                U::max_value()
+            }
+        })
+    }
+}
+
+// === TryCastElement impls ===
+//
+// Cover both directions:
+//
+// - `T_primitive -> BigDecimal`: integer sources via `From<T> for
+//   BigDecimal` (lossless, always `Some`); `f32`/`f64` via
+//   `BigDecimal: TryFrom<f*>` (returns `None` for NaN).
+//
+// - `BigDecimal -> U_primitive`: delegate to `NumCast::from` since
+//   `BigDecimal: ToPrimitive` and the target primitive is `NumCast`.
+//
+// - `BigDecimal -> BigDecimal`: identity (reflexive cast, returns
+//   `Some(self)`).
+//
+// The blanket primitive impl in `cast::element` does not fire here
+// because the sealed `Primitive` marker excludes `BigDecimal`.
+
+macro_rules! try_cast_to_bigdec_from_int {
+    ($($T:ty),+ $(,)?) => {
+        $(
+            impl TryCastElement<BigDecimal> for $T {
+                #[inline]
+                fn try_cast_element(self) -> Option<BigDecimal> {
+                    Some(BigDecimal::from(self))
+                }
+            }
+        )+
+    };
+}
+
+try_cast_to_bigdec_from_int!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
+
+impl TryCastElement<BigDecimal> for f32 {
+    #[inline]
+    fn try_cast_element(self) -> Option<BigDecimal> {
+        BigDecimal::try_from(self).ok()
+    }
+}
+
+impl TryCastElement<BigDecimal> for f64 {
+    #[inline]
+    fn try_cast_element(self) -> Option<BigDecimal> {
+        BigDecimal::try_from(self).ok()
+    }
+}
+
+// `BigDecimal -> U_primitive`: blanket via NumCast::from (works
+// because `BigDecimal: ToPrimitive`).
+impl<U> TryCastElement<U> for BigDecimal
+where
+    U: NumCast + crate::cast::Primitive,
+{
+    #[inline]
+    fn try_cast_element(self) -> Option<U> {
+        <U as NumCast>::from(self)
+    }
+}
+
+// Reflexive `BigDecimal -> BigDecimal`.
+impl TryCastElement<BigDecimal> for BigDecimal {
+    #[inline]
+    fn try_cast_element(self) -> Option<BigDecimal> {
+        Some(self)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use core::str::FromStr;
@@ -115,5 +220,155 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    // === Cast trait coverage ===
+
+    mod cast {
+        use core::str::FromStr;
+
+        use super::*;
+        use crate::cast::{Cast, LossyCast, TryCast};
+        use crate::error::Error;
+        use crate::sets::FiniteInterval;
+
+        // ---------- Cast (int → BigDecimal lossless widening) ----------
+
+        #[test]
+        fn cast_int_to_bigdecimal() {
+            let x = FiniteInterval::closed(0_i32, 10);
+            let y: FiniteInterval<BigDecimal> = x.cast();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(BigDecimal::from(0), BigDecimal::from(10))
+            );
+        }
+
+        #[test]
+        fn cast_i64_to_bigdecimal() {
+            let x = FiniteInterval::closed(0_i64, i64::MAX);
+            let y: FiniteInterval<BigDecimal> = x.cast();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(BigDecimal::from(0), BigDecimal::from(i64::MAX))
+            );
+        }
+
+        // ---------- TryCast (BigDecimal → primitive via existing ToPrimitive) ----------
+
+        #[test]
+        fn try_cast_bigdecimal_to_i64() {
+            let x = FiniteInterval::closed(
+                BigDecimal::from_str("0").unwrap(),
+                BigDecimal::from_str("10").unwrap(),
+            );
+            let y: FiniteInterval<i64> = x.try_cast().unwrap();
+            assert_eq!(y, FiniteInterval::closed(0_i64, 10));
+        }
+
+        #[test]
+        fn try_cast_bigdecimal_to_i32_overflow_errors() {
+            // BigDecimal value bigger than i32::MAX → NumCast returns
+            // None → Error::InvalidBoundLimit.
+            let huge = BigDecimal::from(i64::MAX);
+            let x = FiniteInterval::closed(BigDecimal::from(0), huge);
+            let y: Result<FiniteInterval<i32>, _> = x.try_cast();
+            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn try_cast_bigdecimal_to_f64() {
+            let x = FiniteInterval::closed(
+                BigDecimal::from_str("0.5").unwrap(),
+                BigDecimal::from_str("10.25").unwrap(),
+            );
+            let y: FiniteInterval<f64> = x.try_cast().unwrap();
+            assert_eq!(y, FiniteInterval::closed(0.5_f64, 10.25));
+        }
+
+        // ---------- LossyCast (BigDecimal → primitive with saturation) ----------
+
+        #[test]
+        fn lossy_cast_bigdecimal_to_i32_clamps_positive_overflow() {
+            // Way bigger than i32::MAX → saturates to i32::MAX.
+            let huge = BigDecimal::from(i64::MAX);
+            let x = FiniteInterval::closed(BigDecimal::from(0), huge);
+            let y: FiniteInterval<i32> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(0_i32, i32::MAX));
+        }
+
+        #[test]
+        fn lossy_cast_bigdecimal_to_i32_clamps_negative_overflow() {
+            // Way smaller than i32::MIN → saturates to i32::MIN.
+            let very_neg = BigDecimal::from(i64::MIN);
+            let very_pos = BigDecimal::from(i64::MAX);
+            let x = FiniteInterval::closed(very_neg, very_pos);
+            let y: FiniteInterval<i32> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(i32::MIN, i32::MAX));
+        }
+
+        #[test]
+        fn lossy_cast_bigdecimal_to_i64_in_range() {
+            let x = FiniteInterval::closed(
+                BigDecimal::from_str("-100").unwrap(),
+                BigDecimal::from_str("100").unwrap(),
+            );
+            let y: FiniteInterval<i64> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(-100_i64, 100));
+        }
+
+        #[test]
+        fn lossy_cast_bigdecimal_to_u32_negative_clamps_to_zero() {
+            // BigDecimal::to_u32 on a negative value returns None →
+            // saturate. is_negative ⇒ U::min_value() ⇒ 0u32.
+            let neg = BigDecimal::from(-100_i64);
+            let pos = BigDecimal::from(100_i64);
+            let x = FiniteInterval::closed(neg, pos);
+            let y: FiniteInterval<u32> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(0_u32, 100));
+        }
+
+        // ---------- TryCast with BigDecimal as target (new under option 1) ----------
+
+        #[test]
+        fn try_cast_int_to_bigdecimal() {
+            let x = FiniteInterval::closed(0_i32, 10);
+            let y: FiniteInterval<BigDecimal> = x.try_cast().unwrap();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(BigDecimal::from(0), BigDecimal::from(10))
+            );
+        }
+
+        #[test]
+        fn try_cast_i64_to_bigdecimal_full_range() {
+            // i64::MAX is too big for f64 round-trip, but BigDecimal
+            // takes it via the integer From impl losslessly.
+            let x = FiniteInterval::closed(i64::MIN, i64::MAX);
+            let y: FiniteInterval<BigDecimal> = x.try_cast().unwrap();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(BigDecimal::from(i64::MIN), BigDecimal::from(i64::MAX))
+            );
+        }
+
+        #[test]
+        fn try_cast_f64_to_bigdecimal() {
+            let x = FiniteInterval::closed(0.5_f64, 10.25);
+            let y: FiniteInterval<BigDecimal> = x.try_cast().unwrap();
+            let (l, r) = y.view_raw().unwrap();
+            assert_eq!(l.value(), &BigDecimal::from_str("0.5").unwrap());
+            assert_eq!(r.value(), &BigDecimal::from_str("10.25").unwrap());
+        }
+
+        #[test]
+        fn try_cast_bigdecimal_to_bigdecimal_identity() {
+            let x = FiniteInterval::closed(
+                BigDecimal::from_str("1.5").unwrap(),
+                BigDecimal::from_str("2.5").unwrap(),
+            );
+            let y: FiniteInterval<BigDecimal> = x.clone().try_cast().unwrap();
+            assert_eq!(x, y);
+        }
     }
 }

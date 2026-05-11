@@ -28,7 +28,52 @@
 //! and reach the panic; that's documented bypass-misuse, not a
 //! contract violation.
 
-use super::LossyCastElement;
+use num_traits::{NumCast, ToPrimitive};
+// =====================================================================
+// Sealed `Primitive` marker
+// =====================================================================
+//
+// Marks the std numeric primitive types. Sealed (`pub(crate)` inside a
+// private module) so downstream crates cannot extend it. This unlocks
+// a single blanket `TryCastElement` impl over all primitive pairs
+// without risking coherence conflicts when feature-gated storage types
+// (`BigDecimal`, etc.) add their own `TryCastElement` impls — Rust
+// proves the blanket cannot apply to those types because they can
+// never become `Primitive`.
+pub(crate) use sealed::Primitive;
+
+use super::{LossyCastElement, TryCastElement};
+
+mod sealed {
+    pub trait Primitive {}
+}
+
+macro_rules! mark_primitive {
+    ($($t:ty),* $(,)?) => {
+        $( impl sealed::Primitive for $t {} )*
+    };
+}
+
+mark_primitive!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64);
+
+// =====================================================================
+// TryCastElement: primitive-primitive blanket via NumCast
+// =====================================================================
+//
+// Every primitive pair satisfies `ToPrimitive + NumCast`, so one
+// blanket covers the 14×14 cross product. Sealed `Primitive` bound
+// prevents the blanket from interfering with feat-type impls.
+
+impl<T, U> TryCastElement<U> for T
+where
+    T: ToPrimitive + Primitive,
+    U: NumCast + Primitive,
+{
+    #[inline]
+    fn try_cast_element(self) -> Option<U> {
+        <U as NumCast>::from(self)
+    }
+}
 
 macro_rules! lossy_via_az {
     ($Src:ty => $($Dst:ty),+ $(,)?) => {
