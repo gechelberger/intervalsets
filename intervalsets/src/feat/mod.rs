@@ -77,6 +77,56 @@ mod ordered_float_tests {
             Interval::open(OrderedFloat(5.0), OrderedFloat(10.0)),
         );
     }
+
+    // === Cast coverage at the Interval / IntervalSet layer ===
+
+    #[test]
+    fn test_interval_try_cast_ordered_float() {
+        use crate::prelude::TryCast;
+        let x = Interval::closed(OrderedFloat(0.0_f32), OrderedFloat(10.0_f32));
+        let y: Interval<OrderedFloat<f64>> = x.try_cast().unwrap();
+        assert_eq!(
+            y,
+            Interval::closed(OrderedFloat(0.0_f64), OrderedFloat(10.0_f64))
+        );
+    }
+
+    #[test]
+    fn test_interval_lossy_cast_ordered_float_narrowing() {
+        use crate::prelude::LossyCast;
+        let x = Interval::closed(OrderedFloat(0.0_f64), OrderedFloat(f64::MAX));
+        let y: Interval<OrderedFloat<f32>> = x.lossy_cast();
+        assert!(y.is_fully_bounded());
+    }
+
+    #[test]
+    fn test_interval_cast_not_nan_widening() {
+        use crate::prelude::Cast;
+        let x = Interval::closed(
+            NotNan::new(0.0_f32).unwrap(),
+            NotNan::new(10.0_f32).unwrap(),
+        );
+        let y: Interval<NotNan<f64>> = x.cast();
+        assert_eq!(
+            y,
+            Interval::closed(
+                NotNan::new(0.0_f64).unwrap(),
+                NotNan::new(10.0_f64).unwrap()
+            )
+        );
+    }
+
+    #[test]
+    fn test_interval_set_lossy_cast_ordered_float() {
+        use crate::prelude::LossyCast;
+        use crate::IntervalSet;
+        let set: IntervalSet<OrderedFloat<f64>> = IntervalSet::new([
+            Interval::closed(OrderedFloat(0.0), OrderedFloat(10.0)),
+            Interval::closed(OrderedFloat(20.0), OrderedFloat(30.0)),
+        ]);
+        let narrowed: IntervalSet<OrderedFloat<f32>> = set.lossy_cast();
+        assert_eq!(narrowed.slice().len(), 2);
+    }
 }
 
 #[cfg(all(test, feature = "fixed"))]
