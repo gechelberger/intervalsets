@@ -265,6 +265,17 @@ check-deps:
 clean:
     cargo clean
 
+# delete local branches whose upstream is gone (typical after PR merge)
+[unix]
+prune-branches:
+    git fetch -p
+    git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -d
+
+[windows]
+prune-branches:
+    git fetch -p
+    git branch -vv | Select-String ': gone\]' | ForEach-Object { ($_ -split '\s+', 4)[1] } | ForEach-Object { git branch -d $_ }
+
 # run the micro benchmarks
 bench pattern="":
     cargo +{{ RV }} criterion --package benchmarks {{ pattern }}
