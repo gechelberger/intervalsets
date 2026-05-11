@@ -1,10 +1,10 @@
-//! Phase 2 — `TryAdd` for all 9 monomorphizations at i64.
+//! `TryAdd` for all 9 monomorphizations at i64.
 //!
-//! Inputs are bounded to a half-range so any pair sum stays within
-//! i64 — Kani requires `overflow-checks=on` for sound analysis,
-//! stricter than release-mode wrap semantics. Proof covers "no panic
-//! AND no overflow" rather than just "no panic in release", which is
-//! a strictly stronger property than the documented Tier 3 contract.
+//! Set-level `try_add` dispatches through `<i64 as TryAdd>::try_add`,
+//! which is `checked_add` (see
+//! `intervalsets-core/src/ops/math/macros.rs::impl_try_add_checked`).
+//! Overflow surfaces as `Err(MathError::Range)`, so inputs use the
+//! full `i64` range with no input bounding.
 //!
 //! `make_*` helpers below build nondeterministic interval values
 //! that span all variants of each shape (Half: both Sides;
@@ -16,24 +16,15 @@ use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::math::TryAdd;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-const HALF_MIN: i64 = i64::MIN / 2;
-const HALF_MAX: i64 = i64::MAX / 2;
-
-fn any_bounded() -> i64 {
-    let v: i64 = kani::any();
-    kani::assume(v >= HALF_MIN && v <= HALF_MAX);
-    v
-}
-
 fn make_finite() -> FiniteInterval<i64> {
     FiniteInterval::<i64>::satisfy_bounds(
-        FiniteBound::closed(any_bounded()),
-        FiniteBound::closed(any_bounded()),
+        FiniteBound::closed(kani::any()),
+        FiniteBound::closed(kani::any()),
     )
 }
 
 fn make_half() -> HalfInterval<i64> {
-    let at = any_bounded();
+    let at: i64 = kani::any();
     if kani::any() {
         HalfInterval::<i64>::closed_unbound(at)
     } else {
@@ -46,11 +37,11 @@ fn make_enum() -> EnumInterval<i64> {
     kani::assume(kind < 5);
     match kind {
         0 => EnumInterval::<i64>::satisfy_bounds(
-            FiniteBound::closed(any_bounded()),
-            FiniteBound::closed(any_bounded()),
+            FiniteBound::closed(kani::any()),
+            FiniteBound::closed(kani::any()),
         ),
-        1 => EnumInterval::<i64>::closed_unbound(any_bounded()),
-        2 => EnumInterval::<i64>::unbound_closed(any_bounded()),
+        1 => EnumInterval::<i64>::closed_unbound(kani::any()),
+        2 => EnumInterval::<i64>::unbound_closed(kani::any()),
         3 => EnumInterval::<i64>::unbounded(),
         _ => EnumInterval::<i64>::empty(),
     }

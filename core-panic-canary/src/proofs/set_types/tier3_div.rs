@@ -1,47 +1,25 @@
-//! Phase 2 — `TryDiv` for all 9 monomorphizations at i64.
+//! `TryDiv` for all 9 monomorphizations at i64.
 //!
-//! TryDiv is the trait whose linker canary could only fit a single
-//! call before hitting the optimizer's panic-edge-elimination
-//! cascade. Kani has no equivalent budget limit, so we cover all 9
-//! monomorphizations here.
-//!
-//! # Finding (`i64::MIN / -1` overflow)
-//!
-//! Without the half-range bound below, Kani reports VERIFICATION
-//! FAILED with `attempt to divide with overflow` at
-//! `<i64 as Div>::div`. The categorical dispatch in
-//! `intervalsets-core/src/ops/math/div.rs::impls` correctly diverts
-//! divide-by-zero, but does not handle signed-integer-min divided by
-//! -1 (Rust panics on this in both debug and release). The linker
-//! canary missed it because its concrete fixtures never reached the
-//! edge case. Until that gap is fixed in `intervalsets-core`, these
-//! harnesses bound inputs to `[HALF_MIN, HALF_MAX]` (which excludes
-//! both `i64::MIN` and any sum-induced i64 boundary), so they can
-//! prove the rest of try_div is panic-free.
+//! Set-level `try_div` dispatches through `<i64 as TryDiv>::try_div`,
+//! which is `checked_div` + an explicit zero pre-check (see
+//! `intervalsets-core/src/ops/math/macros.rs::impl_try_div_checked`).
+//! Both `i64::MIN / -1` and `x / 0` surface as `Err`, so inputs use
+//! the full `i64` range with no input bounding.
 
 use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::math::TryDiv;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-const HALF_MIN: i64 = i64::MIN / 2;
-const HALF_MAX: i64 = i64::MAX / 2;
-
-fn any_bounded() -> i64 {
-    let v: i64 = kani::any();
-    kani::assume(v >= HALF_MIN && v <= HALF_MAX);
-    v
-}
-
 fn make_finite() -> FiniteInterval<i64> {
     FiniteInterval::<i64>::satisfy_bounds(
-        FiniteBound::closed(any_bounded()),
-        FiniteBound::closed(any_bounded()),
+        FiniteBound::closed(kani::any()),
+        FiniteBound::closed(kani::any()),
     )
 }
 
 fn make_half() -> HalfInterval<i64> {
-    let at = any_bounded();
+    let at: i64 = kani::any();
     if kani::any() {
         HalfInterval::<i64>::closed_unbound(at)
     } else {
@@ -54,11 +32,11 @@ fn make_enum() -> EnumInterval<i64> {
     kani::assume(kind < 5);
     match kind {
         0 => EnumInterval::<i64>::satisfy_bounds(
-            FiniteBound::closed(any_bounded()),
-            FiniteBound::closed(any_bounded()),
+            FiniteBound::closed(kani::any()),
+            FiniteBound::closed(kani::any()),
         ),
-        1 => EnumInterval::<i64>::closed_unbound(any_bounded()),
-        2 => EnumInterval::<i64>::unbound_closed(any_bounded()),
+        1 => EnumInterval::<i64>::closed_unbound(kani::any()),
+        2 => EnumInterval::<i64>::unbound_closed(kani::any()),
         3 => EnumInterval::<i64>::unbounded(),
         _ => EnumInterval::<i64>::empty(),
     }

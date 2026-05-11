@@ -1,31 +1,24 @@
-//! Phase 2 — `TrySub` for all 9 monomorphizations at i64.
+//! `TrySub` for all 9 monomorphizations at i64.
 //!
-//! Same input-bounding rationale as `tier3_add`: half-range bounds
-//! keep `lmax - rmin` and `lmin - rmax` within i64.
+//! Same rationale as `tier3_add`: set-level `try_sub` dispatches
+//! through `<i64 as TrySub>::try_sub` (`checked_sub`), so overflow
+//! surfaces as `Err(MathError::Range)` and inputs use the full
+//! `i64` range with no input bounding.
 
 use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::math::TrySub;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
-const HALF_MIN: i64 = i64::MIN / 2;
-const HALF_MAX: i64 = i64::MAX / 2;
-
-fn any_bounded() -> i64 {
-    let v: i64 = kani::any();
-    kani::assume(v >= HALF_MIN && v <= HALF_MAX);
-    v
-}
-
 fn make_finite() -> FiniteInterval<i64> {
     FiniteInterval::<i64>::satisfy_bounds(
-        FiniteBound::closed(any_bounded()),
-        FiniteBound::closed(any_bounded()),
+        FiniteBound::closed(kani::any()),
+        FiniteBound::closed(kani::any()),
     )
 }
 
 fn make_half() -> HalfInterval<i64> {
-    let at = any_bounded();
+    let at: i64 = kani::any();
     if kani::any() {
         HalfInterval::<i64>::closed_unbound(at)
     } else {
@@ -38,11 +31,11 @@ fn make_enum() -> EnumInterval<i64> {
     kani::assume(kind < 5);
     match kind {
         0 => EnumInterval::<i64>::satisfy_bounds(
-            FiniteBound::closed(any_bounded()),
-            FiniteBound::closed(any_bounded()),
+            FiniteBound::closed(kani::any()),
+            FiniteBound::closed(kani::any()),
         ),
-        1 => EnumInterval::<i64>::closed_unbound(any_bounded()),
-        2 => EnumInterval::<i64>::unbound_closed(any_bounded()),
+        1 => EnumInterval::<i64>::closed_unbound(kani::any()),
+        2 => EnumInterval::<i64>::unbound_closed(kani::any()),
         3 => EnumInterval::<i64>::unbounded(),
         _ => EnumInterval::<i64>::empty(),
     }

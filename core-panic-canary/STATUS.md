@@ -92,45 +92,43 @@ Each section below is grouped by directory and then by op.
 - [x] `merge_connected_enum_half_i64_no_panic` — 6.0s
 - [x] `merge_connected_enum_enum_i64_no_panic` — 15.6s
 
-## set_types — Tier 3 — `TryDiv` (`tier3_div.rs`)
-
-- [x] `try_div_finite_finite_i64_no_panic` — 35s
-- [ ] `try_div_half_half_i64_no_panic`
-- [ ] `try_div_finite_half_i64_no_panic`
-- [ ] `try_div_half_finite_i64_no_panic`
-- [ ] `try_div_enum_finite_i64_no_panic`
-- [ ] `try_div_enum_half_i64_no_panic`
-- [ ] `try_div_enum_enum_i64_no_panic`
-- [ ] `try_div_finite_enum_i64_no_panic`
-- [ ] `try_div_half_enum_i64_no_panic`
-
 ## set_types — Tier 3 — `TryAdd` (`tier3_add.rs`)
 
-- [x] `try_add_finite_finite_i64_no_panic` — 1.7s
-- [x] `try_add_half_half_i64_no_panic` — 1.7s
-- [x] `try_add_half_finite_i64_no_panic` — 1.8s
-- [x] `try_add_enum_finite_i64_no_panic` — 3.9s
-- [x] `try_add_enum_half_i64_no_panic` — 3.9s
-- [x] `try_add_enum_enum_i64_no_panic` — 8.9s
-- [x] `try_add_finite_half_i64_no_panic` — 2.1s
-- [x] `try_add_finite_enum_i64_no_panic` — 4.1s
-- [x] `try_add_half_enum_i64_no_panic` — 4.1s
+Re-verified after dropping the half-range input bound (the bound
+existed for the pre-E6 path through std `Add`; set-level `try_add`
+now goes through `i64::checked_add`).
+
+- [x] `try_add_finite_finite_i64_no_panic` — 2.6s
+- [ ] `try_add_half_half_i64_no_panic`
+- [ ] `try_add_half_finite_i64_no_panic`
+- [ ] `try_add_enum_finite_i64_no_panic`
+- [ ] `try_add_enum_half_i64_no_panic`
+- [ ] `try_add_enum_enum_i64_no_panic`
+- [ ] `try_add_finite_half_i64_no_panic`
+- [ ] `try_add_finite_enum_i64_no_panic`
+- [ ] `try_add_half_enum_i64_no_panic`
 
 ## set_types — Tier 3 — `TrySub` (`tier3_sub.rs`)
 
-- [x] `try_sub_finite_finite_i64_no_panic` — 1.8s
-- [x] `try_sub_half_half_i64_no_panic` — 2.0s
-- [x] `try_sub_finite_half_i64_no_panic` — 1.8s
-- [x] `try_sub_half_finite_i64_no_panic` — 1.9s
-- [x] `try_sub_enum_finite_i64_no_panic` — 4.1s
-- [x] `try_sub_enum_half_i64_no_panic` — 3.9s
-- [x] `try_sub_enum_enum_i64_no_panic` — 9.2s
-- [x] `try_sub_finite_enum_i64_no_panic` — 4.2s
-- [x] `try_sub_half_enum_i64_no_panic` — 4.0s
+Same bound-removal as `tier3_add`; set-level `try_sub` goes through
+`i64::checked_sub`.
+
+- [x] `try_sub_finite_finite_i64_no_panic` — 2.6s
+- [ ] `try_sub_half_half_i64_no_panic`
+- [ ] `try_sub_finite_half_i64_no_panic`
+- [ ] `try_sub_half_finite_i64_no_panic`
+- [ ] `try_sub_enum_finite_i64_no_panic`
+- [ ] `try_sub_enum_half_i64_no_panic`
+- [ ] `try_sub_enum_enum_i64_no_panic`
+- [ ] `try_sub_finite_enum_i64_no_panic`
+- [ ] `try_sub_half_enum_i64_no_panic`
 
 ## set_types — Tier 3 — `TryMul` (`tier3_mul.rs`)
 
-- [x] `try_mul_finite_finite_i64_no_panic` — 77s
+Bound removed (was `[-2^31, 2^31]` for the pre-E6 path through std
+`Mul`); set-level `try_mul` now goes through `i64::checked_mul`.
+
+- [x] `try_mul_finite_finite_i64_no_panic` — 89.7s
 - [ ] `try_mul_half_half_i64_no_panic`
 - [ ] `try_mul_finite_half_i64_no_panic`
 - [ ] `try_mul_half_finite_i64_no_panic`
@@ -139,6 +137,21 @@ Each section below is grouped by directory and then by op.
 - [ ] `try_mul_enum_enum_i64_no_panic`
 - [ ] `try_mul_finite_enum_i64_no_panic`
 - [ ] `try_mul_half_enum_i64_no_panic`
+
+## set_types — Tier 3 — `TryDiv` (`tier3_div.rs`)
+
+Bound removed; set-level `try_div` now goes through
+`i64::checked_div` (catches both `MIN / -1` and `x / 0`).
+
+- [x] `try_div_finite_finite_i64_no_panic` — 57.7s
+- [ ] `try_div_half_half_i64_no_panic`
+- [ ] `try_div_finite_half_i64_no_panic`
+- [ ] `try_div_half_finite_i64_no_panic`
+- [ ] `try_div_enum_finite_i64_no_panic`
+- [ ] `try_div_enum_half_i64_no_panic`
+- [ ] `try_div_enum_enum_i64_no_panic`
+- [ ] `try_div_finite_enum_i64_no_panic`
+- [ ] `try_div_half_enum_i64_no_panic`
 
 ## set_types — Tier 3 — `Split` (`tier3_split.rs`)
 
@@ -235,9 +248,16 @@ the contract; it mirrors the harness shape used here.
   (Difference computes `A ∩ B'`, so it inherits Complement's cost on
   top of Intersection). Worth keeping in mind when expanding to all
   9 monomorphizations.
-- Tier 3 arithmetic times come from the pilot commit `65098c1`; the
-  larger numbers (`TryMul` 77s, `TryDiv` 35s) are why expansion to
-  all 9 monomorphizations per arithmetic trait is gated on runtime.
+- Tier 3 arithmetic harnesses previously bounded `i64` inputs to a
+  half-range (add/sub) or `[-2^31, 2^31]` (mul) to keep std `Add` /
+  `Sub` / `Mul` / `Div` from overflowing — Kani treats unchecked
+  integer overflow as a panic. Post-E6 the set-level math dispatches
+  through `T::TryAdd` / `T::TrySub` / etc., which on `i64` use
+  `checked_*`; overflow surfaces as `Err(MathError::Range)` rather
+  than panicking, so the input bounds were dropped. The
+  `finite_finite` representative for each op has been re-verified
+  unbounded (timings above); the other 8 monomorphizations per file
+  still need re-verification at full range.
 - The `storage_types` float harnesses (`try_*_f64`) bound their
   inputs to finite values (`try_div_f64` additionally excludes the
   `(0.0, 0.0)` pair). CBMC's NaN-on-`+`/`-`/`*`/`/` property checks
