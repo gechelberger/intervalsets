@@ -297,7 +297,7 @@ ci: fmt-check clippy typos doc test test-doc check-msrv check-no-std check-bench
 # run kani symbolic-execution proofs (filter='' runs all; jobs>1 runs in parallel)
 [env("RUSTFLAGS", "-C debug-assertions=off")]
 kani filter="" jobs="1":
-    cargo kani -p core-panic-canary {{ if jobs != "1" { "-j " + jobs + " --output-format terse" } else { "" } }} {{ if filter == "" { "" } else { "--harness " + filter } }}
+    cargo kani -p core-panic-canary --all-features {{ if jobs != "1" { "-j " + jobs + " --output-format terse" } else { "" } }} {{ if filter == "" { "" } else { "--harness " + filter } }}
 
 # Catches Kani install / harness-wiring breakage without paying the full
 # per-harness cost. STATUS.md is the source of truth for per-harness
@@ -313,7 +313,7 @@ kani filter="" jobs="1":
 # CI smoke gate — one fast representative kani proof per verified group
 [env("RUSTFLAGS", "-C debug-assertions=off")]
 check-kani:
-    cargo kani -p core-panic-canary --output-format terse \
+    cargo kani -p core-panic-canary --all-features --output-format terse \
         --harness contains_finite_i64_no_panic \
         --harness complement_half_i64_no_panic \
         --harness intersection_finite_finite_i64_no_panic \
@@ -328,7 +328,13 @@ check-kani:
         --harness try_with_left_finite_i64_no_panic \
         --harness try_count_finite_i64_no_panic \
         --harness try_width_finite_i64_no_panic \
-        --harness midpoint_finite_i64_no_panic
+        --harness midpoint_finite_i64_no_panic \
+        --harness try_add_i64_no_panic \
+        --harness try_sub_i64_no_panic \
+        --harness try_mul_i64_no_panic \
+        --harness try_div_i64_no_panic \
+        --harness try_add_f64_no_panic \
+        --harness try_add_option_i64_no_panic
 
 # scan codebase for pre-release markers
 loose-ends:
