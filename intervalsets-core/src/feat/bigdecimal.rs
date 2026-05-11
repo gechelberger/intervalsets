@@ -4,7 +4,7 @@ use core::ops::Add;
 use bigdecimal::{BigDecimal, Signed, Zero};
 use num_traits::{Bounded, NumCast};
 
-use crate::cast::{LossyCastElement, TryCastElement};
+use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::numeric::Midpoint;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
@@ -76,20 +76,80 @@ impl TryDiv for BigDecimal {
 
 // === Cast support ===
 //
-// `Cast<Interval<BigDecimal>> for Interval<{i*, u*}>` works out of the
-// box: `BigDecimal` has `From<i*>`/`From<u*>` impls upstream, so the
-// set-level `Cast<U> where T: Into<U>` bound is satisfied. Lossless
-// widening.
+// `Cast<Interval<BigDecimal>> for Interval<T>` requires
+// `T: CastElement<BigDecimal>`. We provide that for every primitive
+// numeric type:
+//
+// - `{i*, u*} → BigDecimal`: lossless via the upstream `From<int> for
+//   BigDecimal` impls.
+// - `{f32, f64} → BigDecimal`: lossless **given the FiniteBound
+//   invariant**. `BigDecimal::try_from` only fails for NaN/±INF, both
+//   of which `Element::validate` rejects at construction. So inside
+//   `cast_element` we `.expect()` and document the precondition.
+//   Tier 4 `new_assume_valid` misuse that smuggles NaN into
+//   `FiniteBound<f64>` would reach the panic.
 //
 // `BigDecimal` does not impl `NumCast` (orphan rule blocks us from
-// adding it), so the rest of the cast surface needs explicit
-// `TryCastElement` / `LossyCastElement` impls below.
+// adding it), so the `TryCast` / `LossyCast` surface needs explicit
+// `TryCastElement` / `LossyCastElement` impls (below).
 //
 // `LossyCast` targeting `BigDecimal` is intentionally not provided:
 // `BigDecimal` is arbitrary precision (no `Bounded` impl, no
 // saturation extremum), so the trait's snap-to-extremum semantics have
-// no meaningful interpretation. `Cast` covers integer→BigDecimal
-// losslessly.
+// no meaningful interpretation. `Cast` covers every primitive source
+// (including floats) into `BigDecimal` losslessly.
+
+// `CastElement<BigDecimal>` for integer primitives — `BigDecimal` has
+// `From<int>` upstream, so this is total.
+macro_rules! cast_element_int_to_bigdec {
+    ($($T:ty),+ $(,)?) => {
+        $(
+            impl CastElement<BigDecimal> for $T {
+                #[inline]
+                fn cast_element(self) -> BigDecimal {
+                    BigDecimal::from(self)
+                }
+            }
+        )+
+    };
+}
+
+cast_element_int_to_bigdec!(i8, i16, i32, i64, i128, u8, u16, u32, u64, u128);
+
+// `CastElement<BigDecimal>` for `f32` / `f64`. Sound because callers
+// from the set-level `Cast` impls always pass values that have already
+// passed `Element::validate` (which rejects NaN / ±INF) — the only
+// values that would make `BigDecimal::try_from` fail. Tier 4
+// `new_assume_valid` misuse can reach the `.expect()` panic.
+impl CastElement<BigDecimal> for f32 {
+    #[inline]
+    fn cast_element(self) -> BigDecimal {
+        BigDecimal::try_from(self).expect(
+            "CastElement<BigDecimal> for f32 requires a finite input; \
+             FiniteBound<f32> invariant ensures this via Element::validate. \
+             Reaching this panic indicates Tier 4 bypass misuse.",
+        )
+    }
+}
+
+impl CastElement<BigDecimal> for f64 {
+    #[inline]
+    fn cast_element(self) -> BigDecimal {
+        BigDecimal::try_from(self).expect(
+            "CastElement<BigDecimal> for f64 requires a finite input; \
+             FiniteBound<f64> invariant ensures this via Element::validate. \
+             Reaching this panic indicates Tier 4 bypass misuse.",
+        )
+    }
+}
+
+// Reflexive identity.
+impl CastElement<BigDecimal> for BigDecimal {
+    #[inline]
+    fn cast_element(self) -> BigDecimal {
+        self
+    }
+}
 
 // `LossyCastElement<U> for BigDecimal` (primitive `U`) — saturating
 // downcast. Out-of-range values clamp to `U::min_value()` /
@@ -369,6 +429,38 @@ mod tests {
             );
             let y: FiniteInterval<BigDecimal> = x.clone().try_cast().unwrap();
             assert_eq!(x, y);
+        }
+
+        // ---------- Infallible Cast f32/f64 → BigDecimal ----------
+        // The headline case: FiniteInterval<f*> invariants rule out
+        // NaN/±INF, so the conversion to BigDecimal is total (no
+        // `.unwrap()` at the call site).
+
+        #[test]
+        fn cast_f64_to_bigdecimal_infallible() {
+            let x = FiniteInterval::closed(0.5_f64, 10.25);
+            let y: FiniteInterval<BigDecimal> = x.cast();
+            let (l, r) = y.view_raw().unwrap();
+            assert_eq!(l.value(), &BigDecimal::from_str("0.5").unwrap());
+            assert_eq!(r.value(), &BigDecimal::from_str("10.25").unwrap());
+        }
+
+        #[test]
+        fn cast_f32_to_bigdecimal_infallible() {
+            let x = FiniteInterval::closed(0.5_f32, 10.25);
+            let y: FiniteInterval<BigDecimal> = x.cast();
+            let (l, r) = y.view_raw().unwrap();
+            assert_eq!(l.value(), &BigDecimal::from_str("0.5").unwrap());
+            assert_eq!(r.value(), &BigDecimal::from_str("10.25").unwrap());
+        }
+
+        #[test]
+        fn cast_f64_extremes_to_bigdecimal_infallible() {
+            // f64::MAX is finite — within the FiniteBound invariant —
+            // and BigDecimal accommodates it losslessly.
+            let x = FiniteInterval::closed(-f64::MAX, f64::MAX);
+            let y: FiniteInterval<BigDecimal> = x.cast();
+            assert!(y.is_fully_bounded());
         }
     }
 }

@@ -17,7 +17,9 @@
 //!   produced by narrowing surface as
 //!   [`Error::InvalidIntervalSet`].
 
-use intervalsets_core::cast::{Cast, LossyCast, LossyCastElement, TryCast, TryCastElement};
+use intervalsets_core::cast::{
+    Cast, CastElement, LossyCast, LossyCastElement, TryCast, TryCastElement,
+};
 use intervalsets_core::sets::EnumInterval;
 use num_traits::Bounded;
 
@@ -31,7 +33,7 @@ use crate::{Interval, IntervalSet};
 
 impl<T, U> Cast<Interval<U>> for Interval<T>
 where
-    T: Into<U>,
+    T: CastElement<U>,
     U: Element,
 {
     type Output = Interval<U>;
@@ -78,7 +80,7 @@ where
 
 impl<T, U> Cast<IntervalSet<U>> for IntervalSet<T>
 where
-    T: Into<U>,
+    T: CastElement<U>,
     U: Element,
 {
     type Output = IntervalSet<U>;

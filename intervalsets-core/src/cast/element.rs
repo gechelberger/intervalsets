@@ -35,14 +35,14 @@ use num_traits::{NumCast, ToPrimitive};
 //
 // Marks the std numeric primitive types. Sealed (`pub(crate)` inside a
 // private module) so downstream crates cannot extend it. This unlocks
-// a single blanket `TryCastElement` impl over all primitive pairs
-// without risking coherence conflicts when feature-gated storage types
-// (`BigDecimal`, etc.) add their own `TryCastElement` impls — Rust
-// proves the blanket cannot apply to those types because they can
-// never become `Primitive`.
+// blanket `CastElement` / `TryCastElement` impls over all primitive
+// pairs without risking coherence conflicts when feature-gated storage
+// types (`BigDecimal`, etc.) add their own impls — Rust proves the
+// blankets cannot apply to those types because they can never become
+// `Primitive`.
 pub(crate) use sealed::Primitive;
 
-use super::{LossyCastElement, TryCastElement};
+use super::{CastElement, LossyCastElement, TryCastElement};
 
 mod sealed {
     pub trait Primitive {}
@@ -55,6 +55,27 @@ macro_rules! mark_primitive {
 }
 
 mark_primitive!(i8, i16, i32, i64, i128, isize, u8, u16, u32, u64, u128, usize, f32, f64);
+
+// =====================================================================
+// CastElement: primitive-primitive blanket via `Into`
+// =====================================================================
+//
+// Std defines `From<T> for U` exactly for the lossless / monotonic
+// primitive pairs (`i32 → i64`, `f32 → f64`, `i8 → f32`, …). The
+// blanket covers all of those; the sealed `Primitive` bound blocks it
+// from firing for feat types so they can add their own impls without
+// coherence conflict.
+
+impl<T, U> CastElement<U> for T
+where
+    T: Into<U> + Primitive,
+    U: Primitive,
+{
+    #[inline]
+    fn cast_element(self) -> U {
+        self.into()
+    }
+}
 
 // =====================================================================
 // TryCastElement: primitive-primitive blanket via NumCast

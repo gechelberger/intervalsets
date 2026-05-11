@@ -3,7 +3,7 @@ use core::convert::Infallible;
 use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
-use crate::cast::{LossyCastElement, TryCastElement};
+use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::measure::Widthable;
 use crate::numeric::{Element, Midpoint};
@@ -176,6 +176,18 @@ where
         // keeps the safety floor without a measurable cost.
         let raw = self.into_inner().lossy_cast_element();
         NotNan::new(raw).expect("LossyCast of finite NotNan produces non-NaN")
+    }
+}
+
+// `CastElement` for `NotNan<f32> → NotNan<f64>`: ordered-float
+// provides `From<NotNan<f32>> for NotNan<f64>` upstream (f32 → f64 is
+// lossless and finite-preserving). No analogous upstream `From` exists
+// for `OrderedFloat`, so users widen `OrderedFloat` via `TryCast`.
+
+impl CastElement<NotNan<f64>> for NotNan<f32> {
+    #[inline]
+    fn cast_element(self) -> NotNan<f64> {
+        self.into()
     }
 }
 

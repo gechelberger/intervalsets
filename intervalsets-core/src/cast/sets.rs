@@ -10,7 +10,7 @@
 
 use num_traits::Bounded;
 
-use super::{Cast, LossyCast, LossyCastElement, TryCast, TryCastElement};
+use super::{Cast, CastElement, LossyCast, LossyCastElement, TryCast, TryCastElement};
 use crate::bound::{BoundType, FiniteBound};
 use crate::error::Error;
 use crate::factory::TrySatisfyFiniteInterval;
@@ -23,14 +23,14 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 impl<T, U> Cast<FiniteBound<U>> for FiniteBound<T>
 where
-    T: Into<U>,
+    T: CastElement<U>,
 {
     type Output = FiniteBound<U>;
 
     #[inline]
     fn cast(self) -> Self::Output {
         let (bt, v) = self.into_raw();
-        FiniteBound::new_assume_valid(bt, v.into())
+        FiniteBound::new_assume_valid(bt, v.cast_element())
     }
 }
 
@@ -80,7 +80,7 @@ where
 
 impl<T, U> Cast<FiniteInterval<U>> for FiniteInterval<T>
 where
-    T: Into<U>,
+    T: CastElement<U>,
     U: Element,
 {
     type Output = FiniteInterval<U>;
@@ -155,7 +155,7 @@ where
 
 impl<T, U> Cast<HalfInterval<U>> for HalfInterval<T>
 where
-    T: Into<U>,
+    T: CastElement<U>,
     U: Element,
 {
     type Output = HalfInterval<U>;
@@ -203,7 +203,7 @@ where
 
 impl<T, U> Cast<EnumInterval<U>> for EnumInterval<T>
 where
-    T: Into<U>,
+    T: CastElement<U>,
     U: Element,
 {
     type Output = EnumInterval<U>;

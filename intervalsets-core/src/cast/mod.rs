@@ -136,6 +136,34 @@ pub trait LossyCastElement<U> {
     fn lossy_cast_element(self) -> U;
 }
 
+/// Element-layer hook for [`Cast`] (the infallible cast). For primitive
+/// pairs there's a blanket impl over `T: Into<U>` keyed on the sealed
+/// `Primitive` marker; feat storage types provide their own impls in
+/// their `feat/<type>.rs` modules.
+///
+/// # Contract
+///
+/// `cast_element` is **infallible by precondition**: implementors may
+/// assume the input value is a valid bound limit for `U` (i.e.
+/// `U::validate(x)` would accept the post-cast value). Callers from
+/// the set-level [`Cast`] impls always satisfy this — the input came
+/// from a [`FiniteBound<T>`](crate::bound::FiniteBound) that already
+/// passed `T::validate`, and the chosen impl for `(T, U)` is one where
+/// validity is preserved under the conversion.
+///
+/// Impls for cases where this assumption could be violated (e.g.
+/// `CastElement<BigDecimal> for f64`, where `f64::NaN` would map to
+/// `BigDecimal::try_from`'s `Err`) document the assumption in their
+/// impl block and may `.expect()` internally. Tier 4 `new_assume_valid`
+/// bypass that puts NaN in a `FiniteBound<f64>` would reach the
+/// `.expect()` and panic — documented bypass-misuse, not a contract
+/// violation.
+pub trait CastElement<U> {
+    /// Casts `self` to its `U` representation. See trait docs for the
+    /// precondition.
+    fn cast_element(self) -> U;
+}
+
 /// Element-layer hook for [`TryCast`]. Returns `None` when the value
 /// cannot be represented in `U` (overflow, NaN, etc.).
 ///
