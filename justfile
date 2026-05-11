@@ -269,7 +269,7 @@ clean:
 [unix]
 prune-branches:
     git fetch -p
-    git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -d
+    git branch -vv | awk '/: gone]/{print $1}' | xargs -r git branch -D
 
 [windows]
 prune-branches:
