@@ -67,7 +67,7 @@ Each section below is grouped by directory and then by op.
 - [x] `difference_enum_half_i64_no_panic` — 31.0s
 - [x] `difference_enum_enum_i64_no_panic` — 35.1s
 
-## set_types — Tier 2 — `IntoFinite` (`tier2_finite.rs`)
+## set_types — Tier 2 — `IntoFiniteInterval` (`tier2_finite.rs`)
 
 - [x] `into_finite_finite_i64_no_panic` — 0.6s
 - [x] `into_finite_half_i64_no_panic` — 1.0s

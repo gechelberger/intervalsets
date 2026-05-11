@@ -47,7 +47,7 @@ mod rebound;
 pub use rebound::Rebound;
 
 mod finite;
-pub use finite::IntoFinite;
+pub use finite::IntoFiniteInterval;
 
 mod elem_iter;
 pub use elem_iter::{DisjointElements, Elements, IntoElementIterator, SetElements};
