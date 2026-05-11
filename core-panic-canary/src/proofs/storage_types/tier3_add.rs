@@ -41,3 +41,19 @@ fn try_add_f64_no_panic() {
 fn try_add_option_i64_no_panic() {
     let _ = any_option_i64().try_add(any_option_i64());
 }
+
+#[cfg(feature = "ordered-float")]
+#[kani::proof]
+fn try_add_ordered_float_f64_no_panic() {
+    use super::any_finite_ordered_float_f64;
+    let _ = any_finite_ordered_float_f64().try_add(any_finite_ordered_float_f64());
+}
+
+/// `NotNan::new` after the op is provably-Ok under finite inputs
+/// (finite implies non-NaN), so the inner `expect` is unreachable.
+#[cfg(feature = "ordered-float")]
+#[kani::proof]
+fn try_add_not_nan_f64_no_panic() {
+    use super::any_finite_not_nan_f64;
+    let _ = any_finite_not_nan_f64().try_add(any_finite_not_nan_f64());
+}

@@ -191,6 +191,8 @@ current harness names have been re-verified.
 - [x] `try_add_u64_no_panic` — 0.07s
 - [x] `try_add_f64_no_panic` — 0.08s (finite-input bounded — see Notes)
 - [x] `try_add_option_i64_no_panic` — 0.14s
+- [x] `try_add_ordered_float_f64_no_panic` — 0.08s (feature `ordered-float`)
+- [x] `try_add_not_nan_f64_no_panic` — 0.36s (feature `ordered-float`)
 
 ## storage_types — Tier 3 — `TrySub` (`tier3_sub.rs`)
 
@@ -198,6 +200,8 @@ current harness names have been re-verified.
 - [x] `try_sub_u64_no_panic` — 0.07s
 - [x] `try_sub_f64_no_panic` — 0.07s (finite-input bounded)
 - [x] `try_sub_option_i64_no_panic` — 0.13s
+- [x] `try_sub_ordered_float_f64_no_panic` — 0.08s (feature `ordered-float`)
+- [x] `try_sub_not_nan_f64_no_panic` — 0.32s (feature `ordered-float`)
 
 ## storage_types — Tier 3 — `TryMul` (`tier3_mul.rs`)
 
@@ -205,6 +209,8 @@ current harness names have been re-verified.
 - [x] `try_mul_u64_no_panic` — 0.13s
 - [x] `try_mul_f64_no_panic` — 0.06s (finite-input bounded)
 - [x] `try_mul_option_i64_no_panic` — 0.23s
+- [x] `try_mul_ordered_float_f64_no_panic` — 0.08s (feature `ordered-float`)
+- [x] `try_mul_not_nan_f64_no_panic` — 0.41s (feature `ordered-float`)
 
 ## storage_types — Tier 3 — `TryDiv` (`tier3_div.rs`)
 
@@ -212,6 +218,8 @@ current harness names have been re-verified.
 - [x] `try_div_u64_no_panic` — 0.08s
 - [x] `try_div_f64_no_panic` — 0.06s (finite-input + non-(0,0) bounded)
 - [x] `try_div_option_i64_no_panic` — 0.15s
+- [x] `try_div_ordered_float_f64_no_panic` — 0.09s (feature `ordered-float`)
+- [x] `try_div_not_nan_f64_no_panic` — 0.42s (feature `ordered-float`)
 
 ## Coverage classification (post-E6 contract split)
 
@@ -276,3 +284,12 @@ the contract; it mirrors the harness shape used here.
   family. Direct per-width harnesses would multiply the harness
   count by 6 (or 12) without adding verification signal — skipped
   by design.
+- Feature-gated harnesses (currently `ordered-float` only) are
+  marked in their line entries. `just kani` / `just check-kani`
+  pass `--all-features` so the gated set runs by default; a vanilla
+  `cargo kani -p core-panic-canary` skips them. The `NotNan` impls
+  contain an internal `NotNan::new(...).expect()` after the
+  `is_finite()` check that Kani must prove unreachable from
+  finite-input assumptions; the proofs above include that reasoning
+  (visible as the slightly higher wall-clock vs. the matching
+  `OrderedFloat` line).

@@ -28,6 +28,20 @@ pub(crate) fn any_option_i64() -> Option<i64> {
     }
 }
 
+/// Finite `OrderedFloat<f64>` generator. Wraps `any_finite_f64`.
+#[cfg(all(kani, feature = "ordered-float"))]
+pub(crate) fn any_finite_ordered_float_f64() -> ordered_float::OrderedFloat<f64> {
+    ordered_float::OrderedFloat(any_finite_f64())
+}
+
+/// Finite `NotNan<f64>` generator. `NotNan::new` rejects `NaN`, which
+/// `any_finite_f64` has already excluded, so the `unwrap` is provably
+/// unreachable under Kani.
+#[cfg(all(kani, feature = "ordered-float"))]
+pub(crate) fn any_finite_not_nan_f64() -> ordered_float::NotNan<f64> {
+    ordered_float::NotNan::new(any_finite_f64()).unwrap()
+}
+
 /// Finite `f64` generator. CBMC's "NaN on addition" property check
 /// (and the matching sub/mul/div variants) fires when the op produces
 /// `NaN` from non-finite inputs (`INF + -INF`, `INF - INF`, `0 * INF`,

@@ -41,3 +41,30 @@ fn try_div_f64_no_panic() {
 fn try_div_option_i64_no_panic() {
     let _ = any_option_i64().try_div(any_option_i64());
 }
+
+#[cfg(feature = "ordered-float")]
+#[kani::proof]
+fn try_div_ordered_float_f64_no_panic() {
+    use ordered_float::OrderedFloat;
+
+    use super::any_finite_ordered_float_f64;
+    let lhs = any_finite_ordered_float_f64();
+    let rhs = any_finite_ordered_float_f64();
+    // Same `0.0 / 0.0 = NaN` carve-out as bare `f64`.
+    kani::assume(!(lhs == OrderedFloat(0.0) && rhs == OrderedFloat(0.0)));
+    let _ = lhs.try_div(rhs);
+}
+
+#[cfg(feature = "ordered-float")]
+#[kani::proof]
+fn try_div_not_nan_f64_no_panic() {
+    use ordered_float::NotNan;
+
+    use super::any_finite_not_nan_f64;
+    let lhs = any_finite_not_nan_f64();
+    let rhs = any_finite_not_nan_f64();
+    // Same `0.0 / 0.0 = NaN` carve-out as bare `f64`.
+    let zero = NotNan::new(0.0_f64).unwrap();
+    kani::assume(!(lhs == zero && rhs == zero));
+    let _ = lhs.try_div(rhs);
+}

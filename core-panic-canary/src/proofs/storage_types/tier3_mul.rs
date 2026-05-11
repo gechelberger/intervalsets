@@ -24,3 +24,17 @@ fn try_mul_f64_no_panic() {
 fn try_mul_option_i64_no_panic() {
     let _ = any_option_i64().try_mul(any_option_i64());
 }
+
+#[cfg(feature = "ordered-float")]
+#[kani::proof]
+fn try_mul_ordered_float_f64_no_panic() {
+    use super::any_finite_ordered_float_f64;
+    let _ = any_finite_ordered_float_f64().try_mul(any_finite_ordered_float_f64());
+}
+
+#[cfg(feature = "ordered-float")]
+#[kani::proof]
+fn try_mul_not_nan_f64_no_panic() {
+    use super::any_finite_not_nan_f64;
+    let _ = any_finite_not_nan_f64().try_mul(any_finite_not_nan_f64());
+}
