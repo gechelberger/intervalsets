@@ -155,6 +155,7 @@ pub mod ops;
 mod sets;
 pub use sets::{Interval, IntervalSet};
 
+mod cast;
 mod display;
 mod feat;
 mod from;
@@ -162,6 +163,7 @@ mod from;
 
 /// Common operations & traits
 pub mod prelude {
+    pub use intervalsets_core::cast::{Cast, LossyCast, TryCast};
     pub use intervalsets_core::factory::traits::*;
 
     pub use crate::measure::{Count, Width};

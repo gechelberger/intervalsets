@@ -13,6 +13,12 @@ version and are released together via `cargo-release`. See the repo
 
 ### Added
 
+- `cast` module — storage-type cast trait family for converting the element type of a set without manual reconstruction:
+  - `Cast<U>` (Tier 1, infallible) for pairs where the element conversion is `T: Into<U>`. Implemented on `FiniteBound`, `FiniteInterval`, `HalfInterval`, `EnumInterval`.
+  - `LossyCast<U>` (Tier 1, total but lossy) for pairs where the element conversion saturates / rounds. Out-of-range elements clamp to `U`'s extrema; bounds at saturation extrema snap to `Closed`. `FiniteInterval::lossy_cast` routes through `try_satisfy_bounds`, collapsing crossed bounds to `Empty`. Element layer is keyed on `LossyCastElement<U>`, with macro-generated impls covering every primitive pair (int↔int via `az::SaturatingCast`, float→int via `az`, int→float via `as`, f32→f64 lossless, f64→f32 with explicit clamp to `[f32::MIN, f32::MAX]`).
+  - `TryCast<U>` (Tier 3a, strict) keyed on `T: ToPrimitive, U: NumCast + Element`. Errors as `Error::InvalidBoundLimit` on element overflow, `Error::InvalidBoundLimit` on post-cast non-finite (via `Element::validate`), or `Error::InvalidBoundPair` on cast-induced collision.
+- `az` 1.3 added as a default dependency (MIT/Apache, tspiteri) — used internally by the cast module's `LossyCastElement` impls for integer-saturation logic.
+- `num_traits::{Bounded, NumCast, ToPrimitive}` re-exported from `numeric`.
 - `numeric::Midpoint` is now `pub`. Library impls use `Error = Infallible` for integers / `f32` / `f64` / `OrderedFloat` / `NotNan` / `BigInt` / `BigUint` / `BigDecimal` / `Fixed*`. `Decimal` uses `Error = MathError` (`Range` on rounding overflow at extreme values).
 - `FiniteInterval::midpoint`, `HalfInterval::midpoint`, `EnumInterval::midpoint` — each `(&self) -> Result<T, MathError>`. Empty / half-bounded / unbounded inputs return `Err(MathError::Domain)`.
 - `Width::try_width` and `Width::Error`; mirrors the existing `Count::try_count` shape. `Width::width` becomes a default panicking sibling of `try_width`.
