@@ -62,7 +62,7 @@
 //! invariants and is not reachable from validating-API usage.
 //!
 //! Members: [`Complement`], [`Intersection`], [`Union`],
-//! [`Difference`], [`IntoFinite`], [`IntoElementIterator`], plus
+//! [`Difference`], [`IntoFiniteInterval`], [`IntoElementIterator`], plus
 //! [`MergeConnected`] (the `Option` is a domain answer — "operands
 //! disconnected" — not an error). The bound on each impl varies; bound
 //! choice is independent of fallibility.
@@ -140,7 +140,7 @@ mod union;
 pub use union::Union;
 
 mod finite;
-pub use finite::IntoFinite;
+pub use finite::IntoFiniteInterval;
 
 mod elem_iter;
 pub use elem_iter::{DisjointElements, Elements, IntoElementIterator};

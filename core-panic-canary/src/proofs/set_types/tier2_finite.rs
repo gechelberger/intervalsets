@@ -1,12 +1,12 @@
-//! Phase 3 — `IntoFinite::into_finite` for all 3 impls at i64.
+//! Phase 3 — `IntoFiniteInterval::into_finite_interval` for all 3 impls at i64.
 //!
-//! For FiniteInterval, `into_finite` is the identity. HalfInterval
+//! For FiniteInterval, `into_finite_interval` is the identity. HalfInterval
 //! and EnumInterval clamp to the type bounds via `T: Bounded`, which
 //! i64 satisfies through `num_traits::Bounded`.
 
 use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
-use intervalsets_core::ops::IntoFinite;
+use intervalsets_core::ops::IntoFiniteInterval;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 fn make_finite() -> FiniteInterval<i64> {
@@ -44,15 +44,15 @@ fn make_enum() -> EnumInterval<i64> {
 
 #[kani::proof]
 fn into_finite_finite_i64_no_panic() {
-    let _ = make_finite().into_finite();
+    let _ = make_finite().into_finite_interval();
 }
 
 #[kani::proof]
 fn into_finite_half_i64_no_panic() {
-    let _ = make_half().into_finite();
+    let _ = make_half().into_finite_interval();
 }
 
 #[kani::proof]
 fn into_finite_enum_i64_no_panic() {
-    let _ = make_enum().into_finite();
+    let _ = make_enum().into_finite_interval();
 }

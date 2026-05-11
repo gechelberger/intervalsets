@@ -31,7 +31,7 @@ use crate::sets::{FiniteInterval, HalfInterval};
 /// # Visibility
 ///
 /// `pub(super)` so siblings under [`crate::ops`] (currently
-/// `intersection` and `finite::IntoFinite`) can reach it without
+/// `intersection` and `finite::IntoFiniteInterval`) can reach it without
 /// re-exposing a Tier-3 inherent on `FiniteInterval`. A public
 /// inherent proved to be a misuse temptation for callers who weren't
 /// actually working with bounds from validated intervals.
