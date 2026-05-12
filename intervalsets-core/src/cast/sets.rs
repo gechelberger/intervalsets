@@ -16,7 +16,7 @@ use crate::disjoint::MaybeDisjoint;
 use crate::error::Error;
 use crate::factory::TrySatisfyFiniteInterval;
 use crate::numeric::Element;
-use crate::ops::{Connects, MergeConnected};
+use crate::ops::Connects;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 use crate::MaybeEmpty;
 
@@ -272,10 +272,12 @@ where
     fn cast(self) -> MaybeDisjoint<U> {
         match self {
             MaybeDisjoint::Consumed => MaybeDisjoint::Consumed,
-            MaybeDisjoint::Connected(i) => MaybeDisjoint::Connected(i.cast()),
+            MaybeDisjoint::Connected(i) => MaybeDisjoint::from_interval(i.cast()),
             // Monotone widening preserves non-empty, ordering, and
             // non-connecting invariants of `Disjoint`.
-            MaybeDisjoint::Disjoint(a, b) => MaybeDisjoint::Disjoint(a.cast(), b.cast()),
+            MaybeDisjoint::Disjoint(a, b) => {
+                MaybeDisjoint::new_disjoint_assume_valid(a.cast(), b.cast())
+            }
         }
     }
 }
@@ -291,11 +293,7 @@ where
     fn try_cast(self) -> Result<MaybeDisjoint<U>, Error> {
         match self {
             MaybeDisjoint::Consumed => Ok(MaybeDisjoint::Consumed),
-            MaybeDisjoint::Connected(i) => {
-                // From<EnumInterval<U>> normalizes empty → Consumed.
-                let cast: EnumInterval<U> = i.try_cast()?;
-                Ok(MaybeDisjoint::from(cast))
-            }
+            MaybeDisjoint::Connected(i) => i.try_cast().map(MaybeDisjoint::from_interval),
             MaybeDisjoint::Disjoint(a, b) => {
                 let a: EnumInterval<U> = a.try_cast()?;
                 let b: EnumInterval<U> = b.try_cast()?;
@@ -307,7 +305,7 @@ where
                 if a.is_empty() || b.is_empty() || a >= b || a.connects(&b) {
                     return Err(Error::InvalidBoundPair);
                 }
-                Ok(MaybeDisjoint::Disjoint(a, b))
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(a, b))
             }
         }
     }
@@ -323,32 +321,13 @@ where
     fn lossy_cast(self) -> MaybeDisjoint<U> {
         match self {
             MaybeDisjoint::Consumed => MaybeDisjoint::Consumed,
-            MaybeDisjoint::Connected(i) => MaybeDisjoint::from(i.lossy_cast()),
+            MaybeDisjoint::Connected(i) => MaybeDisjoint::from_interval(i.lossy_cast()),
+            // `from_pair` absorbs every narrowing-induced repair:
+            // empties drop to `Consumed`/`Connected`; reorder if both
+            // saturate the same direction; merge if narrowing made the
+            // gap vanish.
             MaybeDisjoint::Disjoint(a, b) => {
-                let a: EnumInterval<U> = a.lossy_cast();
-                let b: EnumInterval<U> = b.lossy_cast();
-
-                // Repair: drop empties first.
-                match (a.is_empty(), b.is_empty()) {
-                    (true, true) => MaybeDisjoint::Consumed,
-                    (true, false) => MaybeDisjoint::Connected(b),
-                    (false, true) => MaybeDisjoint::Connected(a),
-                    (false, false) => {
-                        // Narrowing can flip relative order at the extremes
-                        // (e.g. both saturate the same direction). Re-sort.
-                        let (lo, hi) = if a <= b { (a, b) } else { (b, a) };
-                        if lo.connects(&hi) {
-                            match lo.merge_connected(hi) {
-                                Some(merged) => MaybeDisjoint::Connected(merged),
-                                None => {
-                                    unreachable!("connects() implies merge_connected returns Some")
-                                }
-                            }
-                        } else {
-                            MaybeDisjoint::Disjoint(lo, hi)
-                        }
-                    }
-                }
+                MaybeDisjoint::from_pair(a.lossy_cast(), b.lossy_cast())
             }
         }
     }
