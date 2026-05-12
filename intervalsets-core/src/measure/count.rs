@@ -1,6 +1,7 @@
 use super::Measurement;
 use crate::numeric::{Element, Zero};
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::ops::math::TryAdd;
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// The counting measure of a set cannot be represented by the
 /// [`Countable::Output`] type (e.g. counting `[i32::MIN, i32::MAX]`
@@ -242,10 +243,36 @@ where
     }
 }
 
+/// Count of a [`MaybeDisjoint`] is the sum of its pieces' counts.
+/// `Connected(iv)` delegates; `Disjoint(a, b)` sums per-piece counts
+/// via [`TryAdd`] so an overflowing total surfaces as
+/// `CountOverflowError` rather than wrapping. Infinite from either
+/// piece propagates to an infinite total.
+impl<T, Out> Count for MaybeDisjoint<T>
+where
+    T: Countable<Output = Out>,
+    Out: Zero + TryAdd<Out, Output = Out>,
+    <Out as TryAdd>::Error: Into<CountOverflowError>,
+{
+    type Output = Out;
+    type Error = CountOverflowError;
+
+    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+        match self {
+            Self::Connected(iv) => iv.try_count(),
+            Self::Disjoint(a, b) => {
+                let ac = a.try_count()?;
+                let bc = b.try_count()?;
+                ac.try_binop_map(bc, |x, y| x.try_add(y).map_err(Into::into))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::FiniteFactory;
+    use crate::factory::{FiniteFactory, HalfBoundedFactory};
 
     #[test]
     fn test_count() {
@@ -293,5 +320,52 @@ mod tests {
         // documented to panic when the count overflows Self::Output.
         let x = EnumInterval::closed(i128::MIN, i128::MAX);
         let _ = x.count();
+    }
+
+    // ===== MaybeDisjoint =====
+    //
+    // `Iterator for MaybeDisjoint<T>` shadows trait-call syntax for
+    // `.count()` (returns `usize`), so these tests use `try_count`
+    // throughout.
+
+    #[test]
+    fn md_empty_count_is_zero() {
+        let x = MaybeDisjoint::<i32>::empty();
+        assert_eq!(x.try_count().unwrap().finite(), 0_u128);
+    }
+
+    #[test]
+    fn md_connected_delegates_to_inner_count() {
+        let x = MaybeDisjoint::from_interval(EnumInterval::closed(0, 10));
+        assert_eq!(x.try_count().unwrap().finite(), 11_u128);
+    }
+
+    #[test]
+    fn md_disjoint_count_sums_pieces() {
+        // [0, 5] (6 elements) ∪ [10, 20] (11 elements) → 17
+        let x =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 20));
+        assert_eq!(x.try_count().unwrap().finite(), 17_u128);
+    }
+
+    #[test]
+    fn md_disjoint_with_half_interval_is_infinite() {
+        // Disjoint(finite, half) — half-piece makes total count infinite.
+        let x = MaybeDisjoint::from_pair(
+            EnumInterval::closed(0_i32, 5),
+            EnumInterval::closed_unbound(10),
+        );
+        assert!(x.try_count().unwrap().is_infinite());
+    }
+
+    #[test]
+    fn md_per_piece_overflow_propagates() {
+        // A single piece's count_inclusive can overflow (e.g.
+        // [i128::MIN, i128::MAX] needs 2^128 which doesn't fit in u128).
+        // That overflow surfaces from the inner try_count and propagates
+        // through MD's impl via `?`.
+        let inner = EnumInterval::closed(i128::MIN, i128::MAX);
+        let md = MaybeDisjoint::from_interval(inner);
+        assert!(md.try_count().is_err());
     }
 }
