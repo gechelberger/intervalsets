@@ -238,7 +238,7 @@ mod impls {
     fn all_except_zero<T: Zero + Element>() -> Result<MaybeDisjoint<T>, Error> {
         let neg = EI::try_right_bounded(FB::try_open(T::zero())?)?;
         let pos = EI::try_left_bounded(FB::try_open(T::zero())?)?;
-        Ok((neg, pos).into())
+        Ok(MaybeDisjoint::new_disjoint_assume_valid(neg, pos))
     }
 
     #[inline(always)]
@@ -294,13 +294,13 @@ mod impls {
                 // c < -e && d > +e && a != Closed(0)
                 let left = EI::try_right_bounded(div_assume_nonzero(a.clone(), c)?)?;
                 let right = EI::try_left_bounded(div_assume_nonzero(a, d)?)?;
-                Ok((left, right).into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // c < -e && d > +e && b != Closed(0)
                 let left = EI::try_right_bounded(div_assume_nonzero(b.clone(), d)?)?;
                 let right = EI::try_left_bounded(div_assume_nonzero(b, c)?)?;
-                Ok((left, right).into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             (ECat::Pos(lz), ECat::Neg(_)) => {
@@ -385,7 +385,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
                     Left => (
                         EI::try_right_bounded(non_zero)?,
@@ -397,7 +397,7 @@ mod impls {
                         EI::try_left_bounded(non_zero)?,
                     ),
                 };
-                Ok(pair.into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] = {-inf, b/d} U {b/c, +inf}
@@ -408,7 +408,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
                     Left => (
                         EI::try_right_bounded(zero)?,
@@ -421,7 +421,7 @@ mod impls {
                     ),
                 };
 
-                Ok(pair.into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
 
@@ -490,7 +490,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(a, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
                     Left => (
                         EI::try_right_bounded(non_zero)?,
@@ -503,7 +503,7 @@ mod impls {
                     ),
                 };
 
-                Ok(pair.into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a<0, b<0] / [c<0, d>0] => (<-, b/d) U (b/c, ->)
@@ -515,7 +515,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(b, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
                     Left => (
                         EI::try_right_bounded(zero)?,
@@ -528,7 +528,7 @@ mod impls {
                     ),
                 };
 
-                Ok(pair.into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             _ => unreachable!(),
@@ -586,14 +586,14 @@ mod impls {
                 let a = ab_bound;
                 let neg = EI::try_right_bounded(div_assume_nonzero(a.clone(), c)?)?;
                 let pos = EI::try_left_bounded(div_assume_nonzero(a, d)?)?;
-                Ok((neg, pos).into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(neg, pos))
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] => {-inf, b/d} U {b/c, +inf}
                 let b = ab_bound;
                 let neg = EI::try_right_bounded(div_assume_nonzero(b.clone(), d)?)?;
                 let pos = EI::try_right_bounded(div_assume_nonzero(b, c)?)?;
-                Ok((neg, pos).into())
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(neg, pos))
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             (ECat::NegPos, ECat::Pos(_)) => {
@@ -823,7 +823,10 @@ mod tests {
         assert_eq!(d(fc(0.0, 10.0), fc(0.0, 5.0)), ecu(0.0).into());
 
         // (+e, 1.0) / [-1.0, 1.0] => (<-, 0.0) U (0.0, ->)
-        assert_eq!(d(fo(0.0, 1.0), fc(-1.0, 1.0)), (euo(0.0), eou(0.0)).into());
+        assert_eq!(
+            d(fo(0.0, 1.0), fc(-1.0, 1.0)),
+            MaybeDisjoint::from_pair(euo(0.0), eou(0.0))
+        );
     }
 
     #[test]
@@ -856,7 +859,10 @@ mod tests {
             d(fc(0.0, 5.0), fc(-1.0, 1.0)),
             EnumInterval::unbounded().into()
         );
-        assert_eq!(d(fc(2.0, 5.0), fc(-1.0, 1.0)), (uc(-2.0), cu(2.0)).into());
+        assert_eq!(
+            d(fc(2.0, 5.0), fc(-1.0, 1.0)),
+            MaybeDisjoint::from_pair(uc(-2.0), cu(2.0))
+        );
     }
 
     #[test]
@@ -895,7 +901,10 @@ mod tests {
         assert_eq!(fc(0.0, 10.0) / fc(0.0, 5.0), cu(0.0).into());
 
         // mixed-sign denominator -> disjoint result
-        assert_eq!(fc(2.0, 5.0) / fc(-1.0, 1.0), (uc(-2.0), cu(2.0)).into());
+        assert_eq!(
+            fc(2.0, 5.0) / fc(-1.0, 1.0),
+            MaybeDisjoint::from_pair(uc(-2.0), cu(2.0))
+        );
 
         // half / half
         let cu_pos = EnumInterval::closed_unbound(O(10.0));

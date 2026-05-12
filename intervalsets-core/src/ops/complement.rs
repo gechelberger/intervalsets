@@ -59,7 +59,10 @@ impl<T: Element> Complement for FiniteInterval<T> {
                     HalfInterval::new_assume_valid(Side::Right, lhs.flip().normalized(Side::Right));
                 let right =
                     HalfInterval::new_assume_valid(Side::Left, rhs.flip().normalized(Side::Left));
-                (EnumInterval::from(left), EnumInterval::from(right)).into()
+                MaybeDisjoint::new_disjoint_assume_valid(
+                    EnumInterval::from(left),
+                    EnumInterval::from(right),
+                )
             }
         }
     }

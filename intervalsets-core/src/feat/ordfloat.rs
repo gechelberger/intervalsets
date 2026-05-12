@@ -3,6 +3,7 @@ use core::convert::Infallible;
 use num_traits::float::FloatCore;
 use ordered_float::{NotNan, OrderedFloat};
 
+use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::measure::Widthable;
 use crate::numeric::{Element, Midpoint};
@@ -131,6 +132,95 @@ ordfloat_impl_try!(TryAdd, try_add, +);
 ordfloat_impl_try!(TrySub, try_sub, -);
 ordfloat_impl_try!(TryMul, try_mul, *);
 ordfloat_impl_try!(TryDiv, try_div, /);
+
+// === Cast support (LossyCastElement) ===
+//
+// `az::SaturatingCast` is not implemented for the `ordered_float`
+// wrappers (neither az nor ordered-float depend on each other). We
+// provide `LossyCastElement` directly by delegating to the inner
+// float's impl and re-wrapping. The result is always finite (inner
+// `LossyCast` for floats clamps to `[U::MIN, U::MAX]`), so re-wrapping
+// in `NotNan` is infallible.
+//
+// `TryCast` works for these wrappers out of the box via the existing
+// `T: ToPrimitive, U: NumCast + Element` bound (ordered-float provides
+// `ToPrimitive`/`NumCast` impls on both wrappers).
+//
+// `Cast` (infallible widening) works automatically for
+// `NotNan<f32> -> NotNan<f64>` (ordered-float provides
+// `From<NotNan<f32>> for NotNan<f64>`). For `OrderedFloat<f32> ->
+// OrderedFloat<f64>` no analogous `Into` exists upstream and the
+// orphan rule prevents us from adding one; users should use
+// `TryCast` (always `Ok` for widening) or unwrap/rewrap manually.
+// Upstream `From<OrderedFloat<f32>> for OrderedFloat<f64>` is merged
+// in ordered-float; awaiting their next release. When the released
+// version is bumped, add `CastElement<OrderedFloat<f64>> for
+// OrderedFloat<f32>` mirroring the NotNan impl below.
+
+impl<T, U> LossyCastElement<OrderedFloat<U>> for OrderedFloat<T>
+where
+    T: LossyCastElement<U>,
+{
+    #[inline]
+    fn lossy_cast_element(self) -> OrderedFloat<U> {
+        OrderedFloat(self.0.lossy_cast_element())
+    }
+}
+
+impl<T, U> LossyCastElement<NotNan<U>> for NotNan<T>
+where
+    T: LossyCastElement<U> + FloatCore,
+    U: FloatCore,
+{
+    #[inline]
+    fn lossy_cast_element(self) -> NotNan<U> {
+        // The inner `T -> U` is saturating + clamping, so the result
+        // is finite (and therefore non-NaN). Re-wrap via
+        // `new_unchecked` would also work; `new(...).expect(...)`
+        // keeps the safety floor without a measurable cost.
+        let raw = self.into_inner().lossy_cast_element();
+        NotNan::new(raw).expect("LossyCast of finite NotNan produces non-NaN")
+    }
+}
+
+// `CastElement` for `NotNan<f32> → NotNan<f64>`: ordered-float
+// provides `From<NotNan<f32>> for NotNan<f64>` upstream (f32 → f64 is
+// lossless and finite-preserving). No analogous upstream `From` exists
+// for `OrderedFloat`, so users widen `OrderedFloat` via `TryCast`.
+
+impl CastElement<NotNan<f64>> for NotNan<f32> {
+    #[inline]
+    fn cast_element(self) -> NotNan<f64> {
+        self.into()
+    }
+}
+
+// `TryCastElement` for wrapper-pair narrowing/widening. Delegates to
+// the wrapper's `NumCast` impl (ordered-float provides
+// `NumCast for OrderedFloat<T> where T: NumCast` and
+// `NumCast for NotNan<T> where T: FloatCore`).
+
+impl<T, U> TryCastElement<OrderedFloat<U>> for OrderedFloat<T>
+where
+    T: num_traits::ToPrimitive,
+    U: num_traits::NumCast,
+{
+    #[inline]
+    fn try_cast_element(self) -> Option<OrderedFloat<U>> {
+        <OrderedFloat<U> as num_traits::NumCast>::from(self)
+    }
+}
+
+impl<T, U> TryCastElement<NotNan<U>> for NotNan<T>
+where
+    T: FloatCore,
+    U: FloatCore,
+{
+    #[inline]
+    fn try_cast_element(self) -> Option<NotNan<U>> {
+        <NotNan<U> as num_traits::NumCast>::from(self)
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -278,5 +368,126 @@ mod tests {
         let a = OrderedFloat(2.0_f32);
         let b = OrderedFloat(4.0_f32);
         assert_eq!(a.midpoint(b).unwrap(), OrderedFloat(3.0_f32));
+    }
+
+    // === Cast trait coverage ===
+
+    mod cast {
+        use super::*;
+        use crate::bound::FiniteBound;
+        use crate::cast::{Cast, LossyCast, TryCast};
+        use crate::error::Error;
+        use crate::sets::FiniteInterval;
+
+        // ---------- TryCast (works out of the box via NumCast / ToPrimitive) ----------
+
+        #[test]
+        fn try_cast_ordered_float_widening() {
+            let x = FiniteInterval::closed(OrderedFloat(0.0_f32), OrderedFloat(10.0_f32));
+            let y: FiniteInterval<OrderedFloat<f64>> = x.try_cast().unwrap();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(OrderedFloat(0.0_f64), OrderedFloat(10.0_f64))
+            );
+        }
+
+        #[test]
+        fn try_cast_ordered_float_narrowing_overflow() {
+            // f64::MAX rounds to f32::INFINITY via NumCast; the
+            // post-cast `Element::validate` rejects non-finite.
+            let x = FiniteInterval::closed(OrderedFloat(0.0_f64), OrderedFloat(f64::MAX));
+            let y: Result<FiniteInterval<OrderedFloat<f32>>, _> = x.try_cast();
+            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn try_cast_not_nan_widening() {
+            let lo = NotNan::new(0.0_f32).unwrap();
+            let hi = NotNan::new(10.0_f32).unwrap();
+            let x = FiniteInterval::closed(lo, hi);
+            let y: FiniteInterval<NotNan<f64>> = x.try_cast().unwrap();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(
+                    NotNan::new(0.0_f64).unwrap(),
+                    NotNan::new(10.0_f64).unwrap()
+                )
+            );
+        }
+
+        // ---------- Cast (only NotNan widening — see module docs) ----------
+
+        #[test]
+        fn cast_not_nan_widening_via_into() {
+            let lo = NotNan::new(0.0_f32).unwrap();
+            let hi = NotNan::new(10.0_f32).unwrap();
+            let x = FiniteInterval::closed(lo, hi);
+            let y: FiniteInterval<NotNan<f64>> = x.cast();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(
+                    NotNan::new(0.0_f64).unwrap(),
+                    NotNan::new(10.0_f64).unwrap()
+                )
+            );
+        }
+
+        // ---------- LossyCast (via new LossyCastElement impls) ----------
+
+        #[test]
+        fn lossy_cast_ordered_float_narrowing_clamps() {
+            let x = FiniteInterval::closed(OrderedFloat(0.0_f64), OrderedFloat(f64::MAX));
+            let y: FiniteInterval<OrderedFloat<f32>> = x.lossy_cast();
+            // Right bound saturates to f32::MAX (not INF — the inner
+            // `f64 -> f32` impl clamps, and `Element::validate` for
+            // `OrderedFloat<f32>` would have rejected INF).
+            let (_, r) = y.view_raw().unwrap();
+            assert_eq!(r.value(), &OrderedFloat(f32::MAX));
+        }
+
+        #[test]
+        fn lossy_cast_not_nan_narrowing_clamps() {
+            let lo = NotNan::new(0.0_f64).unwrap();
+            let hi = NotNan::new(f64::MAX).unwrap();
+            let x = FiniteInterval::closed(lo, hi);
+            let y: FiniteInterval<NotNan<f32>> = x.lossy_cast();
+            let (_, r) = y.view_raw().unwrap();
+            assert_eq!(*r.value(), NotNan::new(f32::MAX).unwrap());
+        }
+
+        #[test]
+        fn lossy_cast_ordered_float_widening_is_lossless() {
+            let x = FiniteInterval::closed(OrderedFloat(0.0_f32), OrderedFloat(10.5_f32));
+            let y: FiniteInterval<OrderedFloat<f64>> = x.lossy_cast();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(OrderedFloat(0.0_f64), OrderedFloat(10.5_f64))
+            );
+        }
+
+        #[test]
+        fn lossy_cast_saturation_snaps_to_closed_for_ord_float() {
+            // open(-f64::MAX, f64::MAX) → [f32::MIN, f32::MAX] with
+            // both bounds closed (snap-to-closed at saturation).
+            use crate::factory::TryFiniteFactory;
+            let x =
+                FiniteInterval::try_open(OrderedFloat(-f64::MAX), OrderedFloat(f64::MAX)).unwrap();
+            let y: FiniteInterval<OrderedFloat<f32>> = x.lossy_cast();
+            let (l, r) = y.view_raw().unwrap();
+            assert!(l.is_closed());
+            assert!(r.is_closed());
+            assert_eq!(l.value(), &OrderedFloat(f32::MIN));
+            assert_eq!(r.value(), &OrderedFloat(f32::MAX));
+        }
+
+        #[test]
+        fn lossy_cast_element_finite_bound_ordered_float() {
+            // Bound-level LossyCast goes through the new
+            // `LossyCastElement<OrderedFloat<U>> for OrderedFloat<T>`
+            // impl.
+            let b = FiniteBound::closed(OrderedFloat(f64::MAX));
+            let c: FiniteBound<OrderedFloat<f32>> = b.lossy_cast();
+            assert_eq!(c.value(), &OrderedFloat(f32::MAX));
+        }
     }
 }

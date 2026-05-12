@@ -13,6 +13,7 @@ version and are released together via `cargo-release`. See the repo
 
 ### Added
 
+- `cast::{Cast, LossyCast, TryCast}` impls for `Interval` and `IntervalSet` (re-exported via prelude). `Interval` delegates to its inner `EnumInterval`. `IntervalSet::cast` routes through `try_new` (strict; widenings preserve invariants); `IntervalSet::lossy_cast` routes through `new` (repairing — narrowed intervals that collapse onto the same range merge); `IntervalSet::try_cast` routes through `try_new` and surfaces cast-induced invariant violations as `Error::InvalidIntervalSet`. Coverage extends to `ordered-float`'s `OrderedFloat<T>` and `NotNan<T>` storage types via the impls landed in `intervalsets-core`.
 - `Interval::midpoint(&self) -> Result<T, Error>`. Empty / half-bounded / unbounded inputs return `Err(Error::Math(MathError::Domain))`. `IntervalSet::midpoint` is intentionally not exposed — midpoint of a disjoint union is ill-defined.
 - Re-exports of `numeric::Midpoint` (now `pub` in core) and `measure::{Widthable, WidthOverflowError}`.
 - `Width::try_width` surfaces representation overflow (e.g. `[i32::MIN, i32::MAX]` widening, `f64::MIN..f64::MAX` overflow to `±INF`) as `Err(WidthOverflowError)`. The infallible `width()` panics on overflow per its docstring.

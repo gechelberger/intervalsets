@@ -37,7 +37,9 @@
 //! absorbs failure modes (e.g. predicates collapse incomparability
 //! into `false`).
 //!
-//! Members: [`Contains`], [`Intersects`], [`Connects`].
+//! Members: [`Contains`], [`Intersects`], [`Connects`]. Storage-type
+//! casts at this tier — [`Cast`](crate::cast::Cast),
+//! [`LossyCast`](crate::cast::LossyCast) — live in [`crate::cast`].
 //!
 //! ## Tier 2 — Infallible when closed over the invariants
 //!
@@ -89,7 +91,8 @@
 //! Members: [`Split::try_split`], [`Rebound::try_with_left`] /
 //! [`Rebound::try_with_right`], [`ConvexHull::try_hull`], plus
 //! [`math::TryAdd`] / [`math::TrySub`] / [`math::TryMul`] /
-//! [`math::TryDiv`].
+//! [`math::TryDiv`]. Storage-type cast at this tier —
+//! [`TryCast`](crate::cast::TryCast) — lives in [`crate::cast`].
 //!
 //! ### Tier 3b — infix `+ - * /` and the non-`try_*` ops (panicking sugar)
 //!

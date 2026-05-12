@@ -371,6 +371,7 @@ extern crate quickcheck;
 extern crate quickcheck_macros;
 
 pub mod bound;
+pub mod cast;
 pub mod numeric;
 
 pub mod error;
@@ -399,6 +400,7 @@ pub use empty::MaybeEmpty;
 #[allow(unused_imports)]
 pub mod prelude {
     pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
+    pub use crate::cast::{Cast, LossyCast, TryCast};
     pub use crate::empty::MaybeEmpty;
     //pub use crate::error::Error;
     pub use crate::factory::traits::*;

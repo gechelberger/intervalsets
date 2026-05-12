@@ -291,7 +291,7 @@ impl<T: Element + Ord + Clone> EnumInterval<T> {
 ///
 /// let lhs = EnumInterval::closed(0, 2);
 /// let rhs = EnumInterval::closed(10, 12);
-/// let pair: MaybeDisjoint<i32> = (lhs, rhs).into();
+/// let pair = MaybeDisjoint::from_pair(lhs, rhs);
 ///
 /// let xs: Vec<i32> = pair.into_elements().collect();
 /// assert_eq!(xs, vec![0, 1, 2, 10, 11, 12]);
@@ -587,22 +587,22 @@ mod tests {
 
     #[test]
     fn maybe_disjoint_two_pieces_walks_forward() {
-        let pair: MaybeDisjoint<i32> =
-            (EnumInterval::closed(0, 2), EnumInterval::closed(10, 12)).into();
+        let pair =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 2), EnumInterval::closed(10, 12));
         assert!(pair.into_elements().eq([0, 1, 2, 10, 11, 12]));
     }
 
     #[test]
     fn maybe_disjoint_two_pieces_walks_backward() {
-        let pair: MaybeDisjoint<i32> =
-            (EnumInterval::closed(0, 2), EnumInterval::closed(10, 12)).into();
+        let pair =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 2), EnumInterval::closed(10, 12));
         assert!(pair.into_elements().rev().eq([12, 11, 10, 2, 1, 0]));
     }
 
     #[test]
     fn maybe_disjoint_mixed_walk_meets_inside_one_piece() {
-        let pair: MaybeDisjoint<i32> =
-            (EnumInterval::closed(0, 1), EnumInterval::closed(10, 14)).into();
+        let pair =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 1), EnumInterval::closed(10, 14));
         let mut it = pair.into_elements();
         assert_eq!(it.next(), Some(0));
         assert_eq!(it.next(), Some(1));
@@ -617,8 +617,8 @@ mod tests {
 
     #[test]
     fn maybe_disjoint_borrowed_does_not_consume() {
-        let pair: MaybeDisjoint<u8> =
-            (EnumInterval::closed(0u8, 1), EnumInterval::closed(10, 11)).into();
+        let pair =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0u8, 1), EnumInterval::closed(10, 11));
         assert!(pair.elements().eq([0u8, 1, 10, 11]));
         // Still usable.
         assert_eq!(pair.elements().count(), 4);
@@ -627,11 +627,10 @@ mod tests {
     #[test]
     fn maybe_disjoint_with_half_bounded_piece() {
         // Right piece is `[254, +∞)` over u8 → walks to MAX = 255.
-        let pair: MaybeDisjoint<u8> = (
+        let pair = MaybeDisjoint::from_pair(
             EnumInterval::closed(0u8, 1),
-            EnumInterval::closed_unbound(254),
-        )
-            .into();
+            EnumInterval::closed_unbound(254u8),
+        );
         assert!(pair.into_elements().eq([0u8, 1, 254, 255]));
     }
 

@@ -13,6 +13,53 @@ version and are released together via `cargo-release`. See the repo
 
 ### Added
 
+- `cast` module — storage-type cast trait family for converting the element type of a set without manual reconstruction:
+  - `Cast<U>` (Tier 1, infallible) keyed on a new element-layer `CastElement<U>` trait. Primitive pairs are covered by a single blanket impl over `T: Into<U>` gated on the sealed `Primitive` marker; feature-gated storage types provide their own `CastElement` impls. Implemented on `FiniteBound`, `FiniteInterval`, `HalfInterval`, `EnumInterval`. The `CastElement` contract is "infallible by precondition": impls may assume the input is a valid bound limit for `U` (the set-level `Cast` impl always satisfies this — the input came from a `FiniteBound<T>` that already passed `T::validate`), enabling exact conversions like `f64 → BigDecimal` to be `.expect()`-internal at the element layer rather than `Result`-typed at the set layer.
+  - `LossyCast<U>` (Tier 1, total but lossy) for pairs where the element conversion saturates / rounds. Out-of-range elements clamp to `U`'s extrema; bounds at saturation extrema snap to `Closed`. `FiniteInterval::lossy_cast` routes through `try_satisfy_bounds`, collapsing crossed bounds to `Empty`. Element layer is keyed on `LossyCastElement<U>`, with macro-generated impls covering every primitive pair (int↔int via `az::SaturatingCast`, float→int via `az`, int→float via `as`, f32→f64 lossless, f64→f32 with explicit clamp to `[f32::MIN, f32::MAX]`).
+  - `TryCast<U>` (Tier 3a, strict) keyed on a new element-layer `TryCastElement<U>` trait (mirroring `LossyCastElement<U>`). Primitive pairs are covered by a single blanket impl gated on a sealed `Primitive` marker (delegates to `NumCast::from`); feature-gated storage types provide their own `TryCastElement` impls in their `feat/<type>.rs` modules. Errors as `Error::InvalidBoundLimit` on element-cast failure, `Error::InvalidBoundLimit` on post-cast non-finite (via `Element::validate`), or `Error::InvalidBoundPair` on cast-induced collision. The sealed-`Primitive`-marker pattern lets the primitive blanket coexist with feat-type impls without coherence conflict — Rust knows feat types can never become `Primitive` downstream.
+  - `ordered-float` feature: `LossyCastElement<OrderedFloat<U>> for OrderedFloat<T>` and `LossyCastElement<NotNan<U>> for NotNan<T>` (unwrap → inner element-layer lossy cast → re-wrap). `TryCastElement<OrderedFloat<U>> for OrderedFloat<T>` and `TryCastElement<NotNan<U>> for NotNan<T>` (delegate to ordered-float's upstream `NumCast` impls). `CastElement<NotNan<f64>> for NotNan<f32>` (lossless widening via ordered-float's upstream `From<NotNan<f32>> for NotNan<f64>`); no analogous upstream `From` exists for `OrderedFloat` cross-`T`, so users widen via `TryCast` (always `Ok`).
+  - `MaybeDisjoint<T>` cast coverage. Per-variant delegation to the inner `EnumInterval` casts. `Cast` (widening) preserves Disjoint invariants by definition. `TryCast` errors as `Error::InvalidBoundPair` on cast-induced invariant breakage (narrowing collapses one piece to empty, flips order, or makes the pieces touch/overlap). `LossyCast` repairs: empties drop, connecting pieces merge via `MergeConnected`.
+  - `fixed` feature: cast coverage for every `FixedI8`/`FixedU8`/`FixedI16`/.../`FixedI128`/`FixedU128` storage type. Two blanket impls per storage type leverage fixed's own `ToFixed`/`FromFixed` conversion traits and `checked_*`/`saturating_*` methods:
+    - `TryCastElement<FixedI*<Frac>> for Src where Src: ToFixed` — covers every primitive (int/float/bool) and every other Fixed type in one impl per target. Body delegates to `Fixed::checked_from_num`.
+    - `TryCastElement<Dst> for FixedI*<Frac> where Dst: FromFixed + Primitive` — Fixed → primitive narrowing via `Fixed::checked_to_num`.
+    - `LossyCastElement<FixedI*<Frac>> for Src where Src: ToFixed` — saturating via `Fixed::saturating_from_num` (handles cross-Fixed widening/narrowing, primitive → Fixed clamp, float → Fixed including `NaN → 0`).
+    - `LossyCastElement<Dst> for FixedI*<Frac> where Dst: FromFixed + Bounded + Primitive` — Fixed → primitive saturating via `Fixed::saturating_to_num`.
+    - The sealed `Primitive` bound on target-side blankets is what disambiguates cross-Fixed casts (handled exclusively by source-side blankets) from Fixed → primitive casts.
+    - No `CastElement` impl: lossless conversion between fixed types is value-dependent across (storage, Frac, value). `fixed`'s own `LosslessTryFrom`/`LossyFrom` traits cover the conversion-typology lattice if downstream needs the exact-conversion semantics.
+    - NaN handling: `fixed::checked_from_num(f64::NAN)` returns `None` (matches `TryCast`); `fixed::saturating_from_num(f64::NAN)` returns `0` (matches `LossyCast`'s "total, no Tier 4 panic site" contract — unlike `az`'s int targets).
+  - **Coherence fix**: all `LossyCastElement<U> for {feat-type}` blankets now require `U: crate::cast::Primitive`. This prevents coherence overlap when multiple feature-gated storage types are enabled simultaneously (e.g. `rust_decimal` + `fixed` — Rust can't rule out a future `Decimal: ToFixed` or `Fixed: NumCast` impl, so the blankets must be scoped to primitive targets only). Cross-feat-type casts (e.g. `Decimal → BigInt`) are not provided in either direction; users wire them manually if needed.
+  - `rust_decimal` feature: cast coverage for `Decimal`.
+    - `CastElement<Decimal> for {i8..i128, isize, u8..u128, usize}` via upstream `From<int>` impls — lossless integer widening (Decimal's 96-bit mantissa accommodates every primitive integer).
+    - `CastElement<Decimal> for Decimal` reflexive.
+    - **No** `CastElement<Decimal> for f*`: unlike `BigDecimal` (unbounded), `Decimal` is bounded (≈ ±7.92e28). A finite f64 like `1e30` overflows Decimal's range, so float→Decimal must be `TryCast`.
+    - `TryCastElement<Decimal>` for the same int sources (via `From`, infallible) plus `{f32, f64}` (via upstream `TryFrom<f*>`; fails on NaN/±INF AND on out-of-range finite floats).
+    - `TryCastElement<U> for Decimal where U: NumCast + Primitive` — `Decimal → primitive` narrowing via `NumCast::from`.
+    - `TryCastElement<Decimal> for Decimal` reflexive.
+    - `LossyCastElement<U> for Decimal where U: NumCast + Bounded` — saturating downcast, clamps to `U::min_value()`/`U::max_value()` based on sign.
+    - `LossyCast` *targeting* `Decimal` is intentionally not provided: `Decimal` does not impl `num_traits::Bounded` upstream and the orphan rule prevents us from adding it.
+  - `num-bigint` feature: full cast coverage for both `BigInt` and `BigUint`.
+    - `CastElement<BigInt> for {i8..i128, u8..u128, isize, usize, bool}` via upstream `From<int>` impls — lossless integer widening to arbitrary precision.
+    - `CastElement<BigInt> for BigUint` via upstream `From<BigUint> for BigInt` — lossless.
+    - `CastElement<BigUint> for {u8..u128, usize, bool}` via upstream `From<u*>` impls.
+    - `CastElement<BigInt> for BigInt` and `CastElement<BigUint> for BigUint` reflexive.
+    - `TryCastElement<BigInt> for {primitives + BigUint}` via `From` (infallible) and `TryCastElement<BigInt> for {f32, f64}` via `FromPrimitive::from_f*` (truncates fractional like other f→int paths; returns `None` on NaN/±INF).
+    - `TryCastElement<BigUint>` for the same source set; signed integer / `BigInt` sources fail on negative values (`TryFrom`-routed).
+    - `TryCastElement<U> for BigInt where U: NumCast + Primitive` and `TryCastElement<U> for BigUint where U: NumCast + Primitive` — arbitrary-precision → primitive narrowing via `NumCast::from`.
+    - `LossyCastElement<U> for BigInt where U: NumCast + Bounded` — saturating downcast, clamps to `U::min_value()`/`U::max_value()` based on sign.
+    - `LossyCastElement<U> for BigUint where U: NumCast + Bounded` — overflow always clamps to `U::max_value()` (BigUint is non-negative).
+    - **Floats cannot `Cast` to `BigInt`/`BigUint`** — fractional values would be silently truncated, violating Cast's "lossless" contract. Use `TryCast` (which matches the truncating-fractional behavior of the primitive `TryCast<i32> for f64` blanket).
+    - `LossyCast` *targeting* `BigInt`/`BigUint` is intentionally not provided: both are unbounded.
+  - `bigdecimal` feature: full cast coverage in both directions.
+    - `CastElement<BigDecimal> for {i8..i128, u8..u128}` (via upstream `From<int>` impls, lossless integer widening).
+    - `CastElement<BigDecimal> for {f32, f64}` (via `BigDecimal::try_from(...).expect(...)`). The `.expect()` is sound by precondition — the set-level `Cast` impl only ever invokes this on bounds that have passed `Element::validate`, which rejects NaN/±INF for library float types. **This is the headline new capability**: `Interval<f64>::cast::<Interval<BigDecimal>>()` is infallible (no `.unwrap()` at the call site), justified by the `FiniteBound` invariant.
+    - `CastElement<BigDecimal> for BigDecimal` reflexive impl.
+    - `TryCastElement<BigDecimal> for {i8..i128, u8..u128}` (via `From`, infallible) and `for {f32, f64}` (via `TryFrom`, returns `None` on NaN — for callers operating outside the `FiniteBound` invariant).
+    - `TryCastElement<U> for BigDecimal where U: NumCast + Primitive` — `BigDecimal` → primitive narrowing (returns `None` if the value doesn't fit, surfacing as `Error::InvalidBoundLimit`).
+    - `TryCastElement<BigDecimal> for BigDecimal` reflexive impl.
+    - `LossyCastElement<U> for BigDecimal where U: NumCast + Bounded` — saturating downcast from arbitrary-precision to primitive. Out-of-range values clamp to `U::min_value()` / `U::max_value()` based on sign.
+    - `LossyCast` *targeting* `BigDecimal` is intentionally not provided: `BigDecimal` is unbounded (no saturation extremum), so the trait's snap-to-extremum semantics have no meaningful interpretation.
+- `az` 1.3 added as a default dependency (MIT/Apache, tspiteri) — used internally by the cast module's `LossyCastElement` impls for integer-saturation logic.
+- `num_traits::{Bounded, NumCast, ToPrimitive}` re-exported from `numeric`.
 - `numeric::Midpoint` is now `pub`. Library impls use `Error = Infallible` for integers / `f32` / `f64` / `OrderedFloat` / `NotNan` / `BigInt` / `BigUint` / `BigDecimal` / `Fixed*`. `Decimal` uses `Error = MathError` (`Range` on rounding overflow at extreme values).
 - `FiniteInterval::midpoint`, `HalfInterval::midpoint`, `EnumInterval::midpoint` — each `(&self) -> Result<T, MathError>`. Empty / half-bounded / unbounded inputs return `Err(MathError::Domain)`.
 - `Width::try_width` and `Width::Error`; mirrors the existing `Count::try_count` shape. `Width::width` becomes a default panicking sibling of `try_width`.

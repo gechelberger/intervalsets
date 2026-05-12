@@ -1,7 +1,9 @@
+use fixed::traits::{FromFixed, ToFixed};
 // lint doesn't detect usage inside macro
 #[allow(unused_imports)]
-use num_traits::{CheckedAdd, CheckedSub, Zero};
+use num_traits::{Bounded, CheckedAdd, CheckedSub, Zero};
 
+use crate::cast::{LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::measure::Widthable;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
@@ -176,6 +178,101 @@ fixed_width_impl!(fixed::FixedU64<N>);
 fixed_width_impl!(fixed::FixedI128<N>);
 fixed_width_impl!(fixed::FixedU128<N>);
 
+// === Cast support ===
+//
+// Fixed-point types are unusually well-suited for our cast traits:
+// `fixed` ships its own `ToFixed`/`FromFixed`/`checked_*`/`saturating_*`
+// machinery that maps directly onto our element-layer trait shapes.
+//
+// We provide two blankets per fixed storage type:
+//
+// 1. **Source-side** (`Src → Fixed<Frac>`) bound on `Src: ToFixed`.
+//    Covers every primitive (int/float/bool) and every other Fixed
+//    type in one impl. Body delegates to
+//    `Fixed::checked_from_num` (TryCast) / `Fixed::saturating_from_num`
+//    (LossyCast).
+//
+// 2. **Target-side** (`Fixed<Frac> → Dst`) bound on `Dst: FromFixed`
+//    plus the sealed `Primitive` marker. The `Primitive` bound is
+//    what dodges coherence overlap with the source-side blanket for
+//    cross-Fixed casts — Rust knows no Fixed type can ever become
+//    `Primitive`, so cross-Fixed routing is the exclusive domain of
+//    the source-side blanket.
+//
+// `Cast` (Tier 1, infallible) is **not** provided for fixed types:
+// lossless conversion is value-dependent for almost every (storage,
+// Frac, source-value) triple. `fixed` exposes its own
+// `LosslessTryFrom`/`LossyFrom` traits if a downstream user needs the
+// exact-conversion semantics in their own code.
+//
+// NaN handling: `fixed`'s `checked_from_num(f64::NAN)` returns `None`
+// (matching TryCast semantics); `saturating_from_num(f64::NAN)`
+// returns `0` (matching LossyCast's "total" contract — no Tier 4
+// panic site like the `az` blanket has for integer targets).
+
+macro_rules! fixed_cast_impls {
+    ($Fix:ident, $LeEqU:ident) => {
+        // --- TryCast: Src → Fix<Frac> ---
+        impl<Frac, Src> TryCastElement<fixed::$Fix<Frac>> for Src
+        where
+            Frac: fixed::types::extra::$LeEqU,
+            Src: ToFixed,
+        {
+            #[inline]
+            fn try_cast_element(self) -> Option<fixed::$Fix<Frac>> {
+                fixed::$Fix::<Frac>::checked_from_num(self)
+            }
+        }
+
+        // --- TryCast: Fix<Frac> → primitive ---
+        impl<Frac, Dst> TryCastElement<Dst> for fixed::$Fix<Frac>
+        where
+            Frac: fixed::types::extra::$LeEqU,
+            Dst: FromFixed + crate::cast::Primitive,
+        {
+            #[inline]
+            fn try_cast_element(self) -> Option<Dst> {
+                self.checked_to_num::<Dst>()
+            }
+        }
+
+        // --- LossyCast: Src → Fix<Frac> ---
+        impl<Frac, Src> LossyCastElement<fixed::$Fix<Frac>> for Src
+        where
+            Frac: fixed::types::extra::$LeEqU,
+            Src: ToFixed,
+        {
+            #[inline]
+            fn lossy_cast_element(self) -> fixed::$Fix<Frac> {
+                fixed::$Fix::<Frac>::saturating_from_num(self)
+            }
+        }
+
+        // --- LossyCast: Fix<Frac> → primitive ---
+        impl<Frac, Dst> LossyCastElement<Dst> for fixed::$Fix<Frac>
+        where
+            Frac: fixed::types::extra::$LeEqU,
+            Dst: FromFixed + Bounded + crate::cast::Primitive,
+        {
+            #[inline]
+            fn lossy_cast_element(self) -> Dst {
+                self.saturating_to_num::<Dst>()
+            }
+        }
+    };
+}
+
+fixed_cast_impls!(FixedI8, LeEqU8);
+fixed_cast_impls!(FixedU8, LeEqU8);
+fixed_cast_impls!(FixedI16, LeEqU16);
+fixed_cast_impls!(FixedU16, LeEqU16);
+fixed_cast_impls!(FixedI32, LeEqU32);
+fixed_cast_impls!(FixedU32, LeEqU32);
+fixed_cast_impls!(FixedI64, LeEqU64);
+fixed_cast_impls!(FixedU64, LeEqU64);
+fixed_cast_impls!(FixedI128, LeEqU128);
+fixed_cast_impls!(FixedU128, LeEqU128);
+
 #[cfg(test)]
 mod tests {
     use fixed::types::{I6F2, U6F2};
@@ -258,6 +355,143 @@ mod tests {
             I6F2::MIN.try_sub(I6F2::from_num(1.0)),
             Err(MathError::Range)
         );
+    }
+
+    // === Cast trait coverage ===
+
+    mod cast {
+        use fixed::types::{I16F16, I32F0, I6F2, U16F16, U6F2};
+
+        use crate::cast::{LossyCast, TryCast};
+        use crate::error::Error;
+        use crate::factory::FiniteFactory;
+        use crate::sets::FiniteInterval;
+
+        // ---------- TryCast: primitive → Fixed ----------
+
+        #[test]
+        fn try_cast_i32_to_i16f16_in_range() {
+            // I16F16 holds values in roughly [-32768, 32768).
+            let x = FiniteInterval::closed(-100_i32, 100);
+            let y: FiniteInterval<I16F16> = x.try_cast().unwrap();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(I16F16::from_num(-100), I16F16::from_num(100))
+            );
+        }
+
+        #[test]
+        fn try_cast_i32_to_i6f2_overflow_errors() {
+            // I6F2 only holds [-32.0, 31.75] approximately.
+            let x = FiniteInterval::closed(0_i32, 1000);
+            let y: Result<FiniteInterval<I6F2>, _> = x.try_cast();
+            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        }
+
+        #[test]
+        fn try_cast_f64_to_i6f2_in_range() {
+            let x = FiniteInterval::closed(0.0_f64, 10.5);
+            let y: FiniteInterval<I6F2> = x.try_cast().unwrap();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(I6F2::from_num(0), I6F2::from_num(10.5))
+            );
+        }
+
+        #[test]
+        fn try_cast_f64_to_i6f2_overflow_errors() {
+            let x = FiniteInterval::closed(0.0_f64, 1000.0);
+            let y: Result<FiniteInterval<I6F2>, _> = x.try_cast();
+            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        }
+
+        // ---------- TryCast: Fixed → primitive ----------
+
+        #[test]
+        fn try_cast_i16f16_to_i32() {
+            let x = FiniteInterval::closed(I16F16::from_num(-100), I16F16::from_num(100));
+            let y: FiniteInterval<i32> = x.try_cast().unwrap();
+            assert_eq!(y, FiniteInterval::closed(-100_i32, 100));
+        }
+
+        #[test]
+        fn try_cast_i16f16_to_i8_overflow_errors() {
+            let x = FiniteInterval::closed(I16F16::from_num(-1000), I16F16::from_num(1000));
+            let y: Result<FiniteInterval<i8>, _> = x.try_cast();
+            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        }
+
+        // ---------- TryCast: Fixed → Fixed (cross-type) ----------
+
+        #[test]
+        fn try_cast_i6f2_to_i16f16_widening() {
+            let x = FiniteInterval::closed(I6F2::from_num(-30.25), I6F2::from_num(31.75));
+            let y: FiniteInterval<I16F16> = x.try_cast().unwrap();
+            assert_eq!(
+                y,
+                FiniteInterval::closed(I16F16::from_num(-30.25), I16F16::from_num(31.75))
+            );
+        }
+
+        #[test]
+        fn try_cast_i16f16_to_i6f2_overflow_errors() {
+            let x = FiniteInterval::closed(I16F16::from_num(-100), I16F16::from_num(100));
+            let y: Result<FiniteInterval<I6F2>, _> = x.try_cast();
+            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        }
+
+        // ---------- TryCast: signed Fixed → unsigned Fixed ----------
+
+        #[test]
+        fn try_cast_i6f2_negative_to_u6f2_errors() {
+            let x = FiniteInterval::closed(I6F2::from_num(-5), I6F2::from_num(5));
+            let y: Result<FiniteInterval<U6F2>, _> = x.try_cast();
+            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        }
+
+        // ---------- LossyCast: primitive → Fixed (saturating) ----------
+
+        #[test]
+        fn lossy_cast_i32_to_i6f2_clamps() {
+            // I6F2 max ≈ 31.75, min ≈ -32.0.
+            let x = FiniteInterval::closed(-1000_i32, 1000);
+            let y: FiniteInterval<I6F2> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(I6F2::MIN, I6F2::MAX));
+        }
+
+        #[test]
+        fn lossy_cast_f64_to_i6f2_clamps() {
+            let x = FiniteInterval::closed(-1000.0_f64, 1000.0);
+            let y: FiniteInterval<I6F2> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(I6F2::MIN, I6F2::MAX));
+        }
+
+        // ---------- LossyCast: Fixed → primitive (saturating) ----------
+
+        #[test]
+        fn lossy_cast_i32f0_to_i8_clamps() {
+            let x = FiniteInterval::closed(I32F0::from_num(-1000), I32F0::from_num(1000));
+            let y: FiniteInterval<i8> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(i8::MIN, i8::MAX));
+        }
+
+        #[test]
+        fn lossy_cast_u16f16_to_i8_overflow_clamps_to_max() {
+            let big = U16F16::from_num(1000);
+            let x = FiniteInterval::closed(U16F16::from_num(0), big);
+            let y: FiniteInterval<i8> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(0_i8, i8::MAX));
+        }
+
+        // ---------- LossyCast: Fixed → Fixed (cross-type) ----------
+
+        #[test]
+        fn lossy_cast_i16f16_to_i6f2_clamps() {
+            // I16F16 has wider integer range; I6F2 maxes at ~31.75.
+            let x = FiniteInterval::closed(I16F16::from_num(-1000), I16F16::from_num(1000));
+            let y: FiniteInterval<I6F2> = x.lossy_cast();
+            assert_eq!(y, FiniteInterval::closed(I6F2::MIN, I6F2::MAX));
+        }
     }
 
     #[test]
