@@ -83,7 +83,7 @@ macro_rules! difference_via_complement {
                     (true, true) => MaybeDisjoint::empty(),
                     (false, true) => MaybeDisjoint::from(first),
                     (true, false) => MaybeDisjoint::from(second),
-                    (false, false) => (first, second).into(),
+                    (false, false) => MaybeDisjoint::new_disjoint_assume_valid(first, second),
                 }
             }
         }

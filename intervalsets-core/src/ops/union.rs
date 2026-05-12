@@ -66,9 +66,9 @@ macro_rules! union_via_merge {
                         let lhs: EnumInterval<T> = self.into();
                         let rhs: EnumInterval<T> = rhs.into();
                         if lhs <= rhs {
-                            (lhs, rhs).into()
+                            MaybeDisjoint::new_disjoint_assume_valid(lhs, rhs)
                         } else {
-                            (rhs, lhs).into()
+                            MaybeDisjoint::new_disjoint_assume_valid(rhs, lhs)
                         }
                     }
                 }
@@ -106,9 +106,9 @@ macro_rules! union_via_merge_ref {
                         let lhs: EnumInterval<T> = self.clone().into();
                         let rhs: EnumInterval<T> = rhs.clone().into();
                         if lhs <= rhs {
-                            (lhs, rhs).into()
+                            MaybeDisjoint::new_disjoint_assume_valid(lhs, rhs)
                         } else {
-                            (rhs, lhs).into()
+                            MaybeDisjoint::new_disjoint_assume_valid(rhs, lhs)
                         }
                     }
                 }

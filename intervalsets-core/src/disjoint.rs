@@ -68,6 +68,10 @@ impl<T: Element> MaybeDisjoint<T> {
 
     #[doc(hidden)]
     pub fn new_disjoint_assume_valid(left: EnumInterval<T>, right: EnumInterval<T>) -> Self {
+        debug_assert!(!left.is_empty());
+        debug_assert!(!right.is_empty());
+        debug_assert!(left < right);
+        debug_assert!(!left.connects(&right));
         Self::Disjoint(left, right)
     }
 }
@@ -119,15 +123,5 @@ impl<T> From<EnumInterval<T>> for MaybeDisjoint<T> {
         } else {
             Self::Connected(interval)
         }
-    }
-}
-
-impl<T: Element> From<(EnumInterval<T>, EnumInterval<T>)> for MaybeDisjoint<T> {
-    fn from(value: (EnumInterval<T>, EnumInterval<T>)) -> Self {
-        debug_assert!(!value.0.is_empty());
-        debug_assert!(!value.1.is_empty());
-        debug_assert!(value.0 < value.1);
-        debug_assert!(!value.0.connects(&value.1));
-        Self::Disjoint(value.0, value.1)
     }
 }
