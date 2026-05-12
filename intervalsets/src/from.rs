@@ -124,7 +124,7 @@ interval_set_delegate_from_impl!(core::ops::RangeFull);
 impl<T> From<MaybeDisjoint<T>> for IntervalSet<T> {
     fn from(value: MaybeDisjoint<T>) -> Self {
         // MaybeDisjoint requires the same invariants as IntervalSet.
-        Self::new_assume_valid(value.map(Interval::from))
+        Self::new_assume_valid(value.into_iter().map(Interval::from))
     }
 }
 

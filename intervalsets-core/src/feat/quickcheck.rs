@@ -121,7 +121,7 @@ mod tests {
     /// `arbitrary` produces canonical-form MDs.
     #[quickcheck]
     fn check_qc_maybe_disjoint_roundtrips(md: MaybeDisjoint<f32>) {
-        let mut pieces = md.clone();
+        let mut pieces = md.clone().into_iter();
         let a = pieces.next().unwrap_or_default();
         let b = pieces.next().unwrap_or_default();
         assert!(pieces.next().is_none()); // never more than 2 pieces

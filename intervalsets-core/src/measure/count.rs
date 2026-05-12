@@ -323,21 +323,17 @@ mod tests {
     }
 
     // ===== MaybeDisjoint =====
-    //
-    // `Iterator for MaybeDisjoint<T>` shadows trait-call syntax for
-    // `.count()` (returns `usize`), so these tests use `try_count`
-    // throughout.
 
     #[test]
     fn md_empty_count_is_zero() {
         let x = MaybeDisjoint::<i32>::empty();
-        assert_eq!(x.try_count().unwrap().finite(), 0_u128);
+        assert_eq!(x.count().finite(), 0_u128);
     }
 
     #[test]
     fn md_connected_delegates_to_inner_count() {
         let x = MaybeDisjoint::from_interval(EnumInterval::closed(0, 10));
-        assert_eq!(x.try_count().unwrap().finite(), 11_u128);
+        assert_eq!(x.count().finite(), 11_u128);
     }
 
     #[test]
@@ -345,7 +341,7 @@ mod tests {
         // [0, 5] (6 elements) ∪ [10, 20] (11 elements) → 17
         let x =
             MaybeDisjoint::from_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 20));
-        assert_eq!(x.try_count().unwrap().finite(), 17_u128);
+        assert_eq!(x.count().finite(), 17_u128);
     }
 
     #[test]

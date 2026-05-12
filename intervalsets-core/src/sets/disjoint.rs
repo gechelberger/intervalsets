@@ -102,24 +102,37 @@ impl<T: PartialOrd> PartialOrd for MaybeDisjoint<T> {
     }
 }
 
-impl<T> Iterator for MaybeDisjoint<T> {
+/// Owning iterator over the pieces of a [`MaybeDisjoint`].
+///
+/// Created by [`MaybeDisjoint::into_iter`]. Yields at most two
+/// non-empty [`EnumInterval`]s. After exhaustion, further `.next()`
+/// calls return `None`.
+pub struct MaybeDisjointIntoIter<T> {
+    md: MaybeDisjoint<T>,
+}
+
+impl<T> Iterator for MaybeDisjointIntoIter<T> {
     type Item = EnumInterval<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // `Connected(EnumInterval::empty())` doubles as the drained
-        // sentinel: it denotes ∅ as a set and yields `None` here, so the
-        // iterator's exhausted state coincides with the canonical empty
-        // value. `EnumInterval::empty()` is a tag-only variant — no `T`
-        // is constructed — so the swap is just a discriminant write.
-        let mut inst = Self::Connected(EnumInterval::empty());
-        core::mem::swap(self, &mut inst);
-        match inst {
-            Self::Connected(interval) => interval.is_inhabited().then_some(interval),
-            Self::Disjoint(lhs, rhs) => {
-                *self = Self::Connected(rhs);
-                Some(lhs)
-            }
-        }
+        let next = self.md.take_min();
+        next.is_inhabited().then_some(next)
+    }
+}
+
+impl<T> core::iter::FusedIterator for MaybeDisjointIntoIter<T> {}
+
+impl<T> IntoIterator for MaybeDisjoint<T> {
+    type Item = EnumInterval<T>;
+    type IntoIter = MaybeDisjointIntoIter<T>;
+
+    /// Yields the non-empty pieces of this `MaybeDisjoint` in order.
+    /// Used as `IntoIterator` rather than `Iterator` directly so the
+    /// iterator-trait methods (`cmp`, `partial_cmp`, `count`, `lt`,
+    /// `gt`, etc.) don't shadow this type's `Ord`/`PartialOrd`/`Count`
+    /// trait impls during method resolution.
+    fn into_iter(self) -> Self::IntoIter {
+        MaybeDisjointIntoIter { md: self }
     }
 }
 
@@ -296,23 +309,8 @@ impl<T> Default for MaybeDisjoint<T> {
 
 #[cfg(test)]
 mod tests {
-    // `Iterator for MaybeDisjoint<T>` shadows the trait methods (`cmp`,
-    // `partial_cmp`, `lt`, `<`, ...) when called via method-call syntax,
-    // because `Iterator` also defines `cmp`/`partial_cmp` and Rust's
-    // method resolution picks the by-value `Iterator` version first.
-    // These tests use fully-qualified trait syntax to invoke the
-    // `Ord`/`PartialOrd` impls.
-
     use super::*;
     use crate::factory::traits::*;
-
-    fn cmp<T: Ord>(a: &MaybeDisjoint<T>, b: &MaybeDisjoint<T>) -> Ordering {
-        Ord::cmp(a, b)
-    }
-
-    fn pcmp<T: PartialOrd>(a: &MaybeDisjoint<T>, b: &MaybeDisjoint<T>) -> Option<Ordering> {
-        PartialOrd::partial_cmp(a, b)
-    }
 
     fn empty<T>() -> MaybeDisjoint<T> {
         MaybeDisjoint::empty()
@@ -330,13 +328,13 @@ mod tests {
 
     #[test]
     fn empty_equals_empty() {
-        assert_eq!(cmp(&empty::<i32>(), &empty()), Ordering::Equal);
+        assert_eq!(empty::<i32>().cmp(&empty()), Ordering::Equal);
     }
 
     #[test]
     fn equal_disjoint_sets_compare_equal() {
         assert_eq!(
-            cmp(&two(0_i32, 5, 10, 20), &two(0, 5, 10, 20)),
+            two(0_i32, 5, 10, 20).cmp(&two(0, 5, 10, 20)),
             Ordering::Equal
         );
     }
@@ -345,12 +343,12 @@ mod tests {
 
     #[test]
     fn empty_less_than_connected_nonempty() {
-        assert_eq!(cmp(&empty::<i32>(), &connected(0, 5)), Ordering::Less);
+        assert!(empty::<i32>() < connected(0, 5));
     }
 
     #[test]
     fn empty_less_than_disjoint() {
-        assert_eq!(cmp(&empty::<i32>(), &two(0, 5, 10, 20)), Ordering::Less);
+        assert!(empty::<i32>() < two(0, 5, 10, 20));
     }
 
     // ---- prefix-shorter loses ----
@@ -360,7 +358,7 @@ mod tests {
         // Same first piece [0, 5]; Disjoint extends. Lex: shorter < longer.
         let c = connected(0_i32, 5);
         let d = two(0, 5, 10, 20);
-        assert_eq!(cmp(&c, &d), Ordering::Less);
+        assert!(c < d);
     }
 
     // ---- the counterexample motivating the rewrite ----
@@ -372,7 +370,7 @@ mod tests {
         // Piece 0: [0,1] vs [0,5] — left ties, right 1 < 5 → first less.
         let small_inner_first = two(0_i32, 1, 10, 20);
         let bigger_first_piece = two(0_i32, 5, 15, 20);
-        assert_eq!(cmp(&small_inner_first, &bigger_first_piece), Ordering::Less);
+        assert!(small_inner_first < bigger_first_piece);
     }
 
     // ---- intuitive left-to-right ordering ----
@@ -381,10 +379,7 @@ mod tests {
     fn disjoint_with_earlier_leftmost_less_than_connected_with_later_leftmost() {
         // Lex compares position 0 first; [0,1] < [100,200] regardless of
         // what comes after.
-        assert_eq!(
-            cmp(&two(0_i32, 1, 10, 20), &connected(100, 200)),
-            Ordering::Less
-        );
+        assert!(two(0_i32, 1, 10, 20) < connected(100, 200));
     }
 
     // ---- contrast with the old derived ordering ----
@@ -396,7 +391,7 @@ mod tests {
         // Greater because Connected's piece [100,200] > Disjoint's
         // leftmost [0,1].
         assert_eq!(
-            cmp(&connected(100_i32, 200), &two(0, 1, 10, 20)),
+            connected(100_i32, 200).cmp(&two(0, 1, 10, 20)),
             Ordering::Greater
         );
     }
@@ -409,10 +404,10 @@ mod tests {
         let b = connected(0, 5);
         let c = two(0, 5, 10, 20);
         let d = connected(100, 200);
-        assert_eq!(cmp(&a, &b), Ordering::Less);
-        assert_eq!(cmp(&b, &c), Ordering::Less);
-        assert_eq!(cmp(&c, &d), Ordering::Less);
-        assert_eq!(cmp(&a, &d), Ordering::Less);
+        assert!(a < b);
+        assert!(b < c);
+        assert!(c < d);
+        assert!(a < d);
     }
 
     // ---- PartialOrd agrees with Ord on Ord types ----
@@ -423,9 +418,9 @@ mod tests {
         // that the hand-written PartialOrd impl doesn't diverge.
         let a = two(0_i32, 1, 10, 20);
         let b = two(0_i32, 5, 15, 20);
-        assert_eq!(pcmp(&a, &b), Some(cmp(&a, &b)));
-        assert_eq!(pcmp(&b, &a), Some(cmp(&b, &a)));
-        assert_eq!(pcmp(&a, &a), Some(Ordering::Equal));
+        assert_eq!(a.partial_cmp(&b), Some(a.cmp(&b)));
+        assert_eq!(b.partial_cmp(&a), Some(b.cmp(&a)));
+        assert_eq!(a.partial_cmp(&a), Some(Ordering::Equal));
     }
 
     // ---- hull / into_hull ----
