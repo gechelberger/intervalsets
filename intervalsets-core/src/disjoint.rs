@@ -1,5 +1,5 @@
 use crate::numeric::Element;
-use crate::ops::Connects;
+use crate::ops::{Connects, MergeConnected};
 use crate::{EnumInterval, FiniteInterval, HalfInterval, MaybeEmpty};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -22,6 +22,32 @@ impl<T> Iterator for MaybeDisjoint<T> {
                 let mut put_back = Self::Connected(rhs);
                 core::mem::swap(self, &mut put_back);
                 Some(lhs)
+            }
+        }
+    }
+}
+
+impl<T: Element> MaybeDisjoint<T> {
+    /// create a new MaybeDisjoint from two optional EnumIntervals.
+    ///
+    /// Invariants are applied.
+    pub fn new(a: Option<EnumInterval<T>>, b: Option<EnumInterval<T>>) -> Self {
+        match (a, b) {
+            (None, None) => Self::Consumed,
+            (Some(interval), None) | (None, Some(interval)) => MaybeDisjoint::Connected(interval),
+            (Some(a), Some(b)) => {
+                if a.connects(&b) {
+                    match a.merge_connected(b) {
+                        Some(merged) => MaybeDisjoint::Connected(merged),
+                        None => unreachable!("connects() implies merge_connected returns Some"),
+                    }
+                } else {
+                    if a < b {
+                        MaybeDisjoint::Disjoint(a, b)
+                    } else {
+                        MaybeDisjoint::Disjoint(b, a)
+                    }
+                }
             }
         }
     }
