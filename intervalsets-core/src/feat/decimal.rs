@@ -116,6 +116,10 @@ impl TryDiv for Decimal {
 // `Decimal` does not impl `num_traits::Bounded` (orphan rule blocks us
 // from adding it), so the set-level `LossyCast` bound `U: Bounded`
 // isn't satisfiable for `U = Decimal`.
+// Upstream PR pending: https://github.com/paupino/rust-decimal/pull/800
+// adds `Bounded for Decimal`. When merged + released, drop this caveat
+// and add `LossyCast` targeting `Decimal` (mirroring the BigDecimal
+// pattern).
 
 // ---------- CastElement<Decimal> for primitive sources ----------
 //

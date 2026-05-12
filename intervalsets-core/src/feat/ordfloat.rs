@@ -152,6 +152,10 @@ ordfloat_impl_try!(TryDiv, try_div, /);
 // OrderedFloat<f64>` no analogous `Into` exists upstream and the
 // orphan rule prevents us from adding one; users should use
 // `TryCast` (always `Ok` for widening) or unwrap/rewrap manually.
+// Upstream `From<OrderedFloat<f32>> for OrderedFloat<f64>` is merged
+// in ordered-float; awaiting their next release. When the released
+// version is bumped, add `CastElement<OrderedFloat<f64>> for
+// OrderedFloat<f32>` mirroring the NotNan impl below.
 
 impl<T, U> LossyCastElement<OrderedFloat<U>> for OrderedFloat<T>
 where
