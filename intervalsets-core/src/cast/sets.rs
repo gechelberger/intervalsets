@@ -16,9 +16,7 @@ use crate::disjoint::MaybeDisjoint;
 use crate::error::Error;
 use crate::factory::TrySatisfyFiniteInterval;
 use crate::numeric::Element;
-use crate::ops::Connects;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
-use crate::MaybeEmpty;
 
 // =====================================================================
 // FiniteBound
@@ -254,12 +252,7 @@ where
 }
 
 // =====================================================================
-// MaybeDisjoint — per-variant delegate to the inner `EnumInterval`
-// casts. `Cast` (widening) preserves invariants by definition.
-// `TryCast` errors on cast-induced invariant breakage (mirrors
-// `IntervalSet::try_cast`). `LossyCast` repairs: empties drop,
-// connecting pieces merge — consistent with element-layer distinctions
-// already discarded.
+// MaybeDisjoint
 // =====================================================================
 
 impl<T, U> Cast<MaybeDisjoint<U>> for MaybeDisjoint<T>
@@ -297,12 +290,9 @@ where
             MaybeDisjoint::Disjoint(a, b) => {
                 let a: EnumInterval<U> = a.try_cast()?;
                 let b: EnumInterval<U> = b.try_cast()?;
-                // Strict: post-cast intervals must still satisfy the
-                // `Disjoint` invariants (non-empty, sorted, non-touching).
-                // Any narrowing-induced violation surfaces as
-                // `InvalidBoundPair` — the closest existing variant for
-                // "a paired-structure invariant has broken".
-                if a.is_empty() || b.is_empty() || a >= b || a.connects(&b) {
+                // Strict: narrowing may have broken the pair-level
+                // invariants the element-layer cast can't see.
+                if !MaybeDisjoint::satisfies_invariants(&a, &b) {
                     return Err(Error::InvalidBoundPair);
                 }
                 Ok(MaybeDisjoint::new_disjoint_assume_valid(a, b))
@@ -574,14 +564,8 @@ mod tests {
         let hi2 = 1.0_f64 + 9.0 * f64::EPSILON;
         assert_eq!(lo1 as f32, lo2 as f32);
         let x = MaybeDisjoint::Disjoint(
-            EnumInterval::Finite(
-                FiniteInterval::try_new(FiniteBound::closed(lo1), FiniteBound::closed(hi1))
-                    .unwrap(),
-            ),
-            EnumInterval::Finite(
-                FiniteInterval::try_new(FiniteBound::closed(lo2), FiniteBound::closed(hi2))
-                    .unwrap(),
-            ),
+            EnumInterval::try_closed(lo1, hi1).unwrap(),
+            EnumInterval::try_closed(lo2, hi2).unwrap(),
         );
         let y: Result<MaybeDisjoint<f32>, _> = x.try_cast();
         assert!(matches!(y, Err(Error::InvalidBoundPair)));
@@ -594,14 +578,8 @@ mod tests {
         let lo2 = 1.0_f64 + 5.0 * f64::EPSILON;
         let hi2 = 1.0_f64 + 9.0 * f64::EPSILON;
         let x = MaybeDisjoint::Disjoint(
-            EnumInterval::Finite(
-                FiniteInterval::try_new(FiniteBound::closed(lo1), FiniteBound::closed(hi1))
-                    .unwrap(),
-            ),
-            EnumInterval::Finite(
-                FiniteInterval::try_new(FiniteBound::closed(lo2), FiniteBound::closed(hi2))
-                    .unwrap(),
-            ),
+            EnumInterval::try_closed(lo1, hi1).unwrap(),
+            EnumInterval::try_closed(lo2, hi2).unwrap(),
         );
         let y: MaybeDisjoint<f32> = x.lossy_cast();
         assert!(!matches!(y, MaybeDisjoint::Disjoint(_, _)));

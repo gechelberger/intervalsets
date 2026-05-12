@@ -385,7 +385,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
                     Left => (
                         EI::try_right_bounded(non_zero)?,
@@ -397,7 +397,7 @@ mod impls {
                         EI::try_left_bounded(non_zero)?,
                     ),
                 };
-                Ok(MaybeDisjoint::new_disjoint_assume_valid(pair.0, pair.1))
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a=-inf, b<0] / [c<0, d>0] = {-inf, b/d} U {b/c, +inf}
@@ -408,7 +408,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(ab_bound, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
                     Left => (
                         EI::try_right_bounded(zero)?,
@@ -421,7 +421,7 @@ mod impls {
                     ),
                 };
 
-                Ok(MaybeDisjoint::new_disjoint_assume_valid(pair.0, pair.1))
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
 
@@ -490,7 +490,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(a, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, a/c} U {0, +inf}
                     Left => (
                         EI::try_right_bounded(non_zero)?,
@@ -503,7 +503,7 @@ mod impls {
                     ),
                 };
 
-                Ok(MaybeDisjoint::new_disjoint_assume_valid(pair.0, pair.1))
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
                 // [a<0, b<0] / [c<0, d>0] => (<-, b/d) U (b/c, ->)
@@ -515,7 +515,7 @@ mod impls {
                 let zero = FB::try_open(T::zero())?;
                 let non_zero = div_assume_nonzero(b, cd_bound)?;
 
-                let pair = match cd_side {
+                let (left, right) = match cd_side {
                     // ab / [c<0, d=+inf] = {-inf, 0} U {b/c, +inf}
                     Left => (
                         EI::try_right_bounded(zero)?,
@@ -528,7 +528,7 @@ mod impls {
                     ),
                 };
 
-                Ok(MaybeDisjoint::new_disjoint_assume_valid(pair.0, pair.1))
+                Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (_, ECat::NegPos) => Ok(EI::unbounded().into()),
             _ => unreachable!(),

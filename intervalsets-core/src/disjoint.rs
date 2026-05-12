@@ -30,7 +30,7 @@ impl<T> Iterator for MaybeDisjoint<T> {
 }
 
 impl<T: Element> MaybeDisjoint<T> {
-    /// create a new MaybeDisjoint from two optional EnumIntervals.
+    /// Create a new MaybeDisjoint from two optional EnumIntervals.
     ///
     /// Invariants are applied.
     pub fn new(a: Option<EnumInterval<T>>, b: Option<EnumInterval<T>>) -> Self {
@@ -41,14 +41,7 @@ impl<T: Element> MaybeDisjoint<T> {
         }
     }
 
-    pub fn from_interval(interval: EnumInterval<T>) -> Self {
-        if interval.is_empty() {
-            Self::Consumed
-        } else {
-            Self::Connected(interval)
-        }
-    }
-
+    /// Create a new `MaybeDisjoint` from two EnumIntervals and repairs invariants.
     pub fn from_pair(a: EnumInterval<T>, b: EnumInterval<T>) -> Self {
         if a.connects(&b) {
             match a.merge_connected(b) {
@@ -66,19 +59,29 @@ impl<T: Element> MaybeDisjoint<T> {
         }
     }
 
-    #[doc(hidden)]
-    pub fn new_disjoint_assume_valid(left: EnumInterval<T>, right: EnumInterval<T>) -> Self {
-        debug_assert!(!left.is_empty());
-        debug_assert!(!right.is_empty());
-        debug_assert!(left < right);
-        debug_assert!(!left.connects(&right));
+    pub(crate) fn new_disjoint_assume_valid(left: EnumInterval<T>, right: EnumInterval<T>) -> Self {
+        debug_assert!(Self::satisfies_invariants(&left, &right));
         Self::Disjoint(left, right)
+    }
+
+    /// Returns `true` if `(left, right)` is a well-formed `Disjoint`
+    /// pair: both non-empty, sorted, and non-connecting.
+    pub(crate) fn satisfies_invariants(left: &EnumInterval<T>, right: &EnumInterval<T>) -> bool {
+        !left.is_empty() && !right.is_empty() && left < right && !left.connects(right)
     }
 }
 
 impl<T> MaybeDisjoint<T> {
     pub fn empty() -> Self {
         Self::Consumed
+    }
+
+    pub fn from_interval(interval: EnumInterval<T>) -> Self {
+        if interval.is_empty() {
+            Self::Consumed
+        } else {
+            Self::Connected(interval)
+        }
     }
 
     /// Returns the interval if this is empty or a single connected
@@ -118,10 +121,6 @@ impl<T> From<HalfInterval<T>> for MaybeDisjoint<T> {
 
 impl<T> From<EnumInterval<T>> for MaybeDisjoint<T> {
     fn from(interval: EnumInterval<T>) -> Self {
-        if interval.is_empty() {
-            Self::Consumed
-        } else {
-            Self::Connected(interval)
-        }
+        Self::from_interval(interval)
     }
 }
