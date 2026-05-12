@@ -173,18 +173,6 @@ impl<T: Element> Connects<&Self> for EnumInterval<T> {
 }
 
 // ===== MaybeDisjoint =====
-//
-// Topological semantics from the trait doc: A.connects(B) iff A ∪ B is
-// topologically connected. Because `Disjoint(a, b)` has a gap by
-// invariant, the union with rhs is connected only if rhs bridges that
-// gap — for a single rhs this means rhs connects with BOTH `a` and `b`.
-// For an MD rhs (Disjoint(c, d)), the union is the bipartite-graph
-// connectivity question on {a,b} | {c,d}: it's connected iff some piece
-// on each side is a "bridge" — i.e., connects with every piece on the
-// opposite side.
-//
-// The bridge-from-single-piece formula reuses `EnumInterval: Connects<&MD>`
-// (the rhs-side impl below), so the MD-MD case stays readable.
 
 macro_rules! maybe_disjoint_connects_self_impl {
     ($rhs:ty) => {
@@ -240,10 +228,9 @@ impl<T: Element> Connects<&Self> for MaybeDisjoint<T> {
             (Self::Disjoint(a, b), Self::Disjoint(c, d)) => {
                 // Bipartite connectivity on {a,b} | {c,d}: each side
                 // must have at least one piece that bridges every piece
-                // on the opposite side. Reuses the single-piece-connects-MD
-                // impl, which evaluates "this piece bridges all rhs pieces."
-                let lhs_bridges_rhs = a.connects(rhs) || b.connects(rhs);
-                let rhs_bridges_lhs = c.connects(self) || d.connects(self);
+                // on the opposite side.
+                let lhs_bridges_rhs = rhs.connects(a) || rhs.connects(b);
+                let rhs_bridges_lhs = self.connects(c) || self.connects(d);
                 lhs_bridges_rhs && rhs_bridges_lhs
             }
         }
