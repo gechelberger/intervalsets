@@ -2,7 +2,7 @@ use super::util::commutative_predicate_impl;
 use super::Contains;
 //use crate::bound::ord::{OrdBound, OrdBounded};
 use crate::bound::Side::{Left, Right};
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// Test if the intersection of two sets would be non-empty.
 ///
@@ -119,6 +119,45 @@ commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, HalfInter
 commutative_predicate_impl!(Intersects, intersects, FiniteInterval<T>, EnumInterval<T>);
 commutative_predicate_impl!(Intersects, intersects, HalfInterval<T>, EnumInterval<T>);
 
+// ===== MaybeDisjoint =====
+
+macro_rules! maybe_disjoint_intersects_self_impl {
+    ($rhs:ty) => {
+        impl<T: crate::numeric::Element> Intersects<$rhs> for MaybeDisjoint<T> {
+            #[inline(always)]
+            fn intersects(&self, rhs: $rhs) -> bool {
+                match self {
+                    Self::Connected(iv) => iv.intersects(rhs),
+                    Self::Disjoint(a, b) => a.intersects(rhs) || b.intersects(rhs),
+                }
+            }
+        }
+    };
+}
+
+maybe_disjoint_intersects_self_impl!(&FiniteInterval<T>);
+maybe_disjoint_intersects_self_impl!(&HalfInterval<T>);
+maybe_disjoint_intersects_self_impl!(&EnumInterval<T>);
+
+macro_rules! intersects_maybe_disjoint_impl {
+    ($lhs:ty) => {
+        impl<T: crate::numeric::Element> Intersects<&MaybeDisjoint<T>> for $lhs {
+            #[inline(always)]
+            fn intersects(&self, rhs: &MaybeDisjoint<T>) -> bool {
+                match rhs {
+                    MaybeDisjoint::Connected(iv) => self.intersects(iv),
+                    MaybeDisjoint::Disjoint(a, b) => self.intersects(a) || self.intersects(b),
+                }
+            }
+        }
+    };
+}
+
+intersects_maybe_disjoint_impl!(FiniteInterval<T>);
+intersects_maybe_disjoint_impl!(HalfInterval<T>);
+intersects_maybe_disjoint_impl!(EnumInterval<T>);
+intersects_maybe_disjoint_impl!(MaybeDisjoint<T>);
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -150,5 +189,83 @@ mod tests {
         let ha = HalfInterval::unbound_open(0.0);
         assert!(!a.intersects(&ha));
         assert!(!ha.intersects(&a));
+    }
+
+    // ===== MaybeDisjoint =====
+
+    fn md_pair(a: EnumInterval<i32>, b: EnumInterval<i32>) -> MaybeDisjoint<i32> {
+        MaybeDisjoint::from_pair(a, b)
+    }
+
+    #[test]
+    fn md_intersects_single_via_first_piece() {
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        assert!(md.intersects(&EnumInterval::closed(3, 7)));
+    }
+
+    #[test]
+    fn md_intersects_single_via_second_piece() {
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        assert!(md.intersects(&EnumInterval::closed(12, 20)));
+    }
+
+    #[test]
+    fn md_does_not_intersect_single_in_gap() {
+        // [0,5] ∪ [10,15] vs [7, 8] — fits entirely in the gap.
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        assert!(!md.intersects(&EnumInterval::closed(7, 8)));
+    }
+
+    #[test]
+    fn md_does_not_intersect_single_outside() {
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        assert!(!md.intersects(&EnumInterval::closed(20, 30)));
+    }
+
+    #[test]
+    fn md_empty_intersects_nothing() {
+        let empty = MaybeDisjoint::<i32>::empty();
+        assert!(!empty.intersects(&EnumInterval::closed(0, 10)));
+    }
+
+    #[test]
+    fn md_intersects_md_when_any_piece_pair_overlaps() {
+        // [0,5] ∪ [20,25] vs [4,6] ∪ [30,35] — first piece overlaps at 4-5.
+        let a = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(20, 25));
+        let b = md_pair(EnumInterval::closed(4, 6), EnumInterval::closed(30, 35));
+        assert!(a.intersects(&b));
+    }
+
+    #[test]
+    fn md_does_not_intersect_md_when_all_piece_pairs_disjoint() {
+        // Pieces interleave but never overlap.
+        let a = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(20, 25));
+        let b = md_pair(EnumInterval::closed(10, 15), EnumInterval::closed(30, 35));
+        assert!(!a.intersects(&b));
+    }
+
+    #[test]
+    fn md_intersects_md_cross_piece_overlap() {
+        // self's second piece overlaps with rhs's first piece.
+        let a = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(20, 30));
+        let b = md_pair(EnumInterval::closed(40, 50), EnumInterval::closed(25, 35));
+        assert!(a.intersects(&b));
+    }
+
+    #[test]
+    fn commutative_single_intersects_md() {
+        let single = EnumInterval::closed(3, 7);
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        assert_eq!(single.intersects(&md), md.intersects(&single));
+        assert!(single.intersects(&md));
+    }
+
+    #[test]
+    fn is_disjoint_from_negation() {
+        let md = md_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 15));
+        let in_gap = EnumInterval::closed(7, 8);
+        let overlap = EnumInterval::closed(3, 7);
+        assert!(md.is_disjoint_from(&in_gap));
+        assert!(!md.is_disjoint_from(&overlap));
     }
 }
