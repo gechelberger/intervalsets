@@ -10,7 +10,7 @@ mod approx;
 #[cfg(feature = "arbitrary")]
 mod arbitrary;
 
-#[cfg(feature = "quickcheck")]
+#[cfg(any(feature = "quickcheck", test))]
 mod quickcheck;
 
 #[cfg(all(test, feature = "rust_decimal"))]

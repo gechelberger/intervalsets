@@ -41,6 +41,10 @@ thiserror = "2.0.3"
 approx = "0.5.1"
 bigdecimal = "0.4.6"
 fixed = "1.28.0"
+# Enable inner crate's `quickcheck` feature during tests so the
+# `Arbitrary` impls (which live under `cfg(any(feature = "quickcheck", test))`)
+# are available without needing `--features quickcheck`.
+intervalsets-core = { workspace = true, features = ["quickcheck"] }
 num-bigint = "0.4.6"
 ordered-float = "5.3.0"
 quickcheck = "1.0.3"
