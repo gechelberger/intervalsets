@@ -7,11 +7,54 @@ use crate::numeric::Element;
 use crate::ops::{Connects, MergeConnected};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(try_from = "RawMaybeDisjoint<T>"))]
+#[cfg_attr(
+    feature = "serde",
+    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
+)]
 pub enum MaybeDisjoint<T> {
     #[non_exhaustive]
     Connected(EnumInterval<T>),
     #[non_exhaustive]
     Disjoint(EnumInterval<T>, EnumInterval<T>),
+}
+
+/// Wire-format mirror of [`MaybeDisjoint`] used to drive validation
+/// during `Deserialize`. Identical layout, no invariants — the
+/// `TryFrom` proxy below enforces the `Disjoint`-pair invariants.
+#[cfg(feature = "serde")]
+#[derive(serde::Deserialize)]
+#[serde(rename = "MaybeDisjoint")]
+#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
+enum RawMaybeDisjoint<T> {
+    Connected(EnumInterval<T>),
+    Disjoint(EnumInterval<T>, EnumInterval<T>),
+}
+
+#[cfg(feature = "serde")]
+impl<T: Element> TryFrom<RawMaybeDisjoint<T>> for MaybeDisjoint<T> {
+    type Error = crate::error::Error;
+
+    fn try_from(raw: RawMaybeDisjoint<T>) -> Result<Self, Self::Error> {
+        match raw {
+            // Connected wraps a pre-validated EnumInterval; no further
+            // checks needed.
+            RawMaybeDisjoint::Connected(inner) => Ok(Self::Connected(inner)),
+            // Disjoint requires the cross-piece invariants: both pieces
+            // non-empty, sorted ascending, non-connecting. Reject
+            // (strict) rather than normalize — a hand-crafted payload
+            // that violates the shape isn't something the serializer
+            // would emit.
+            RawMaybeDisjoint::Disjoint(a, b) => {
+                if Self::satisfies_invariants(&a, &b) {
+                    Ok(Self::Disjoint(a, b))
+                } else {
+                    Err(crate::error::Error::InvalidBoundPair)
+                }
+            }
+        }
+    }
 }
 
 // PartialOrd/Ord: lexicographic on the bound sequence of pieces, in

@@ -6,7 +6,7 @@ use crate::bound::{BoundType, FiniteBound, Side};
 #[allow(unused)]
 use crate::factory::{EmptyFactory, FiniteFactory, HalfBoundedFactory, UnboundedFactory};
 #[allow(unused)]
-use crate::sets::EnumInterval;
+use crate::sets::{EnumInterval, MaybeDisjoint};
 
 #[cfg(test)]
 mod brief {
@@ -33,6 +33,22 @@ mod brief {
         assert!(round_trip(EnumInterval::closed_unbound(0)));
         assert!(round_trip(EnumInterval::<f32>::unbounded()));
     }
+
+    #[test]
+    fn test_maybe_disjoint() {
+        assert!(round_trip(MaybeDisjoint::<i32>::empty()));
+        assert!(round_trip(MaybeDisjoint::from_interval(
+            EnumInterval::closed(0, 100)
+        )));
+        assert!(round_trip(MaybeDisjoint::from_pair(
+            EnumInterval::closed(0, 5),
+            EnumInterval::closed(10, 20),
+        )));
+        assert!(round_trip(MaybeDisjoint::from_pair(
+            EnumInterval::unbound_closed(0_i32),
+            EnumInterval::closed_unbound(10),
+        )));
+    }
 }
 
 #[cfg(test)]
@@ -57,6 +73,22 @@ mod json {
         assert!(round_trip(EnumInterval::closed_unbound(0)));
         assert!(round_trip(EnumInterval::<f32>::unbounded()));
     }
+
+    #[test]
+    fn test_maybe_disjoint() {
+        assert!(round_trip(MaybeDisjoint::<i32>::empty()));
+        assert!(round_trip(MaybeDisjoint::from_interval(
+            EnumInterval::closed(0, 100)
+        )));
+        assert!(round_trip(MaybeDisjoint::from_pair(
+            EnumInterval::closed(0, 5),
+            EnumInterval::closed(10, 20),
+        )));
+        assert!(round_trip(MaybeDisjoint::from_pair(
+            EnumInterval::unbound_closed(0_i32),
+            EnumInterval::closed_unbound(10),
+        )));
+    }
 }
 
 #[cfg(test)]
@@ -80,6 +112,22 @@ mod rmp {
         assert!(round_trip(EnumInterval::unbound_open(0.0)));
         assert!(round_trip(EnumInterval::closed_unbound(0)));
         assert!(round_trip(EnumInterval::<f32>::unbounded()));
+    }
+
+    #[test]
+    fn test_maybe_disjoint() {
+        assert!(round_trip(MaybeDisjoint::<i32>::empty()));
+        assert!(round_trip(MaybeDisjoint::from_interval(
+            EnumInterval::closed(0, 100)
+        )));
+        assert!(round_trip(MaybeDisjoint::from_pair(
+            EnumInterval::closed(0, 5),
+            EnumInterval::closed(10, 20),
+        )));
+        assert!(round_trip(MaybeDisjoint::from_pair(
+            EnumInterval::unbound_closed(0_i32),
+            EnumInterval::closed_unbound(10),
+        )));
     }
 }
 
@@ -180,5 +228,88 @@ mod malformed {
             .replace("\"Closed\":9", "\"Open\":10");
         let parsed: EnumInterval<i32> = serde_json::from_str(&open_payload).unwrap();
         assert_eq!(parsed, EnumInterval::<i32>::closed(1, 9));
+    }
+
+    #[test]
+    fn json_rejects_maybe_disjoint_with_connecting_pieces() {
+        // Build a payload by serializing a valid Disjoint([0,5], [10,15])
+        // then mutating the gap so the two pieces would touch (closed at
+        // 5 and closed at 6 — adjacent integers connect). Strict
+        // deserialize must reject because the canonical serializer would
+        // have merged them into Connected.
+        let canonical = serde_json::to_string(&MaybeDisjoint::from_pair(
+            EnumInterval::<i32>::closed(0, 5),
+            EnumInterval::<i32>::closed(10, 15),
+        ))
+        .unwrap();
+        assert!(
+            canonical.contains("Disjoint"),
+            "unexpected serialized form: {canonical}"
+        );
+        // Change [10, 15] → [6, 15] so the two pieces connect (5 and 6
+        // are adjacent integers).
+        let connecting = canonical.replacen("10", "6", 1);
+        let result: Result<MaybeDisjoint<i32>, _> = serde_json::from_str(&connecting);
+        assert!(
+            result.is_err(),
+            "expected error for Disjoint with connecting pieces, got: {:?}\npayload: {connecting}",
+            result
+        );
+    }
+
+    #[test]
+    fn json_rejects_maybe_disjoint_with_swapped_pieces() {
+        // Disjoint pieces must be sorted (a < b). Build canonical and
+        // swap the order — strict deserialize rejects.
+        let canonical = serde_json::to_string(&MaybeDisjoint::from_pair(
+            EnumInterval::<i32>::closed(0, 5),
+            EnumInterval::<i32>::closed(10, 15),
+        ))
+        .unwrap();
+        // Swap the two limit values for the first piece with those for
+        // the second piece, leaving the rest of the wire shape intact.
+        // Tag the first piece's bounds then replace.
+        let swapped = canonical
+            .replacen("0", "TMP_A", 1)
+            .replacen("5", "TMP_B", 1)
+            .replacen("10", "0", 1)
+            .replacen("15", "5", 1)
+            .replace("TMP_A", "10")
+            .replace("TMP_B", "15");
+        let result: Result<MaybeDisjoint<i32>, _> = serde_json::from_str(&swapped);
+        assert!(
+            result.is_err(),
+            "expected error for Disjoint with swapped pieces, got: {:?}\npayload: {swapped}",
+            result
+        );
+    }
+
+    #[test]
+    fn json_rejects_maybe_disjoint_with_empty_piece() {
+        // Disjoint pieces must both be non-empty. Build canonical and
+        // patch one piece to an Empty form. Canonical wire format uses
+        // tuple-shaped bound payloads: ["Closed",0] not {"Closed":0}.
+        let canonical = serde_json::to_string(&MaybeDisjoint::from_pair(
+            EnumInterval::<i32>::closed(0, 5),
+            EnumInterval::<i32>::closed(10, 15),
+        ))
+        .unwrap();
+        let with_empty = canonical.replacen(
+            "{\"Bounded\":[[\"Closed\",0],[\"Closed\",5]]}",
+            "\"Empty\"",
+            1,
+        );
+        // Confirm the substitution happened — otherwise we're testing
+        // on an unmodified canonical payload.
+        assert_ne!(
+            with_empty, canonical,
+            "substitution missed; check wire format"
+        );
+        let result: Result<MaybeDisjoint<i32>, _> = serde_json::from_str(&with_empty);
+        assert!(
+            result.is_err(),
+            "expected error for Disjoint with empty piece, got: {:?}\npayload: {with_empty}",
+            result
+        );
     }
 }
