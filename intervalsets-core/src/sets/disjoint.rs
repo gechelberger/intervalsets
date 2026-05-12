@@ -1,6 +1,7 @@
 use core::cmp::Ordering;
 
 use super::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::bound::ord::OrdBoundPair;
 use crate::empty::MaybeEmpty;
 use crate::numeric::Element;
 use crate::ops::{Connects, MergeConnected};
@@ -130,6 +131,32 @@ impl<T> MaybeDisjoint<T> {
         Self::Connected(interval)
     }
 
+    /// take the first interval or empty; removes it from the set.
+    pub fn take_min(&mut self) -> EnumInterval<T> {
+        let mut inst = Self::Connected(EnumInterval::empty());
+        core::mem::swap(self, &mut inst);
+        match inst {
+            Self::Connected(interval) => interval,
+            Self::Disjoint(lo, hi) => {
+                *self = Self::Connected(hi);
+                lo
+            }
+        }
+    }
+
+    /// take the greatest interval or empty; removes from the set.
+    pub fn take_max(&mut self) -> EnumInterval<T> {
+        let mut inst = Self::Connected(EnumInterval::empty());
+        core::mem::swap(self, &mut inst);
+        match inst {
+            Self::Connected(interval) => interval,
+            Self::Disjoint(lo, hi) => {
+                *self = Self::Connected(lo);
+                hi
+            }
+        }
+    }
+
     /// Returns the interval if this is empty or a single connected
     /// interval; returns `None` if this is two disjoint intervals.
     pub fn into_interval(self) -> Option<EnumInterval<T>> {
@@ -149,6 +176,54 @@ impl<T> MaybeDisjoint<T> {
     pub fn expect_interval(self) -> EnumInterval<T> {
         self.into_interval()
             .expect("expected a single connected interval")
+    }
+}
+
+impl<T: Element> MaybeDisjoint<T> {
+    /// Returns the convex hull as an [`EnumInterval`], consuming `self`.
+    ///
+    /// `Connected(iv)` returns `iv` directly. `Disjoint(a, b)` returns
+    /// the interval spanning `a`'s left bound to `b`'s right bound —
+    /// the gap between the two pieces is filled in.
+    pub fn into_hull(self) -> EnumInterval<T> {
+        match self {
+            Self::Connected(interval) => interval,
+            Self::Disjoint(a, b) => {
+                let (a_left, _) = OrdBoundPair::from(a).into_raw();
+                let (_, b_right) = OrdBoundPair::from(b).into_raw();
+                // `Disjoint(a, b)` guarantees `a < b` and per-piece
+                // invariants, so the resulting pair is well-formed and
+                // `try_from` cannot fail.
+                match EnumInterval::try_from(OrdBoundPair::new_assume_valid(a_left, b_right)) {
+                    Ok(hull) => hull,
+                    Err(_) => {
+                        unreachable!("Disjoint invariants guarantee a valid convex hull")
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl<T: Element + Clone> MaybeDisjoint<T> {
+    /// Returns the convex hull as an [`EnumInterval`], borrowing `self`.
+    ///
+    /// See [`into_hull`](Self::into_hull) for the consuming variant.
+    pub fn hull(&self) -> EnumInterval<T> {
+        match self {
+            Self::Connected(interval) => interval.clone(),
+            Self::Disjoint(a, b) => {
+                let (a_left, _) = OrdBoundPair::from(a).into_raw();
+                let (_, b_right) = OrdBoundPair::from(b).into_raw();
+                let pair = OrdBoundPair::new_assume_valid(a_left.cloned(), b_right.cloned());
+                match EnumInterval::try_from(pair) {
+                    Ok(hull) => hull,
+                    Err(_) => {
+                        unreachable!("Disjoint invariants guarantee a valid convex hull")
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -180,7 +255,7 @@ mod tests {
     // `Ord`/`PartialOrd` impls.
 
     use super::*;
-    use crate::factory::FiniteFactory;
+    use crate::factory::traits::*;
 
     fn cmp<T: Ord>(a: &MaybeDisjoint<T>, b: &MaybeDisjoint<T>) -> Ordering {
         Ord::cmp(a, b)
@@ -302,5 +377,137 @@ mod tests {
         assert_eq!(pcmp(&a, &b), Some(cmp(&a, &b)));
         assert_eq!(pcmp(&b, &a), Some(cmp(&b, &a)));
         assert_eq!(pcmp(&a, &a), Some(Ordering::Equal));
+    }
+
+    // ---- hull / into_hull ----
+
+    #[test]
+    fn into_hull_connected_returns_inner() {
+        let md = MaybeDisjoint::from_interval(EnumInterval::closed(3_i32, 10));
+        assert_eq!(md.into_hull(), EnumInterval::closed(3, 10));
+    }
+
+    #[test]
+    fn into_hull_empty_is_empty_interval() {
+        let md = MaybeDisjoint::<i32>::empty();
+        assert_eq!(md.into_hull(), EnumInterval::empty());
+    }
+
+    #[test]
+    fn into_hull_disjoint_spans_outer_bounds() {
+        // [0, 5] ∪ [10, 20] → [0, 20]
+        let md = two(0_i32, 5, 10, 20);
+        assert_eq!(md.into_hull(), EnumInterval::closed(0, 20));
+    }
+
+    #[test]
+    fn into_hull_disjoint_preserves_outer_bound_kinds() {
+        // (0, 5] ∪ [10, 20) → (0, 20)
+        let md = MaybeDisjoint::from_pair(
+            EnumInterval::open_closed(0_i32, 5),
+            EnumInterval::closed_open(10, 20),
+        );
+        assert_eq!(md.into_hull(), EnumInterval::open(0, 20));
+    }
+
+    #[test]
+    fn into_hull_disjoint_with_left_unbounded_first_piece() {
+        // (<-, 5] ∪ [10, 20] → (<-, 20]
+        let md = MaybeDisjoint::from_pair(
+            EnumInterval::unbound_closed(5_i32),
+            EnumInterval::closed(10, 20),
+        );
+        assert_eq!(md.into_hull(), EnumInterval::unbound_closed(20));
+    }
+
+    #[test]
+    fn into_hull_disjoint_with_right_unbounded_second_piece() {
+        // [0, 5] ∪ [10, ->) → [0, ->)
+        let md = MaybeDisjoint::from_pair(
+            EnumInterval::closed(0_i32, 5),
+            EnumInterval::closed_unbound(10),
+        );
+        assert_eq!(md.into_hull(), EnumInterval::closed_unbound(0));
+    }
+
+    #[test]
+    fn into_hull_disjoint_with_both_pieces_unbounded_is_unbounded() {
+        // (<-, 0] ∪ [10, ->) → unbounded
+        let md = MaybeDisjoint::from_pair(
+            EnumInterval::unbound_closed(0_i32),
+            EnumInterval::closed_unbound(10),
+        );
+        assert_eq!(md.into_hull(), EnumInterval::unbounded());
+    }
+
+    #[test]
+    fn hull_by_ref_matches_into_hull() {
+        let md = two(0_i32, 5, 10, 20);
+        let by_ref = md.hull();
+        let by_value = md.into_hull();
+        assert_eq!(by_ref, by_value);
+    }
+
+    #[test]
+    fn hull_does_not_consume() {
+        let md = two(0_i32, 5, 10, 20);
+        let _ = md.hull();
+        // still usable
+        assert_eq!(md.hull(), EnumInterval::closed(0, 20));
+    }
+
+    // ---- take_min / take_max ----
+
+    #[test]
+    fn take_min_drains_disjoint_then_yields_empty() {
+        let mut md = two(0_i32, 5, 10, 20);
+        assert_eq!(md.take_min(), EnumInterval::closed(0, 5));
+        // The right piece is left behind as a Connected.
+        assert_eq!(
+            md,
+            MaybeDisjoint::from_interval(EnumInterval::closed(10, 20))
+        );
+        assert_eq!(md.take_min(), EnumInterval::closed(10, 20));
+        assert_eq!(md, MaybeDisjoint::empty());
+        // Drained: further calls yield the empty interval.
+        assert_eq!(md.take_min(), EnumInterval::empty());
+        assert_eq!(md.take_min(), EnumInterval::empty());
+    }
+
+    #[test]
+    fn take_max_drains_disjoint_then_yields_empty() {
+        let mut md = two(0_i32, 5, 10, 20);
+        assert_eq!(md.take_max(), EnumInterval::closed(10, 20));
+        // The left piece is left behind as a Connected.
+        assert_eq!(md, MaybeDisjoint::from_interval(EnumInterval::closed(0, 5)));
+        assert_eq!(md.take_max(), EnumInterval::closed(0, 5));
+        assert_eq!(md, MaybeDisjoint::empty());
+        assert_eq!(md.take_max(), EnumInterval::empty());
+        assert_eq!(md.take_max(), EnumInterval::empty());
+    }
+
+    #[test]
+    fn take_min_on_connected_returns_inner_and_empties() {
+        let mut md = MaybeDisjoint::from_interval(EnumInterval::closed(3_i32, 10));
+        assert_eq!(md.take_min(), EnumInterval::closed(3, 10));
+        assert_eq!(md, MaybeDisjoint::empty());
+    }
+
+    #[test]
+    fn take_max_on_connected_returns_inner_and_empties() {
+        let mut md = MaybeDisjoint::from_interval(EnumInterval::closed(3_i32, 10));
+        assert_eq!(md.take_max(), EnumInterval::closed(3, 10));
+        assert_eq!(md, MaybeDisjoint::empty());
+    }
+
+    #[test]
+    fn take_on_already_empty_yields_empty() {
+        let mut md = MaybeDisjoint::<i32>::empty();
+        assert_eq!(md.take_min(), EnumInterval::empty());
+        assert_eq!(md, MaybeDisjoint::empty());
+
+        let mut md = MaybeDisjoint::<i32>::empty();
+        assert_eq!(md.take_max(), EnumInterval::empty());
+        assert_eq!(md, MaybeDisjoint::empty());
     }
 }
