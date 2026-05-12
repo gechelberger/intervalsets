@@ -288,6 +288,12 @@ impl<T> From<EnumInterval<T>> for MaybeDisjoint<T> {
     }
 }
 
+impl<T> Default for MaybeDisjoint<T> {
+    fn default() -> Self {
+        Self::empty()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // `Iterator for MaybeDisjoint<T>` shadows the trait methods (`cmp`,
@@ -551,6 +557,14 @@ mod tests {
 
         let mut md = MaybeDisjoint::<i32>::empty();
         assert_eq!(md.take_max(), EnumInterval::empty());
+        assert_eq!(md, MaybeDisjoint::empty());
+    }
+
+    // ---- Default ----
+
+    #[test]
+    fn default_is_empty() {
+        let md: MaybeDisjoint<i32> = Default::default();
         assert_eq!(md, MaybeDisjoint::empty());
     }
 }
