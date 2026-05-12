@@ -144,6 +144,8 @@ pub use union::Union;
 
 mod finite;
 pub use finite::IntoFiniteInterval;
+mod span;
+pub use span::Span;
 
 mod elem_iter;
 pub use elem_iter::{DisjointElements, Elements, IntoElementIterator};

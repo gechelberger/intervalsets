@@ -14,13 +14,6 @@ impl<T> From<()> for FiniteInterval<T> {
     }
 }
 
-// Tuple and array conversions are strict: crossed input panics.
-// For coercive `a > b → empty` semantics, use a Rust `Range` type
-// as the source instead — Range natively encodes that. Custom
-// `TryFrom` impls aren't provided (the std blanket impl precludes
-// it); callers wanting fallible construction use the strict factory
-// methods directly (`FiniteInterval::try_open(start, end)` etc.).
-
 impl<T: Element> From<(T, T)> for FiniteInterval<T> {
     /// Strict open-open conversion. Panics on crossed bounds
     /// (`start > end`) or invalid limits (NaN / ±INF).
