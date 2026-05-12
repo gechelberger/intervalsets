@@ -4,7 +4,7 @@ use crate::bound::BoundType::{self, *};
 use crate::bound::FiniteBound;
 use crate::bound::Side::{self, *};
 use crate::numeric::Element;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 impl Arbitrary<'_> for Side {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
@@ -71,6 +71,15 @@ impl<'a, T: Element + Arbitrary<'a>> Arbitrary<'a> for EnumInterval<T> {
     }
 }
 
+impl<'a, T: Element + Arbitrary<'a>> Arbitrary<'a> for MaybeDisjoint<T> {
+    fn arbitrary(u: &mut arbitrary::Unstructured<'a>) -> Result<Self> {
+        // Generate two EnumIntervals and let `from_pair` apply the invariants
+        let a = EnumInterval::arbitrary(u)?;
+        let b = EnumInterval::arbitrary(u)?;
+        Ok(MaybeDisjoint::from_pair(a, b))
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -92,5 +101,7 @@ mod tests {
         let _ = HalfInterval::<f32>::arbitrary(&mut u).unwrap();
         let _ = EnumInterval::<i32>::arbitrary(&mut u).unwrap();
         let _ = EnumInterval::<f32>::arbitrary(&mut u).unwrap();
+        let _ = MaybeDisjoint::<i32>::arbitrary(&mut u).unwrap();
+        let _ = MaybeDisjoint::<f32>::arbitrary(&mut u).unwrap();
     }
 }

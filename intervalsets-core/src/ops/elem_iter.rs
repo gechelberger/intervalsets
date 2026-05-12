@@ -5,7 +5,7 @@
 //! does the per-step walk over a single interval via
 //! [`Element::try_adjacent`](crate::numeric::Element::try_adjacent), and
 //! [`DisjointElements`] composes it across the at-most-two pieces of a
-//! [`MaybeDisjoint`](crate::disjoint::MaybeDisjoint).
+//! [`MaybeDisjoint`](crate::sets::MaybeDisjoint).
 //!
 //! # Why not [`IntoIterator`]?
 //!
@@ -44,9 +44,9 @@
 //! tier model.
 
 use crate::bound::{BoundType, FiniteBound, Side};
-use crate::disjoint::MaybeDisjoint;
+use crate::empty::MaybeEmpty;
 use crate::numeric::Element;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// Convert a set value into an iterator that yields its discrete elements.
 ///
@@ -287,7 +287,7 @@ impl<T: Element + Ord + Clone> EnumInterval<T> {
 ///
 /// ```
 /// use intervalsets_core::prelude::*;
-/// use intervalsets_core::disjoint::MaybeDisjoint;
+/// use intervalsets_core::sets::MaybeDisjoint;
 ///
 /// let lhs = EnumInterval::closed(0, 2);
 /// let rhs = EnumInterval::closed(10, 12);
@@ -367,12 +367,11 @@ impl<T: Element + Ord> IntoElementIterator for MaybeDisjoint<T> {
 
     fn into_elements(self) -> DisjointElements<T> {
         match self {
-            MaybeDisjoint::Consumed => DisjointElements {
-                front: None,
-                back: None,
-            },
+            // Skip wrapping when the piece is empty so `size_hint` can
+            // report an exact `(0, Some(0))` for the empty MaybeDisjoint
+            // instead of inheriting the inner walker's coarser hint.
             MaybeDisjoint::Connected(iv) => DisjointElements {
-                front: Some(iv.into_elements()),
+                front: (!iv.is_empty()).then(|| iv.into_elements()),
                 back: None,
             },
             MaybeDisjoint::Disjoint(lhs, rhs) => DisjointElements {
@@ -390,12 +389,8 @@ impl<T: Element + Ord + Clone> MaybeDisjoint<T> {
     /// The returned iterator is double-ended.
     pub fn elements(&self) -> DisjointElements<T> {
         match self {
-            MaybeDisjoint::Consumed => DisjointElements {
-                front: None,
-                back: None,
-            },
             MaybeDisjoint::Connected(iv) => DisjointElements {
-                front: Some(iv.elements()),
+                front: (!iv.is_empty()).then(|| iv.elements()),
                 back: None,
             },
             MaybeDisjoint::Disjoint(lhs, rhs) => DisjointElements {
@@ -567,8 +562,8 @@ mod tests {
     // ---- MaybeDisjoint coverage ----
 
     #[test]
-    fn maybe_disjoint_consumed_yields_nothing() {
-        let mut it = MaybeDisjoint::<i32>::Consumed.into_elements();
+    fn maybe_disjoint_empty_yields_nothing() {
+        let mut it = MaybeDisjoint::<i32>::empty().into_elements();
         assert_eq!(it.next(), None);
         assert_eq!(it.next_back(), None);
     }
@@ -635,10 +630,10 @@ mod tests {
     }
 
     #[test]
-    fn disjoint_elements_size_hint_consumed_is_exact_zero() {
+    fn disjoint_elements_size_hint_empty_is_exact_zero() {
         // With both cursors None, the delegated hint reports the
         // tightest possible (0, Some(0)) rather than (0, None).
-        let it = MaybeDisjoint::<i32>::Consumed.into_elements();
+        let it = MaybeDisjoint::<i32>::empty().into_elements();
         assert_eq!(it.size_hint(), (0, Some(0)));
     }
 }

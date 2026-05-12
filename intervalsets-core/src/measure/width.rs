@@ -1,6 +1,7 @@
 use super::Measurement;
 use crate::numeric::Zero;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::ops::math::TryAdd;
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// The width of a set cannot be represented in
 /// [`Width::Output`] (e.g. width of `[i128::MIN, i128::MAX]` overflows
@@ -236,10 +237,39 @@ where
     }
 }
 
+/// Width of a [`MaybeDisjoint`] is the sum of its pieces' widths.
+/// `Connected(iv)` delegates; `Disjoint(a, b)` sums per-piece widths
+/// via [`TryAdd`] so an overflowing total surfaces as
+/// `WidthOverflowError` rather than wrapping. Infinite from either
+/// piece propagates to an infinite total.
+///
+/// Adds `TryAdd` to the bound chain (matching `IntervalSet`'s
+/// per-piece-summing impl in the outer crate).
+impl<T, Out> Width for MaybeDisjoint<T>
+where
+    T: Widthable<Output = Out>,
+    Out: Zero + TryAdd<Out, Output = Out>,
+    <Out as TryAdd>::Error: Into<WidthOverflowError>,
+{
+    type Output = Out;
+    type Error = WidthOverflowError;
+
+    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+        match self {
+            Self::Connected(iv) => iv.try_width(),
+            Self::Disjoint(a, b) => {
+                let aw = a.try_width()?;
+                let bw = b.try_width()?;
+                aw.try_binop_map(bw, |x, y| x.try_add(y).map_err(Into::into))
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::FiniteFactory;
+    use crate::factory::{FiniteFactory, HalfBoundedFactory};
 
     #[test]
     fn finite_integer_width_widens_to_u128() {
@@ -299,5 +329,47 @@ mod tests {
     fn unbounded_width_is_infinite() {
         let x: EnumInterval<i32> = EnumInterval::Unbounded;
         assert!(x.try_width().unwrap().is_infinite());
+    }
+
+    // ===== MaybeDisjoint =====
+
+    #[test]
+    fn md_empty_width_is_zero() {
+        let x = MaybeDisjoint::<i32>::empty();
+        assert_eq!(x.width().finite(), 0_u128);
+    }
+
+    #[test]
+    fn md_connected_delegates_to_inner_width() {
+        let x = MaybeDisjoint::from_interval(EnumInterval::closed(0, 10));
+        assert_eq!(x.width().finite(), 10_u128);
+    }
+
+    #[test]
+    fn md_disjoint_width_sums_pieces() {
+        // [0, 5] ∪ [10, 20] → 5 + 10 = 15
+        let x =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 20));
+        assert_eq!(x.width().finite(), 15_u128);
+    }
+
+    #[test]
+    fn md_disjoint_with_half_interval_is_infinite() {
+        // Disjoint(finite, half) — half-piece makes total width infinite.
+        let x = MaybeDisjoint::from_pair(
+            EnumInterval::closed(0_i32, 5),
+            EnumInterval::closed_unbound(10),
+        );
+        assert!(x.try_width().unwrap().is_infinite());
+    }
+
+    #[test]
+    fn md_disjoint_width_sum_overflow_surfaces_err() {
+        // f64::MIN..0 and 1..f64::MAX each have finite per-piece width,
+        // but their sum overflows f64 to INF and surfaces as Err.
+        let a = EnumInterval::closed(f64::MIN, 0.0_f64);
+        let b = EnumInterval::closed(1.0, f64::MAX);
+        let x = MaybeDisjoint::from_pair(a, b);
+        assert!(matches!(x.try_width(), Err(WidthOverflowError)));
     }
 }

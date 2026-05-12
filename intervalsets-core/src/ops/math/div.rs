@@ -2,10 +2,10 @@ use core::ops::Div;
 
 use super::TryDiv;
 use crate::category::ECat;
-use crate::disjoint::MaybeDisjoint;
 use crate::error::Error;
 use crate::factory::traits::*;
 use crate::numeric::{Element, Zero};
+use crate::sets::MaybeDisjoint;
 use crate::{EnumInterval, FiniteInterval, HalfInterval};
 
 // Set-level `TryDiv` binds on `T: TryDiv<Output = T>` and propagates
@@ -548,7 +548,7 @@ mod impls {
 
         let (ab_side, ab_bound) = ab.into_raw();
         let Some((c, d)) = cd.into_raw() else {
-            return Ok(MaybeDisjoint::Consumed);
+            return Ok(MaybeDisjoint::empty());
         };
 
         match (ab_cat, cd_cat) {

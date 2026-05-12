@@ -685,6 +685,72 @@ mod tests {
         assert!(zero_iset.is_zero());
         assert_eq!(zero_intv, zero_iset.expect_interval());
     }
+
+    // ---- IntervalSet Ord: lock-in tests for lex-on-pieces semantics ----
+    //
+    // IntervalSet's derived `Ord` is `Vec::cmp` over `Vec<Interval<T>>`,
+    // and `Interval<T>` is a newtype around `EnumInterval<T>` whose `Ord`
+    // routes through `OrdBoundPair`. Composed, that is exactly the
+    // lex-on-bound-sequence scheme used by hand for `MaybeDisjoint`.
+    // These tests pin the observable behavior in case a future change
+    // to `Interval` or to the Vec field shape would silently shift it.
+
+    fn iset<T: Element>(intervals: impl IntoIterator<Item = Interval<T>>) -> IntervalSet<T> {
+        IntervalSet::from_iter(intervals)
+    }
+
+    #[test]
+    fn empty_interval_set_is_minimum() {
+        let empty: IntervalSet<i32> = IntervalSet::empty();
+        assert!(empty < iset([Interval::closed(0, 5)]));
+        assert!(empty < iset([Interval::closed(0, 1), Interval::closed(10, 20)]));
+    }
+
+    #[test]
+    fn equal_interval_sets_compare_equal() {
+        let a = iset([Interval::closed(0_i32, 5), Interval::closed(10, 20)]);
+        let b = iset([Interval::closed(0_i32, 5), Interval::closed(10, 20)]);
+        assert_eq!(a.cmp(&b), core::cmp::Ordering::Equal);
+    }
+
+    #[test]
+    fn interval_set_distinguishes_inner_bounds() {
+        // The MaybeDisjoint counterexample, lifted to IntervalSet. Both
+        // have outer hull [0, 20]; hull-only ordering would collapse
+        // them. Lex-on-pieces distinguishes at piece 0's right bound.
+        let a = iset([Interval::closed(0_i32, 1), Interval::closed(10, 20)]);
+        let b = iset([Interval::closed(0_i32, 5), Interval::closed(15, 20)]);
+        assert!(a < b);
+    }
+
+    #[test]
+    fn interval_set_with_earlier_leftmost_is_less() {
+        // Position 0 settles the question; the rest never enters the picture.
+        let early = iset([Interval::closed(0_i32, 1), Interval::closed(10, 20)]);
+        let late = iset([Interval::closed(100_i32, 200)]);
+        assert!(early < late);
+    }
+
+    #[test]
+    fn shorter_prefix_loses_at_matching_first_piece() {
+        // Same first piece [0, 5]; the two-piece set extends, so the
+        // one-piece set is lex-less.
+        let one = iset([Interval::closed(0_i32, 5)]);
+        let two = iset([Interval::closed(0_i32, 5), Interval::closed(10, 20)]);
+        assert!(one < two);
+    }
+
+    #[test]
+    fn interval_set_transitivity_smoke() {
+        let a = IntervalSet::<i32>::empty();
+        let b = iset([Interval::closed(0, 5)]);
+        let c = iset([Interval::closed(0, 5), Interval::closed(10, 20)]);
+        let d = iset([Interval::closed(100, 200)]);
+        assert!(a < b);
+        assert!(b < c);
+        assert!(c < d);
+        assert!(a < d);
+    }
 }
 
 /*

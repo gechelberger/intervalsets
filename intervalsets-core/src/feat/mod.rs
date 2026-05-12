@@ -19,7 +19,7 @@ mod bigdecimal;
 #[cfg(feature = "serde")]
 mod serde;
 
-#[cfg(feature = "quickcheck")]
+#[cfg(any(feature = "quickcheck", test))]
 mod quickcheck;
 
 #[cfg(feature = "fixed")]

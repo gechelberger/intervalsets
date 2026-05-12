@@ -1,7 +1,6 @@
 use crate::bound::Side;
-use crate::disjoint::MaybeDisjoint;
 use crate::numeric::Element;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// The complement of a set in the unbounded universe of `T`.
 ///
@@ -169,6 +168,7 @@ mod tests {
         let original = EnumInterval::closed(0.0_f64, 10.0);
         let double = original
             .complement()
+            .into_iter()
             .next() // grab one piece — should be wrong on its own
             .unwrap();
         // Verifying the actual involution for a 2-piece complement requires
@@ -194,11 +194,11 @@ mod tests {
     fn test_complement_round_trip_unbounded() {
         // Unbounded' = Empty; Empty' = Unbounded.
         let unbounded: EnumInterval<i32> = EnumInterval::unbounded();
-        let mut iter = unbounded.complement();
+        let mut iter = unbounded.complement().into_iter();
         assert_eq!(iter.next(), None);
 
         let empty: FiniteInterval<i32> = FiniteInterval::empty();
-        let mut iter = empty.complement();
+        let mut iter = empty.complement().into_iter();
         assert_eq!(iter.next(), Some(EnumInterval::unbounded()));
         assert_eq!(iter.next(), None);
     }

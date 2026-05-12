@@ -3,7 +3,7 @@ use crate::bound::Side::{self, Left, Right};
 use crate::numeric::Element;
 use crate::ops::{Connects, Contains};
 use crate::sets::EnumInterval::{self, *};
-use crate::sets::{FiniteInterval, HalfInterval};
+use crate::sets::{FiniteInterval, HalfInterval, MaybeDisjoint};
 use crate::MaybeEmpty;
 
 /// The union of two intervals if and only if [connected](`Connects`) else `None``.
@@ -272,6 +272,106 @@ commutative_merge_connected_impl!(FiniteInterval<T>, HalfInterval<T>, HalfInterv
 commutative_merge_connected_impl!(FiniteInterval<T>, EnumInterval<T>, EnumInterval<T>);
 commutative_merge_connected_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval<T>);
 
+// ===== MaybeDisjoint =====
+//
+// Cardinality is trivially bounded: the trait returns `Option<single
+// piece>` regardless of input cardinality. Tied to the `Connects`
+// contract: `connects(rhs) ⇒ merge_connected(rhs).is_some()`.
+//
+// Strategy: pre-check `connects`; if true, the merged result is the
+// convex hull of `self ∪ rhs`, which equals `hull(self_hull ∪
+// rhs_hull)` — i.e., merging the two single-piece hulls. The
+// pre-check is mandatory because hull-of-self may include elements
+// not in self (the gap), so hull-merging without the check would
+// produce a wrong `Some(...)` answer for an rhs that sits in self's
+// gap.
+
+macro_rules! md_merge_connected_single_impl {
+    ($t_rhs:ty) => {
+        impl<T: $crate::numeric::Element> MergeConnected<$t_rhs> for MaybeDisjoint<T> {
+            type Output = EnumInterval<T>;
+
+            #[inline]
+            fn merge_connected(self, rhs: $t_rhs) -> Option<Self::Output> {
+                if !self.connects(&rhs) {
+                    return None;
+                }
+                self.into_hull().merge_connected(rhs)
+            }
+        }
+
+        impl<T: $crate::numeric::Element + Clone> MergeConnected<&$t_rhs> for &MaybeDisjoint<T> {
+            type Output = EnumInterval<T>;
+
+            #[inline]
+            fn merge_connected(self, rhs: &$t_rhs) -> Option<Self::Output> {
+                if !self.connects(rhs) {
+                    return None;
+                }
+                self.hull().merge_connected(rhs.clone())
+            }
+        }
+    };
+}
+
+md_merge_connected_single_impl!(FiniteInterval<T>);
+md_merge_connected_single_impl!(HalfInterval<T>);
+md_merge_connected_single_impl!(EnumInterval<T>);
+
+impl<T: Element> MergeConnected<Self> for MaybeDisjoint<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline]
+    fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
+        if !self.connects(&rhs) {
+            return None;
+        }
+        self.into_hull().merge_connected(rhs.into_hull())
+    }
+}
+
+impl<T: Element + Clone> MergeConnected<Self> for &MaybeDisjoint<T> {
+    type Output = EnumInterval<T>;
+
+    #[inline]
+    fn merge_connected(self, rhs: Self) -> Option<Self::Output> {
+        if !self.connects(rhs) {
+            return None;
+        }
+        self.hull().merge_connected(rhs.hull())
+    }
+}
+
+// Commutative wrappers. Can't use `commutative_merge_connected_impl!`
+// because the MD-side by-ref impl requires `T: Element + Clone` matching,
+// which the macro provides — but writing inline for clarity / locality
+// with the rest of the MD impls.
+macro_rules! md_merge_connected_commutative_impl {
+    ($t_lhs:ty) => {
+        impl<T: $crate::numeric::Element> MergeConnected<MaybeDisjoint<T>> for $t_lhs {
+            type Output = EnumInterval<T>;
+
+            #[inline(always)]
+            fn merge_connected(self, rhs: MaybeDisjoint<T>) -> Option<Self::Output> {
+                rhs.merge_connected(self)
+            }
+        }
+
+        impl<T: $crate::numeric::Element + Clone> MergeConnected<&MaybeDisjoint<T>> for &$t_lhs {
+            type Output = EnumInterval<T>;
+
+            #[inline(always)]
+            fn merge_connected(self, rhs: &MaybeDisjoint<T>) -> Option<Self::Output> {
+                rhs.merge_connected(self)
+            }
+        }
+    };
+}
+
+md_merge_connected_commutative_impl!(FiniteInterval<T>);
+md_merge_connected_commutative_impl!(HalfInterval<T>);
+md_merge_connected_commutative_impl!(EnumInterval<T>);
+
 /// MergeSorted merges intersecting intervals and returns disjoint ones.
 ///
 /// As an `Iterator` is should return disjoint intervals from the sorted
@@ -535,5 +635,146 @@ mod tests {
         assert_eq!(finite_by_ref.next(), Some(EnumInterval::closed(50, 70)));
         assert_eq!(finite_by_ref.next(), Some(EnumInterval::closed(90, 100)));
         assert_eq!(finite_by_ref.next(), None);
+    }
+
+    // ===== MaybeDisjoint =====
+
+    fn md_pair(a: EnumInterval<i32>, b: EnumInterval<i32>) -> MaybeDisjoint<i32> {
+        MaybeDisjoint::from_pair(a, b)
+    }
+
+    // ---- MD merge_connected single piece ----
+
+    #[test]
+    fn md_disjoint_merges_with_bridging_single() {
+        // [0,5] ∪ [10,15] merge [3, 12] = [0, 15]
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        let bridge = EnumInterval::closed(3, 12);
+        assert_eq!(
+            md.merge_connected(bridge),
+            Some(EnumInterval::closed(0, 15))
+        );
+    }
+
+    #[test]
+    fn md_disjoint_does_not_merge_with_single_in_gap() {
+        // The hull-without-precheck trap: rhs sits in the gap, hull
+        // would falsely report a successful merge. The `connects`
+        // precheck correctly returns None.
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        let in_gap = EnumInterval::closed(7, 8);
+        assert_eq!(md.merge_connected(in_gap), None);
+    }
+
+    #[test]
+    fn md_disjoint_does_not_merge_when_only_one_piece_touches() {
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        let touches_first_only = EnumInterval::closed(3, 7);
+        assert_eq!(md.merge_connected(touches_first_only), None);
+    }
+
+    #[test]
+    fn md_connected_delegates_to_inner() {
+        let md = MaybeDisjoint::from_interval(EnumInterval::closed(0_i32, 10));
+        assert_eq!(
+            md.merge_connected(EnumInterval::closed(11, 20)),
+            Some(EnumInterval::closed(0, 20))
+        );
+    }
+
+    // ---- MD merge_connected MD ----
+
+    #[test]
+    fn md_md_merge_3_edge_bipartite() {
+        // The motivating case from Connects: 3 of 4 bipartite edges, the
+        // 4-piece union merges to one interval [0, 20].
+        let lhs = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        let rhs = md_pair(EnumInterval::closed(3, 12), EnumInterval::closed(13, 20));
+        assert_eq!(lhs.merge_connected(rhs), Some(EnumInterval::closed(0, 20)));
+    }
+
+    #[test]
+    fn md_md_merge_4_edge_bipartite() {
+        // Complete bipartite. The 4-piece hull is [-5, 35].
+        let lhs = md_pair(EnumInterval::closed(0, 10), EnumInterval::closed(20, 30));
+        let rhs = md_pair(EnumInterval::closed(-5, 25), EnumInterval::closed(8, 35));
+        assert_eq!(lhs.merge_connected(rhs), Some(EnumInterval::closed(-5, 35)));
+    }
+
+    #[test]
+    fn md_md_does_not_merge_when_disconnected() {
+        // Two-edge non-sharing case from Connects tests: {a,c} and {b,d}
+        // form separate components.
+        let lhs = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(100, 110));
+        let rhs = md_pair(EnumInterval::closed(3, 8), EnumInterval::closed(105, 115));
+        assert_eq!(lhs.merge_connected(rhs), None);
+    }
+
+    // ---- Commutative ----
+
+    #[test]
+    fn single_merge_connected_md_matches_md_merge_connected_single() {
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        let bridge = EnumInterval::closed(3, 12);
+        let forward = md.clone().merge_connected(bridge);
+        let backward = bridge.merge_connected(md);
+        assert_eq!(forward, backward);
+        assert_eq!(forward, Some(EnumInterval::closed(0, 15)));
+    }
+
+    // ---- Empty handling ----
+
+    #[test]
+    fn md_disjoint_merge_with_empty_returns_none() {
+        // Per the Connects contract: Disjoint ∪ empty has multiple components.
+        let md = md_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        let empty = EnumInterval::empty();
+        assert_eq!(md.merge_connected(empty), None);
+    }
+
+    #[test]
+    fn md_empty_merge_with_single_returns_single() {
+        // Connected(empty) ∪ single = single, both connected and merge-able.
+        let md = MaybeDisjoint::<i32>::empty();
+        let iv = EnumInterval::closed(0, 10);
+        assert_eq!(md.merge_connected(iv), Some(EnumInterval::closed(0, 10)));
+    }
+
+    // ---- By-ref form matches by-value ----
+
+    #[test]
+    fn by_ref_merge_matches_by_value() {
+        let md = md_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 15));
+        let bridge = EnumInterval::closed(3, 12);
+        let by_value = md.clone().merge_connected(bridge);
+        let by_ref = (&md).merge_connected(&bridge);
+        assert_eq!(by_value, by_ref);
+    }
+
+    #[test]
+    fn by_ref_md_md_merge_matches_by_value() {
+        let lhs = md_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 15));
+        let rhs = md_pair(EnumInterval::closed(3, 12), EnumInterval::closed(13, 20));
+        let by_value = lhs.clone().merge_connected(rhs.clone());
+        let by_ref = (&lhs).merge_connected(&rhs);
+        assert_eq!(by_value, by_ref);
+    }
+
+    // ---- Contract verification: connects ⇒ merge_connected.is_some() ----
+
+    #[test]
+    fn connects_implies_merge_connected_is_some() {
+        let md = md_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 15));
+        let bridge = EnumInterval::closed(3, 12);
+        let in_gap = EnumInterval::closed(7, 8);
+
+        // Positive case
+        assert!(md.connects(&bridge));
+        assert!(md.clone().merge_connected(bridge).is_some());
+
+        // Negative case — contract doesn't require this direction, but
+        // we want it for consistency.
+        assert!(!md.connects(&in_gap));
+        assert!(md.merge_connected(in_gap).is_none());
     }
 }

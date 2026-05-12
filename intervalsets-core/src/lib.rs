@@ -378,9 +378,7 @@ pub mod error;
 
 mod feat;
 pub mod sets;
-pub use sets::{EnumInterval, FiniteInterval, HalfInterval};
-
-pub mod disjoint;
+pub use sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 pub mod ops;
 
@@ -407,5 +405,5 @@ pub mod prelude {
     pub use crate::measure::{Count, Measurement, Width};
     pub use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
     pub use crate::ops::*;
-    pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+    pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 }

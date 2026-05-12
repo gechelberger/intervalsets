@@ -12,11 +12,10 @@ use num_traits::Bounded;
 
 use super::{Cast, CastElement, LossyCast, LossyCastElement, TryCast, TryCastElement};
 use crate::bound::{BoundType, FiniteBound};
-use crate::disjoint::MaybeDisjoint;
 use crate::error::Error;
 use crate::factory::TrySatisfyFiniteInterval;
 use crate::numeric::Element;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 // =====================================================================
 // FiniteBound
@@ -264,7 +263,6 @@ where
 
     fn cast(self) -> MaybeDisjoint<U> {
         match self {
-            MaybeDisjoint::Consumed => MaybeDisjoint::Consumed,
             MaybeDisjoint::Connected(i) => MaybeDisjoint::from_interval(i.cast()),
             // Monotone widening preserves non-empty, ordering, and
             // non-connecting invariants of `Disjoint`.
@@ -285,7 +283,6 @@ where
 
     fn try_cast(self) -> Result<MaybeDisjoint<U>, Error> {
         match self {
-            MaybeDisjoint::Consumed => Ok(MaybeDisjoint::Consumed),
             MaybeDisjoint::Connected(i) => i.try_cast().map(MaybeDisjoint::from_interval),
             MaybeDisjoint::Disjoint(a, b) => {
                 let a: EnumInterval<U> = a.try_cast()?;
@@ -310,10 +307,9 @@ where
 
     fn lossy_cast(self) -> MaybeDisjoint<U> {
         match self {
-            MaybeDisjoint::Consumed => MaybeDisjoint::Consumed,
             MaybeDisjoint::Connected(i) => MaybeDisjoint::from_interval(i.lossy_cast()),
             // `from_pair` absorbs every narrowing-induced repair:
-            // empties drop to `Consumed`/`Connected`; reorder if both
+            // empties drop to a single `Connected`; reorder if both
             // saturate the same direction; merge if narrowing made the
             // gap vanish.
             MaybeDisjoint::Disjoint(a, b) => {
@@ -512,10 +508,10 @@ mod tests {
     // ---------- MaybeDisjoint ----------
 
     #[test]
-    fn cast_maybe_disjoint_consumed() {
-        let x = MaybeDisjoint::<i32>::Consumed;
+    fn cast_maybe_disjoint_empty() {
+        let x = MaybeDisjoint::<i32>::empty();
         let y: MaybeDisjoint<i64> = x.cast();
-        assert!(matches!(y, MaybeDisjoint::Consumed));
+        assert_eq!(y, MaybeDisjoint::<i64>::empty());
     }
 
     #[test]

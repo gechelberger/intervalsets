@@ -13,7 +13,7 @@
 
 use crate::error::MathError;
 use crate::numeric::Midpoint;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 impl<T> FiniteInterval<T>
 where
@@ -59,11 +59,40 @@ where
     }
 }
 
+impl<T> MaybeDisjoint<T>
+where
+    T: Clone + Midpoint,
+    <T as Midpoint>::Error: Into<MathError>,
+{
+    /// Midpoint of the inhabited fully-bounded *single connected*
+    /// variant. `Connected(iv)` delegates to `iv.midpoint()`;
+    /// `Disjoint(_, _)` ⇒ `Err(MathError::Domain)`.
+    ///
+    /// # Why `Disjoint` is `Domain`, not the hull midpoint
+    ///
+    /// `Midpoint` is a connected-interval concept: `(left + right) / 2`.
+    /// For a multi-component set, the hull midpoint may lie in a gap
+    /// (not in the set), and a measure-weighted "center of mass" is a
+    /// different operation with different semantics. Rather than pick
+    /// either silently, this method returns `Err(MathError::Domain)`
+    /// and forces the caller to make an explicit choice:
+    ///
+    /// - For the hull midpoint: `md.into_hull().midpoint()`.
+    /// - For the measure-weighted center: see the planned `Centroid`
+    ///   trait (separate operation with its own contract).
+    pub fn midpoint(&self) -> Result<T, MathError> {
+        match self {
+            Self::Connected(iv) => iv.midpoint(),
+            Self::Disjoint(_, _) => Err(MathError::Domain),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::bound::FiniteBound;
-    use crate::factory::FiniteFactory;
+    use crate::factory::{FiniteFactory, HalfBoundedFactory};
 
     #[test]
     fn finite_empty_returns_domain() {
@@ -111,5 +140,47 @@ mod tests {
     fn enum_unbounded_returns_domain() {
         let x: EnumInterval<i32> = EnumInterval::Unbounded;
         assert_eq!(x.midpoint(), Err(MathError::Domain));
+    }
+
+    // ===== MaybeDisjoint =====
+
+    #[test]
+    fn md_connected_delegates() {
+        let x = MaybeDisjoint::from_interval(EnumInterval::closed(0_i32, 10));
+        assert_eq!(x.midpoint(), Ok(5));
+    }
+
+    #[test]
+    fn md_empty_returns_domain() {
+        let x = MaybeDisjoint::<i32>::empty();
+        assert_eq!(x.midpoint(), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn md_connected_half_returns_domain() {
+        // Connected(half_interval) delegates and gets Domain from the inner.
+        let half = EnumInterval::closed_unbound(0_i32);
+        let x = MaybeDisjoint::from_interval(half);
+        assert_eq!(x.midpoint(), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn md_disjoint_returns_domain() {
+        // Disjoint is always Domain — even when the hull midpoint would
+        // be well-defined. Callers wanting the hull midpoint must spell
+        // it as `md.into_hull().midpoint()`.
+        let x =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 15));
+        assert_eq!(x.midpoint(), Err(MathError::Domain));
+    }
+
+    #[test]
+    fn md_hull_midpoint_path_works_when_caller_opts_in() {
+        // Documenting the workaround: callers who want the hull midpoint
+        // can compose `into_hull().midpoint()`. For this `Disjoint`, the
+        // hull `[0, 15]` has midpoint 7 (i32::midpoint(0, 15) = 7).
+        let x =
+            MaybeDisjoint::from_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 15));
+        assert_eq!(x.into_hull().midpoint(), Ok(7));
     }
 }
