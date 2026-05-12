@@ -5,7 +5,9 @@ use crate::{EnumInterval, FiniteInterval, HalfInterval, MaybeEmpty};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MaybeDisjoint<T> {
     Consumed,
+    #[non_exhaustive]
     Connected(EnumInterval<T>),
+    #[non_exhaustive]
     Disjoint(EnumInterval<T>, EnumInterval<T>),
 }
 
@@ -34,22 +36,39 @@ impl<T: Element> MaybeDisjoint<T> {
     pub fn new(a: Option<EnumInterval<T>>, b: Option<EnumInterval<T>>) -> Self {
         match (a, b) {
             (None, None) => Self::Consumed,
-            (Some(interval), None) | (None, Some(interval)) => MaybeDisjoint::Connected(interval),
-            (Some(a), Some(b)) => {
-                if a.connects(&b) {
-                    match a.merge_connected(b) {
-                        Some(merged) => MaybeDisjoint::Connected(merged),
-                        None => unreachable!("connects() implies merge_connected returns Some"),
-                    }
-                } else {
-                    if a < b {
-                        MaybeDisjoint::Disjoint(a, b)
-                    } else {
-                        MaybeDisjoint::Disjoint(b, a)
-                    }
-                }
+            (Some(interval), None) | (None, Some(interval)) => Self::from_interval(interval),
+            (Some(a), Some(b)) => Self::from_pair(a, b),
+        }
+    }
+
+    pub fn from_interval(interval: EnumInterval<T>) -> Self {
+        if interval.is_empty() {
+            Self::Consumed
+        } else {
+            Self::Connected(interval)
+        }
+    }
+
+    pub fn from_pair(a: EnumInterval<T>, b: EnumInterval<T>) -> Self {
+        if a.connects(&b) {
+            match a.merge_connected(b) {
+                Some(merged) => Self::from_interval(merged),
+                None => unreachable!("connects() implies merge_connected returns Some"),
+            }
+        } else {
+            // the empty set connects trivially with all other sets,
+            // so both a, and b must be inhabited, disjoint intervals.
+            if a < b {
+                MaybeDisjoint::Disjoint(a, b)
+            } else {
+                MaybeDisjoint::Disjoint(b, a)
             }
         }
+    }
+
+    #[doc(hidden)]
+    pub fn new_disjoint_assume_valid(left: EnumInterval<T>, right: EnumInterval<T>) -> Self {
+        Self::Disjoint(left, right)
     }
 }
 
