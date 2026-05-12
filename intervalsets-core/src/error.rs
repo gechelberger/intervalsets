@@ -53,6 +53,17 @@ impl From<TotalOrderError> for Error {
     }
 }
 
+impl From<Infallible> for Error {
+    /// Lets a `TryAdd`/`TrySub`/`TryMul`/`TryDiv` impl with
+    /// `Error = Infallible` (e.g. `BigInt`, `Saturating<T>`) satisfy
+    /// the set-level bound `<T as TryAdd>::Error: Into<Error>` without
+    /// going through the `MathError` intermediate. `From` impls don't
+    /// compose, so this hop has to be spelled out.
+    fn from(x: Infallible) -> Self {
+        match x {}
+    }
+}
+
 /// Arithmetic-on-bounds failure surfaced by value-level [`TryAdd`],
 /// [`TrySub`], [`TryMul`], and [`TryDiv`] impls.
 ///
