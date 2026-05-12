@@ -1,10 +1,10 @@
+use super::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::empty::MaybeEmpty;
 use crate::numeric::Element;
 use crate::ops::{Connects, MergeConnected};
-use crate::{EnumInterval, FiniteInterval, HalfInterval, MaybeEmpty};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MaybeDisjoint<T> {
-    Consumed,
     #[non_exhaustive]
     Connected(EnumInterval<T>),
     #[non_exhaustive]
@@ -15,14 +15,17 @@ impl<T> Iterator for MaybeDisjoint<T> {
     type Item = EnumInterval<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut inst = Self::Consumed;
+        // `Connected(EnumInterval::empty())` doubles as the drained
+        // sentinel: it denotes ∅ as a set and yields `None` here, so the
+        // iterator's exhausted state coincides with the canonical empty
+        // value. `EnumInterval::empty()` is a tag-only variant — no `T`
+        // is constructed — so the swap is just a discriminant write.
+        let mut inst = Self::Connected(EnumInterval::empty());
         core::mem::swap(self, &mut inst);
         match inst {
-            Self::Consumed => None,
-            Self::Connected(interval) => Some(interval),
+            Self::Connected(interval) => interval.is_inhabited().then_some(interval),
             Self::Disjoint(lhs, rhs) => {
-                let mut put_back = Self::Connected(rhs);
-                core::mem::swap(self, &mut put_back);
+                *self = Self::Connected(rhs);
                 Some(lhs)
             }
         }
@@ -35,7 +38,7 @@ impl<T: Element> MaybeDisjoint<T> {
     /// Invariants are applied.
     pub fn new(a: Option<EnumInterval<T>>, b: Option<EnumInterval<T>>) -> Self {
         match (a, b) {
-            (None, None) => Self::Consumed,
+            (None, None) => Self::empty(),
             (Some(interval), None) | (None, Some(interval)) => Self::from_interval(interval),
             (Some(a), Some(b)) => Self::from_pair(a, b),
         }
@@ -73,22 +76,17 @@ impl<T: Element> MaybeDisjoint<T> {
 
 impl<T> MaybeDisjoint<T> {
     pub fn empty() -> Self {
-        Self::Consumed
+        Self::Connected(EnumInterval::empty())
     }
 
     pub fn from_interval(interval: EnumInterval<T>) -> Self {
-        if interval.is_empty() {
-            Self::Consumed
-        } else {
-            Self::Connected(interval)
-        }
+        Self::Connected(interval)
     }
 
     /// Returns the interval if this is empty or a single connected
     /// interval; returns `None` if this is two disjoint intervals.
     pub fn into_interval(self) -> Option<EnumInterval<T>> {
         match self {
-            Self::Consumed => Some(EnumInterval::empty()),
             Self::Connected(interval) => Some(interval),
             Self::Disjoint(_, _) => None,
         }

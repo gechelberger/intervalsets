@@ -1,6 +1,5 @@
 use intervalsets_core::bound::ord::OrdBoundPair;
-use intervalsets_core::disjoint::MaybeDisjoint;
-use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 use crate::error::Error;
 use crate::numeric::Element;

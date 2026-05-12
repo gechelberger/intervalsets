@@ -1,7 +1,6 @@
-use crate::disjoint::MaybeDisjoint;
 use crate::numeric::Element;
 use crate::ops::MergeConnected;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// The (possibly disjoint) union of two intervals.
 ///

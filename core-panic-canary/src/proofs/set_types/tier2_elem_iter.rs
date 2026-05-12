@@ -7,10 +7,9 @@
 //! bounds).
 
 use intervalsets_core::bound::FiniteBound;
-use intervalsets_core::disjoint::MaybeDisjoint;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::ops::{Complement, IntoElementIterator};
-use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 fn make_finite() -> FiniteInterval<i64> {
     FiniteInterval::<i64>::satisfy_bounds(
@@ -44,8 +43,8 @@ fn make_enum() -> EnumInterval<i64> {
 }
 
 // Take the complement of a FiniteInterval to drive a nondet
-// MaybeDisjoint covering all 3 variants (Consumed / Connected /
-// Disjoint), without needing to construct one by hand.
+// MaybeDisjoint covering both variants (Connected / Disjoint),
+// without needing to construct one by hand.
 fn make_maybe_disjoint() -> MaybeDisjoint<i64> {
     make_finite().complement()
 }

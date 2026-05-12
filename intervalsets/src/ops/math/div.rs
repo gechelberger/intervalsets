@@ -1,7 +1,6 @@
 use core::ops::Div;
 
-use intervalsets_core::disjoint::MaybeDisjoint;
-use intervalsets_core::sets::EnumInterval;
+use intervalsets_core::sets::{EnumInterval, MaybeDisjoint};
 
 use crate::error::Error;
 use crate::numeric::Element;

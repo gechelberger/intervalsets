@@ -1,7 +1,6 @@
 use crate::bound::Side;
-use crate::disjoint::MaybeDisjoint;
 use crate::numeric::Element;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// The complement of a set in the unbounded universe of `T`.
 ///
