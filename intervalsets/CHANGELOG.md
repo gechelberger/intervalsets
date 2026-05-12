@@ -31,6 +31,7 @@ version and are released together via `cargo-release`. See the repo
 - **Behavioral break (inherited from `intervalsets-core`):** `Width` / `IntervalSet::Width` bounds switch from `for<'a> &'a T: Sub<Output = Out>` and `Out: Add<Out, Output = Out>` onto `T: Widthable` and `Out: TryAdd<Out, Output = Out>`. Existing in-tree types and downstream users via `default_width_impl!` are unaffected; custom `T`s implementing `Width` via the old `Sub` bound need a `Widthable` impl.
 - **Behavioral break (inherited from `intervalsets-core`):** `HalfInterval::Count::Output` is now `T::Output` (was `()`). The wrapper's `Interval::count()` was already `T::Output`-typed; the alignment closes the discrepancy when calling `.count()` on a half-bounded `EnumInterval` directly.
 - **Behavioral break:** `ops::IntoFinite` → `ops::IntoFiniteInterval` and `into_finite()` → `into_finite_interval()` (inherited from `intervalsets-core`). The `IntervalSet<T>` impl additionally changes its `Output` from `Self` to `Interval<T>` and its semantics from per-subinterval clamping to "hull of the set, then truncate to type extents" — the trait name promised a single finite interval but the previous impl returned a multi-piece `IntervalSet`. Migration: callers wanting the previous per-piece behavior should collect manually — `set.into_iter().map(IntoFiniteInterval::into_finite_interval).filter(MaybeEmpty::is_inhabited).collect::<IntervalSet<_>>()`. The new impl consumes via `OrdBoundPair::from(self)`, so no `T: Clone` bound.
+- **Behavioral break (inherited from `intervalsets-core`):** `measure::Measurement<T>` → `measure::Extent<T>` (now living in its own `measure/extent.rs` submodule). Variant shape (`Finite(T)` / `Infinite`) unchanged. The inherent-method surface is trimmed — `finite`, `is_finite`, `is_infinite`, `try_binop_map` are kept; `expect_finite`, `finite_or`, `map`, `flat_map` are dropped in favor of routing through the new `From<Extent<T>> ↔ Option<T>` impls (use `Option::from(x).expect(msg)`, etc.). `TryAdd` and `Display` impls are now provided on `Extent<T>`. Migration: rename `Measurement` → `Extent` at the call site and substitute the `Option` combinators for the dropped methods.
 
 ### Deprecated
 
@@ -38,7 +39,8 @@ version and are released together via `cargo-release`. See the repo
 
 - **Removed** `IFactory<T, C>` and `ISFactory<T, C>` (the parameterized factory marker types), along with the underlying `Converter` machinery in `intervalsets-core`. Migration: construct wrapped types directly at the call site — `Interval::closed(NotNan::new(0.0).unwrap(), NotNan::new(10.0).unwrap())` or `Interval::closed(OrderedFloat::from(0.0), OrderedFloat::from(10.0))`.
 - **Removed** the `Error::TotalOrderError(TotalOrderError)` variant from the umbrella `Error`. `From<TotalOrderError> for Error` now collapses to `Error::InvalidBoundLimit`. The `TotalOrderError` struct re-export is unchanged. Migration: replace `Err(Error::TotalOrderError(_))` matchers with `Err(Error::InvalidBoundLimit)`.
-- **Removed** `Measurement::Sub` impl (inherited from core). The previous impl returned `Infinite` whenever either operand was `Infinite`, which is mathematically wrong.
+- **Removed** `Extent::Sub` impl (inherited from core). The previous impl returned `Infinite` whenever either operand was `Infinite`, which is mathematically wrong.
+- **Removed** `Extent::expect_finite`, `Extent::finite_or`, `Extent::map`, `Extent::flat_map` inherent methods (inherited from core). Migration: use `Option::from(extent)` and the std `Option` combinators.
 
 ### Fixed
 

@@ -1,7 +1,7 @@
 //! Phase 2 — measure ops at i64. `try_count` / `try_width` /
 //! `midpoint` are panic-free by contract: representation overflow
 //! surfaces as `Err`, and the unbounded / empty / half-bounded shapes
-//! return their canonical sentinel (`Measurement::Infinite` for
+//! return their canonical sentinel (`Extent::Infinite` for
 //! count/width, `Err(Domain)` for midpoint).
 //!
 //! The panicking siblings `count()` / `width()` are explicitly

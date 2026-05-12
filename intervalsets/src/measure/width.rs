@@ -44,7 +44,7 @@ use intervalsets_core::ops::math::TryAdd;
 /// let b = b.difference(Interval::closed(5, 15));
 /// assert_eq!(b.width().finite(), 4u128);
 /// ```
-use super::{Measurement, Width, WidthOverflowError, Widthable};
+use super::{Extent, Width, WidthOverflowError, Widthable};
 use crate::numeric::Zero;
 use crate::{Interval, IntervalSet};
 
@@ -56,7 +56,7 @@ where
     type Output = T::Output;
     type Error = WidthOverflowError;
 
-    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+    fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         self.0.try_width()
     }
 }
@@ -74,13 +74,11 @@ where
     /// exceeds `Out`'s representable range surfaces as
     /// `WidthOverflowError` rather than panicking in debug / wrapping
     /// in release.
-    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
-        self.iter().try_fold(
-            Measurement::Finite(<Out as Zero>::zero()),
-            |accum, subset| {
+    fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
+        self.iter()
+            .try_fold(Extent::Finite(<Out as Zero>::zero()), |accum, subset| {
                 accum.try_binop_map(subset.try_width()?, |a, b| a.try_add(b).map_err(Into::into))
-            },
-        )
+            })
     }
 }
 

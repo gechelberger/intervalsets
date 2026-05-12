@@ -1,4 +1,4 @@
-use super::Measurement;
+use super::Extent;
 use crate::numeric::Zero;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -74,14 +74,14 @@ pub trait Width {
     /// (e.g. width of `[i128::MIN, i128::MAX]` overflows `u128`, or a
     /// float diff overflows to `±INF`). For panic-free width
     /// computation, use [`try_width`](Width::try_width).
-    fn width(&self) -> Measurement<Self::Output> {
+    fn width(&self) -> Extent<Self::Output> {
         self.try_width()
             .expect("Width::width: representation overflow; use try_width for panic-free")
     }
 
     /// Compute the width measure of this set, returning `Err` if the
     /// width cannot be represented in [`Self::Output`].
-    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error>;
+    fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error>;
 }
 
 /// Defines whether a set of type `T` has a width measure, and the
@@ -195,11 +195,11 @@ where
     type Output = T::Output;
     type Error = WidthOverflowError;
 
-    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+    fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
-            None => Ok(Measurement::Finite(<Self::Output as Zero>::zero())),
+            None => Ok(Extent::Finite(<Self::Output as Zero>::zero())),
             Some((left, right)) => match T::width_between(left.value(), right.value()) {
-                Some(w) => Ok(Measurement::Finite(w)),
+                Some(w) => Ok(Extent::Finite(w)),
                 None => Err(WidthOverflowError),
             },
         }
@@ -214,8 +214,8 @@ where
     type Output = T::Output;
     type Error = WidthOverflowError;
 
-    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
-        Ok(Measurement::Infinite)
+    fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
+        Ok(Extent::Infinite)
     }
 }
 
@@ -227,11 +227,11 @@ where
     type Output = T::Output;
     type Error = WidthOverflowError;
 
-    fn try_width(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+    fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
             Self::Finite(inner) => inner.try_width(),
             Self::Half(inner) => inner.try_width(),
-            Self::Unbounded => Ok(Measurement::Infinite),
+            Self::Unbounded => Ok(Extent::Infinite),
         }
     }
 }

@@ -84,10 +84,10 @@
 //! assert_eq!(left, EnumInterval::closed(0, 5));
 //! assert_eq!(right, EnumInterval::closed(6, 10));
 //!
-//! let width: Measurement<_> = a.width();
+//! let width: Extent<_> = a.width();
 //! assert_eq!(width.finite(), 10u128);
 //!
-//! let count: Measurement<_> = a.count();
+//! let count: Extent<_> = a.count();
 //! assert_eq!(count.finite(), 11u128);
 //!
 //! assert_eq!(format!("{}", a), "[0, 10]");
@@ -404,7 +404,7 @@ pub mod prelude {
     pub use crate::empty::MaybeEmpty;
     //pub use crate::error::Error;
     pub use crate::factory::traits::*;
-    pub use crate::measure::{Count, Measurement, Width};
+    pub use crate::measure::{Count, Extent, Width};
     pub use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
     pub use crate::ops::*;
     pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};

@@ -88,7 +88,7 @@
 //!
 //! Two [measures](measure) are provided.
 //!
-//! They each return a [`Measurement`](measure::Measurement) which may be infinite.
+//! They each return an [`Extent`](measure::Extent) which may be infinite.
 //!
 //! ### [`Width`](measure::Width) for continuous data types
 //! ```

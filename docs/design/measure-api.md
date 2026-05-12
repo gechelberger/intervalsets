@@ -42,7 +42,7 @@ ops/span.rs                      Span          bounds on T: TrySub (any T)
 - `Count` → `Cardinality`; method `.count()` → `.cardinality()`. Clean break.
 - `Width` no longer compiles on integer types. Users call `.span()` or cast.
 - `Span` is **not a measure** (fails subadditivity on disjoint sets) and lives in `ops/`, not `measure/`.
-- Both measures are Tier 3 — `try_*` + panicking sugar — returning `Result<Measure<X>, Err>`.
+- Both measures are Tier 3 — `try_*` + panicking sugar — returning `Result<Extent<X>, Err>`.
 - Three states per call: `Ok(Finite)` / `Ok(Infinite)` (structural for Half/Unbounded) / `Err(overflow)`.
 
 ---
@@ -101,22 +101,22 @@ pub trait Cardinality {
     type Output;
     type Error: core::error::Error;
 
-    fn cardinality(&self) -> Measure<Self::Output> {
+    fn cardinality(&self) -> Extent<Self::Output> {
         self.try_cardinality().unwrap()
     }
 
-    fn try_cardinality(&self) -> Result<Measure<Self::Output>, Self::Error>;
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error>;
 }
 
 impl<T: DiscreteElement> Cardinality for FiniteInterval<T> {
     type Output = T::Cardinality;
     type Error = CardinalityOverflowError;
 
-    fn try_cardinality(&self) -> Result<Measure<Self::Output>, Self::Error> {
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
-            None => Ok(Measure::Finite(T::Cardinality::zero())),
+            None => Ok(Extent::Finite(T::Cardinality::zero())),
             Some((l, r)) => T::count_inclusive(l.value(), r.value())
-                .map(Measure::Finite)
+                .map(Extent::Finite)
                 .ok_or(CardinalityOverflowError),
         }
     }
@@ -125,12 +125,12 @@ impl<T: DiscreteElement> Cardinality for FiniteInterval<T> {
 impl<T: DiscreteElement> Cardinality for HalfInterval<T> {
     type Output = T::Cardinality;
     type Error = CardinalityOverflowError;
-    fn try_cardinality(&self) -> Result<Measure<Self::Output>, Self::Error> {
-        Ok(Measure::Infinite)
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error> {
+        Ok(Extent::Infinite)
     }
 }
 
-// EnumInterval dispatches; IntervalSet folds via TryAdd on Measure<Cardinality>.
+// EnumInterval dispatches; IntervalSet folds via TryAdd on Extent<Cardinality>.
 ```
 
 `Width` is structurally identical with `ContinuousElement::try_diff` substituted for `count_inclusive` and `WidthOverflowError` (or a shared error type) substituted for `CardinalityOverflowError`.
@@ -150,8 +150,8 @@ impl<T: DiscreteElement> Cardinality for HalfInterval<T> {
 pub trait Span {
     type Output;
     type Error: core::error::Error;
-    fn span(&self) -> Measure<Self::Output> { self.try_span().unwrap() }
-    fn try_span(&self) -> Result<Measure<Self::Output>, Self::Error>;
+    fn span(&self) -> Extent<Self::Output> { self.try_span().unwrap() }
+    fn try_span(&self) -> Result<Extent<Self::Output>, Self::Error>;
 }
 
 // impls require for<'a> &'a T: TrySub<&'a T, Output = ...>
@@ -162,19 +162,19 @@ Span is the right tool for users who want "max − min on any T." It subsumes to
 
 ### Three-state return semantics
 
-Every user-facing measure call returns `Result<Measure<X>, Err>`:
+Every user-facing measure call returns `Result<Extent<X>, Err>`:
 
 | Outcome | Return |
 |---|---|
-| Finite-bounded interval, arithmetic succeeded | `Ok(Measure::Finite(_))` |
-| Half-bounded or unbounded set | `Ok(Measure::Infinite)` |
+| Finite-bounded interval, arithmetic succeeded | `Ok(Extent::Finite(_))` |
+| Half-bounded or unbounded set | `Ok(Extent::Infinite)` |
 | Finite-bounded, primitive op overflowed (e.g. `[i128::MIN, i128::MAX].try_cardinality()`) | `Err(_)` |
 
-Internally, `count_inclusive` and `try_diff` use `Option<Output>` (`None` = primitive overflow); the measure trait wraps `None` into the typed `Err`. `Measure::Infinite` is constructed structurally by `HalfInterval` and `EnumInterval::Unbounded`, never as a fallback for overflow.
+Internally, `count_inclusive` and `try_diff` use `Option<Output>` (`None` = primitive overflow); the measure trait wraps `None` into the typed `Err`. `Extent::Infinite` is constructed structurally by `HalfInterval` and `EnumInterval::Unbounded`, never as a fallback for overflow.
 
-### `Measurement` → `Measure`: rename and cleanup
+### `Measurement` → `Extent`: rename and cleanup
 
-Rename `Measurement<T>` to `Measure<T>` and address accumulated shortcomings in the current implementation. The cleanup ships in Stage 2 alongside the trait rename.
+Rename `Measurement<T>` to `Extent<T>` and address accumulated shortcomings in the current implementation. The cleanup ships in Stage 2 alongside the trait rename.
 
 #### Shortcomings of the current `Measurement<T>`
 
@@ -194,92 +194,84 @@ Rename `Measurement<T>` to `Measure<T>` and address accumulated shortcomings in 
 
 8. **Panic-prefixed naming doesn't match std.** `expect_finite(msg)` / `finite()` instead of `expect(msg)` / `unwrap()` adds no information std's names lack.
 
-#### Replacement: `Measure<T>`
+#### Replacement: `Extent<T>` (final spec)
+
+The spec landed differs from earlier drafts of this doc on two
+points: (1) `finite()` is **kept** as the panicking accessor (the
+domain-named "give me the finite value, panic if it's infinite" is
+more informative than `unwrap`); (2) `From<Option<T>>` **is**
+provided in addition to `From<Extent<T>>` (the `None ≡ Infinite`
+mapping is canonical by fiat). The full spec lives in
+`/home/greg/.claude/plans/lets-come-up-with-proud-swing.md`.
 
 ```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]  // T-conditional via auto-derive
-pub enum Measure<T> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Extent<T> {
     Finite(T),
     Infinite,
 }
 
-impl<T> Measure<T> {
-    pub fn is_finite(&self) -> bool { matches!(self, Self::Finite(_)) }
-    pub fn is_infinite(&self) -> bool { matches!(self, Self::Infinite) }
-
-    // std-aligned naming
-    pub fn unwrap(self) -> T { /* panics on Infinite */ }
-    pub fn expect(self, msg: &str) -> T { /* panics with msg on Infinite */ }
-    pub fn unwrap_or(self, default: T) -> T { ... }
-    pub fn unwrap_or_else(self, f: impl FnOnce() -> T) -> T { ... }
-    pub fn unwrap_or_default(self) -> T where T: Default { ... }
-
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Measure<U> { ... }
-    pub fn and_then<U>(self, f: impl FnOnce(T) -> Measure<U>) -> Measure<U> { ... }
-
-    pub fn as_ref(&self) -> Measure<&T> { ... }
-    pub fn into_option(self) -> Option<T> { ... }
+impl<T> Extent<T> {
+    pub fn is_finite(&self) -> bool;
+    pub fn is_infinite(&self) -> bool;
+    pub fn finite(self) -> T;                       // panics on Infinite
+    pub fn try_binop_map<E>(self, rhs: Self,
+        f: impl FnOnce(T, T) -> Result<T, E>)
+        -> Result<Self, E>;                         // load-bearing internal
 }
 
-impl<T> From<Measure<T>> for Option<T> { /* Finite(t) -> Some(t); Infinite -> None */ }
-// No `From<Option<T>>` — `None` is ambiguous (absent-result vs unbounded-set);
-// require explicit construction.
-
-// Explicit, not derived, so ordering is documented and stable across variant reorders.
-impl<T: PartialOrd> PartialOrd for Measure<T> { /* Finite(_) < Infinite */ }
-impl<T: Ord> Ord for Measure<T> { ... }
-
-impl<T: TryAdd<T, Output = T>> TryAdd for Measure<T> {
-    type Output = Measure<T>;
-    type Error = T::Error;
-    fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> { ... }
-}
-
-// Keep infallible Add for callers whose T's Add is infallible by construction.
-impl<T: Add<T, Output = T>> Add for Measure<T> { ... }
-
-impl<T> IntoIterator for Measure<T> {
-    type Item = T;
-    type IntoIter = core::option::IntoIter<T>;
-    fn into_iter(self) -> Self::IntoIter { self.into_option().into_iter() }
-}
+impl<T> From<Extent<T>> for Option<T>;             // Finite → Some; Infinite → None
+impl<T> From<Option<T>> for Extent<T>;             // canonical None ≡ Infinite
+impl<T: Add<T, Output = T>> Add for Extent<T>;     // Infinite absorbs
+impl<T: TryAdd<T, Output = T>> TryAdd for Extent<T>; // Err preserved, NOT collapsed to Ok(Infinite)
+impl<T: Display> Display for Extent<T>;            // Finite delegates; Infinite → "∞"
 ```
 
-`IntervalSet::try_cardinality` and `try_width` then fold via `try_fold` over per-piece measures, propagating both overflow `Err` and `Infinite` correctly through `TryAdd`.
+`IntervalSet::try_cardinality` and `try_width` fold via `try_binop_map`
+over per-piece extents, propagating both `Err` and `Infinite` correctly.
 
-#### Cleanup checklist (Stage 2)
+`Sub` / `Mul` / `Div` / `Neg` and their `Try*` siblings are intentionally
+not implemented. The three-state contract (`Ok(Finite)` / `Ok(Infinite)` /
+`Err`) is preserved by `TryAdd` — overflow surfaces as `Err`, never
+collapses into `Ok(Infinite)`. Saturate-on-overflow semantics belong to
+the `core::num::Saturating<T>` storage type.
 
-**Drop:**
+#### Shipped (this redesign)
 
-- `Sub` impl entirely (no measure-theoretic meaning)
-- `finite()` / `expect_finite(msg)` — replace with `unwrap()` / `expect(msg)` (std naming)
-- `flat_map` — rename to `and_then` (matches `Option` / `Result`)
-- `finite_or(default)` — rename to `unwrap_or(default)`
-- The `PartialOrd` derive — replace with explicit impl
-- `#[allow(dead_code)]` on `binop_try_map` — wire it up as the `TryAdd` impl
-- `T: Clone` bound on `Add` impl (defensive, unused)
+- Rename `Measurement<T>` → `Extent<T>`, move to `measure/extent.rs`
+- Add `Eq`, `Hash`, `Ord` to the derive set (T-conditional)
+- Keep `finite()` / `is_finite()` / `is_infinite()` / `try_binop_map()`
+- Drop `Sub`, `expect_finite`, `finite_or`, `flat_map`, `map`
+- Drop dead `T: Clone` bound on `Add`
+- Add bidirectional `From` with `Option`
+- Add `TryAdd` impl (no Range-error collapse to `Ok(Infinite)`)
+- Add `Display` impl (`Infinite` prints as `"∞"`)
 
-**Add:**
+#### Deferred (won't address now)
 
-- `TryAdd` impl (Tier-3 alignment; the path through which `IntervalSet::try_*` folds propagate overflow)
-- `From<Measure<T>> for Option<T>` (one-way only; `None` is ambiguous in the reverse direction)
-- `IntoIterator` yielding 0-or-1 `T`
-- std-shaped combinators: `unwrap_or_else`, `unwrap_or_default`, `as_ref`
-- Explicit `PartialOrd` / `Ord` impls documenting `Finite(_) < Infinite`
+- Signed-measure refactor (`PosInfinite` / `NegInfinite` variants)
+- `IntoIterator`, `Default` impls
+- Renaming `try_binop_map` (e.g. to `try_zip_with`)
+- `unwrap_or_else`, `as_ref`, etc. — users access via `Option::from(extent)`
 
-**Deferred (won't address now):**
+#### Why `Extent<T>` and not just `Option<T>`?
 
-- Signed-measure refactor (`PosInfinite` / `NegInfinite` variants). Until in-crate code needs it, the cost-of-change is the rename plus a small set of pattern-match updates — manageable later.
-
-#### Why `Measure<T>` and not just `Option<T>`?
-
-A type alias (`pub type Measure<T> = Option<T>;`) is the most honest option: full `Option` ecosystem for free, zero code to maintain. **But the domain type pays for itself in rustdoc.** `try_cardinality() -> Result<Measure<u128>, CardinalityOverflowError>` reads as "this might fail to compute (Err) OR tell you the set is unbounded (Infinite)." `Result<Option<u128>, _>` reads as "this might fail to compute (Err) OR have no value (None)" — true, but the "set is unbounded" semantic is lost. Domain types carry meaning that aliases erase.
+A type alias (`pub type Extent<T> = Option<T>;`) gets the full
+`Option` ecosystem for free, zero code to maintain. **But the domain
+type pays for itself in rustdoc.** `try_cardinality() -> Result<Extent<u128>, CardinalityOverflowError>`
+reads as "this might fail to compute (Err) OR tell you the set is
+unbounded (Infinite)." `Result<Option<u128>, _>` reads as "this might
+fail to compute (Err) OR have no value (None)" — true, but the "set
+is unbounded" semantic is lost. Domain types carry meaning that
+aliases erase. Bidirectional `From` lets callers reach into the
+`Option` combinator ecosystem when they want it, without sacrificing
+the domain naming.
 
 ---
 
 ## What survives unchanged
 
-- `Measure<T>` (renamed from `Measurement<T>`) keeps its core `Finite(T)` / `Infinite` shape and the existing tests; surrounding combinator/impl surface gets the cleanup described above
+- `Extent<T>` (renamed from `Measurement<T>`) keeps its core `Finite(T)` / `Infinite` shape and the existing tests; surrounding combinator/impl surface gets the cleanup described above
 - `Element` trait and `try_adjacent_or_none` (from api/domain)
 - The four-tier op contract documented in `ops/mod.rs`
 - `OrderedFloat`, `Decimal`, `BigInt`, `BigDecimal` feature modules (each gets a categorical impl)
@@ -297,10 +289,12 @@ A type alias (`pub type Measure<T> = Option<T>;`) is the most honest option: ful
 | `integer_domain_impl!` | `default_discrete_element_impl_primitives!` |
 | `continuous_domain_impl!` | `default_continuous_element_impl!` |
 | `interval.width()` on `Interval<i32>` works | compile error; use `.span()` or cast to `f64` |
-| `Measurement<T>` type | `Measure<T>` |
-| `.finite()` / `.expect_finite(msg)` on the value | `.unwrap()` / `.expect(msg)` (std naming) |
-| `.flat_map(f)` on the value | `.and_then(f)` (std naming) |
-| `.finite_or(default)` on the value | `.unwrap_or(default)` (std naming) |
+| `Measurement<T>` type | `Extent<T>` |
+| `.finite()` on the value | unchanged (kept; domain-named panicking accessor) |
+| `.expect_finite(msg)` on the value | `Option::from(x).expect(msg)` |
+| `.flat_map(f)` on the value | `Option::from(x).and_then(...).into()` |
+| `.finite_or(default)` on the value | `Option::from(x).unwrap_or(default)` |
+| `.map(f)` on the value | `Option::from(x).map(f).into()` |
 | `impl Sub for Measurement<T>` | removed (no measure-theoretic meaning) |
 | `impl Add for Measurement<T>` requiring `T: Clone` | `impl Add` drops the `Clone` bound; `impl TryAdd` added for Tier-3 folds |
 
@@ -313,7 +307,7 @@ Clean break, no deprecation aliases. CHANGELOG entry must point integer-`width` 
 | Stage | Scope | Notes |
 |---|---|---|
 | 1 | api/domain merge or revert | Already partial on `api/domain` branch. Decision gated by Stage 2 outcome. |
-| 2 | **This redesign** | Cardinality rename, Width gated on ContinuousElement, macro renames, `Measurement`→`Measure` rename + cleanup (drop Sub, add TryAdd, std-naming combinators, Option interop), IntervalSet folds via try_fold |
+| 2 | **This redesign** | Cardinality rename, Width gated on ContinuousElement, macro renames, `Measurement`→`Extent` rename + cleanup (drop Sub, add TryAdd, std-naming combinators, Option interop), IntervalSet folds via try_fold |
 | 3 | `Span` in `ops/span.rs` | Small, independent. Integer-width users now have a landing pad. |
 | 4 | Midpoint + Bisect | Resurrect Midpoint (Result vs Option call), implement Bisect on top |
 
@@ -352,7 +346,7 @@ The `Widen` trait from the original design summary is **dropped** — the per-T 
 
 Users who want `i32` cardinality expressed as `u128`, or `f32` width as `f64`, are best served by a future set-level cast API — `IntervalSet<i32>::cast::<i64>()` style. That's a parallel PR not coupled to this design.
 
-`Measure::map` is **not** an adequate substitute for caller-driven widening: the cast happens *after* subtraction, so any overflow already corrupted the result.
+`Extent::map` is **not** an adequate substitute for caller-driven widening: the cast happens *after* subtraction, so any overflow already corrupted the result.
 
 ### Continuous types without meaningful Displacement
 
@@ -366,7 +360,7 @@ This redesign treats `Cardinality` and `Width` as two distinct traits keyed by e
 
 **Why not in-crate now:** the crate has no use case for non-Cardinality non-Width measures. Adding the abstraction now is premature; the categorical-trait pattern doesn't preclude adding it later if needed.
 
-**For users who want it:** the recipe is straightforward. Define a trait parameterized over the codomain. (Named `Measurable` here to avoid clashing with the `Measure<T>` value type.)
+**For users who want it:** the recipe is straightforward. Define a trait parameterized over the codomain. (Named `Measurable` here; with the value type renamed to `Extent<T>`, the name `Measure` is also free and would be the more natural choice — `Measurable` is kept here only because the codebase already gravitates toward `-able` suffixes for trait-of-capability.)
 
 ```rust
 pub trait Measurable<Codomain> {
@@ -375,9 +369,9 @@ pub trait Measurable<Codomain> {
 }
 
 // Cardinality and Width become impls:
-impl<T: DiscreteElement> Measurable<Measure<T::Cardinality>> for FiniteInterval<T> {
+impl<T: DiscreteElement> Measurable<Extent<T::Cardinality>> for FiniteInterval<T> {
     type Error = CardinalityOverflowError;
-    fn measure(&self) -> Result<Measure<T::Cardinality>, Self::Error> {
+    fn measure(&self) -> Result<Extent<T::Cardinality>, Self::Error> {
         self.try_cardinality()
     }
 }

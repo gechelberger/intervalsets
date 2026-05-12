@@ -1,6 +1,6 @@
 use intervalsets_core::ops::math::TryAdd;
 
-use super::{Count, CountOverflowError, Countable, Measurement};
+use super::{Count, CountOverflowError, Countable, Extent};
 use crate::numeric::Zero;
 use crate::{Interval, IntervalSet};
 
@@ -12,7 +12,7 @@ where
     type Output = T::Output;
     type Error = CountOverflowError;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         self.0.try_count()
     }
 }
@@ -30,9 +30,9 @@ where
     /// exceeds `Out`'s representable range surfaces as
     /// `CountOverflowError` rather than panicking in debug / wrapping
     /// in release.
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         self.iter()
-            .try_fold(Measurement::Finite(Out::zero()), |accum, subset| {
+            .try_fold(Extent::Finite(Out::zero()), |accum, subset| {
                 accum.try_binop_map(subset.try_count()?, |a, b| a.try_add(b).map_err(Into::into))
             })
     }

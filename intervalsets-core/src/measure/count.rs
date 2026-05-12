@@ -1,4 +1,4 @@
-use super::Measurement;
+use super::Extent;
 use crate::numeric::{Element, Zero};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -54,13 +54,13 @@ pub trait Count {
     /// Panics if the count cannot be represented in `Self::Output`
     /// (e.g. counting `[i32::MIN, i32::MAX]` overflows `i32`). For
     /// panic-free counting, use [`try_count`](Count::try_count).
-    fn count(&self) -> Measurement<Self::Output> {
+    fn count(&self) -> Extent<Self::Output> {
         self.try_count().unwrap()
     }
 
     /// Compute the counting measure of this set, returning `Err` if
     /// the count cannot be represented in `Self::Output`.
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error>;
+    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error>;
 }
 
 /// Defines whether a set of type T is countable.
@@ -202,13 +202,13 @@ where
     type Output = T::Output;
     type Error = CountOverflowError;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
-                Some(count) => Ok(Measurement::Finite(count)),
+                Some(count) => Ok(Extent::Finite(count)),
                 None => Err(CountOverflowError),
             },
-            None => Ok(Measurement::Finite(Self::Output::zero())),
+            None => Ok(Extent::Finite(Self::Output::zero())),
         }
     }
 }
@@ -221,8 +221,8 @@ where
     type Output = T::Output;
     type Error = CountOverflowError;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
-        Ok(Measurement::Infinite)
+    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
+        Ok(Extent::Infinite)
     }
 }
 
@@ -234,10 +234,10 @@ where
     type Output = T::Output;
     type Error = CountOverflowError;
 
-    fn try_count(&self) -> Result<Measurement<Self::Output>, Self::Error> {
+    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
             Self::Finite(inner) => inner.try_count(),
-            _ => Ok(Measurement::Infinite),
+            _ => Ok(Extent::Infinite),
         }
     }
 }

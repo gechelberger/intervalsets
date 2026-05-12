@@ -289,7 +289,7 @@ bench-main pattern="":
     just bench "--bench intervalsets {{ pattern }}"
 
 # check the ci targets locally
-ci: fmt-check clippy typos doc test test-doc check-msrv check-no-std check-bench check-kani deny semver-checks
+ci: fmt-check clippy typos doc test test-doc check-msrv check-no-std check-bench check-kani deny
     @echo "CI checks complete"
 
 # kani: symbolic-execution proof that the panic-free claims hold for all

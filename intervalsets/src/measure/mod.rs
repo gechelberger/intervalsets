@@ -17,7 +17,7 @@
 //! (which is Width in R1).
 
 pub use intervalsets_core::measure::{
-    Count, CountOverflowError, Countable, Measurement, Width, WidthOverflowError, Widthable,
+    Count, CountOverflowError, Countable, Extent, Width, WidthOverflowError, Widthable,
 };
 
 mod count;
@@ -29,7 +29,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_measurement_ord() {
-        assert!(Measurement::Finite(10) < Measurement::Infinite,);
+    fn test_extent_ord() {
+        assert!(Extent::Finite(10) < Extent::Infinite,);
     }
 }
