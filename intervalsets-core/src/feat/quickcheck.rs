@@ -4,7 +4,7 @@ use crate::bound::BoundType::{self, *};
 use crate::bound::FiniteBound;
 use crate::bound::Side::{self, *};
 use crate::numeric::Element;
-use crate::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 const fn first_n_i32s<const N: usize>() -> [i32; N] {
     let mut res = [0i32; N];
@@ -89,11 +89,21 @@ impl<T: Element + Clone + Arbitrary> Arbitrary for EnumInterval<T> {
     }
 }
 
+impl<T: Element + Clone + Arbitrary> Arbitrary for MaybeDisjoint<T> {
+    fn arbitrary(g: &mut Gen) -> Self {
+        // Generate EnumIntervals and let `from_pair` apply the invariants.
+        let a = EnumInterval::<T>::arbitrary(g);
+        let b = EnumInterval::<T>::arbitrary(g);
+        MaybeDisjoint::from_pair(a, b)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use quickcheck_macros::quickcheck;
 
     use crate::prelude::*;
+    use crate::sets::MaybeDisjoint;
 
     #[quickcheck]
     fn check_qc_interval(interval: EnumInterval<f32>) {
@@ -104,6 +114,37 @@ mod tests {
     #[quickcheck]
     fn check_qc_two_intervals(a: EnumInterval<f32>, b: EnumInterval<f32>) {
         check_intersect_and_merge(a, b)
+    }
+
+    /// Round-trip: arbitrary MD's pieces, when iterated and rebuilt
+    /// via `from_pair`, yield the same MD. Pins the invariant that
+    /// `arbitrary` produces canonical-form MDs.
+    #[quickcheck]
+    fn check_qc_maybe_disjoint_roundtrips(md: MaybeDisjoint<f32>) {
+        let mut pieces = md.clone();
+        let a = pieces.next().unwrap_or_default();
+        let b = pieces.next().unwrap_or_default();
+        assert!(pieces.next().is_none()); // never more than 2 pieces
+        assert_eq!(MaybeDisjoint::from_pair(a, b), md);
+    }
+
+    /// `connects ⇒ merge_connected.is_some()` contract holds for
+    /// arbitrary MD vs arbitrary EnumInterval.
+    #[quickcheck]
+    fn check_qc_md_connects_implies_merge(md: MaybeDisjoint<f32>, iv: EnumInterval<f32>) {
+        if md.connects(&iv) {
+            assert!(md.merge_connected(iv).is_some());
+        }
+    }
+
+    /// MD's hull encloses all elements: any element of the MD is
+    /// contained in the hull.
+    #[quickcheck]
+    fn check_qc_md_hull_contains_pieces(md: MaybeDisjoint<f32>) {
+        let hull = md.hull();
+        for piece in md {
+            assert!(hull.contains(&piece));
+        }
     }
 
     fn check_intersect_and_merge(a: EnumInterval<f32>, b: EnumInterval<f32>) {
