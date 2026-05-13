@@ -44,7 +44,8 @@ pub trait Bisect<T>: Sized {
         U: PartialOrd;
 }
 
-fn bisect_core<T, S, F, U, Sp>(mut lo: T, mut hi: T, measure: F, split: Sp) -> (T, S, S)
+#[doc(hidden)]
+pub fn bisect_core<T, S, F, U, Sp>(mut lo: T, mut hi: T, measure: F, split: Sp) -> (T, S, S)
 where
     T: Clone + PartialEq + Midpoint<Error = Infallible>,
     F: Fn(&S) -> U,
