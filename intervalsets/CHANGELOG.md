@@ -21,6 +21,7 @@ version and are released together via `cargo-release`. See the repo
 - `Width::try_width` surfaces representation overflow (e.g. `[i32::MIN, i32::MAX]` widening, `f64::MIN..f64::MAX` overflow to `±INF`) as `Err(MathError::Range)`. The infallible `width()` panics on overflow per its docstring.
 - `IntervalSet::try_count` and `IntervalSet::try_width` summations now use `TryAdd`-based folds and surface mid-fold overflow as `Err(MathError::Range)`.
 - `Count` now supported on continuous element types (`f32`, `f64`, `Decimal`, `BigDecimal`, `OrderedFloat<F>`, `NotNan<F>`) — inherited from `intervalsets-core`. Singleton intervals count as `1`; non-degenerate continuous intervals count as `Extent::Infinite`; empty stays `0`.
+- `Count` now supported on all fixed-point storage types (`FixedI{8,16,32,64,128}<Frac>`, `FixedU{8,16,32,64,128}<Frac>`) — inherited from `intervalsets-core`. Count is the bit-rep diff + 1 via `to_bits()`; 128-bit full-range counts surface as `Err(MathError::Range)`.
 - Optional `approx` feature with `AbsDiffEq` / `RelativeEq` / `UlpsEq` impls for `Interval` and `IntervalSet` ([#215](https://github.com/gechelberger/intervalsets/pull/215)).
 - `error::Error::InvalidBoundLimit` variant lifted from `intervalsets-core` for the new `Element::validate` rejection path.
 - `error::Error::Math(MathError)` variant (with `From<MathError> for Error`) so set-level `try_*` math can surface value-level arithmetic failures. `MathError` is re-exported from `intervalsets_core::error`.
