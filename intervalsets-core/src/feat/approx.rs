@@ -7,8 +7,7 @@
 use approx::{AbsDiffEq, RelativeEq, UlpsEq};
 
 use crate::bound::FiniteBound;
-use crate::disjoint::MaybeDisjoint;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 impl<T: AbsDiffEq> AbsDiffEq for FiniteBound<T> {
     type Epsilon = T::Epsilon;
@@ -248,7 +247,6 @@ where
 
     fn abs_diff_eq(&self, other: &Self, epsilon: Self::Epsilon) -> bool {
         match (self, other) {
-            (Self::Consumed, Self::Consumed) => true,
             (Self::Connected(a), Self::Connected(b)) => a.abs_diff_eq(b, epsilon),
             (Self::Disjoint(a1, a2), Self::Disjoint(b1, b2)) => {
                 a1.abs_diff_eq(b1, epsilon.clone()) && a2.abs_diff_eq(b2, epsilon)
@@ -274,7 +272,6 @@ where
         max_relative: Self::Epsilon,
     ) -> bool {
         match (self, other) {
-            (Self::Consumed, Self::Consumed) => true,
             (Self::Connected(a), Self::Connected(b)) => a.relative_eq(b, epsilon, max_relative),
             (Self::Disjoint(a1, a2), Self::Disjoint(b1, b2)) => {
                 a1.relative_eq(b1, epsilon.clone(), max_relative.clone())
@@ -296,7 +293,6 @@ where
 
     fn ulps_eq(&self, other: &Self, epsilon: Self::Epsilon, max_ulps: u32) -> bool {
         match (self, other) {
-            (Self::Consumed, Self::Consumed) => true,
             (Self::Connected(a), Self::Connected(b)) => a.ulps_eq(b, epsilon, max_ulps),
             (Self::Disjoint(a1, a2), Self::Disjoint(b1, b2)) => {
                 a1.ulps_eq(b1, epsilon.clone(), max_ulps) && a2.ulps_eq(b2, epsilon, max_ulps)
@@ -437,8 +433,8 @@ mod tests {
     }
 
     #[test]
-    fn maybe_disjoint_consumed_matches_consumed() {
-        let a: MaybeDisjoint<f64> = MaybeDisjoint::Consumed;
+    fn maybe_disjoint_empty_matches_empty() {
+        let a: MaybeDisjoint<f64> = MaybeDisjoint::empty();
         assert!(abs_diff_eq!(a, a, epsilon = 0.0));
         assert!(relative_eq!(a, a, max_relative = 0.0));
         assert!(ulps_eq!(a, a, max_ulps = 0));
@@ -469,14 +465,16 @@ mod tests {
 
     #[test]
     fn maybe_disjoint_variant_mismatch_never_equal() {
-        let consumed: MaybeDisjoint<f64> = MaybeDisjoint::Consumed;
+        let empty: MaybeDisjoint<f64> = MaybeDisjoint::empty();
         let connected = MaybeDisjoint::Connected(EnumInterval::Finite(bounded(1.0, 2.0)));
         let disjoint = MaybeDisjoint::Disjoint(
             EnumInterval::Finite(bounded(1.0, 2.0)),
             EnumInterval::Finite(bounded(5.0, 6.0)),
         );
-        assert!(!abs_diff_eq!(consumed, connected, epsilon = f64::INFINITY));
-        assert!(!abs_diff_eq!(consumed, disjoint, epsilon = f64::INFINITY));
+        // Both Connected, but Connected(empty) vs Connected(non-empty)
+        // resolves through EnumInterval's variant mismatch → false.
+        assert!(!abs_diff_eq!(empty, connected, epsilon = f64::INFINITY));
+        assert!(!abs_diff_eq!(empty, disjoint, epsilon = f64::INFINITY));
         assert!(!abs_diff_eq!(connected, disjoint, epsilon = f64::INFINITY));
     }
 }

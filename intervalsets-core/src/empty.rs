@@ -1,5 +1,5 @@
 use crate::bound::ord::OrdBoundPair;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// Test a `Set` for emptiness.
 pub trait MaybeEmpty {
@@ -36,6 +36,15 @@ impl<T> MaybeEmpty for EnumInterval<T> {
 impl<T: PartialEq> MaybeEmpty for OrdBoundPair<T> {
     fn is_empty(&self) -> bool {
         self.is_empty() // forwards to the concrete impl
+    }
+}
+
+impl<T> MaybeEmpty for MaybeDisjoint<T> {
+    fn is_empty(&self) -> bool {
+        match self {
+            Self::Connected(inner) => inner.is_empty(),
+            _ => false,
+        }
     }
 }
 

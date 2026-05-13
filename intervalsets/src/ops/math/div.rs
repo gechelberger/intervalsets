@@ -1,7 +1,6 @@
 use core::ops::Div;
 
-use intervalsets_core::disjoint::MaybeDisjoint;
-use intervalsets_core::sets::EnumInterval;
+use intervalsets_core::sets::{EnumInterval, MaybeDisjoint};
 
 use crate::error::Error;
 use crate::numeric::Element;
@@ -19,7 +18,9 @@ where
     fn try_div(self, rhs: Self) -> Result<Self::Output, Self::Error> {
         let divided = self.0.try_div(rhs.0).map_err(Into::into)?;
         // MaybeDisjoint guarantees sorted, disjoint, non-empty intervals.
-        Ok(IntervalSet::new_assume_valid(divided.map(Interval::from)))
+        Ok(IntervalSet::new_assume_valid(
+            divided.into_iter().map(Interval::from),
+        ))
     }
 }
 

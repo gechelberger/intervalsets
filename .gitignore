@@ -3,6 +3,7 @@ Cargo.lock
 /target
 
 # Claude Code local settings
+.claude/
 .claude/settings.local.json
 
 /scratch

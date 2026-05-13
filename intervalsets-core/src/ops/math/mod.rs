@@ -36,7 +36,7 @@
 //!
 //! Division can produce up to two pieces (e.g. `[1, 2] / [-1, 1]`
 //! is unbounded with a hole at zero), so its output is a
-//! [`MaybeDisjoint`](crate::disjoint::MaybeDisjoint). Add, sub, and
+//! [`MaybeDisjoint`](crate::sets::MaybeDisjoint). Add, sub, and
 //! mul produce a single interval.
 //!
 //! # Overflow

@@ -1,8 +1,7 @@
-use crate::disjoint::MaybeDisjoint;
 use crate::empty::MaybeEmpty;
 use crate::numeric::Element;
 use crate::ops::{Complement, Intersection};
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// The set difference `A \ B` — elements in `A` but not in `B`.
 ///

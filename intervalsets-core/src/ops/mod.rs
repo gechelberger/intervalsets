@@ -15,7 +15,7 @@
 //! A set operation between two intervals can produce up to two
 //! disjoint pieces (e.g. `[0, 5] ∪ [10, 15]`, `[0, 10]'`). This crate
 //! is `no_std` and avoids allocation, so multi-piece results are
-//! returned as [`MaybeDisjoint`](crate::disjoint::MaybeDisjoint)
+//! returned as [`MaybeDisjoint`](crate::sets::MaybeDisjoint)
 //! rather than an allocating set. The outer `intervalsets` crate
 //! layers an arbitrary-piece `IntervalSet` on top for use cases that
 //! need it.
@@ -139,6 +139,10 @@ mod rebound;
 pub use rebound::Rebound;
 mod split;
 pub use split::Split;
+mod bisect;
+#[doc(hidden)]
+pub use bisect::bisect_core;
+pub use bisect::{Bisect, Bisection};
 mod union;
 pub use union::Union;
 

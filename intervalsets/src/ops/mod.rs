@@ -5,7 +5,7 @@
 //! [`IntervalSet`](crate::IntervalSet), so set operations can return
 //! arbitrary-piece results. The core crate's implementations cap output
 //! at two pieces via
-//! [`MaybeDisjoint`](intervalsets_core::disjoint::MaybeDisjoint).
+//! [`MaybeDisjoint`](intervalsets_core::sets::MaybeDisjoint).
 //!
 //! [`SymDifference`] is added at this layer — it composes naturally
 //! over `IntervalSet` inputs that the core crate doesn't model.
@@ -30,6 +30,9 @@ pub use hull::ConvexHull;
 
 mod split;
 pub use split::Split;
+
+mod bisect;
+pub use bisect::{Bisect, Bisection};
 
 mod intersection;
 pub use intersection::Intersection;

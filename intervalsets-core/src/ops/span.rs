@@ -1,9 +1,8 @@
 use super::math::TrySub;
 use crate::bound::{SetBounds, Side};
-use crate::disjoint::MaybeDisjoint;
 use crate::measure::Extent;
 use crate::numeric::Zero;
-use crate::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 pub trait Span {
     type Output;
@@ -72,7 +71,6 @@ where
 
     fn span(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
-            Self::Consumed => Ok(Extent::Finite(Self::Output::zero())),
             Self::Connected(inner) => inner.span(),
             Self::Disjoint(left, right) => {
                 match (left.bound(Side::Left), right.bound(Side::Right)) {

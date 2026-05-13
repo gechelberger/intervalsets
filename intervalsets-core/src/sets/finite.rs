@@ -2,10 +2,9 @@ use core::cmp::Ordering::{self, *};
 
 use num_traits::One;
 
-use super::bound::ord::{OrdBound, OrdBoundPair, OrdBounded};
-use super::bound::Side::{self, Left, Right};
-use super::bound::{FiniteBound, SetBounds};
-use crate::bound::ord::FiniteOrdBound;
+use crate::bound::ord::{OrdBoundPair, OrdBounded};
+use crate::bound::Side::{self, Left, Right};
+use crate::bound::{FiniteBound, SetBounds};
 use crate::error::Error;
 use crate::factory::FiniteFactory;
 use crate::numeric::{Element, Zero};
@@ -20,7 +19,7 @@ use crate::try_cmp::TryCmp;
 /// writer path delegates here.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
-enum FiniteIntervalInner<T> {
+pub(super) enum FiniteIntervalInner<T> {
     Empty,
     Bounded(FiniteBound<T>, FiniteBound<T>),
 }
@@ -223,243 +222,10 @@ impl<T> SetBounds<T> for FiniteInterval<T> {
     }
 }
 
-/// An interval bounded on exactly one side. The `side` field marks
-/// which end is finite; the other end is implicitly unbounded.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(try_from = "RawHalfInterval<T>"))]
-#[cfg_attr(
-    feature = "serde",
-    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
-)]
-pub struct HalfInterval<T> {
-    side: Side,
-    bound: FiniteBound<T>,
-}
-
-/// Wire-format mirror of [`HalfInterval`] used to drive validation
-/// during `Deserialize`.
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-#[serde(rename = "HalfInterval")]
-#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
-struct RawHalfInterval<T> {
-    side: Side,
-    bound: FiniteBound<T>,
-}
-
-#[cfg(feature = "serde")]
-impl<T: Element> TryFrom<RawHalfInterval<T>> for HalfInterval<T> {
-    type Error = Error;
-
-    fn try_from(raw: RawHalfInterval<T>) -> Result<Self, Self::Error> {
-        Self::try_new(raw.side, raw.bound)
-    }
-}
-
-impl<T: Element> HalfInterval<T> {
-    /// Creates a `HalfInterval`. **Strict** — panics if the bound's
-    /// value is rejected by
-    /// [`Element::validate`]
-    /// (NaN / ±INF on library float types). Discrete bounds are
-    /// normalized to closed form.
-    ///
-    /// `HalfInterval` has only one bound; there is no pair invariant,
-    /// so strict and coercive degenerate to the same behavior here.
-    pub fn new(side: Side, bound: FiniteBound<T>) -> Self {
-        Self::try_new(side, bound).expect("Bound should have been comparable")
-    }
-
-    /// Fallible strict construction: returns `Err` for invalid bound
-    /// limits. Discrete bounds are normalized to closed form.
-    ///
-    /// # Errors
-    ///
-    /// - [`Error::InvalidBoundLimit`] —
-    ///   bound value is incomparable (e.g. NaN).
-    pub fn try_new(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
-        let bound = bound.normalized(side);
-        Ok(Self { side, bound })
-    }
-
-    /// Constructs a left-bounded `HalfInterval` `[a, ->)` or `(a, ->)`.
-    /// Panics on invalid bound limit. Convenience for
-    /// `HalfInterval::new(Side::Left, bound)`.
-    pub fn left(bound: FiniteBound<T>) -> Self {
-        Self::new(Side::Left, bound)
-    }
-
-    /// Constructs a right-bounded `HalfInterval` `(<-, b]` or `(<-, b)`.
-    /// Panics on invalid bound limit. Convenience for
-    /// `HalfInterval::new(Side::Right, bound)`.
-    pub fn right(bound: FiniteBound<T>) -> Self {
-        Self::new(Side::Right, bound)
-    }
-
-    /// Constructs without checking invariants. Tier 4 bypass.
-    ///
-    /// # Preconditions
-    ///
-    /// 1. **I2** — the bound's value is comparable (no NaN).
-    /// 2. **I4** — for discrete `T`, the bound is in closed form.
-    ///
-    /// Violating either yields incorrect results but no undefined
-    /// behavior. Debug builds trip `debug_assert!` tripwires; release
-    /// builds do no checking.
-    ///
-    /// `#[doc(hidden)]` — maintainer-context only.
-    #[doc(hidden)]
-    pub fn new_assume_valid(side: Side, bound: FiniteBound<T>) -> Self {
-        debug_assert!(
-            bound.value().partial_cmp(bound.value()).is_some(),
-            "I2: bound value must be comparable (NaN check)"
-        );
-        debug_assert!(
-            bound.is_closed() || bound.value().try_adjacent(side.flip()).is_none(),
-            "I4: bound must be discrete-normalized to closed"
-        );
-        Self { side, bound }
-    }
-}
-
-impl<T> HalfInterval<T> {
-    #[inline(always)]
-    pub fn into_raw(self) -> (Side, FiniteBound<T>) {
-        (self.side, self.bound)
-    }
-
-    pub fn into_finite_ord_bound(self) -> FiniteOrdBound<T> {
-        self.bound.into_finite_ord(self.side)
-    }
-
-    pub fn into_ord_bound(self) -> OrdBound<T> {
-        self.bound.into_ord(self.side)
-    }
-
-    pub fn finite_ord_bound(&self) -> FiniteOrdBound<&T> {
-        self.bound.finite_ord(self.side)
-    }
-
-    pub fn ord_bound(&self) -> OrdBound<&T> {
-        self.bound.ord(self.side)
-    }
-
-    #[inline(always)]
-    pub fn side(&self) -> Side {
-        self.side
-    }
-
-    /// Returns the finite bound of the HalfBounded interval.
-    #[inline(always)]
-    pub fn finite_bound(&self) -> &FiniteBound<T> {
-        &self.bound
-    }
-}
-
-impl<T> OrdBounded<T> for HalfInterval<T> {
-    fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
-        match self.side {
-            Side::Left => {
-                let left = OrdBound::left(&self.bound);
-                OrdBoundPair::new_assume_valid(left, OrdBound::RightUnbounded)
-            }
-            Side::Right => {
-                let right = OrdBound::right(&self.bound);
-                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, right)
-            }
-        }
-    }
-}
-
-impl<T> SetBounds<T> for HalfInterval<T> {
-    fn bound(&self, side: Side) -> Option<&FiniteBound<T>> {
-        if self.side == side {
-            Some(&self.bound)
-        } else {
-            None
-        }
-    }
-}
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[cfg_attr(feature = "serde", serde(try_from = "RawEnumInterval<T>"))]
-#[cfg_attr(
-    feature = "serde",
-    serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))
-)]
-#[allow(missing_docs)]
-pub enum EnumInterval<T> {
-    Finite(FiniteInterval<T>),
-    Half(HalfInterval<T>),
-    Unbounded,
-}
-
-/// Wire-format mirror of [`EnumInterval`]. The variants hold the
-/// already-validated public types, so the `TryFrom` is total.
-#[cfg(feature = "serde")]
-#[derive(serde::Deserialize)]
-#[serde(rename = "EnumInterval")]
-#[serde(bound(deserialize = "T: Element + serde::Deserialize<'de>"))]
-enum RawEnumInterval<T> {
-    Finite(FiniteInterval<T>),
-    Half(HalfInterval<T>),
-    Unbounded,
-}
-
-#[cfg(feature = "serde")]
-impl<T: Element> From<RawEnumInterval<T>> for EnumInterval<T> {
-    fn from(raw: RawEnumInterval<T>) -> Self {
-        match raw {
-            RawEnumInterval::Finite(inner) => Self::Finite(inner),
-            RawEnumInterval::Half(inner) => Self::Half(inner),
-            RawEnumInterval::Unbounded => Self::Unbounded,
-        }
-    }
-}
-
-impl<T> EnumInterval<T> {
-    /// Creates a new empty EnumInterval.
-    pub const fn empty() -> Self {
-        Self::Finite(FiniteInterval::empty())
-    }
-}
-
-impl<T> EnumInterval<T> {
-    pub fn is_fully_bounded(&self) -> bool {
-        match self {
-            Self::Finite(inner) => inner.is_fully_bounded(),
-            _ => false,
-        }
-    }
-}
-
-impl<T> OrdBounded<T> for EnumInterval<T> {
-    fn ord_bound_pair(&self) -> OrdBoundPair<&T> {
-        match self {
-            Self::Finite(inner) => inner.ord_bound_pair(),
-            Self::Half(inner) => inner.ord_bound_pair(),
-            Self::Unbounded => {
-                OrdBoundPair::new_assume_valid(OrdBound::LeftUnbounded, OrdBound::RightUnbounded)
-            }
-        }
-    }
-}
-
-impl<T> SetBounds<T> for EnumInterval<T> {
-    fn bound(&self, side: Side) -> Option<&FiniteBound<T>> {
-        match self {
-            Self::Finite(inner) => inner.bound(side),
-            Self::Half(inner) => inner.bound(side),
-            Self::Unbounded => None,
-        }
-    }
-}
-
 // num_traits::Zero requires Self: Add<Self, Output = Self>; the infix
-// Add impl on FiniteInterval/EnumInterval is sugar over try_add, so T
-// must satisfy `TryAdd<Output = T>`. Likewise One requires
-// Self: Mul<Self, Output = Self>, so T must satisfy `TryMul<Output = T>`.
+// Add impl on FiniteInterval is sugar over try_add, so T must satisfy
+// `TryAdd<Output = T>`. Likewise One requires Self: Mul<Self, Output = Self>,
+// so T must satisfy `TryMul<Output = T>`.
 impl<T> Zero for FiniteInterval<T>
 where
     T: Element + Zero + crate::ops::math::TryAdd<Output = T>,
@@ -475,23 +241,6 @@ where
     }
 }
 
-impl<T> Zero for EnumInterval<T>
-where
-    T: Element + Zero + crate::ops::math::TryAdd<Output = T>,
-    <T as crate::ops::math::TryAdd>::Error: core::fmt::Debug + Into<Error>,
-{
-    fn zero() -> Self {
-        Self::from(FiniteInterval::<T>::zero())
-    }
-
-    fn is_zero(&self) -> bool {
-        match self {
-            Self::Finite(inner) => inner.is_zero(),
-            _ => false,
-        }
-    }
-}
-
 impl<T> One for FiniteInterval<T>
 where
     T: Element + Clone + Zero + One + crate::ops::math::TryMul<Output = T>,
@@ -502,68 +251,36 @@ where
     }
 }
 
-impl<T> One for EnumInterval<T>
-where
-    T: Element + Clone + Zero + One + crate::ops::math::TryMul<Output = T>,
-    <T as crate::ops::math::TryMul>::Error: core::fmt::Debug + Into<Error>,
-{
-    fn one() -> Self {
-        EnumInterval::from(FiniteInterval::one())
-    }
-}
-
 impl<T> Default for FiniteInterval<T> {
     fn default() -> Self {
         Self::empty()
     }
 }
 
-impl<T> Default for EnumInterval<T> {
-    fn default() -> Self {
-        Self::empty()
+// PartialOrd/Ord delegate to OrdBoundPair. Defined on the inner because
+// the outer derives them via the inner's layout.
+impl<T: PartialOrd> PartialOrd for FiniteIntervalInner<T> {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        let lhs = self.ord_bound_pair();
+        let rhs = rhs.ord_bound_pair();
+        lhs.partial_cmp(&rhs)
     }
 }
 
-macro_rules! impl_interval_cmp {
-    ($($t:ident), +) => {
-        $(
-            impl<T: PartialOrd> PartialOrd for $t<T> {
-                fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
-                    let lhs = self.ord_bound_pair();
-                    let rhs = rhs.ord_bound_pair();
-                    lhs.partial_cmp(&rhs)
-                }
-            }
-
-            impl<T: Ord> Ord for $t<T> {
-                fn cmp(&self, rhs: &Self) -> Ordering {
-                    let lhs = self.ord_bound_pair();
-                    let rhs = rhs.ord_bound_pair();
-                    lhs.cmp(&rhs)
-                }
-            }
-        )+
+impl<T: Ord> Ord for FiniteIntervalInner<T> {
+    fn cmp(&self, rhs: &Self) -> Ordering {
+        let lhs = self.ord_bound_pair();
+        let rhs = rhs.ord_bound_pair();
+        lhs.cmp(&rhs)
     }
 }
-
-impl_interval_cmp!(FiniteIntervalInner, HalfInterval, EnumInterval);
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::factory::FiniteFactory;
-
-    #[test]
-    fn test_set_bounds_trait() {
-        let x = EnumInterval::closed(0, 10);
-
-        assert_eq!(x.left().unwrap(), &FiniteBound::closed(0));
-        assert_eq!(x.right().unwrap(), &FiniteBound::closed(10));
-    }
 
     mod try_new_strict {
         use super::*;
-        use crate::error::Error;
 
         #[test]
         fn try_new_errors_on_crossed_continuous() {
@@ -656,29 +373,5 @@ mod tests {
                 FiniteBound::open(5.0_f32),
             );
         }
-    }
-
-    #[test]
-    fn test_ord_bounded_trait() {
-        let x = EnumInterval::closed(0, 10);
-
-        fn by_ref(y: &EnumInterval<i32>) {
-            let ob = y.ord_bound_pair();
-            assert_eq!(
-                ob,
-                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
-            );
-        }
-
-        fn by_val(y: EnumInterval<i32>) {
-            let ob = y.ord_bound_pair();
-            assert_eq!(
-                ob,
-                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
-            );
-        }
-
-        by_ref(&x);
-        by_val(x);
     }
 }

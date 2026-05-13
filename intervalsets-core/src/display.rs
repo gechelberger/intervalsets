@@ -1,7 +1,7 @@
 use core::fmt::{self, Write};
 
 use crate::bound::{BoundType, FiniteBound, Side};
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 fn write_bound_type(
     f: &mut fmt::Formatter<'_>,
@@ -88,6 +88,25 @@ impl<T: fmt::Display> fmt::Display for EnumInterval<T> {
     }
 }
 
+impl<T: fmt::Display> fmt::Display for MaybeDisjoint<T> {
+    /// `Connected(iv)` delegates to the inner `EnumInterval`'s
+    /// `Display`. `Disjoint(a, b)` wraps both pieces in set-notation
+    /// braces, e.g. `{[0, 5], [10, 15]}`. Empty MD prints as `{}`
+    /// (inherited from the empty `FiniteInterval` display).
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Connected(iv) => iv.fmt(f),
+            Self::Disjoint(a, b) => {
+                f.write_char('{')?;
+                a.fmt(f)?;
+                f.write_str(", ")?;
+                b.fmt(f)?;
+                f.write_char('}')
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate std;
@@ -148,5 +167,33 @@ mod tests {
             std::format!("{}", EnumInterval::<i8>::unbounded()),
             "(<-, ->)"
         );
+    }
+
+    #[test]
+    fn test_display_maybe_disjoint_empty() {
+        // Empty MD prints as `{}` via the underlying empty
+        // FiniteInterval display.
+        assert_eq!(std::format!("{}", MaybeDisjoint::<i8>::empty()), "{}");
+    }
+
+    #[test]
+    fn test_display_maybe_disjoint_connected_delegates() {
+        let md = MaybeDisjoint::from_interval(EnumInterval::closed(0, 5));
+        assert_eq!(std::format!("{}", md), "[0, 5]");
+    }
+
+    #[test]
+    fn test_display_maybe_disjoint_disjoint_uses_set_notation() {
+        let md = MaybeDisjoint::from_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
+        assert_eq!(std::format!("{}", md), "{[0, 5], [10, 15]}");
+    }
+
+    #[test]
+    fn test_display_maybe_disjoint_with_unbounded_piece() {
+        let md = MaybeDisjoint::from_pair(
+            EnumInterval::unbound_closed(0_i32),
+            EnumInterval::closed_unbound(10),
+        );
+        assert_eq!(std::format!("{}", md), "{(<-, 0], [10, ->)}");
     }
 }
