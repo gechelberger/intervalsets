@@ -7,6 +7,38 @@
 //! [`Bisect::bisect_by`] takes any `Fn(&Self) -> U` with `U: PartialOrd`.
 //! Common patterns: `|s| s.width().finite()` for width-balance,
 //! `|s| s.count().finite()` for population-balance.
+//!
+//! # Measure contract
+//!
+//! `measure` must be **monotonic under set inclusion**: if `A ⊆ B`,
+//! then `measure(A) ≤ measure(B)`. Equivalently, as the cut sweeps
+//! from low to high across the bracket, `measure(left)` must be
+//! non-decreasing and `measure(right)` non-increasing — this is what
+//! makes the search a 1D root-find with a unique balance point to
+//! converge on.
+//!
+//! `Width` and `Count` satisfy this directly. Any monotonic-increasing
+//! transform of a valid measure (scaling by a positive constant,
+//! shifting, composing with a monotonic function) is also valid; an
+//! inverted measure (e.g. `|s| -s.width().finite()`) is NOT — the
+//! search will walk the wrong way and converge on a meaningless
+//! point.
+//!
+//! Violating the contract does not cause undefined behavior or
+//! non-termination — the loop still halts when the bracket midpoint
+//! stabilizes — but the returned `midpoint` carries no balance
+//! guarantee. If you need to split by a non-monotonic objective, you
+//! want optimization (e.g. dense sampling over the bracket), not
+//! bisection.
+//!
+//! # `PartialOrd` is partial
+//!
+//! For `U = f64` (or any type whose `PartialOrd` admits incomparable
+//! values), a measure that can yield `NaN` will silently bias the
+//! search: `NaN < x` and `NaN == x` are both `false`, so every
+//! comparison falls through to the "right is heavier" branch. Strip
+//! `NaN` at the measure boundary — `s.width().finite()` returns a
+//! finite `f64` and is the canonical pattern.
 
 use core::convert::Infallible;
 
@@ -35,9 +67,17 @@ pub struct Bisection<T, S> {
 }
 
 /// Split a set into two halves of approximately equal measure.
+///
+/// `measure` must be monotonic under set inclusion — see the [module
+/// docs](self) for the full contract and what happens when it isn't.
 pub trait Bisect<T>: Sized {
     /// Bisect by `measure`. Returns `None` if the set is empty or not
     /// finitely bounded.
+    ///
+    /// `measure` must satisfy the monotonicity contract (see [module
+    /// docs](self)). Common valid choices:
+    /// `|s| s.width().finite()` for width-balance,
+    /// `|s| s.count().finite()` for population-balance.
     fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
     where
         F: Fn(&Self) -> U,
