@@ -1,11 +1,11 @@
 pub use intervalsets_core::ops::Split;
 
 use crate::bound::Side;
-use crate::numeric::{Element, Zero};
+use crate::numeric::Element;
 use crate::ops::Contains;
 use crate::{Interval, IntervalSet, MaybeEmpty, SetBounds};
 
-impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
+impl<T: Element + Clone> Split<T> for Interval<T> {
     type Output = Self;
     type Error = crate::error::Error;
 
@@ -17,7 +17,7 @@ impl<T: Element + Clone + Zero> Split<T> for Interval<T> {
     }
 }
 
-impl<T: Element + Clone + Zero> Split<T> for IntervalSet<T> {
+impl<T: Element + Clone> Split<T> for IntervalSet<T> {
     type Output = Self;
     type Error = crate::error::Error;
 

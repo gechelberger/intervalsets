@@ -139,6 +139,10 @@ mod rebound;
 pub use rebound::Rebound;
 mod split;
 pub use split::Split;
+mod bisect;
+#[doc(hidden)]
+pub use bisect::bisect_core;
+pub use bisect::{Bisect, Bisection};
 mod union;
 pub use union::Union;
 

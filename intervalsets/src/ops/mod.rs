@@ -31,6 +31,9 @@ pub use hull::ConvexHull;
 mod split;
 pub use split::Split;
 
+mod bisect;
+pub use bisect::{Bisect, Bisection};
+
 mod intersection;
 pub use intersection::Intersection;
 
