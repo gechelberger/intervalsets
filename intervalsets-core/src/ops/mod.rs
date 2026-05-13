@@ -143,6 +143,8 @@ mod bisect;
 #[doc(hidden)]
 pub use bisect::bisect_core;
 pub use bisect::{Bisect, Bisection};
+mod midpoint;
+pub use midpoint::Midpoint;
 mod union;
 pub use union::Union;
 

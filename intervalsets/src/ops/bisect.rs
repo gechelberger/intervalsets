@@ -9,12 +9,12 @@ use intervalsets_core::ops::{bisect_core, Split};
 pub use intervalsets_core::ops::{Bisect, Bisection};
 
 use crate::bound::{SetBounds, Side};
-use crate::numeric::{Element, Midpoint};
+use crate::numeric::{Element, Midpointable};
 use crate::{Interval, IntervalSet};
 
 impl<T> Bisect<T> for Interval<T>
 where
-    T: Element + Clone + Midpoint<Error = Infallible>,
+    T: Element + Clone + Midpointable<Error = Infallible>,
 {
     fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
     where
@@ -36,7 +36,7 @@ where
 
 impl<T> Bisect<T> for IntervalSet<T>
 where
-    T: Element + Clone + Midpoint<Error = Infallible>,
+    T: Element + Clone + Midpointable<Error = Infallible>,
 {
     fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
     where

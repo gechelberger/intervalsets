@@ -39,7 +39,7 @@ fixed_domain!(
     fixed::FixedU128<N>,
 );
 
-/// private macro for Midpoint on fixed crate types.
+/// private macro for Midpointable on fixed crate types.
 ///
 /// Each fixed-point type delegates to the fixed crate's inherent
 /// `mean` method, the canonical midpoint operation for fixed-point
@@ -57,7 +57,7 @@ fixed_domain!(
 macro_rules! fixed_midpoint_delegate_impl {
     ($($t:ty,) +) => {
         $(
-            impl<N: typenum::Unsigned> crate::numeric::Midpoint for $t {
+            impl<N: typenum::Unsigned> crate::numeric::Midpointable for $t {
                 type Error = ::core::convert::Infallible;
 
                 /// Infallible: delegates to the fixed crate's inherent
@@ -278,7 +278,7 @@ mod tests {
     use fixed::types::{I6F2, U6F2};
 
     use crate::bound::Side::*;
-    use crate::numeric::{Element, Midpoint};
+    use crate::numeric::{Element, Midpointable};
 
     #[test]
     fn test_adjacent() {

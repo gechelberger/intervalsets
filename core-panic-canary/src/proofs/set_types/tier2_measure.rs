@@ -10,6 +10,7 @@
 use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
 use intervalsets_core::measure::{Count, Width};
+use intervalsets_core::ops::Midpoint;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 fn make_finite() -> FiniteInterval<i64> {

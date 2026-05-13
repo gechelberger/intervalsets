@@ -34,6 +34,9 @@ pub use split::Split;
 mod bisect;
 pub use bisect::{Bisect, Bisection};
 
+mod midpoint;
+pub use midpoint::Midpoint;
+
 mod intersection;
 pub use intersection::Intersection;
 

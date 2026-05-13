@@ -21,7 +21,6 @@ pub use intervalsets_core::measure::{
 };
 
 mod count;
-mod midpoint;
 mod width;
 
 #[cfg(test)]

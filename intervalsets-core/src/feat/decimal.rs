@@ -5,7 +5,7 @@ use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::continuous_domain_impl;
 use crate::error::MathError;
 use crate::measure::Widthable;
-use crate::numeric::Midpoint;
+use crate::numeric::Midpointable;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 continuous_domain_impl!(Decimal);
@@ -20,7 +20,7 @@ impl Widthable for Decimal {
     }
 }
 
-impl Midpoint for Decimal {
+impl Midpointable for Decimal {
     type Error = MathError;
 
     /// Computes the midpoint as `(self / 2) + (other / 2)`, halving

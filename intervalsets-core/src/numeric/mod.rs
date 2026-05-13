@@ -170,4 +170,4 @@ pub mod midpoint;
 pub mod saturating;
 
 pub use element::Element;
-pub use midpoint::Midpoint;
+pub use midpoint::Midpointable;

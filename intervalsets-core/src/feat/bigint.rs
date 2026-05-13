@@ -6,7 +6,7 @@ use num_traits::{Bounded, CheckedAdd, CheckedSub, FromPrimitive, NumCast, One, S
 use crate::bound::Side::{self, *};
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
-use crate::numeric::{Element, Midpoint};
+use crate::numeric::{Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 use crate::{default_countable_impl, default_width_impl};
 
@@ -22,7 +22,7 @@ impl Element for BigInt {
 default_countable_impl!(BigInt);
 default_width_impl!(BigInt);
 
-impl Midpoint for BigInt {
+impl Midpointable for BigInt {
     type Error = core::convert::Infallible;
 
     /// Infallible: `BigInt` is arbitrary precision, so the midpoint of
@@ -45,7 +45,7 @@ impl Element for BigUint {
 default_countable_impl!(BigUint);
 default_width_impl!(BigUint);
 
-impl Midpoint for BigUint {
+impl Midpointable for BigUint {
     type Error = core::convert::Infallible;
 
     /// Infallible: `BigUint` is arbitrary precision, so the midpoint
@@ -407,7 +407,7 @@ mod tests {
 
     use crate::factory::FiniteFactory;
     use crate::measure::{Count, Width};
-    use crate::numeric::Midpoint;
+    use crate::numeric::Midpointable;
     use crate::EnumInterval;
 
     #[test]

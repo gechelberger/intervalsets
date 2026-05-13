@@ -20,6 +20,5 @@ mod count;
 pub use count::{Count, CountOverflowError, Countable};
 mod extent;
 pub use extent::Extent;
-mod midpoint;
 mod width;
 pub use width::{Width, WidthOverflowError, Widthable};

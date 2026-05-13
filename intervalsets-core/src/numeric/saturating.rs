@@ -90,7 +90,7 @@ use num_traits::{
 use crate::bound::Side;
 use crate::cast::{LossyCastElement, TryCastElement};
 use crate::measure::{Countable, Widthable};
-use crate::numeric::{Element, Midpoint};
+use crate::numeric::{Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 // ===== Element ======================================================
@@ -113,11 +113,11 @@ where
     // the supported inner types fall into that case.
 }
 
-// ===== Midpoint =====================================================
+// ===== Midpointable =====================================================
 
-impl<T> Midpoint for Saturating<T>
+impl<T> Midpointable for Saturating<T>
 where
-    T: Midpoint,
+    T: Midpointable,
 {
     type Error = T::Error;
 
@@ -350,7 +350,7 @@ mod tests {
         assert_eq!(x.width().finite(), 10u128);
     }
 
-    // ----- Midpoint -----------------------------------------------------
+    // ----- Midpointable -----------------------------------------------------
 
     #[test]
     fn midpoint_basic() {

@@ -4,7 +4,7 @@ use core::convert::Infallible;
 
 use super::Split;
 use crate::bound::{SetBounds, Side};
-use crate::numeric::{Element, Midpoint};
+use crate::numeric::{Element, Midpointable};
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// Result of bisecting a set by some measure.
@@ -79,7 +79,7 @@ pub trait Bisect<T>: Sized {
 #[doc(hidden)]
 pub fn bisect_core<T, S, F, U, Sp>(mut lo: T, mut hi: T, measure: F, split: Sp) -> (T, S, S)
 where
-    T: Clone + PartialEq + Midpoint<Error = Infallible>,
+    T: Clone + PartialEq + Midpointable<Error = Infallible>,
     F: Fn(&S) -> U,
     U: PartialOrd,
     Sp: Fn(T) -> (S, S),
@@ -116,7 +116,7 @@ fn finite_bounds<T: Clone, S: SetBounds<T>>(s: &S) -> Option<(T, T)> {
 
 impl<T> Bisect<T> for FiniteInterval<T>
 where
-    T: Element + Clone + Midpoint<Error = Infallible>,
+    T: Element + Clone + Midpointable<Error = Infallible>,
 {
     fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
     where
@@ -137,7 +137,7 @@ where
 
 impl<T> Bisect<T> for HalfInterval<T>
 where
-    T: Element + Clone + Midpoint<Error = Infallible>,
+    T: Element + Clone + Midpointable<Error = Infallible>,
 {
     fn bisect_by<F, U>(&self, _closed: Side, _measure: F) -> Option<Bisection<T, Self>>
     where
@@ -150,7 +150,7 @@ where
 
 impl<T> Bisect<T> for EnumInterval<T>
 where
-    T: Element + Clone + Midpoint<Error = Infallible>,
+    T: Element + Clone + Midpointable<Error = Infallible>,
 {
     fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
     where
@@ -171,7 +171,7 @@ where
 
 impl<T> Bisect<T> for MaybeDisjoint<T>
 where
-    T: Element + Clone + Midpoint<Error = Infallible>,
+    T: Element + Clone + Midpointable<Error = Infallible>,
 {
     fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
     where

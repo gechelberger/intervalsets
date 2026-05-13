@@ -6,7 +6,7 @@ use ordered_float::{NotNan, OrderedFloat};
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::measure::Widthable;
-use crate::numeric::{Element, Midpoint};
+use crate::numeric::{Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 impl<T: FloatCore + Element> Element for NotNan<T> {
@@ -36,7 +36,7 @@ impl<T: FloatCore + Element> Element for OrderedFloat<T> {
     }
 }
 
-impl<T: FloatCore + Midpoint<Error = Infallible>> Midpoint for NotNan<T> {
+impl<T: FloatCore + Midpointable<Error = Infallible>> Midpointable for NotNan<T> {
     type Error = Infallible;
 
     /// Infallible by contract: values stored in any in-tree set type
@@ -70,7 +70,7 @@ impl<T: FloatCore + Widthable<Output = T>> Widthable for OrderedFloat<T> {
     }
 }
 
-impl<T: Midpoint<Error = Infallible>> Midpoint for OrderedFloat<T> {
+impl<T: Midpointable<Error = Infallible>> Midpointable for OrderedFloat<T> {
     type Error = Infallible;
 
     /// Infallible by contract: values stored in any in-tree set type
