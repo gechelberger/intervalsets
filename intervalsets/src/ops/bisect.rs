@@ -141,11 +141,12 @@ mod tests {
     /// This is the "split-at-mass-balance-point" guarantee bisect
     /// promises, validated against the independently-computed total.
     #[quickcheck]
-    fn check_bisect_balances_width(set: IntervalSet<f32>) -> TestResult {
+    fn check_bisect_balances_width(set: IntervalSet<f64>) -> TestResult {
         let total = match set.try_width() {
             Ok(Measurement::Finite(v)) if v.is_finite() && v > 0.0 => v,
             _ => return TestResult::discard(),
         };
+        let half = total / 2.0;
 
         let bisection = match set.bisect_by(Side::Left, |s| s.width().finite()) {
             Some(b) => b,
@@ -154,10 +155,19 @@ mod tests {
         let lw = bisection.left.width().finite();
         let rw = bisection.right.width().finite();
 
-        TestResult::from_bool(
-            relative_eq!(lw + rw, total, max_relative = 1e-5)
-                && relative_eq!(lw, rw, max_relative = 1e-5),
-        )
+        // Compare each half to total/2 individually — avoids `lw + rw`
+        // overflowing to INF when the set's total width approaches
+        // f64::MAX. Both halves close to total/2 implies they're close
+        // to each other.
+        assert!(
+            relative_eq!(lw, half, max_relative = 1e-9),
+            "lw != total/2: lw={lw}, half={half}, set={set:?}",
+        );
+        assert!(
+            relative_eq!(rw, half, max_relative = 1e-9),
+            "rw != total/2: rw={rw}, half={half}, set={set:?}",
+        );
+        TestResult::passed()
     }
 
     #[test]
