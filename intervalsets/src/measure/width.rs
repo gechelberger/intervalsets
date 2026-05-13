@@ -44,7 +44,8 @@ use intervalsets_core::ops::math::TryAdd;
 /// let b = b.difference(Interval::closed(5, 15));
 /// assert_eq!(b.width().finite(), 4u128);
 /// ```
-use super::{Extent, Width, WidthOverflowError, Widthable};
+use super::{Extent, Width, Widthable};
+use crate::error::MathError;
 use crate::numeric::Zero;
 use crate::{Interval, IntervalSet};
 
@@ -54,7 +55,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = WidthOverflowError;
+    type Error = MathError;
 
     fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         self.0.try_width()
@@ -65,15 +66,14 @@ impl<T, Out> Width for IntervalSet<T>
 where
     T: Widthable<Output = Out>,
     Out: Zero + TryAdd<Out, Output = Out>,
-    <Out as TryAdd>::Error: Into<WidthOverflowError>,
+    <Out as TryAdd>::Error: Into<MathError>,
 {
     type Output = Out;
-    type Error = WidthOverflowError;
+    type Error = MathError;
 
     /// Sum per-component widths via [`TryAdd`] so a summation that
-    /// exceeds `Out`'s representable range surfaces as
-    /// `WidthOverflowError` rather than panicking in debug / wrapping
-    /// in release.
+    /// exceeds `Out`'s representable range surfaces as [`MathError`]
+    /// rather than panicking in debug / wrapping in release.
     fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         self.iter()
             .try_fold(Extent::Finite(<Out as Zero>::zero()), |accum, subset| {

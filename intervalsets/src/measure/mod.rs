@@ -16,9 +16,7 @@
 //! Some common measures are Count and the Lebesgue measure
 //! (which is Width in R1).
 
-pub use intervalsets_core::measure::{
-    Count, CountOverflowError, Countable, Extent, Width, WidthOverflowError, Widthable,
-};
+pub use intervalsets_core::measure::{Count, Countable, Extent, Width, Widthable};
 
 mod count;
 mod width;

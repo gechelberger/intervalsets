@@ -1,29 +1,8 @@
 use super::Extent;
+use crate::error::MathError;
 use crate::numeric::{Element, Zero};
 use crate::ops::math::TryAdd;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
-
-/// The counting measure of a set cannot be represented by the
-/// [`Countable::Output`] type (e.g. counting `[i32::MIN, i32::MAX]`
-/// overflows `i32`).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
-#[error("count overflows the Countable Output type")]
-pub struct CountOverflowError;
-
-impl From<core::convert::Infallible> for CountOverflowError {
-    fn from(x: core::convert::Infallible) -> Self {
-        match x {}
-    }
-}
-
-impl From<crate::error::MathError> for CountOverflowError {
-    /// Lifts a value-level overflow during count summation into the
-    /// count-overflow umbrella. Used by `IntervalSet::try_count` to
-    /// surface mid-fold `TryAdd` overflow as a count-side failure.
-    fn from(_: crate::error::MathError) -> Self {
-        CountOverflowError
-    }
-}
 
 /// Defines the counting measure of a [`Countable`] Set.
 ///
@@ -201,13 +180,13 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = CountOverflowError;
+    type Error = MathError;
 
     fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
                 Some(count) => Ok(Extent::Finite(count)),
-                None => Err(CountOverflowError),
+                None => Err(MathError::Range),
             },
             None => Ok(Extent::Finite(Self::Output::zero())),
         }
@@ -220,7 +199,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = CountOverflowError;
+    type Error = MathError;
 
     fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         Ok(Extent::Infinite)
@@ -233,7 +212,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = CountOverflowError;
+    type Error = MathError;
 
     fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
@@ -245,17 +224,17 @@ where
 
 /// Count of a [`MaybeDisjoint`] is the sum of its pieces' counts.
 /// `Connected(iv)` delegates; `Disjoint(a, b)` sums per-piece counts
-/// via [`TryAdd`] so an overflowing total surfaces as
-/// `CountOverflowError` rather than wrapping. Infinite from either
-/// piece propagates to an infinite total.
+/// via [`TryAdd`] so an overflowing total surfaces as [`MathError`]
+/// rather than wrapping. Infinite from either piece propagates to an
+/// infinite total.
 impl<T, Out> Count for MaybeDisjoint<T>
 where
     T: Countable<Output = Out>,
     Out: Zero + TryAdd<Out, Output = Out>,
-    <Out as TryAdd>::Error: Into<CountOverflowError>,
+    <Out as TryAdd>::Error: Into<MathError>,
 {
     type Output = Out;
-    type Error = CountOverflowError;
+    type Error = MathError;
 
     fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {

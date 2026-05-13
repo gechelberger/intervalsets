@@ -17,8 +17,8 @@
 //! (which is Width in R1).
 
 mod count;
-pub use count::{Count, CountOverflowError, Countable};
+pub use count::{Count, Countable};
 mod extent;
 pub use extent::Extent;
 mod width;
-pub use width::{Width, WidthOverflowError, Widthable};
+pub use width::{Width, Widthable};

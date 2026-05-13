@@ -17,9 +17,9 @@ version and are released together via `cargo-release`. See the repo
 - `core::num::Saturating<T>` is now a valid storage type (inherited from `intervalsets-core`). All four `Try*` ops are uniformly `Error = Infallible` — saturation is defined behavior on the bounded integer lattice, not overflow. `core::num::Wrapping<T>` is intentionally not supported (ordering-flipping overflow violates the bound-pair invariant). See the `intervalsets-core` changelog for the full surface, `TryDiv` saturation rule, and orphan-rule limitation around `IntoFiniteInterval`.
 - `cast::{Cast, LossyCast, TryCast}` impls for `Interval` and `IntervalSet` (re-exported via prelude). `Interval` delegates to its inner `EnumInterval`. `IntervalSet::cast` routes through `try_new` (strict; widenings preserve invariants); `IntervalSet::lossy_cast` routes through `new` (repairing — narrowed intervals that collapse onto the same range merge); `IntervalSet::try_cast` routes through `try_new` and surfaces cast-induced invariant violations as `Error::InvalidIntervalSet`. Coverage extends to `ordered-float`'s `OrderedFloat<T>` and `NotNan<T>` storage types via the impls landed in `intervalsets-core`.
 - `ops::Midpoint<T>` impls for `Interval<T>` and `IntervalSet<T>` (trait re-exported from `intervalsets_core::ops`). Hull-midpoint semantics: `(inf(S) + sup(S)) / 2`. For a single connected `Interval` this is the interval's midpoint; for a multi-piece `IntervalSet` it is the midpoint of the convex hull and **may lie in a gap** between components — see the trait docs. Empty / half-bounded / unbounded inputs return `Err(Error::Math(MathError::Domain))`. Wrapper impls use `type Error = crate::error::Error` so the wrapper's umbrella error type carries the result.
-- Re-exports of `numeric::Midpointable` (the storage-type trait, renamed from `numeric::Midpoint` in core) and `measure::{Widthable, WidthOverflowError}`.
-- `Width::try_width` surfaces representation overflow (e.g. `[i32::MIN, i32::MAX]` widening, `f64::MIN..f64::MAX` overflow to `±INF`) as `Err(WidthOverflowError)`. The infallible `width()` panics on overflow per its docstring.
-- `IntervalSet::try_count` and `IntervalSet::try_width` summations now use `TryAdd`-based folds and surface mid-fold overflow as `CountOverflowError` / `WidthOverflowError`.
+- Re-export of `numeric::Midpointable` (the storage-type trait, renamed from `numeric::Midpoint` in core) and `measure::Widthable`. The set-level `Width`/`Count` impls for `Interval` / `IntervalSet` use `type Error = MathError`.
+- `Width::try_width` surfaces representation overflow (e.g. `[i32::MIN, i32::MAX]` widening, `f64::MIN..f64::MAX` overflow to `±INF`) as `Err(MathError::Range)`. The infallible `width()` panics on overflow per its docstring.
+- `IntervalSet::try_count` and `IntervalSet::try_width` summations now use `TryAdd`-based folds and surface mid-fold overflow as `Err(MathError::Range)`.
 - Optional `approx` feature with `AbsDiffEq` / `RelativeEq` / `UlpsEq` impls for `Interval` and `IntervalSet` ([#215](https://github.com/gechelberger/intervalsets/pull/215)).
 - `error::Error::InvalidBoundLimit` variant lifted from `intervalsets-core` for the new `Element::validate` rejection path.
 - `error::Error::Math(MathError)` variant (with `From<MathError> for Error`) so set-level `try_*` math can surface value-level arithmetic failures. `MathError` is re-exported from `intervalsets_core::error`.
@@ -45,7 +45,7 @@ version and are released together via `cargo-release`. See the repo
 
 ### Fixed
 
-- `IntervalSet::try_width` no longer panics in debug / wraps in release on integer intervals; the per-step `Sub` overflow on full-range integer intervals is gone (Output widens to `u128`), and the summation step uses `TryAdd` so a sum that exceeds `Out` surfaces as `Err(WidthOverflowError)`.
+- `IntervalSet::try_width` no longer panics in debug / wraps in release on integer intervals; the per-step `Sub` overflow on full-range integer intervals is gone (Output widens to `u128`), and the summation step uses `TryAdd` so a sum that exceeds `Out` surfaces as `Err(MathError::Range)`.
 - `IntervalSet::try_count` summation is now panic-free at every step (previously only the per-interval count was checked; the fold-step `Add` panicked on overflow in debug / wrapped in release).
 
 ### Security

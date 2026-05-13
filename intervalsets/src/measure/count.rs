@@ -1,6 +1,7 @@
 use intervalsets_core::ops::math::TryAdd;
 
-use super::{Count, CountOverflowError, Countable, Extent};
+use super::{Count, Countable, Extent};
+use crate::error::MathError;
 use crate::numeric::Zero;
 use crate::{Interval, IntervalSet};
 
@@ -10,7 +11,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = CountOverflowError;
+    type Error = MathError;
 
     fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         self.0.try_count()
@@ -21,15 +22,14 @@ impl<T, Out> Count for IntervalSet<T>
 where
     T: Countable<Output = Out>,
     Out: Zero + TryAdd<Out, Output = Out>,
-    <Out as TryAdd>::Error: Into<CountOverflowError>,
+    <Out as TryAdd>::Error: Into<MathError>,
 {
     type Output = Out;
-    type Error = CountOverflowError;
+    type Error = MathError;
 
     /// Sum per-component counts via [`TryAdd`] so a summation that
-    /// exceeds `Out`'s representable range surfaces as
-    /// `CountOverflowError` rather than panicking in debug / wrapping
-    /// in release.
+    /// exceeds `Out`'s representable range surfaces as [`MathError`]
+    /// rather than panicking in debug / wrapping in release.
     fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         self.iter()
             .try_fold(Extent::Finite(Out::zero()), |accum, subset| {

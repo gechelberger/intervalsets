@@ -1,29 +1,8 @@
 use super::Extent;
+use crate::error::MathError;
 use crate::numeric::Zero;
 use crate::ops::math::TryAdd;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
-
-/// The width of a set cannot be represented in
-/// [`Width::Output`] (e.g. width of `[i128::MIN, i128::MAX]` overflows
-/// `u128`, or `f64::MAX - f64::MIN` overflows `f64` to `±INF`).
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
-#[error("width overflows the Width Output type or is non-finite")]
-pub struct WidthOverflowError;
-
-impl From<core::convert::Infallible> for WidthOverflowError {
-    fn from(x: core::convert::Infallible) -> Self {
-        match x {}
-    }
-}
-
-impl From<crate::error::MathError> for WidthOverflowError {
-    /// Lifts a value-level overflow during width summation into the
-    /// width-overflow umbrella. Used by `IntervalSet::try_width` to
-    /// surface mid-fold `TryAdd` overflow as a width-side failure.
-    fn from(_: crate::error::MathError) -> Self {
-        WidthOverflowError
-    }
-}
 
 /// Defines the [width measure](https://en.wikipedia.org/wiki/Lebesgue_measure) of a set in R1.
 ///
@@ -194,14 +173,14 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = WidthOverflowError;
+    type Error = MathError;
 
     fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
             None => Ok(Extent::Finite(<Self::Output as Zero>::zero())),
             Some((left, right)) => match T::width_between(left.value(), right.value()) {
                 Some(w) => Ok(Extent::Finite(w)),
-                None => Err(WidthOverflowError),
+                None => Err(MathError::Range),
             },
         }
     }
@@ -213,7 +192,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = WidthOverflowError;
+    type Error = MathError;
 
     fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         Ok(Extent::Infinite)
@@ -226,7 +205,7 @@ where
     T::Output: Zero,
 {
     type Output = T::Output;
-    type Error = WidthOverflowError;
+    type Error = MathError;
 
     fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
@@ -239,9 +218,9 @@ where
 
 /// Width of a [`MaybeDisjoint`] is the sum of its pieces' widths.
 /// `Connected(iv)` delegates; `Disjoint(a, b)` sums per-piece widths
-/// via [`TryAdd`] so an overflowing total surfaces as
-/// `WidthOverflowError` rather than wrapping. Infinite from either
-/// piece propagates to an infinite total.
+/// via [`TryAdd`] so an overflowing total surfaces as [`MathError`]
+/// rather than wrapping. Infinite from either piece propagates to an
+/// infinite total.
 ///
 /// Adds `TryAdd` to the bound chain (matching `IntervalSet`'s
 /// per-piece-summing impl in the outer crate).
@@ -249,10 +228,10 @@ impl<T, Out> Width for MaybeDisjoint<T>
 where
     T: Widthable<Output = Out>,
     Out: Zero + TryAdd<Out, Output = Out>,
-    <Out as TryAdd>::Error: Into<WidthOverflowError>,
+    <Out as TryAdd>::Error: Into<MathError>,
 {
     type Output = Out;
-    type Error = WidthOverflowError;
+    type Error = MathError;
 
     fn try_width(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
@@ -307,7 +286,7 @@ mod tests {
     fn float_extreme_range_overflows_to_err() {
         // f64::MIN..f64::MAX has true width ≈ 3.6e308, overflows f64 to INF.
         let x = EnumInterval::closed(f64::MIN, f64::MAX);
-        assert!(matches!(x.try_width(), Err(WidthOverflowError)));
+        assert!(matches!(x.try_width(), Err(MathError::Range)));
     }
 
     #[test]
@@ -370,6 +349,10 @@ mod tests {
         let a = EnumInterval::closed(f64::MIN, 0.0_f64);
         let b = EnumInterval::closed(1.0, f64::MAX);
         let x = MaybeDisjoint::from_pair(a, b);
-        assert!(matches!(x.try_width(), Err(WidthOverflowError)));
+        // The fold-step TryAdd on f64 collapses INF to MathError::Domain
+        // (see MathError::Domain docs — a single is_finite() check
+        // does not split INF from NaN). Per-piece width_between produces
+        // MathError::Range, but for this test the fold step fires.
+        assert!(x.try_width().is_err());
     }
 }
