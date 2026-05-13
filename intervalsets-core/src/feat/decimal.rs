@@ -2,13 +2,14 @@ use num_traits::{Bounded, NumCast};
 use rust_decimal::Decimal;
 
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
-use crate::continuous_domain_impl;
 use crate::error::MathError;
 use crate::measure::Widthable;
 use crate::numeric::Midpointable;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
+use crate::{continuous_countable_impl, continuous_domain_impl};
 
 continuous_domain_impl!(Decimal);
+continuous_countable_impl!(Decimal);
 
 impl Widthable for Decimal {
     type Output = Decimal;

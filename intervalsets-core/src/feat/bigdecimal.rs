@@ -8,9 +8,10 @@ use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
 use crate::numeric::Midpointable;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
-use crate::{continuous_domain_impl, default_width_impl};
+use crate::{continuous_countable_impl, continuous_domain_impl, default_width_impl};
 
 continuous_domain_impl!(BigDecimal);
+continuous_countable_impl!(BigDecimal);
 default_width_impl!(BigDecimal);
 
 impl Midpointable for BigDecimal {

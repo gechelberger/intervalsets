@@ -59,4 +59,22 @@ mod tests {
         ]);
         assert!(s.try_count().is_err());
     }
+
+    #[test]
+    fn intervalset_continuous_singletons_sum() {
+        let s = IntervalSet::new(vec![
+            Interval::closed(0.0_f64, 0.0),
+            Interval::closed(1.0, 1.0),
+        ]);
+        assert_eq!(s.count().finite(), 2_u128);
+    }
+
+    #[test]
+    fn intervalset_continuous_with_nondegenerate_is_infinite() {
+        let s = IntervalSet::new(vec![
+            Interval::closed(0.0_f64, 0.0),
+            Interval::closed(2.0, 3.0),
+        ]);
+        assert!(s.try_count().unwrap().is_infinite());
+    }
 }

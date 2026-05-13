@@ -104,6 +104,19 @@ pub trait Count {
 pub trait Countable: Element {
     type Output;
 
+    /// `true` if `Self` is a continuous element type (uncountably many values
+    /// between any two distinct elements). Acts as a *semantic marker for what
+    /// `None` from [`count_inclusive`](Self::count_inclusive) means*:
+    ///
+    /// - **Discrete** (`false`, default): `None` ⇒ representation overflow.
+    ///   `Count::try_count` raises `Err(MathError::Range)`.
+    /// - **Continuous** (`true`): `None` ⇒ uncountable (non-singleton range).
+    ///   `Count::try_count` returns `Ok(Extent::Infinite)`.
+    ///
+    /// Continuous impls return `Some(1)` from `count_inclusive` when
+    /// `left == right` (a singleton) and `None` otherwise.
+    const IS_CONTINUOUS: bool = false;
+
     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output>;
 }
 
@@ -153,6 +166,31 @@ macro_rules! primitive_countable_impl {
 primitive_countable_impl!(u8, u16, u32, u64, usize);
 primitive_countable_impl!(i8, i16, i32, i64, isize);
 
+/// Implements [`Countable`] for a continuous element type. `Output` is
+/// [`u128`]; `count_inclusive` returns `Some(1)` when `left == right`
+/// (a singleton) and `None` otherwise. The `Count` impl interprets
+/// `None` as `Extent::Infinite` because `IS_CONTINUOUS = true`.
+#[macro_export]
+macro_rules! continuous_countable_impl {
+    ($t:ty) => {
+        impl $crate::measure::Countable for $t {
+            type Output = u128;
+            const IS_CONTINUOUS: bool = true;
+
+            fn count_inclusive(left: &Self, right: &Self) -> Option<u128> {
+                if left == right {
+                    Some(1)
+                } else {
+                    None
+                }
+            }
+        }
+    };
+}
+
+continuous_countable_impl!(f32);
+continuous_countable_impl!(f64);
+
 // 128-bit types need bespoke handling: the count of `[MIN, MAX]` is 2^128,
 // which is one past the u128 representable range.
 impl Countable for u128 {
@@ -184,11 +222,12 @@ where
 
     fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
+            None => Ok(Extent::Finite(Self::Output::zero())),
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
                 Some(count) => Ok(Extent::Finite(count)),
+                None if T::IS_CONTINUOUS => Ok(Extent::Infinite),
                 None => Err(MathError::Range),
             },
-            None => Ok(Extent::Finite(Self::Output::zero())),
         }
     }
 }
@@ -342,5 +381,44 @@ mod tests {
         let inner = EnumInterval::closed(i128::MIN, i128::MAX);
         let md = MaybeDisjoint::from_interval(inner);
         assert!(md.try_count().is_err());
+    }
+
+    // ===== Continuous T =====
+
+    #[test]
+    fn singleton_f64_count_is_one() {
+        let x = EnumInterval::closed(5.0_f64, 5.0);
+        assert_eq!(x.count().finite(), 1_u128);
+    }
+
+    #[test]
+    fn nondegenerate_f64_count_is_infinite() {
+        let x = EnumInterval::closed(5.0_f64, 5.0001);
+        assert!(x.try_count().unwrap().is_infinite());
+    }
+
+    #[test]
+    fn empty_f64_count_is_zero() {
+        let x = FiniteInterval::<f64>::empty();
+        assert_eq!(x.count().finite(), 0_u128);
+    }
+
+    #[test]
+    fn md_disjoint_f64_singletons_sum_to_two() {
+        let x = MaybeDisjoint::from_pair(
+            EnumInterval::closed(0.0_f64, 0.0),
+            EnumInterval::closed(1.0, 1.0),
+        );
+        assert_eq!(x.count().finite(), 2_u128);
+    }
+
+    #[test]
+    fn md_disjoint_f64_with_nondegenerate_is_infinite() {
+        // One non-degenerate piece makes the total uncountable.
+        let x = MaybeDisjoint::from_pair(
+            EnumInterval::closed(0.0_f64, 0.0),
+            EnumInterval::closed(1.0, 2.0),
+        );
+        assert!(x.try_count().unwrap().is_infinite());
     }
 }

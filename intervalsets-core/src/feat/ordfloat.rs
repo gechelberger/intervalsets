@@ -5,7 +5,7 @@ use ordered_float::{NotNan, OrderedFloat};
 
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
-use crate::measure::Widthable;
+use crate::measure::{Countable, Widthable};
 use crate::numeric::{Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
@@ -67,6 +67,32 @@ impl<T: FloatCore + Widthable<Output = T>> Widthable for OrderedFloat<T> {
     /// the diff is non-finite (overflow at extreme inputs).
     fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
         T::width_between(&left.0, &right.0)
+    }
+}
+
+impl<T: FloatCore + Element> Countable for NotNan<T> {
+    type Output = u128;
+    const IS_CONTINUOUS: bool = true;
+
+    fn count_inclusive(left: &Self, right: &Self) -> Option<u128> {
+        if left == right {
+            Some(1)
+        } else {
+            None
+        }
+    }
+}
+
+impl<T: FloatCore + Element> Countable for OrderedFloat<T> {
+    type Output = u128;
+    const IS_CONTINUOUS: bool = true;
+
+    fn count_inclusive(left: &Self, right: &Self) -> Option<u128> {
+        if left == right {
+            Some(1)
+        } else {
+            None
+        }
     }
 }
 
