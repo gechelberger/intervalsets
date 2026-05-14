@@ -13,8 +13,10 @@ The pre-commit hook (lefthook) runs `just fmt-check`, `just clippy`, and `just t
 
 Two directories, by lifecycle stage:
 
-- **`docs/design/`** (tracked) — design docs that are close to ready. Currently `measure-api.md`, `storage-type-cast.md`. Treat as authoritative.
-- **`scratch/`** (gitignored) — ephemeral working notes, audits, and in-flight investigations: `GLOSSARY.md`, `BEHAVIOR.md`, `storage-types.md`, `measure-module-audit.md`, `bounds-audit-findings.md`, the `issue-*.md` proposals, ad-hoc `insights.md`. Check before assuming a question is unanswered, but expect the contents to be in motion.
+- **`scratch/`** (gitignored) — ephemeral working notes, audits, and in-flight investigations. Check before assuming a question is unconsidered, but expect the contents to be in motion. The agent should keep an index of topics covered.
+- **`docs/design/`** — design docs that are close to ready. Currently `measure-api.md`, `storage-type-cast.md`. Treat as authoritative.
+- **`docs/spec/`** -- design docs that are focused on the shape of an api, not the why, but the how.
+- **`docs/primer/`** -- short, high-level quickstart guides to onboard new users or maintainers
 
 Notes graduate from `scratch/` into `docs/design/` when they stabilize.
 
@@ -26,13 +28,9 @@ Notes graduate from `scratch/` into `docs/design/` when they stabilize.
 
 Pre-1.0: breaking API changes are welcome until RC. Don't add backward-compatibility shims for hypothetical callers.
 
-## Intractable Just Tasks
-- Never run any **powerset** tasks. These explode combinatorially. They should be run by maintainers on occasion to catch regressions but are too expensive to include in the development cycle. (Consider adding to CI on a monthly cycle). 
-
 ## Expected Available Tools
 
 Most will have a standard form, executable through just. For example `just fmt` is preferable to `cargo fmt` because our formatting rules depend on the nightly toolchain.
 
-### non justfile tools
-
-- rg for regex search
+### Intractable Just Tasks
+- Never run any **powerset** tasks. These explode combinatorially. They should be run by maintainers on occasion to catch regressions but are too expensive to include in the development cycle. (Consider adding to CI on a monthly cycle).

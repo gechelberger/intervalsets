@@ -6,9 +6,9 @@
 //!
 //! Terminal failures that do not chain into further set operations
 //! (e.g. [`MathError`] from
-//! [`Count::try_count`](crate::measure::Count::try_count), which
-//! yields a scalar count) surface as their own precise types and
-//! live next to their producer instead of in this module.
+//! [`Cardinality::try_cardinality`](crate::measure::Cardinality::try_cardinality),
+//! which yields a scalar cardinality) surface as their own precise types
+//! and live next to their producer instead of in this module.
 //!
 //! [`Error`] wraps [`intervalsets_core::error::Error`] so the variants
 //! it carries can grow alloc-enabled context (messages, source chains,

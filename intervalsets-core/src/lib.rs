@@ -87,8 +87,8 @@
 //! let width: Extent<_> = a.width();
 //! assert_eq!(width.finite(), 10u128);
 //!
-//! let count: Extent<_> = a.count();
-//! assert_eq!(count.finite(), 11u128);
+//! let cardinality: Extent<_> = a.cardinality();
+//! assert_eq!(cardinality.finite(), 11u128);
 //!
 //! assert_eq!(format!("{}", a), "[0, 10]");
 //!
@@ -195,7 +195,7 @@
 //! | Convex hull | [`ops::ConvexHull::hull`] | [`ops::ConvexHull::try_hull`] |
 //! | Splitting | [`ops::Split::split`] | [`ops::Split::try_split`] |
 //! | Rebounding | [`ops::Rebound::with_left`]/[`ops::Rebound::with_right`] | [`ops::Rebound::try_with_left`]/[`ops::Rebound::try_with_right`] |
-//! | Counting | [`measure::Count::count`] | [`measure::Count::try_count`] |
+//! | Counting | [`measure::Cardinality::cardinality`] | [`measure::Cardinality::try_cardinality`] |
 //! | Categorizing | [`FiniteInterval::category`] | [`FiniteInterval::try_category`] |
 //!
 //! ```
@@ -402,7 +402,7 @@ pub mod prelude {
     pub use crate::empty::MaybeEmpty;
     //pub use crate::error::Error;
     pub use crate::factory::traits::*;
-    pub use crate::measure::{Count, Extent, Width};
+    pub use crate::measure::{Cardinality, Extent, Width};
     pub use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
     pub use crate::ops::*;
     pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};

@@ -64,7 +64,7 @@ mod tests {
 
     use super::*;
     use crate::factory::traits::*;
-    use crate::measure::{Count, Extent, Width};
+    use crate::measure::{Cardinality, Extent, Width};
     use crate::ops::Union;
 
     #[test]
@@ -191,13 +191,13 @@ mod tests {
     }
 
     #[test]
-    fn interval_set_bisect_by_count_works() {
+    fn interval_set_bisect_by_cardinality_works() {
         let set = Interval::closed(0_i64, 10).union(Interval::closed(100, 110));
         let b = set
-            .bisect_by(Side::Left, |s| s.count().finite())
+            .bisect_by(Side::Left, |s| s.cardinality().finite())
             .expect("bounded");
-        let lc = b.left.count().finite();
-        let rc = b.right.count().finite();
+        let lc = b.left.cardinality().finite();
+        let rc = b.right.cardinality().finite();
         assert!(lc.abs_diff(rc) <= 1, "lc={lc}, rc={rc}");
     }
 }

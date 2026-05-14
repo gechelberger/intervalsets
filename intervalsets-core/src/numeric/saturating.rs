@@ -339,9 +339,9 @@ mod tests {
     // ----- Measure ------------------------------------------------------
 
     #[test]
-    fn count_matches_inner() {
+    fn cardinality_matches_inner() {
         let x = EnumInterval::closed(Saturating(0_i32), Saturating(10));
-        assert_eq!(x.count().finite(), 11u128);
+        assert_eq!(x.cardinality().finite(), 11u128);
     }
 
     #[test]

@@ -4,55 +4,46 @@ use crate::numeric::{Element, Zero};
 use crate::ops::math::TryAdd;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
-/// Defines the counting measure of a [`Countable`] Set.
+/// Defines the cardinality (counting measure) of a [`Countable`] Set.
 ///
 /// # Example
 /// ```
 /// use intervalsets_core::prelude::*;
-/// use intervalsets_core::measure::Count;
+/// use intervalsets_core::measure::Cardinality;
 ///
 /// let x = EnumInterval::closed(0, 10);
-/// assert_eq!(x.count().finite(), 11u128);
+/// assert_eq!(x.cardinality().finite(), 11u128);
 /// ```
-///
-/// # Restricted to types implementing Countable
-/// ```compile_fail
-/// use intervalsets_core::prelude::*;
-/// use intervalsets_core::measure::Count;
-///
-/// // f32 does not implement [`Countable`]
-/// let x = EnumInterval::closed(0.0, 10.0).count();
-/// ```
-pub trait Count {
+pub trait Cardinality {
     type Output;
     type Error: core::error::Error;
 
-    /// Compute the counting measure of this set.
+    /// Compute the cardinality of this set.
     ///
     /// # Panics
     ///
-    /// Panics if the count cannot be represented in `Self::Output`
+    /// Panics if the cardinality cannot be represented in `Self::Output`
     /// (e.g. counting `[i32::MIN, i32::MAX]` overflows `i32`). For
-    /// panic-free counting, use [`try_count`](Count::try_count).
-    fn count(&self) -> Extent<Self::Output> {
-        self.try_count().unwrap()
+    /// panic-free counting, use [`try_cardinality`](Cardinality::try_cardinality).
+    fn cardinality(&self) -> Extent<Self::Output> {
+        self.try_cardinality().unwrap()
     }
 
-    /// Compute the counting measure of this set, returning `Err` if
-    /// the count cannot be represented in `Self::Output`.
-    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error>;
+    /// Compute the cardinality of this set, returning `Err` if
+    /// it cannot be represented in `Self::Output`.
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error>;
 }
 
 /// Defines whether a set of type T is countable.
 ///
-/// [`Count`] delegates to the underlying type that implements [`Countable`].
+/// [`Cardinality`] delegates to the underlying type that implements [`Countable`].
 ///
 /// # Example
 /// ```
 /// use intervalsets_core::numeric::{CheckedSub, Element};
 /// use intervalsets_core::prelude::*;
 /// use intervalsets_core::default_countable_impl;
-/// use intervalsets_core::measure::{Count, Countable};
+/// use intervalsets_core::measure::{Cardinality, Countable};
 ///
 /// #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 /// struct MyInt(i32);
@@ -99,7 +90,7 @@ pub trait Count {
 /// default_countable_impl!(MyInt);
 ///
 /// let interval = FiniteInterval::closed(MyInt(0), MyInt(10));
-/// assert_eq!(interval.count().finite(), MyInt(11));
+/// assert_eq!(interval.cardinality().finite(), MyInt(11));
 /// ```
 pub trait Countable: Element {
     type Output;
@@ -109,9 +100,9 @@ pub trait Countable: Element {
     /// `None` from [`count_inclusive`](Self::count_inclusive) means*:
     ///
     /// - **Discrete** (`false`, default): `None` ⇒ representation overflow.
-    ///   `Count::try_count` raises `Err(MathError::Range)`.
+    ///   `Cardinality::try_cardinality` raises `Err(MathError::Range)`.
     /// - **Continuous** (`true`): `None` ⇒ uncountable (non-singleton range).
-    ///   `Count::try_count` returns `Ok(Extent::Infinite)`.
+    ///   `Cardinality::try_cardinality` returns `Ok(Extent::Infinite)`.
     ///
     /// Continuous impls return `Some(1)` from `count_inclusive` when
     /// `left == right` (a singleton) and `None` otherwise.
@@ -168,7 +159,7 @@ primitive_countable_impl!(i8, i16, i32, i64, isize);
 
 /// Implements [`Countable`] for a continuous element type. `Output` is
 /// [`u128`]; `count_inclusive` returns `Some(1)` when `left == right`
-/// (a singleton) and `None` otherwise. The `Count` impl interprets
+/// (a singleton) and `None` otherwise. The `Cardinality` impl interprets
 /// `None` as `Extent::Infinite` because `IS_CONTINUOUS = true`.
 #[macro_export]
 macro_rules! continuous_countable_impl {
@@ -212,7 +203,7 @@ impl Countable for i128 {
     }
 }
 
-impl<T> Count for FiniteInterval<T>
+impl<T> Cardinality for FiniteInterval<T>
 where
     T: Countable,
     T::Output: Zero,
@@ -220,7 +211,7 @@ where
     type Output = T::Output;
     type Error = MathError;
 
-    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
             None => Ok(Extent::Finite(Self::Output::zero())),
             Some((left, right)) => match T::count_inclusive(left.value(), right.value()) {
@@ -232,7 +223,7 @@ where
     }
 }
 
-impl<T> Count for HalfInterval<T>
+impl<T> Cardinality for HalfInterval<T>
 where
     T: Countable,
     T::Output: Zero,
@@ -240,12 +231,12 @@ where
     type Output = T::Output;
     type Error = MathError;
 
-    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error> {
         Ok(Extent::Infinite)
     }
 }
 
-impl<T> Count for EnumInterval<T>
+impl<T> Cardinality for EnumInterval<T>
 where
     T: Countable,
     T::Output: Zero,
@@ -253,20 +244,20 @@ where
     type Output = T::Output;
     type Error = MathError;
 
-    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
-            Self::Finite(inner) => inner.try_count(),
+            Self::Finite(inner) => inner.try_cardinality(),
             _ => Ok(Extent::Infinite),
         }
     }
 }
 
-/// Count of a [`MaybeDisjoint`] is the sum of its pieces' counts.
-/// `Connected(iv)` delegates; `Disjoint(a, b)` sums per-piece counts
+/// Cardinality of a [`MaybeDisjoint`] is the sum of its pieces' cardinalities.
+/// `Connected(iv)` delegates; `Disjoint(a, b)` sums per-piece cardinalities
 /// via [`TryAdd`] so an overflowing total surfaces as [`MathError`]
 /// rather than wrapping. Infinite from either piece propagates to an
 /// infinite total.
-impl<T, Out> Count for MaybeDisjoint<T>
+impl<T, Out> Cardinality for MaybeDisjoint<T>
 where
     T: Countable<Output = Out>,
     Out: Zero + TryAdd<Out, Output = Out>,
@@ -275,12 +266,12 @@ where
     type Output = Out;
     type Error = MathError;
 
-    fn try_count(&self) -> Result<Extent<Self::Output>, Self::Error> {
+    fn try_cardinality(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self {
-            Self::Connected(iv) => iv.try_count(),
+            Self::Connected(iv) => iv.try_cardinality(),
             Self::Disjoint(a, b) => {
-                let ac = a.try_count()?;
-                let bc = b.try_count()?;
+                let ac = a.try_cardinality()?;
+                let bc = b.try_cardinality()?;
                 ac.try_binop_map(bc, |x, y| x.try_add(y).map_err(Into::into))
             }
         }
@@ -293,114 +284,114 @@ mod tests {
     use crate::factory::{FiniteFactory, HalfBoundedFactory};
 
     #[test]
-    fn test_count() {
+    fn test_cardinality() {
         let x = EnumInterval::closed(0, 10);
-        assert_eq!(x.count().finite(), 11u128);
+        assert_eq!(x.cardinality().finite(), 11u128);
     }
 
     #[test]
-    fn test_count_signed_full_range() {
+    fn test_cardinality_signed_full_range() {
         let x = EnumInterval::closed(i32::MIN, i32::MAX);
-        assert_eq!(x.count().finite(), (u32::MAX as u128) + 1);
+        assert_eq!(x.cardinality().finite(), (u32::MAX as u128) + 1);
     }
 
     #[test]
-    fn test_count_signed_negative_range() {
+    fn test_cardinality_signed_negative_range() {
         // Previously panicked: 1 - i32::MIN overflowed i32 in count_inclusive.
         let x = EnumInterval::closed(i32::MIN, 0);
-        assert_eq!(x.count().finite(), (i32::MAX as u128) + 2);
+        assert_eq!(x.cardinality().finite(), (i32::MAX as u128) + 2);
     }
 
     #[test]
-    fn test_count_unsigned_full_range() {
+    fn test_cardinality_unsigned_full_range() {
         let x = EnumInterval::closed(0u64, u64::MAX);
-        assert_eq!(x.count().finite(), (u64::MAX as u128) + 1);
+        assert_eq!(x.cardinality().finite(), (u64::MAX as u128) + 1);
     }
 
     #[test]
-    fn test_count_i128_full_range_overflows_u128() {
+    fn test_cardinality_i128_full_range_overflows_u128() {
         // [i128::MIN, i128::MAX] has 2^128 elements which doesn't fit in u128.
         let x = EnumInterval::closed(i128::MIN, i128::MAX);
-        assert!(x.try_count().is_err());
+        assert!(x.try_cardinality().is_err());
     }
 
     #[test]
-    fn test_count_u128_full_range_overflows_u128() {
+    fn test_cardinality_u128_full_range_overflows_u128() {
         // [0, u128::MAX] has 2^128 elements which doesn't fit in u128.
         let x = EnumInterval::closed(0u128, u128::MAX);
-        assert!(x.try_count().is_err());
+        assert!(x.try_cardinality().is_err());
     }
 
     #[test]
     #[should_panic]
-    fn test_count_overflow_panics() {
-        // count() is the panicking sibling of try_count() and is
-        // documented to panic when the count overflows Self::Output.
+    fn test_cardinality_overflow_panics() {
+        // cardinality() is the panicking sibling of try_cardinality() and is
+        // documented to panic when the cardinality overflows Self::Output.
         let x = EnumInterval::closed(i128::MIN, i128::MAX);
-        let _ = x.count();
+        let _ = x.cardinality();
     }
 
     // ===== MaybeDisjoint =====
 
     #[test]
-    fn md_empty_count_is_zero() {
+    fn md_empty_cardinality_is_zero() {
         let x = MaybeDisjoint::<i32>::empty();
-        assert_eq!(x.count().finite(), 0_u128);
+        assert_eq!(x.cardinality().finite(), 0_u128);
     }
 
     #[test]
-    fn md_connected_delegates_to_inner_count() {
+    fn md_connected_delegates_to_inner_cardinality() {
         let x = MaybeDisjoint::from_interval(EnumInterval::closed(0, 10));
-        assert_eq!(x.count().finite(), 11_u128);
+        assert_eq!(x.cardinality().finite(), 11_u128);
     }
 
     #[test]
-    fn md_disjoint_count_sums_pieces() {
+    fn md_disjoint_cardinality_sums_pieces() {
         // [0, 5] (6 elements) ∪ [10, 20] (11 elements) → 17
         let x =
             MaybeDisjoint::from_pair(EnumInterval::closed(0_i32, 5), EnumInterval::closed(10, 20));
-        assert_eq!(x.count().finite(), 17_u128);
+        assert_eq!(x.cardinality().finite(), 17_u128);
     }
 
     #[test]
     fn md_disjoint_with_half_interval_is_infinite() {
-        // Disjoint(finite, half) — half-piece makes total count infinite.
+        // Disjoint(finite, half) — half-piece makes total cardinality infinite.
         let x = MaybeDisjoint::from_pair(
             EnumInterval::closed(0_i32, 5),
             EnumInterval::closed_unbound(10),
         );
-        assert!(x.try_count().unwrap().is_infinite());
+        assert!(x.try_cardinality().unwrap().is_infinite());
     }
 
     #[test]
     fn md_per_piece_overflow_propagates() {
         // A single piece's count_inclusive can overflow (e.g.
         // [i128::MIN, i128::MAX] needs 2^128 which doesn't fit in u128).
-        // That overflow surfaces from the inner try_count and propagates
+        // That overflow surfaces from the inner try_cardinality and propagates
         // through MD's impl via `?`.
         let inner = EnumInterval::closed(i128::MIN, i128::MAX);
         let md = MaybeDisjoint::from_interval(inner);
-        assert!(md.try_count().is_err());
+        assert!(md.try_cardinality().is_err());
     }
 
     // ===== Continuous T =====
 
     #[test]
-    fn singleton_f64_count_is_one() {
+    fn singleton_f64_cardinality_is_one() {
         let x = EnumInterval::closed(5.0_f64, 5.0);
-        assert_eq!(x.count().finite(), 1_u128);
+        assert_eq!(x.cardinality().finite(), 1_u128);
     }
 
     #[test]
-    fn nondegenerate_f64_count_is_infinite() {
+    fn nondegenerate_f64_cardinality_is_infinite() {
         let x = EnumInterval::closed(5.0_f64, 5.0001);
-        assert!(x.try_count().unwrap().is_infinite());
+        assert!(x.try_cardinality().unwrap().is_infinite());
     }
 
     #[test]
-    fn empty_f64_count_is_zero() {
+    fn empty_f64_cardinality_is_zero() {
         let x = FiniteInterval::<f64>::empty();
-        assert_eq!(x.count().finite(), 0_u128);
+        assert_eq!(x.cardinality().finite(), 0_u128);
     }
 
     #[test]
@@ -409,7 +400,7 @@ mod tests {
             EnumInterval::closed(0.0_f64, 0.0),
             EnumInterval::closed(1.0, 1.0),
         );
-        assert_eq!(x.count().finite(), 2_u128);
+        assert_eq!(x.cardinality().finite(), 2_u128);
     }
 
     #[test]
@@ -419,6 +410,6 @@ mod tests {
             EnumInterval::closed(0.0_f64, 0.0),
             EnumInterval::closed(1.0, 2.0),
         );
-        assert!(x.try_count().unwrap().is_infinite());
+        assert!(x.try_cardinality().unwrap().is_infinite());
     }
 }

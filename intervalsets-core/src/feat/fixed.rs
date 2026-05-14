@@ -550,64 +550,64 @@ mod tests {
     }
 
     #[test]
-    fn test_count_fixed_signed() {
+    fn test_cardinality_fixed_signed() {
         use fixed::types::I6F2;
 
         use crate::factory::FiniteFactory;
-        use crate::measure::Count;
+        use crate::measure::Cardinality;
         use crate::sets::FiniteInterval;
 
         // I6F2 step is 0.25: count of [0.0, 1.0] = 5 (0.00, 0.25, 0.50, 0.75, 1.00).
         let x = FiniteInterval::closed(I6F2::from_num(0.0), I6F2::from_num(1.0));
-        assert_eq!(x.count().finite(), 5_u128);
+        assert_eq!(x.cardinality().finite(), 5_u128);
 
         // Singleton: count_inclusive(x, x) = 1.
         let s = FiniteInterval::closed(I6F2::from_num(3.5), I6F2::from_num(3.5));
-        assert_eq!(s.count().finite(), 1_u128);
+        assert_eq!(s.cardinality().finite(), 1_u128);
 
         // Full range of I6F2 (i8 bits, U2 fractional bits): 256 representable
         // values, fits trivially in u128.
         let full = FiniteInterval::closed(I6F2::MIN, I6F2::MAX);
-        assert_eq!(full.count().finite(), 256_u128);
+        assert_eq!(full.cardinality().finite(), 256_u128);
     }
 
     #[test]
-    fn test_count_fixed_unsigned() {
+    fn test_cardinality_fixed_unsigned() {
         use fixed::types::U6F2;
 
         use crate::factory::FiniteFactory;
-        use crate::measure::Count;
+        use crate::measure::Cardinality;
         use crate::sets::FiniteInterval;
 
         // U6F2 step is 0.25: count of [0.0, 0.5] = 3 (0.00, 0.25, 0.50).
         let x = FiniteInterval::closed(U6F2::from_num(0.0), U6F2::from_num(0.5));
-        assert_eq!(x.count().finite(), 3_u128);
+        assert_eq!(x.cardinality().finite(), 3_u128);
     }
 
     #[test]
-    fn test_count_fixed_i128_full_range_overflows_u128() {
+    fn test_cardinality_fixed_i128_full_range_overflows_u128() {
         use fixed::types::I64F64;
 
         use crate::factory::FiniteFactory;
-        use crate::measure::Count;
+        use crate::measure::Cardinality;
         use crate::sets::FiniteInterval;
 
         // I64F64 = FixedI128<U64> has i128 bit width, so [MIN, MAX] has
         // 2^128 representations — one past u128's range.
         let x = FiniteInterval::closed(I64F64::MIN, I64F64::MAX);
-        assert!(x.try_count().is_err());
+        assert!(x.try_cardinality().is_err());
     }
 
     #[test]
-    fn test_count_fixed_u128_full_range_overflows_u128() {
+    fn test_cardinality_fixed_u128_full_range_overflows_u128() {
         use fixed::types::U64F64;
 
         use crate::factory::FiniteFactory;
-        use crate::measure::Count;
+        use crate::measure::Cardinality;
         use crate::sets::FiniteInterval;
 
         let x = FiniteInterval::closed(U64F64::MIN, U64F64::MAX);
-        assert!(x.try_count().is_err());
+        assert!(x.try_cardinality().is_err());
     }
 
     #[test]

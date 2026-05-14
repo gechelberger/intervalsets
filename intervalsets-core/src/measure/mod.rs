@@ -13,11 +13,11 @@
 //!         m(A0 U A1 .. An) <= Sum { m(Ai) for i in 0..n }
 //! ```
 //!
-//! Some common measures are Count and the Lebesgue measure
+//! Some common measures are Cardinality and the Lebesgue measure
 //! (which is Width in R1).
 
-mod count;
-pub use count::{Count, Countable};
+mod cardinality;
+pub use cardinality::{Cardinality, Countable};
 mod extent;
 pub use extent::Extent;
 mod width;

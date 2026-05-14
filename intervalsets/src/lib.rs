@@ -104,15 +104,15 @@
 //! assert_eq!(x.width().is_finite(), false);
 //! ```
 //!
-//! ### [`Count`](measure::Count) for discrete data types
+//! ### [`Cardinality`](measure::Cardinality) for discrete data types
 //! ```
 //! use intervalsets::prelude::*;
 //!
 //! let x = Interval::closed(0, 10);
-//! assert_eq!(x.count().finite(), 11u128);
+//! assert_eq!(x.cardinality().finite(), 11u128);
 //!
 //! let x = Interval::closed_unbound(0);
-//! assert_eq!(x.count().is_finite(), false);
+//! assert_eq!(x.cardinality().is_finite(), false);
 //! ```
 //!
 //! # Optional Features
@@ -166,7 +166,7 @@ pub mod prelude {
     pub use intervalsets_core::cast::{Cast, LossyCast, TryCast};
     pub use intervalsets_core::factory::traits::*;
 
-    pub use crate::measure::{Count, Width};
+    pub use crate::measure::{Cardinality, Width};
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
     pub use crate::{Element, MaybeEmpty, OrdBounded, SetBounds, Side};

@@ -1,15 +1,15 @@
-//! Phase 2 — measure ops at i64. `try_count` / `try_width` /
+//! Phase 2 — measure ops at i64. `try_cardinality` / `try_width` /
 //! `midpoint` are panic-free by contract: representation overflow
 //! surfaces as `Err`, and the unbounded / empty / half-bounded shapes
 //! return their canonical sentinel (`Extent::Infinite` for
-//! count/width, `Err(Domain)` for midpoint).
+//! cardinality/width, `Err(Domain)` for midpoint).
 //!
-//! The panicking siblings `count()` / `width()` are explicitly
+//! The panicking siblings `cardinality()` / `width()` are explicitly
 //! documented to panic on overflow and live outside the canary.
 
 use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
-use intervalsets_core::measure::{Count, Width};
+use intervalsets_core::measure::{Cardinality, Width};
 use intervalsets_core::ops::Midpoint;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
@@ -45,18 +45,18 @@ fn make_enum() -> EnumInterval<i64> {
 }
 
 #[kani::proof]
-fn try_count_finite_i64_no_panic() {
-    let _ = make_finite().try_count();
+fn try_cardinality_finite_i64_no_panic() {
+    let _ = make_finite().try_cardinality();
 }
 
 #[kani::proof]
-fn try_count_half_i64_no_panic() {
-    let _ = make_half().try_count();
+fn try_cardinality_half_i64_no_panic() {
+    let _ = make_half().try_cardinality();
 }
 
 #[kani::proof]
-fn try_count_enum_i64_no_panic() {
-    let _ = make_enum().try_count();
+fn try_cardinality_enum_i64_no_panic() {
+    let _ = make_enum().try_cardinality();
 }
 
 #[kani::proof]

@@ -75,5 +75,5 @@ fn test_unsigned_edge_case() {
     let all_valid_u8_values = Interval::<u8>::closed(0, 255);
 
     assert_eq!(x.intersection(all_valid_u8_values), Interval::empty());
-    assert!(x.count().is_infinite());
+    assert!(x.cardinality().is_infinite());
 }

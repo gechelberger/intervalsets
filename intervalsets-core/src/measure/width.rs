@@ -14,9 +14,9 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 /// > We *do* allow calculating the width over the Reals between two
 /// > integer bounds, however unexpected results may occur due to
 /// > discrete normalization. For discrete `T`, prefer
-/// > [`Count`](crate::measure::Count).
+/// > [`Cardinality`](crate::measure::Cardinality).
 ///
-/// Mirrors [`Count`](crate::measure::Count) in shape: every impl
+/// Mirrors [`Cardinality`](crate::measure::Cardinality) in shape: every impl
 /// provides a fallible [`try_width`](Width::try_width) that surfaces
 /// representation overflow, and a default [`width`](Width::width)
 /// that panics on overflow for convenience.

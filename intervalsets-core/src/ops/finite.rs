@@ -27,9 +27,9 @@ use crate::{EnumInterval, FiniteInterval, HalfInterval};
 /// use intervalsets_core::prelude::*;
 ///
 /// let positive = EnumInterval::closed_unbound(1i8);
-/// assert_eq!(positive.count(), Extent::Infinite);
+/// assert_eq!(positive.cardinality(), Extent::Infinite);
 /// let as_finite = positive.into_finite_interval();
-/// assert_eq!(as_finite.count(), Extent::Finite(127));
+/// assert_eq!(as_finite.cardinality(), Extent::Finite(127));
 /// ```
 pub trait IntoFiniteInterval {
     /// The type of set to create.

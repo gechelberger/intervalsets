@@ -34,7 +34,7 @@ pub struct Bisection<T, S> {
 /// (ulp-stable for floats, neighbor-stable for integers).
 ///
 /// Common measures: `|s| s.width().finite()` for width-balance,
-/// `|s| s.count().finite()` for population-balance.
+/// `|s| s.cardinality().finite()` for population-balance.
 ///
 /// # Measure contract
 ///
@@ -45,7 +45,7 @@ pub struct Bisection<T, S> {
 /// makes the search a 1D root-find with a unique balance point to
 /// converge on.
 ///
-/// `Width` and `Count` satisfy this directly. Any monotonic-increasing
+/// `Width` and `Cardinality` satisfy this directly. Any monotonic-increasing
 /// transform of a valid measure (scaling by a positive constant,
 /// shifting, composing with a monotonic function) is also valid; an
 /// inverted measure (e.g. `|s| -s.width().finite()`) is NOT — the
@@ -194,7 +194,7 @@ where
 mod tests {
     use super::*;
     use crate::factory::traits::*;
-    use crate::measure::{Count, Width};
+    use crate::measure::{Cardinality, Width};
 
     fn assert_close(a: f64, b: f64, eps: f64) {
         assert!((a - b).abs() <= eps, "expected {a} ≈ {b} (eps {eps})");
@@ -414,22 +414,22 @@ mod tests {
     }
 
     #[test]
-    fn measure_zero_set_count_bisect_is_population_aware() {
-        // Same set as above. Count-bisect sees 1 element on each side
-        // of any cut in (1, 100), so it also reports balanced on the
-        // first iteration — but unlike width, count CAN distinguish
+    fn measure_zero_set_cardinality_bisect_is_population_aware() {
+        // Same set as above. Cardinality-bisect sees 1 element on each
+        // side of any cut in (1, 100), so it also reports balanced on the
+        // first iteration — but unlike width, cardinality CAN distinguish
         // off-balance positions for non-singleton sets (see
-        // bisect_by_count_works for the non-degenerate case).
+        // bisect_by_cardinality_works for the non-degenerate case).
         let md = MaybeDisjoint::from_pair(
             EnumInterval::closed(1_i64, 1),
             EnumInterval::closed(100, 100),
         );
         let b = md
-            .bisect_by(Side::Left, |s| s.count().finite())
+            .bisect_by(Side::Left, |s| s.cardinality().finite())
             .expect("bounded");
         assert_eq!(b.midpoint, 50);
-        let lc = b.left.count().finite();
-        let rc = b.right.count().finite();
+        let lc = b.left.cardinality().finite();
+        let rc = b.right.cardinality().finite();
         assert_eq!(lc, 1);
         assert_eq!(rc, 1);
     }
@@ -442,20 +442,20 @@ mod tests {
     }
 
     #[test]
-    fn bisect_by_count_works() {
+    fn bisect_by_cardinality_works() {
         // Proves the closure path drives the algorithm correctly for
-        // Count. On integers, width-bisect and count-bisect converge to
-        // the same midpoint up to ±1 (width and count differ only by
-        // the +1 endpoint quirk per piece), so this just verifies the
-        // count-based path produces count-balanced halves — not that it
-        // differs from width-bisect.
+        // Cardinality. On integers, width-bisect and cardinality-bisect
+        // converge to the same midpoint up to ±1 (width and cardinality
+        // differ only by the +1 endpoint quirk per piece), so this just
+        // verifies the cardinality-based path produces cardinality-balanced
+        // halves — not that it differs from width-bisect.
         let md =
             MaybeDisjoint::from_pair(EnumInterval::closed(0_i64, 0), EnumInterval::closed(10, 20));
         let b = md
-            .bisect_by(Side::Left, |s| s.count().finite())
+            .bisect_by(Side::Left, |s| s.cardinality().finite())
             .expect("bounded");
-        let lc = b.left.count().finite();
-        let rc = b.right.count().finite();
+        let lc = b.left.cardinality().finite();
+        let rc = b.right.cardinality().finite();
         assert!(lc.abs_diff(rc) <= 1, "lc={lc}, rc={rc}");
     }
 

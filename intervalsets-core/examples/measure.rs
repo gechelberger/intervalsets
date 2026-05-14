@@ -4,12 +4,12 @@
 //! units you actually sum" domain: legal, consulting, and creative
 //! invoices quote work in `0.25h` ticks, and the very question a
 //! timesheet answers is "how many of those ticks fit across this set
-//! of work sessions?" — i.e. `Count::count`. Total hours billed is
-//! `count() * 0.25`, the literal sum of the per-tick values.
+//! of work sessions?" — i.e. `Cardinality::cardinality`. Total hours
+//! billed is `cardinality() * 0.25`, the literal sum of the per-tick values.
 //!
 //! `FixedU32<U2>` makes the grid exact: every value is a multiple
-//! of `0.25h`, arithmetic stays on the grid, and `Count::count` over
-//! a `MaybeDisjoint` *sums* the per-session counts. That's the
+//! of `0.25h`, arithmetic stays on the grid, and `Cardinality::cardinality`
+//! over a `MaybeDisjoint` *sums* the per-session counts. That's the
 //! operation a timesheet actually does — fragmented hours around
 //! lunch, meetings, and after-hours work all roll up.
 //!
@@ -19,7 +19,7 @@
 
 use fixed::types::extra::U2;
 use fixed::FixedU32;
-use intervalsets_core::measure::Count;
+use intervalsets_core::measure::Cardinality;
 use intervalsets_core::ops::Union;
 use intervalsets_core::prelude::*;
 
@@ -41,16 +41,16 @@ fn main() {
 
     let workday = morning.union(afternoon);
 
-    // count() over the disjoint set SUMS the per-piece tick counts.
+    // cardinality() over the disjoint set SUMS the per-piece tick counts.
     //   morning:   (12.00 - 9.00) / 0.25 = 12 ticks (3.00h)
     //   afternoon: (18.00 - 13.00) / 0.25 = 20 ticks (5.00h)
-    let ticks = workday.count().finite();
+    let ticks = workday.cardinality().finite();
     assert_eq!(ticks, 12 + 20);
     println!("{ticks} ticks today = {:.2}h billable", ticks as f64 * 0.25);
 
     // One client engagement — sub-range of the afternoon block.
     let client_call = FiniteInterval::closed_open(h(14.00), h(15.50));
-    let cc_ticks = client_call.count().finite();
+    let cc_ticks = client_call.cardinality().finite();
     assert_eq!(cc_ticks, 6);
     println!(
         "client call: {cc_ticks} ticks = {:.2}h",

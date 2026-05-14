@@ -10,7 +10,7 @@ use intervalsets_core::ops::math::TryAdd;
 /// > We *do* allow calculating the width over the Reals between two
 /// > integer bounds, however unexpected results may occur due to
 /// > discrete normalization. For discrete `T`, prefer
-/// > [`Count`](crate::measure::Count).
+/// > [`Cardinality`](crate::measure::Cardinality).
 ///
 /// # Example
 /// ```
