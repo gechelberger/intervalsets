@@ -142,6 +142,7 @@ version and are released together via `cargo-release`. See the repo
 
 ### Fixed
 
+- `Element::validate` for `Decimal` normalizes the limit to its canonical `(mantissa, scale)` form via `Decimal::normalize`. Previously two intervals built from value-equal but scale-distinct inputs (e.g. `Decimal::new(10, 0)` vs `Decimal::new(100, 1)`) stored different bit patterns despite denoting the same set, leaking through any downstream consumer that distinguished bound representations rather than values (debug output, hashing of bound bytes, etc.).
 - Measure on integer intervals no longer panics in debug / produces a *negative width* in release on `[i32::MIN, i32::MAX]` and similar full-range cases. Each primitive integer `Element::Measure` widens one bit-class so the diff always fits, and `try_measure` surfaces 128-bit `[MIN, MAX]` cases as `Err(MathError::Range)`.
 - `IntervalSet::try_measure` summation is now panic-free at every step — previously the per-interval measure was checked but the fold-step `Add` was not, so a set whose individual measures fit but whose sum did not would panic in debug / wrap in release.
 - `measure` ops (`try_measure`, `midpoint`) are now covered by the panic-free canary (`tier2_measure`).
