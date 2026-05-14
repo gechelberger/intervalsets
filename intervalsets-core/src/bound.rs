@@ -21,8 +21,6 @@ pub trait SetBounds<T> {
     /// Return a reference to the left or right bound if it is finite.
     fn bound(&self, side: Side) -> Option<&FiniteBound<T>>;
 
-    //fn into_bounds(self) -> Option<Envelope<T>>;
-
     /// Return a reference to the left bound if it is finite.
     #[inline]
     fn left(&self) -> Option<&FiniteBound<T>> {
@@ -83,21 +81,27 @@ impl Side {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BoundType {
     /// An Open BoundType excludes the limit element from the `Set`.
-    Open = 0,
+    Open,
     /// A Closed BoundType includes the limit element in the `Set`.
-    Closed = 1,
+    Closed,
 }
 
 impl BoundType {
     /// Flips the bound type Open => Closed, Closed => Open
-    pub fn flip(self) -> Self {
+    pub const fn flip(self) -> Self {
         match self {
             Self::Closed => Self::Open,
             Self::Open => Self::Closed,
         }
     }
 
-    pub fn combine(self, rhs: Self) -> Self {
+    /// The open/closed lattice meet: returns `Closed` iff both inputs are
+    /// `Closed`, else `Open`.
+    ///
+    /// Used in interval arithmetic to derive the resulting bound type when
+    /// two endpoints combine — the result includes its endpoint only when
+    /// both source endpoints are included.
+    pub const fn meet(self, rhs: Self) -> Self {
         match (self, rhs) {
             (Self::Closed, Self::Closed) => Self::Closed,
             _ => Self::Open,
@@ -163,8 +167,8 @@ impl<T> FiniteBound<T> {
     /// Creates a `FiniteOrdBound<&T>` view of this `FiniteBound<T>`.
     pub fn finite_ord(&self, side: Side) -> ord::FiniteOrdBound<&T> {
         match self.bound_type() {
-            BoundType::Closed => ord::FiniteOrdBound::closed(self.value()),
-            BoundType::Open => ord::FiniteOrdBound::open(side, self.value()),
+            BoundType::Closed => ord::FiniteOrdBound::closed_assume_valid(self.value()),
+            BoundType::Open => ord::FiniteOrdBound::open_assume_valid(side, self.value()),
         }
     }
 
@@ -177,8 +181,8 @@ impl<T> FiniteBound<T> {
     pub fn into_finite_ord(self, side: Side) -> ord::FiniteOrdBound<T> {
         let (bound_type, value) = self.into_raw();
         match bound_type {
-            BoundType::Closed => ord::FiniteOrdBound::closed(value),
-            BoundType::Open => ord::FiniteOrdBound::open(side, value),
+            BoundType::Closed => ord::FiniteOrdBound::closed_assume_valid(value),
+            BoundType::Open => ord::FiniteOrdBound::open_assume_valid(side, value),
         }
     }
 
@@ -187,7 +191,8 @@ impl<T> FiniteBound<T> {
         ord::OrdBound::Finite(self.into_finite_ord(side))
     }
 
-    /// Return a new `Bound` keeps limit, flips `BoundType`. `self` is consumed.
+    /// Returns a new `FiniteBound` that keeps the same limit value and
+    /// flips its `BoundType`. Consumes `self`.
     #[inline(always)]
     pub fn flip(self) -> Self {
         Self(self.0.flip(), self.1)
@@ -219,7 +224,9 @@ impl<T> FiniteBound<T> {
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
-    /// Return a and b ordered.
+    /// Returns `(a, b)` reordered so that the first element is the bound
+    /// closer to `side` (the minimum for `Side::Left`, the maximum for
+    /// `Side::Right`).
     ///
     /// # Preconditions
     ///
@@ -231,7 +238,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         mut b: FiniteBound<T>,
     ) -> (FiniteBound<T>, FiniteBound<T>) {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.as_ref()) {
             if side == Side::Right {
                 core::mem::swap(&mut a, &mut b);
             }
@@ -253,7 +260,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         b: FiniteBound<T>,
     ) -> FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.as_ref()) {
             side.select(a, b)
         } else {
             side.select(b, a)
@@ -266,7 +273,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> Result<FiniteBound<T>, TotalOrderError> {
-        if a.try_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.as_ref())? {
             Ok(side.select(a, b))
         } else {
             Ok(side.select(b, a))
@@ -285,7 +292,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         b: FiniteBound<T>,
     ) -> FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.as_ref()) {
             side.select(b, a)
         } else {
             side.select(a, b)
@@ -298,7 +305,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         a: FiniteBound<T>,
         b: FiniteBound<T>,
     ) -> Result<FiniteBound<T>, TotalOrderError> {
-        if a.try_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.as_ref())? {
             Ok(side.select(b, a))
         } else {
             Ok(side.select(a, b))
@@ -317,7 +324,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         b: &'a FiniteBound<T>,
     ) -> &'a FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.as_ref()) {
             side.select(a, b)
         } else {
             side.select(b, a)
@@ -330,7 +337,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
-        if a.try_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.as_ref())? {
             Ok(side.select(a, b))
         } else {
             Ok(side.select(b, a))
@@ -349,7 +356,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         b: &'a FiniteBound<T>,
     ) -> &'a FiniteBound<T> {
         debug_assert!(a.value().partial_cmp(b.value()).is_some());
-        if a.contains_bound_assume_valid(side, b.finite_ord(side)) {
+        if a.contains_bound_assume_valid(side, b.as_ref()) {
             side.select(b, a)
         } else {
             side.select(a, b)
@@ -362,7 +369,7 @@ impl<T: PartialOrd> FiniteBound<T> {
         a: &'a FiniteBound<T>,
         b: &'a FiniteBound<T>,
     ) -> Result<&'a FiniteBound<T>, TotalOrderError> {
-        if a.try_contains_bound(side, b.finite_ord(side))? {
+        if a.try_contains_bound(side, b.as_ref())? {
             Ok(side.select(b, a))
         } else {
             Ok(side.select(a, b))
@@ -371,7 +378,8 @@ impl<T: PartialOrd> FiniteBound<T> {
 }
 
 impl<T: PartialOrd> FiniteBound<T> {
-    /// Test if this partitions an element to be contained by the `Set`.
+    /// Test whether the `side`-half-plane defined by this bound contains
+    /// `value`.
     ///
     /// # Preconditions
     ///
@@ -391,38 +399,44 @@ impl<T: PartialOrd> FiniteBound<T> {
         }
     }
 
-    /// Test if self "sees" an element from a `Side` or Err if not comparable.
+    /// Test whether the `side`-half-plane defined by this bound contains
+    /// `test`. Returns `Err` if the values are not comparable.
     pub fn try_contains(&self, side: Side, test: &T) -> Result<bool, TotalOrderError> {
         let lhs = self.finite_ord(side);
-        let rhs = ord::FiniteOrdBound::closed(test);
+        let rhs = ord::FiniteOrdBound::closed_assume_valid(test);
         let order = lhs.partial_cmp(&rhs).ok_or(TotalOrderError)?;
 
         Ok(order == Equal || order == side.select(Less, Greater))
     }
 
-    /// Test if self "sees" a bound from a `Side`.
+    /// Test whether the `side`-half-plane defined by `self` contains the
+    /// `test` bound, oriented from the same `side`.
     ///
     /// # Preconditions
     ///
     /// Both bounds must be comparable. Violating this yields incorrect
     /// results but no undefined behavior.
-    pub fn contains_bound_assume_valid(&self, side: Side, test: ord::FiniteOrdBound<&T>) -> bool {
+    pub fn contains_bound_assume_valid(&self, side: Side, test: FiniteBound<&T>) -> bool {
         let lhs = self.finite_ord(side);
-        debug_assert!(lhs.partial_cmp(&test).is_some());
+        let rhs = test.into_finite_ord(side);
+        debug_assert!(lhs.partial_cmp(&rhs).is_some());
         match side {
-            Side::Left => lhs <= test,
-            Side::Right => test <= lhs,
+            Side::Left => lhs <= rhs,
+            Side::Right => rhs <= lhs,
         }
     }
 
-    /// Test if self "sees" a bound from a `Side` or Err if not comparable.
+    /// Test whether the `side`-half-plane defined by `self` contains the
+    /// `test` bound, oriented from the same `side`. Returns `Err` if the
+    /// values are not comparable.
     pub fn try_contains_bound(
         &self,
         side: Side,
-        test: ord::FiniteOrdBound<&T>,
+        test: FiniteBound<&T>,
     ) -> Result<bool, TotalOrderError> {
         let lhs = self.finite_ord(side);
-        let order = lhs.partial_cmp(&test).ok_or(TotalOrderError)?;
+        let rhs = test.into_finite_ord(side);
+        let order = lhs.partial_cmp(&rhs).ok_or(TotalOrderError)?;
 
         Ok(order == Equal || order == side.select(Less, Greater))
     }
@@ -532,7 +546,7 @@ mod math {
             let (l_kind, l_val) = self.into_raw();
             let (r_kind, r_val) = rhs.into_raw();
             let val = l_val.try_add(r_val).map_err(Into::into)?;
-            FiniteBound::try_new(l_kind.combine(r_kind), val)
+            FiniteBound::try_new(l_kind.meet(r_kind), val)
         }
     }
 
@@ -548,7 +562,7 @@ mod math {
             let (l_kind, l_val) = self.into_raw();
             let (r_kind, r_val) = rhs.into_raw();
             let val = l_val.try_sub(r_val).map_err(Into::into)?;
-            FiniteBound::try_new(l_kind.combine(r_kind), val)
+            FiniteBound::try_new(l_kind.meet(r_kind), val)
         }
     }
 
@@ -572,7 +586,7 @@ mod math {
             let kind = if absorbing {
                 BoundType::Closed
             } else {
-                l_kind.combine(r_kind)
+                l_kind.meet(r_kind)
             };
             FiniteBound::try_new(kind, val)
         }
@@ -596,7 +610,7 @@ mod math {
             let kind = if absorbing {
                 BoundType::Closed
             } else {
-                l_kind.combine(r_kind)
+                l_kind.meet(r_kind)
             };
             FiniteBound::try_new(kind, val)
         }
@@ -786,24 +800,17 @@ pub mod ord {
     }
 
     impl<T> OrdBound<T> {
-        /// Creates a new finite `OldBound<T>`.
-        pub const fn new_finite(limit: T, kind: FiniteOrdBoundKind) -> Self {
-            Self::Finite(FiniteOrdBound::new(limit, kind))
+        /// Tier-4 bypass: constructs a finite `OrdBound<T>` without
+        /// validating `limit`. See
+        /// [`FiniteOrdBound::new_assume_valid`](FiniteOrdBound::new_assume_valid).
+        pub(crate) const fn new_finite_assume_valid(limit: T, kind: FiniteOrdBoundKind) -> Self {
+            Self::Finite(FiniteOrdBound::new_assume_valid(limit, kind))
         }
 
-        /// Create a finite left open `OrdBound<T>`.
-        pub const fn left_open(limit: T) -> Self {
-            Self::new_finite(limit, FiniteOrdBoundKind::LeftOpen)
-        }
-
-        /// Create a finite closed `OrdBound<T>`.
-        pub const fn closed(limit: T) -> Self {
-            Self::new_finite(limit, FiniteOrdBoundKind::Closed)
-        }
-
-        /// Create a finite right open `OrdBound<T>`.
-        pub const fn right_open(limit: T) -> Self {
-            Self::new_finite(limit, FiniteOrdBoundKind::RightOpen)
+        /// Tier-4 bypass: closed finite `OrdBound<T>` without validating
+        /// `limit`.
+        pub(crate) const fn closed_assume_valid(limit: T) -> Self {
+            Self::new_finite_assume_valid(limit, FiniteOrdBoundKind::Closed)
         }
     }
 
@@ -811,16 +818,16 @@ pub mod ord {
         /// Create a left `OrdBound<T>` view of a `&FiniteBound<T>`.
         pub fn left(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
-                BoundType::Closed => Self::new_finite(bound.value(), Closed),
-                BoundType::Open => Self::new_finite(bound.value(), LeftOpen),
+                BoundType::Closed => Self::new_finite_assume_valid(bound.value(), Closed),
+                BoundType::Open => Self::new_finite_assume_valid(bound.value(), LeftOpen),
             }
         }
 
         /// Create a right `OrdBound<T>` view of a `&FiniteBound<T>`.
         pub fn right(bound: &'a FiniteBound<T>) -> Self {
             match bound.bound_type() {
-                BoundType::Closed => Self::new_finite(bound.value(), Closed),
-                BoundType::Open => Self::new_finite(bound.value(), RightOpen),
+                BoundType::Closed => Self::new_finite_assume_valid(bound.value(), Closed),
+                BoundType::Open => Self::new_finite_assume_valid(bound.value(), RightOpen),
             }
         }
     }
@@ -874,22 +881,30 @@ pub mod ord {
     pub struct FiniteOrdBound<T>(pub T, pub FiniteOrdBoundKind);
 
     impl<T> FiniteOrdBound<T> {
-        /// Creates a new `FiniteOrdBound<T>`.
+        /// Tier-4 bypass: constructs a `FiniteOrdBound<T>` without
+        /// validating `limit`. The caller asserts that, for the
+        /// downstream uses they intend, `limit` is acceptable —
+        /// `FiniteOrdBound` itself enforces no invariant on its inner
+        /// value, but conversions like `TryFrom<FiniteOrdBound<T>> for
+        /// FiniteBound<T>` are fallible specifically because this
+        /// guarantee is missing.
         #[inline(always)]
-        pub const fn new(limit: T, kind: FiniteOrdBoundKind) -> Self {
+        pub(crate) const fn new_assume_valid(limit: T, kind: FiniteOrdBoundKind) -> Self {
             Self(limit, kind)
         }
 
-        /// Creates a new closed `FiniteOrdBound<T>`.
+        /// Tier-4 bypass: closed `FiniteOrdBound<T>` without validating
+        /// `limit`. See [`new_assume_valid`](Self::new_assume_valid).
         #[inline(always)]
-        pub const fn closed(limit: T) -> Self {
-            Self::new(limit, FiniteOrdBoundKind::Closed)
+        pub(crate) const fn closed_assume_valid(limit: T) -> Self {
+            Self::new_assume_valid(limit, FiniteOrdBoundKind::Closed)
         }
 
-        /// Creates a new left or right open `FiniteOrdBound<T>`
+        /// Tier-4 bypass: side-oriented open `FiniteOrdBound<T>` without
+        /// validating `limit`. See [`new_assume_valid`](Self::new_assume_valid).
         #[inline(always)]
-        pub const fn open(side: super::Side, limit: T) -> Self {
-            Self::new(
+        pub(crate) const fn open_assume_valid(side: super::Side, limit: T) -> Self {
+            Self::new_assume_valid(
                 limit,
                 match side {
                     super::Side::Left => LeftOpen,
@@ -902,7 +917,7 @@ pub mod ord {
     impl<T: Clone> FiniteOrdBound<&T> {
         /// Converts `FiniteOrdBound<&T>` to `FiniteOrdBound<T>`.
         pub fn cloned(&self) -> FiniteOrdBound<T> {
-            FiniteOrdBound::new(self.0.clone(), self.1)
+            FiniteOrdBound::new_assume_valid(self.0.clone(), self.1)
         }
     }
 
@@ -954,14 +969,16 @@ pub mod ord {
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd, Eq, Ord, Hash)]
     pub struct OrdBoundPair<T>(OrdBound<T>, OrdBound<T>);
 
-    impl<T: PartialEq> OrdBoundPair<T> {
-        /// Test if this is the empty set.
-        pub fn is_empty(&self) -> bool {
-            *self == Self::empty()
-        }
-    }
-
     impl<T> OrdBoundPair<T> {
+        /// Test if this is the empty set.
+        ///
+        /// The empty marker is `(LeftUnbounded, LeftUnbounded)`. Detection
+        /// requires only matching on the discriminants, so this method
+        /// imposes no bound on `T`.
+        pub fn is_empty(&self) -> bool {
+            matches!(self.0, LeftUnbounded) && matches!(self.1, LeftUnbounded)
+        }
+
         /// Create a new empty set.
         pub const fn empty() -> Self {
             Self(LeftUnbounded, LeftUnbounded)
@@ -1067,9 +1084,17 @@ pub mod ord {
         }
     }
 
-    impl<T> From<FiniteOrdBound<T>> for FiniteBound<T> {
-        fn from(value: FiniteOrdBound<T>) -> Self {
-            FiniteBound(BoundType::from(value.1), value.0)
+    /// Fallible conversion: a `FiniteOrdBound<T>` can carry any `T`
+    /// (its Tier-4 constructors accept `NaN`/`±INF` on library float
+    /// types), so reaching `FiniteBound<T>`'s validation invariant
+    /// requires running `Element::validate` here. The `Side`
+    /// orientation carried by `FiniteOrdBoundKind::{LeftOpen, RightOpen}`
+    /// is discarded; `FiniteBound` only records `Open` vs `Closed`.
+    impl<T: crate::numeric::Element> TryFrom<FiniteOrdBound<T>> for FiniteBound<T> {
+        type Error = Error;
+
+        fn try_from(value: FiniteOrdBound<T>) -> Result<Self, Self::Error> {
+            FiniteBound::try_new(BoundType::from(value.1), value.0)
         }
     }
 }
@@ -1100,33 +1125,39 @@ mod test {
 
         #[test]
         fn closed_equal_values_accepted() {
-            OrdBoundPair::<i32>::try_new(OrdBound::closed(5), OrdBound::closed(5)).unwrap();
+            OrdBoundPair::<i32>::try_new(
+                OrdBound::closed_assume_valid(5),
+                OrdBound::closed_assume_valid(5),
+            )
+            .unwrap();
         }
 
         #[test]
         fn rejects_right_unbounded_on_left() {
             let err =
-                OrdBoundPair::<i32>::try_new(RightUnbounded, OrdBound::closed(0)).unwrap_err();
+                OrdBoundPair::<i32>::try_new(RightUnbounded, OrdBound::closed_assume_valid(0))
+                    .unwrap_err();
             assert!(matches!(err, Error::InvalidBoundPair));
         }
 
         #[test]
         fn rejects_left_unbounded_on_right() {
-            let err = OrdBoundPair::<i32>::try_new(OrdBound::closed(0), LeftUnbounded).unwrap_err();
+            let err = OrdBoundPair::<i32>::try_new(OrdBound::closed_assume_valid(0), LeftUnbounded)
+                .unwrap_err();
             assert!(matches!(err, Error::InvalidBoundPair));
         }
 
         #[test]
         fn rejects_right_open_kind_on_left() {
             let left = Finite(FiniteOrdBound(0_i32, RightOpen));
-            let right = OrdBound::closed(10);
+            let right = OrdBound::closed_assume_valid(10);
             let err = OrdBoundPair::try_new(left, right).unwrap_err();
             assert!(matches!(err, Error::InvalidBoundPair));
         }
 
         #[test]
         fn rejects_left_open_kind_on_right() {
-            let left = OrdBound::closed(0);
+            let left = OrdBound::closed_assume_valid(0);
             let right = Finite(FiniteOrdBound(10_i32, LeftOpen));
             let err = OrdBoundPair::try_new(left, right).unwrap_err();
             assert!(matches!(err, Error::InvalidBoundPair));
@@ -1134,16 +1165,19 @@ mod test {
 
         #[test]
         fn rejects_swapped_value_order() {
-            let err = OrdBoundPair::<i32>::try_new(OrdBound::closed(10), OrdBound::closed(0))
-                .unwrap_err();
+            let err = OrdBoundPair::<i32>::try_new(
+                OrdBound::closed_assume_valid(10),
+                OrdBound::closed_assume_valid(0),
+            )
+            .unwrap_err();
             assert!(matches!(err, Error::InvalidBoundPair));
         }
 
         #[test]
         fn rejects_nan_value() {
             let err = OrdBoundPair::<f32>::try_new(
-                OrdBound::closed(f32::NAN),
-                OrdBound::closed(f32::NAN),
+                OrdBound::closed_assume_valid(f32::NAN),
+                OrdBound::closed_assume_valid(f32::NAN),
             )
             .unwrap_err();
             assert!(matches!(err, Error::InvalidBoundLimit));
@@ -1152,7 +1186,10 @@ mod test {
         #[test]
         #[should_panic(expected = "OrdBoundPair invariants violated")]
         fn new_panics_on_malformed() {
-            let _ = OrdBoundPair::<i32>::new(OrdBound::closed(10), OrdBound::closed(0));
+            let _ = OrdBoundPair::<i32>::new(
+                OrdBound::closed_assume_valid(10),
+                OrdBound::closed_assume_valid(0),
+            );
         }
 
         // Debug-mode tripwires on Tier 4 `new_assume_valid` bypass.
@@ -1164,7 +1201,10 @@ mod test {
             #[test]
             #[should_panic(expected = "left must not be RightUnbounded")]
             fn rejects_right_unbounded_on_left() {
-                let _ = OrdBoundPair::<i32>::new_assume_valid(RightUnbounded, OrdBound::closed(0));
+                let _ = OrdBoundPair::<i32>::new_assume_valid(
+                    RightUnbounded,
+                    OrdBound::closed_assume_valid(0),
+                );
             }
 
             #[test]
@@ -1172,7 +1212,10 @@ mod test {
                 expected = "right must not be LeftUnbounded outside the canonical empty pair"
             )]
             fn rejects_left_unbounded_on_right() {
-                let _ = OrdBoundPair::<i32>::new_assume_valid(OrdBound::closed(0), LeftUnbounded);
+                let _ = OrdBoundPair::<i32>::new_assume_valid(
+                    OrdBound::closed_assume_valid(0),
+                    LeftUnbounded,
+                );
             }
 
             #[test]
@@ -1180,7 +1223,7 @@ mod test {
             fn rejects_right_open_kind_on_left() {
                 let _ = OrdBoundPair::<i32>::new_assume_valid(
                     Finite(FiniteOrdBound(0, RightOpen)),
-                    OrdBound::closed(10),
+                    OrdBound::closed_assume_valid(10),
                 );
             }
 
@@ -1188,7 +1231,7 @@ mod test {
             #[should_panic(expected = "right Finite must not be LeftOpen")]
             fn rejects_left_open_kind_on_right() {
                 let _ = OrdBoundPair::<i32>::new_assume_valid(
-                    OrdBound::closed(0),
+                    OrdBound::closed_assume_valid(0),
                     Finite(FiniteOrdBound(10, LeftOpen)),
                 );
             }
@@ -1276,23 +1319,23 @@ mod test {
         let f1 = 100.0;
 
         assert_eq!(
-            OrdBound::closed(f0).try_min(OrdBound::closed(f1)),
-            Ok(OrdBound::closed(f0))
+            OrdBound::closed_assume_valid(f0).try_min(OrdBound::closed_assume_valid(f1)),
+            Ok(OrdBound::closed_assume_valid(f0))
         );
 
         assert_eq!(
-            OrdBound::closed(&f0).try_min(OrdBound::closed(&f1)),
-            Ok(OrdBound::closed(&f0))
+            OrdBound::closed_assume_valid(&f0).try_min(OrdBound::closed_assume_valid(&f1)),
+            Ok(OrdBound::closed_assume_valid(&f0))
         );
 
         assert_eq!(
-            OrdBound::LeftUnbounded.try_max(OrdBound::closed(f1)),
-            Ok(OrdBound::closed(f1))
+            OrdBound::LeftUnbounded.try_max(OrdBound::closed_assume_valid(f1)),
+            Ok(OrdBound::closed_assume_valid(f1))
         );
 
         assert_eq!(
-            OrdBound::LeftUnbounded.try_max(OrdBound::closed(&f1)),
-            Ok(OrdBound::closed(&f1))
+            OrdBound::LeftUnbounded.try_max(OrdBound::closed_assume_valid(&f1)),
+            Ok(OrdBound::closed_assume_valid(&f1))
         )
     }
 
