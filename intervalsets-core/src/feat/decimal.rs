@@ -22,6 +22,11 @@ impl Element for Decimal {
         // overflow at extremes (e.g. `Decimal::MAX - Decimal::MIN`).
         right.checked_sub(*left)
     }
+
+    fn validate(self) -> Option<Self> {
+        // Decimal should have 1 canonical bit-pattern when used as the bound of a set.
+        Some(self.normalize())
+    }
 }
 
 /// `Decimal` is `Ord` but `Kind = ContinuousKind`, so element iteration
@@ -253,6 +258,25 @@ mod test {
         assert!(!interval.contains(&Decimal::new(10, 0)));
 
         assert_eq!(interval.measure().finite(), Decimal::new(798, 2));
+    }
+
+    #[test]
+    fn test_decimal_validate_normalizes_bound_bitpattern() {
+        // `Decimal::new(10, 0)` and `Decimal::new(100, 1)` are equal by
+        // value but carry different (mantissa, scale) bit patterns.
+        // `Element::validate` must collapse them to one canonical form
+        // so intervals built from value-equal inputs are bit-identical.
+        let a = Decimal::new(10, 0);
+        let b = Decimal::new(100, 1);
+        assert_eq!(a, b);
+        assert_ne!((a.mantissa(), a.scale()), (b.mantissa(), b.scale()));
+
+        let x = EnumInterval::closed(Decimal::ZERO, a);
+        let y = EnumInterval::closed(Decimal::ZERO, b);
+        let xr = x.right().unwrap().value();
+        let yr = y.right().unwrap().value();
+        assert_eq!((xr.mantissa(), xr.scale()), (yr.mantissa(), yr.scale()));
+        assert_eq!((xr.mantissa(), xr.scale()), (10, 0));
     }
 
     #[test]
