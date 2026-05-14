@@ -15,14 +15,21 @@
 //! interval-wise reading; element-wise iteration uses
 //! [`IntoElementIterator`] so the two don't compete.
 //!
-//! # Why `T: Element + Ord`?
+//! # Why `T: DiscreteElement`?
 //!
-//! `Element` brings [`try_adjacent`](crate::numeric::Element::try_adjacent),
-//! which is what advances the cursor. The extra `Ord` bound is the
-//! ecosystem-standard gate that excludes `f32`/`f64` (not `Ord` because of
-//! NaN). Every discrete `Element` impl in this crate is already `Ord`, so
-//! the bound costs nothing in practice. Same per-trait split used by
-//! `Union` and friends.
+//! `Element::try_adjacent` is what advances the cursor. On continuous
+//! types it returns `None` unconditionally, so iterating over a
+//! continuous interval would produce an always-empty walk —
+//! structurally ill-defined. The `DiscreteElement` bound
+//! (`Element<Kind = DiscreteKind>`) catches this at compile time
+//! rather than letting users construct iterators that yield nothing.
+//!
+//! The bound is **just** `DiscreteElement` — `PartialOrd` (carried by
+//! `Element` itself) suffices for the `==` / `<` / `>` cursor
+//! comparisons. A discrete user type with a `PartialOrd`-only order
+//! (e.g. an ordered chain of values plus an error variant rejected
+//! by `Element::validate`) is fully iterable; the construction
+//! chokepoint guarantees stored bounds are comparable to each other.
 //!
 //! # Half-bounded and unbounded shapes
 //!
@@ -124,7 +131,7 @@ impl<T> Elements<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord> Elements<T> {
+impl<T: DiscreteElement> Elements<T> {
     /// Build a fresh iterator from the bounds of an interval. Open bounds
     /// step in via `try_adjacent` to land on the first/last included
     /// element; an `Open` whose value has no neighbor in the stepping
@@ -146,7 +153,7 @@ impl<T: DiscreteElement + Ord> Elements<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord> Iterator for Elements<T> {
+impl<T: DiscreteElement> Iterator for Elements<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
@@ -175,7 +182,7 @@ impl<T: DiscreteElement + Ord> Iterator for Elements<T> {
     // size_hint and ExactSizeIterator.
 }
 
-impl<T: DiscreteElement + Ord> DoubleEndedIterator for Elements<T> {
+impl<T: DiscreteElement> DoubleEndedIterator for Elements<T> {
     fn next_back(&mut self) -> Option<T> {
         let current = self.back.take()?;
         match self.front.as_ref() {
@@ -194,11 +201,11 @@ impl<T: DiscreteElement + Ord> DoubleEndedIterator for Elements<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord> core::iter::FusedIterator for Elements<T> {}
+impl<T: DiscreteElement> core::iter::FusedIterator for Elements<T> {}
 
 // ---- FiniteInterval ----
 
-impl<T: DiscreteElement + Ord> IntoElementIterator for FiniteInterval<T> {
+impl<T: DiscreteElement> IntoElementIterator for FiniteInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -210,7 +217,7 @@ impl<T: DiscreteElement + Ord> IntoElementIterator for FiniteInterval<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord + Clone> FiniteInterval<T> {
+impl<T: DiscreteElement + Clone> FiniteInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         match self.view_raw() {
@@ -222,7 +229,7 @@ impl<T: DiscreteElement + Ord + Clone> FiniteInterval<T> {
 
 // ---- HalfInterval ----
 
-impl<T: DiscreteElement + Ord> IntoElementIterator for HalfInterval<T> {
+impl<T: DiscreteElement> IntoElementIterator for HalfInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -235,7 +242,7 @@ impl<T: DiscreteElement + Ord> IntoElementIterator for HalfInterval<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord + Clone> HalfInterval<T> {
+impl<T: DiscreteElement + Clone> HalfInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         let bound = self.finite_bound().clone();
@@ -248,7 +255,7 @@ impl<T: DiscreteElement + Ord + Clone> HalfInterval<T> {
 
 // ---- EnumInterval ----
 
-impl<T: DiscreteElement + Ord> IntoElementIterator for EnumInterval<T> {
+impl<T: DiscreteElement> IntoElementIterator for EnumInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -261,7 +268,7 @@ impl<T: DiscreteElement + Ord> IntoElementIterator for EnumInterval<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord + Clone> EnumInterval<T> {
+impl<T: DiscreteElement + Clone> EnumInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         match self {
@@ -301,7 +308,7 @@ pub struct DisjointElements<T> {
     back: Option<Elements<T>>,
 }
 
-impl<T: DiscreteElement + Ord> Iterator for DisjointElements<T> {
+impl<T: DiscreteElement> Iterator for DisjointElements<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
@@ -341,7 +348,7 @@ impl<T: DiscreteElement + Ord> Iterator for DisjointElements<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord> DoubleEndedIterator for DisjointElements<T> {
+impl<T: DiscreteElement> DoubleEndedIterator for DisjointElements<T> {
     fn next_back(&mut self) -> Option<T> {
         if let Some(it) = self.back.as_mut() {
             if let Some(v) = it.next_back() {
@@ -359,9 +366,9 @@ impl<T: DiscreteElement + Ord> DoubleEndedIterator for DisjointElements<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord> core::iter::FusedIterator for DisjointElements<T> {}
+impl<T: DiscreteElement> core::iter::FusedIterator for DisjointElements<T> {}
 
-impl<T: DiscreteElement + Ord> IntoElementIterator for MaybeDisjoint<T> {
+impl<T: DiscreteElement> IntoElementIterator for MaybeDisjoint<T> {
     type Item = T;
     type IntoIter = DisjointElements<T>;
 
@@ -382,7 +389,7 @@ impl<T: DiscreteElement + Ord> IntoElementIterator for MaybeDisjoint<T> {
     }
 }
 
-impl<T: DiscreteElement + Ord + Clone> MaybeDisjoint<T> {
+impl<T: DiscreteElement + Clone> MaybeDisjoint<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     ///
     /// Walks each piece in order, yielding every element along the way.
@@ -642,5 +649,67 @@ mod tests {
         // tightest possible (0, Some(0)) rather than (0, None).
         let it = MaybeDisjoint::<i32>::empty().into_elements();
         assert_eq!(it.size_hint(), (0, Some(0)));
+    }
+
+    /// Iteration on a discrete type that is `PartialOrd` (not `Ord`):
+    /// a chain of values with an error variant that the default
+    /// `Element::validate` rejects (incomparable to itself). Stored
+    /// bounds are pairwise comparable by construction, so iteration
+    /// is well-defined.
+    #[test]
+    fn discrete_partial_ord_only_chain_iterates() {
+        use crate::bound::Side;
+        use crate::numeric::{DiscreteKind, Element};
+
+        #[derive(Debug, Clone, PartialEq)]
+        #[allow(dead_code)] // `Err` is referenced through `PartialOrd::partial_cmp` matches only.
+        enum ChainItem {
+            Val(u8),
+            Err,
+        }
+
+        impl PartialOrd for ChainItem {
+            fn partial_cmp(&self, other: &Self) -> Option<core::cmp::Ordering> {
+                match (self, other) {
+                    (Self::Val(a), Self::Val(b)) => a.partial_cmp(b),
+                    // Err is incomparable to anything — including itself,
+                    // so the default `Element::validate` rejects it at
+                    // construction.
+                    _ => None,
+                }
+            }
+        }
+
+        impl Element for ChainItem {
+            type Kind = DiscreteKind;
+            type Measure = u16;
+
+            fn try_adjacent(&self, side: Side) -> Option<Self> {
+                match self {
+                    Self::Val(v) => match side {
+                        Side::Left => v.checked_sub(1).map(Self::Val),
+                        Side::Right => v.checked_add(1).map(Self::Val),
+                    },
+                    Self::Err => None,
+                }
+            }
+
+            fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+                match (left, right) {
+                    (Self::Val(l), Self::Val(r)) => u8::try_measure_finite(l, r),
+                    _ => None,
+                }
+            }
+        }
+
+        // ChainItem is NOT `Ord`, but `[Val(2), Val(5)]` has pairwise
+        // comparable bounds — accepted at construction, iterable.
+        let iv = FiniteInterval::closed(ChainItem::Val(2), ChainItem::Val(5));
+        assert!(iv.into_elements().eq([
+            ChainItem::Val(2),
+            ChainItem::Val(3),
+            ChainItem::Val(4),
+            ChainItem::Val(5),
+        ]));
     }
 }
