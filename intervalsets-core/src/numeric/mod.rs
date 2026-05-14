@@ -164,9 +164,9 @@
 
 pub use num_traits::{Bounded, CheckedSub, NumCast, ToPrimitive, Zero};
 
-pub mod element;
-pub mod midpoint;
-pub mod saturating;
+mod element;
+mod midpoint;
+mod saturating;
 
 pub use element::{
     default_discrete_count_inclusive, ContinuousElement, ContinuousKind, DiscreteElement,
