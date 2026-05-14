@@ -45,7 +45,7 @@
 
 use crate::bound::{BoundType, FiniteBound, Side};
 use crate::empty::MaybeEmpty;
-use crate::numeric::Element;
+use crate::numeric::DiscreteElement;
 use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// Convert a set value into an iterator that yields its discrete elements.
@@ -124,7 +124,7 @@ impl<T> Elements<T> {
     }
 }
 
-impl<T: Element + Ord> Elements<T> {
+impl<T: DiscreteElement + Ord> Elements<T> {
     /// Build a fresh iterator from the bounds of an interval. Open bounds
     /// step in via `try_adjacent` to land on the first/last included
     /// element; an `Open` whose value has no neighbor in the stepping
@@ -146,7 +146,7 @@ impl<T: Element + Ord> Elements<T> {
     }
 }
 
-impl<T: Element + Ord> Iterator for Elements<T> {
+impl<T: DiscreteElement + Ord> Iterator for Elements<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
@@ -175,7 +175,7 @@ impl<T: Element + Ord> Iterator for Elements<T> {
     // size_hint and ExactSizeIterator.
 }
 
-impl<T: Element + Ord> DoubleEndedIterator for Elements<T> {
+impl<T: DiscreteElement + Ord> DoubleEndedIterator for Elements<T> {
     fn next_back(&mut self) -> Option<T> {
         let current = self.back.take()?;
         match self.front.as_ref() {
@@ -194,11 +194,11 @@ impl<T: Element + Ord> DoubleEndedIterator for Elements<T> {
     }
 }
 
-impl<T: Element + Ord> core::iter::FusedIterator for Elements<T> {}
+impl<T: DiscreteElement + Ord> core::iter::FusedIterator for Elements<T> {}
 
 // ---- FiniteInterval ----
 
-impl<T: Element + Ord> IntoElementIterator for FiniteInterval<T> {
+impl<T: DiscreteElement + Ord> IntoElementIterator for FiniteInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -210,7 +210,7 @@ impl<T: Element + Ord> IntoElementIterator for FiniteInterval<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> FiniteInterval<T> {
+impl<T: DiscreteElement + Ord + Clone> FiniteInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         match self.view_raw() {
@@ -222,7 +222,7 @@ impl<T: Element + Ord + Clone> FiniteInterval<T> {
 
 // ---- HalfInterval ----
 
-impl<T: Element + Ord> IntoElementIterator for HalfInterval<T> {
+impl<T: DiscreteElement + Ord> IntoElementIterator for HalfInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -235,7 +235,7 @@ impl<T: Element + Ord> IntoElementIterator for HalfInterval<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> HalfInterval<T> {
+impl<T: DiscreteElement + Ord + Clone> HalfInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         let bound = self.finite_bound().clone();
@@ -248,7 +248,7 @@ impl<T: Element + Ord + Clone> HalfInterval<T> {
 
 // ---- EnumInterval ----
 
-impl<T: Element + Ord> IntoElementIterator for EnumInterval<T> {
+impl<T: DiscreteElement + Ord> IntoElementIterator for EnumInterval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -261,7 +261,7 @@ impl<T: Element + Ord> IntoElementIterator for EnumInterval<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> EnumInterval<T> {
+impl<T: DiscreteElement + Ord + Clone> EnumInterval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         match self {
@@ -301,7 +301,7 @@ pub struct DisjointElements<T> {
     back: Option<Elements<T>>,
 }
 
-impl<T: Element + Ord> Iterator for DisjointElements<T> {
+impl<T: DiscreteElement + Ord> Iterator for DisjointElements<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
@@ -341,7 +341,7 @@ impl<T: Element + Ord> Iterator for DisjointElements<T> {
     }
 }
 
-impl<T: Element + Ord> DoubleEndedIterator for DisjointElements<T> {
+impl<T: DiscreteElement + Ord> DoubleEndedIterator for DisjointElements<T> {
     fn next_back(&mut self) -> Option<T> {
         if let Some(it) = self.back.as_mut() {
             if let Some(v) = it.next_back() {
@@ -359,9 +359,9 @@ impl<T: Element + Ord> DoubleEndedIterator for DisjointElements<T> {
     }
 }
 
-impl<T: Element + Ord> core::iter::FusedIterator for DisjointElements<T> {}
+impl<T: DiscreteElement + Ord> core::iter::FusedIterator for DisjointElements<T> {}
 
-impl<T: Element + Ord> IntoElementIterator for MaybeDisjoint<T> {
+impl<T: DiscreteElement + Ord> IntoElementIterator for MaybeDisjoint<T> {
     type Item = T;
     type IntoIter = DisjointElements<T>;
 
@@ -382,7 +382,7 @@ impl<T: Element + Ord> IntoElementIterator for MaybeDisjoint<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> MaybeDisjoint<T> {
+impl<T: DiscreteElement + Ord + Clone> MaybeDisjoint<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     ///
     /// Walks each piece in order, yielding every element along the way.
@@ -401,7 +401,14 @@ impl<T: Element + Ord + Clone> MaybeDisjoint<T> {
     }
 }
 
-/// f32/f64 are not `Ord`, so `into_elements()` doesn't compile for them.
+/// Element iteration is gated on `DiscreteElement` — continuous
+/// types have no adjacency relation (`try_adjacent` returns `None`),
+/// so an "iterator over the elements" is ill-defined regardless of
+/// whether the type happens to be `Ord`. Floats are excluded twice
+/// over (not `Ord`, also `ContinuousKind`); `Decimal` / `BigDecimal`
+/// / `OrderedFloat<T>` / `NotNan<T>` are excluded once (`Ord` but
+/// `ContinuousKind`). Users wanting an element iterator on a
+/// continuous T should pick a discrete grid (e.g. `Fixed*`) instead.
 ///
 /// ```compile_fail
 /// use intervalsets_core::prelude::*;

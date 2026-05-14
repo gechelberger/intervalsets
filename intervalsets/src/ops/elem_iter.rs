@@ -10,12 +10,12 @@
 
 pub use intervalsets_core::ops::{DisjointElements, Elements, IntoElementIterator};
 
-use crate::numeric::Element;
+use crate::numeric::DiscreteElement;
 use crate::{Interval, IntervalSet};
 
 // ---- Interval (newtype around EnumInterval) ----
 
-impl<T: Element + Ord> IntoElementIterator for Interval<T> {
+impl<T: DiscreteElement + Ord> IntoElementIterator for Interval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -24,7 +24,7 @@ impl<T: Element + Ord> IntoElementIterator for Interval<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> Interval<T> {
+impl<T: DiscreteElement + Ord + Clone> Interval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         self.0.elements()
@@ -62,7 +62,7 @@ pub struct SetElements<T> {
     back: Option<Elements<T>>,
 }
 
-impl<T: Element + Ord> Iterator for SetElements<T> {
+impl<T: DiscreteElement + Ord> Iterator for SetElements<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
@@ -113,7 +113,7 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
     }
 }
 
-impl<T: Element + Ord> DoubleEndedIterator for SetElements<T> {
+impl<T: DiscreteElement + Ord> DoubleEndedIterator for SetElements<T> {
     fn next_back(&mut self) -> Option<T> {
         loop {
             if let Some(it) = self.back.as_mut() {
@@ -137,9 +137,9 @@ impl<T: Element + Ord> DoubleEndedIterator for SetElements<T> {
     }
 }
 
-impl<T: Element + Ord> core::iter::FusedIterator for SetElements<T> {}
+impl<T: DiscreteElement + Ord> core::iter::FusedIterator for SetElements<T> {}
 
-impl<T: Element + Ord> IntoElementIterator for IntervalSet<T> {
+impl<T: DiscreteElement + Ord> IntoElementIterator for IntervalSet<T> {
     type Item = T;
     type IntoIter = SetElements<T>;
 
@@ -152,7 +152,7 @@ impl<T: Element + Ord> IntoElementIterator for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> IntervalSet<T> {
+impl<T: DiscreteElement + Ord + Clone> IntervalSet<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     ///
     /// Walks each interval piece in order, yielding every element along

@@ -24,6 +24,19 @@ impl Element for Decimal {
     }
 }
 
+/// `Decimal` is `Ord` but `Kind = ContinuousKind`, so element iteration
+/// is rejected at compile time by the `DiscreteElement` bound — the
+/// gate catches the case that pure-`Ord` filtering missed (continuous
+/// types have no adjacency to enumerate).
+///
+/// ```compile_fail
+/// use intervalsets_core::prelude::*;
+/// use rust_decimal::Decimal;
+/// let _ = FiniteInterval::closed(Decimal::ZERO, Decimal::ONE).into_elements();
+/// ```
+#[allow(dead_code)]
+struct DecimalContinuousNotIterable;
+
 impl Midpointable for Decimal {
     type Error = MathError;
 
