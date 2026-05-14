@@ -13,7 +13,7 @@ The pre-commit hook (lefthook) runs `just fmt-check`, `just clippy`, and `just t
 
 Two directories, by lifecycle stage:
 
-- **`scratch/`** (gitignored) — ephemeral working notes, audits, and in-flight investigations. Check before assuming a question is unconsidered, but expect the contents to be in motion. The agent should keep an index of topics covered.
+- **`scratch/`** (gitignored) — ephemeral working notes, audits, and in-flight investigations. Check before assuming a question is unconsidered, but expect the contents to be in motion. The agent should maintain an index of topics covered in scratch/INDEX.md.
 - **`docs/design/`** — design docs that are close to ready. Currently `measure-api.md`, `storage-type-cast.md`. Treat as authoritative.
 - **`docs/spec/`** -- design docs that are focused on the shape of an api, not the why, but the how.
 - **`docs/primer/`** -- short, high-level quickstart guides to onboard new users or maintainers
