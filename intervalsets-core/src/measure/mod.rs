@@ -13,12 +13,17 @@
 //!         m(A0 U A1 .. An) <= Sum { m(Ai) for i in 0..n }
 //! ```
 //!
-//! Some common measures are Cardinality and the Lebesgue measure
-//! (which is Width in R1).
+//! The unified [`Measure`] trait returns the natural additive measure
+//! of a set: cardinality on discrete element types, Lebesgue width on
+//! continuous element types. The kind-projection lives at the
+//! [`Element`](crate::numeric::Element) layer (`Output = T::Measure`).
+//!
+//! For "diameter on any T" (`sup − inf` regardless of category), see
+//! [`Span`](crate::ops::Span) in the `ops/` module — Span is not a
+//! measure (it fails subadditivity on disjoint sets).
 
-mod cardinality;
-pub use cardinality::{Cardinality, Countable};
 mod extent;
 pub use extent::Extent;
-mod width;
-pub use width::{Width, Widthable};
+#[allow(clippy::module_inception)]
+mod measure;
+pub use measure::Measure;

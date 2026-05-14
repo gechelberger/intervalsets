@@ -5,13 +5,24 @@ use ordered_float::{NotNan, OrderedFloat};
 
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
-use crate::measure::{Countable, Widthable};
-use crate::numeric::{Element, Midpointable};
+use crate::numeric::{ContinuousKind, Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
-impl<T: FloatCore + Element> Element for NotNan<T> {
+impl<T> Element for NotNan<T>
+where
+    T: FloatCore + Element<Kind = ContinuousKind, Measure = T> + TryAdd<Output = T>,
+{
+    type Kind = ContinuousKind;
+    type Measure = T;
+
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
+    }
+
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+        // Delegates to the inner float's `try_measure_finite`, which
+        // returns `None` on non-finite diff (overflow at extremes).
+        T::try_measure_finite(&**left, &**right)
     }
 
     /// Rejects ±INF. `NotNan<T>` already excludes NaN by construction,
@@ -23,9 +34,19 @@ impl<T: FloatCore + Element> Element for NotNan<T> {
     }
 }
 
-impl<T: FloatCore + Element> Element for OrderedFloat<T> {
+impl<T> Element for OrderedFloat<T>
+where
+    T: FloatCore + Element<Kind = ContinuousKind, Measure = T> + TryAdd<Output = T>,
+{
+    type Kind = ContinuousKind;
+    type Measure = T;
+
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
+    }
+
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+        T::try_measure_finite(&left.0, &right.0)
     }
 
     /// Rejects NaN and ±INF. `OrderedFloat<T>` admits NaN under its
@@ -47,52 +68,6 @@ impl<T: FloatCore + Midpointable<Error = Infallible>> Midpointable for NotNan<T>
     fn midpoint(self, other: Self) -> Result<Self, Self::Error> {
         let Ok(mid) = self.into_inner().midpoint(other.into_inner());
         Ok(NotNan::new(mid).expect("midpoint of finite floats is non-NaN"))
-    }
-}
-
-impl<T: FloatCore + Widthable<Output = T>> Widthable for NotNan<T> {
-    type Output = T;
-
-    /// Delegates to the inner float's `Widthable`. Returns `None` if
-    /// the diff is non-finite (overflow at extreme inputs).
-    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
-        T::width_between(&**left, &**right)
-    }
-}
-
-impl<T: FloatCore + Widthable<Output = T>> Widthable for OrderedFloat<T> {
-    type Output = T;
-
-    /// Delegates to the inner float's `Widthable`. Returns `None` if
-    /// the diff is non-finite (overflow at extreme inputs).
-    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
-        T::width_between(&left.0, &right.0)
-    }
-}
-
-impl<T: FloatCore + Element> Countable for NotNan<T> {
-    type Output = u128;
-    const IS_CONTINUOUS: bool = true;
-
-    fn count_inclusive(left: &Self, right: &Self) -> Option<u128> {
-        if left == right {
-            Some(1)
-        } else {
-            None
-        }
-    }
-}
-
-impl<T: FloatCore + Element> Countable for OrderedFloat<T> {
-    type Output = u128;
-    const IS_CONTINUOUS: bool = true;
-
-    fn count_inclusive(left: &Self, right: &Self) -> Option<u128> {
-        if left == right {
-            Some(1)
-        } else {
-            None
-        }
     }
 }
 

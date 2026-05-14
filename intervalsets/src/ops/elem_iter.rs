@@ -94,7 +94,7 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
         // Each pending interval is non-empty (IntervalSet invariant), so
         // contributes at least 1 element. Front and back walkers delegate
         // to Elements<T>::size_hint — (0, None) today, but a tighter hint
-        // (via Countable, deferred) is picked up for free.
+        // (via T::Measure / try_measure, deferred) is picked up for free.
         let (fl, fu) = self
             .front
             .as_ref()
@@ -103,7 +103,7 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
         let pending = self.intervals.len();
         let lower = fl.saturating_add(bl).saturating_add(pending);
         // Upper is known only if every pending piece's count is known —
-        // which today requires Countable, so we conservatively return
+        // which today requires going through T::try_measure_finite, so we conservatively return
         // None whenever any piece remains.
         let upper = match (fu, bu) {
             (Some(a), Some(b)) if pending == 0 => a.checked_add(b),
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     fn set_elements_size_hint_lower_bound_counts_pending_pieces() {
         // Two unconsumed pieces; each contributes ≥1 by invariant.
-        // Upper is unknown without Countable.
+        // Upper is unknown without going through T::try_measure_finite.
         let set = IntervalSet::new([Interval::closed(0, 2), Interval::closed(10, 12)]);
         let it = set.into_elements();
         let (lower, upper) = it.size_hint();

@@ -28,95 +28,81 @@
 //! behavior.
 //!
 //! * [`Element`]
-//! > The `Element` trait serves two purposes:
-//! >
-//! > 1. **Distinguish discrete vs continuous data** via
-//! >    [`try_adjacent`](Element::try_adjacent). This lets the crate
-//! >    normalize discrete sets to a canonical bit-pattern (e.g.
-//! >    `[1, 9]` == `(0, 10)` == `(0, 9]` == `[1, 10)`) and test
-//! >    adjacency for union/merge. Continuous-type impls return `None`.
-//! >
-//! > 2. **Validate (and optionally normalize) bound limits** via
-//! >    [`validate`](Element::validate). Library float types reject
-//! >    `±INF` and `NaN` here so that a `FiniteBound<f*>` is always a
-//! >    finite real number; user types override to enforce their own
-//! >    predicate. The default impl rejects only NaN-style
-//! >    `partial_cmp(&self) == None` values, which is correct for
-//! >    every discrete type with no intrinsic infinities.
-//! >
-//! > The macros [`continuous_domain_impl`](crate::continuous_domain_impl)
-//! > and the integer-domain helpers wire `try_adjacent` for the common
-//! > shapes; `validate` is overridden separately when needed (see the
-//! > `Extended<T>` worked example below).
+//! > The `Element` trait declares **what category** of element the type
+//! > is (via [`Kind`](Element::Kind) — [`DiscreteKind`] or
+//! > [`ContinuousKind`]), **what its natural measure is** (via
+//! > [`Measure`](Element::Measure)), and the primitives needed to
+//! > compute that measure ([`try_adjacent`](Element::try_adjacent),
+//! > [`try_measure_finite`](Element::try_measure_finite)). It also
+//! > carries [`validate`](Element::validate), the gatekeeper for
+//! > construction-time bound validity.
 //!
 //! * [`Zero`]
-//! > The `Zero` trait is necessary for the [`measure`](crate::measure) module,
-//! > specifically in handling the empty set. It is just a re-export from [`num_traits`].
-//!
-//! * [`Countable`](crate::measure::Countable)
-//! > The `Countable` trait is only relevant to **discrete** data types. It is
-//! > the mechanism by which a data type can say how many distinct values fall
-//! > between some bounds of that type. There is a macro
-//! > [`default_countable_impl`](crate::default_countable_impl) which uses [`try_adjacent`](Element).
+//! > The `Zero` trait is necessary for the [`measure`](crate::measure)
+//! > module, specifically in handling the empty set. It is just a
+//! > re-export from [`num_traits`].
 //!
 //! * [`Add`](core::ops::Add) and [`Sub`](core::ops::Sub)
-//! > The `Add` and `Sub` traits are used by the [`measure`](crate::measure) module, and could
-//! > be used elsewhere in the future. Presumably these are already implemented
-//! > for most types that one would want to use as bounds of a Set.
+//! > Used by some operations. Presumably already implemented for most
+//! > types that one would want to use as bounds.
 //!
 //! ## Putting it all together
 //!
 //! ```
 //! use core::ops::{Add, Sub};
-//! use intervalsets_core::numeric::{Element, Zero};
-//! use intervalsets_core::measure::Countable;
 //! use intervalsets_core::bound::Side;
+//! use intervalsets_core::numeric::{
+//!     default_discrete_count_inclusive, DiscreteKind, Element, Zero,
+//! };
 //!
-//! // minimum required is: Clone, PartialEq, PartialOrd
+//! // minimum required: Clone, PartialEq, PartialOrd
 //! #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 //! pub struct MyInt(i32);
 //!
+//! impl num_traits::CheckedSub for MyInt {
+//!     fn checked_sub(&self, rhs: &Self) -> Option<Self> {
+//!         self.0.checked_sub(rhs.0).map(MyInt)
+//!     }
+//! }
+//!
 //! impl Element for MyInt {
+//!     type Kind = DiscreteKind;
+//!     type Measure = MyInt;
+//!
 //!     fn try_adjacent(&self, side: Side) -> Option<Self> {
 //!         Some(match side {
 //!             Side::Left => Self(self.0 - 1),
 //!             Side::Right => Self(self.0 + 1),
 //!         })
 //!     }
-//!     // `validate` defaults to `partial_cmp(&self).is_some()` — fine for
-//!     // a discrete `i32`-backed type with no intrinsic infinities.
+//!
+//!     fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+//!         default_discrete_count_inclusive(left, right)
+//!     }
 //! }
 //!
 //! impl Zero for MyInt {
-//!     fn zero() -> Self {
-//!         Self(0)
-//!     }
-//!
-//!     fn is_zero(&self) -> bool {
-//!         self.0 == 0
-//!     }
-//! }
-//!
-//! // The default_countable_impl macro would work here just fine.
-//! // This would be omitted for a continuous data type.
-//! impl Countable for MyInt {
-//!     type Output = Self;
-//!     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
-//!         Some(Self(right.0 - left.0 + 1))
-//!     }
+//!     fn zero() -> Self { Self(0) }
+//!     fn is_zero(&self) -> bool { self.0 == 0 }
 //! }
 //!
 //! impl Add for MyInt {
 //!     type Output = Self;
-//!     fn add(self, rhs: Self) -> Self {
-//!         Self(self.0 + rhs.0)
-//!     }
+//!     fn add(self, rhs: Self) -> Self { Self(self.0 + rhs.0) }
 //! }
 //!
 //! impl Sub for MyInt {
 //!     type Output = Self;
-//!     fn sub(self, rhs: Self) -> Self {
-//!         Self(self.0 - rhs.0)
+//!     fn sub(self, rhs: Self) -> Self { Self(self.0 - rhs.0) }
+//! }
+//!
+//! impl intervalsets_core::ops::math::TryAdd for MyInt {
+//!     type Output = Self;
+//!     type Error = intervalsets_core::error::MathError;
+//!     fn try_add(self, rhs: Self) -> Result<Self, Self::Error> {
+//!         self.0.checked_add(rhs.0)
+//!             .map(MyInt)
+//!             .ok_or(intervalsets_core::error::MathError::Range)
 //!     }
 //! }
 //! ```
@@ -131,8 +117,9 @@
 //! [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit).
 //!
 //! ```
-//! use intervalsets_core::numeric::Element;
 //! use intervalsets_core::bound::Side;
+//! use intervalsets_core::numeric::{DiscreteKind, Element};
+//! use intervalsets_core::ops::math::TryAdd;
 //!
 //! /// A toy "extended real" type that admits ±∞ as comparable values.
 //! #[derive(Copy, Clone, PartialEq, PartialOrd)]
@@ -143,11 +130,23 @@
 //! }
 //!
 //! impl Element for Extended {
+//!     type Kind = DiscreteKind;
+//!     type Measure = u64;
+//!
 //!     fn try_adjacent(&self, side: Side) -> Option<Self> {
 //!         match (self, side) {
 //!             (Extended::Finite(n), Side::Left) => Some(Extended::Finite(n - 1)),
 //!             (Extended::Finite(n), Side::Right) => Some(Extended::Finite(n + 1)),
 //!             // ±∞ have no adjacent finite element in this model.
+//!             _ => None,
+//!         }
+//!     }
+//!
+//!     fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+//!         match (left, right) {
+//!             (Extended::Finite(l), Extended::Finite(r)) => {
+//!                 i32::try_measure_finite(l, r)
+//!             }
 //!             _ => None,
 //!         }
 //!     }
@@ -169,5 +168,8 @@ pub mod element;
 pub mod midpoint;
 pub mod saturating;
 
-pub use element::Element;
+pub use element::{
+    default_discrete_count_inclusive, ContinuousElement, ContinuousKind, DiscreteElement,
+    DiscreteKind, Element,
+};
 pub use midpoint::Midpointable;

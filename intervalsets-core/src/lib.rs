@@ -84,11 +84,14 @@
 //! assert_eq!(left, EnumInterval::closed(0, 5));
 //! assert_eq!(right, EnumInterval::closed(6, 10));
 //!
-//! let width: Extent<_> = a.width();
-//! assert_eq!(width.finite(), 10u128);
+//! // `.measure()` returns the natural measure of the type — cardinality
+//! // for discrete T, Lebesgue width for continuous T. For `i32`, the
+//! // measure type widens to `u64` (stepwise widening).
+//! let m: Extent<u64> = a.measure();
+//! assert_eq!(m.finite(), 11);
 //!
-//! let cardinality: Extent<_> = a.cardinality();
-//! assert_eq!(cardinality.finite(), 11u128);
+//! // For diameter `sup − inf` on any T (in T's native type), use Span.
+//! assert_eq!(a.span().unwrap().finite(), 10_i32);
 //!
 //! assert_eq!(format!("{}", a), "[0, 10]");
 //!
@@ -195,7 +198,7 @@
 //! | Convex hull | [`ops::ConvexHull::hull`] | [`ops::ConvexHull::try_hull`] |
 //! | Splitting | [`ops::Split::split`] | [`ops::Split::try_split`] |
 //! | Rebounding | [`ops::Rebound::with_left`]/[`ops::Rebound::with_right`] | [`ops::Rebound::try_with_left`]/[`ops::Rebound::try_with_right`] |
-//! | Counting | [`measure::Cardinality::cardinality`] | [`measure::Cardinality::try_cardinality`] |
+//! | Measure (cardinality / width) | [`measure::Measure::measure`] | [`measure::Measure::try_measure`] |
 //! | Categorizing | [`FiniteInterval::category`] | [`FiniteInterval::try_category`] |
 //!
 //! ```
@@ -402,7 +405,7 @@ pub mod prelude {
     pub use crate::empty::MaybeEmpty;
     //pub use crate::error::Error;
     pub use crate::factory::traits::*;
-    pub use crate::measure::{Cardinality, Extent, Width};
+    pub use crate::measure::{Extent, Measure};
     pub use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
     pub use crate::ops::*;
     pub use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};

@@ -1,20 +1,23 @@
 use num_traits::{Bounded, NumCast};
 use rust_decimal::Decimal;
 
+use crate::bound::Side;
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
-use crate::measure::Widthable;
-use crate::numeric::Midpointable;
+use crate::numeric::{ContinuousKind, Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
-use crate::{continuous_countable_impl, continuous_domain_impl};
 
-continuous_domain_impl!(Decimal);
-continuous_countable_impl!(Decimal);
+impl Element for Decimal {
+    type Kind = ContinuousKind;
+    type Measure = Decimal;
 
-impl Widthable for Decimal {
-    type Output = Decimal;
+    #[inline]
+    fn try_adjacent(&self, _: Side) -> Option<Self> {
+        None
+    }
 
-    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+    #[inline]
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
         // Decimal has bounded precision (≈ ±7.92e28); the diff can
         // overflow at extremes (e.g. `Decimal::MAX - Decimal::MIN`).
         right.checked_sub(*left)
@@ -236,7 +239,7 @@ mod test {
         assert!(interval.contains(&Decimal::new(5, 0)));
         assert!(!interval.contains(&Decimal::new(10, 0)));
 
-        assert_eq!(interval.width().finite(), Decimal::new(798, 2));
+        assert_eq!(interval.measure().finite(), Decimal::new(798, 2));
     }
 
     #[test]

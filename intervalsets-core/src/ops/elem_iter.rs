@@ -170,8 +170,8 @@ impl<T: Element + Ord> Iterator for Elements<T> {
     }
 
     // Default size_hint of (0, None) is intentional: a tighter bound
-    // requires `Countable`, which we keep off the type bounds. Revisit
-    // as a separate `impl<T: Countable> Elements<T>` adding both
+    // requires T::Measure, which we keep off the type bounds. Revisit
+    // as a separate `impl<T: Measure> Elements<T>` adding both
     // size_hint and ExactSizeIterator.
 }
 
@@ -325,7 +325,7 @@ impl<T: Element + Ord> Iterator for DisjointElements<T> {
 
     // Delegate to the at-most-two children. Today both contribute
     // (0, None), so this matches the default — but when Elements gains
-    // a tighter hint (via Countable, deferred), we pick it up for free.
+    // a tighter hint (via Measure, deferred), we pick it up for free.
     fn size_hint(&self) -> (usize, Option<usize>) {
         let (fl, fu) = self
             .front

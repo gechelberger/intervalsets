@@ -26,24 +26,25 @@ mod rust_decimal_tests {
         assert!(interval.contains(&Decimal::new(5, 0)));
         assert!(!interval.contains(&Decimal::new(10, 0)));
 
-        assert_eq!(interval.width().finite(), Decimal::new(798, 2));
+        assert_eq!(interval.measure().finite(), Decimal::new(798, 2));
     }
 }
 
 #[cfg(all(test, feature = "num-bigint"))]
 mod num_bigint_tests {
-    use ::num_bigint::ToBigInt;
+    use ::num_bigint::{BigInt, ToBigInt};
 
     use crate::factory::FiniteFactory;
-    use crate::measure::Width;
+    use crate::measure::Measure;
     use crate::Interval;
 
     #[test]
     fn test_bigint() {
+        // BigInt is discrete, so .measure() is cardinality (count = b-a+1).
         let a = 100.to_bigint().unwrap();
         let b = 200.to_bigint().unwrap();
-        let interval = Interval::closed(a.clone(), b);
-        assert_eq!(interval.width().finite(), a);
+        let interval = Interval::closed(a, b);
+        assert_eq!(interval.measure().finite(), BigInt::from(101));
     }
 }
 
@@ -140,7 +141,9 @@ mod fixed_tests {
             ::fixed::types::I6F2::from_num(15.75),
         );
 
-        assert_eq!(x.width().finite(), fixed::types::I6F2::from_num(5.25));
+        // Fixed-point is discrete: .measure() is cardinality (ULP count).
+        // I6F2 step = 0.25; count of [10.5, 15.75] = 22 (5.25 / 0.25 + 1).
+        assert_eq!(x.measure().finite(), 22_u128);
     }
 }
 
@@ -156,6 +159,6 @@ mod bigdecimal_tests {
         let width = BigDecimal::from_f32(123847383748.0).unwrap();
         let x = Interval::closed(BigDecimal::from_f32(0.0).unwrap(), width.clone());
 
-        assert_eq!(x.width().finite(), width);
+        assert_eq!(x.measure().finite(), width);
     }
 }

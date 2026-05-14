@@ -33,8 +33,9 @@ pub struct Bisection<T, S> {
 /// the heavier half, and terminates when the midpoint stabilizes
 /// (ulp-stable for floats, neighbor-stable for integers).
 ///
-/// Common measures: `|s| s.width().finite()` for width-balance,
-/// `|s| s.cardinality().finite()` for population-balance.
+/// Common measures: `|s| s.measure().finite()` (the natural measure
+/// of `T` — cardinality for discrete, Lebesgue width for continuous),
+/// `|s| s.span().unwrap().finite()` for diameter-based balance.
 ///
 /// # Measure contract
 ///
@@ -45,11 +46,12 @@ pub struct Bisection<T, S> {
 /// makes the search a 1D root-find with a unique balance point to
 /// converge on.
 ///
-/// `Width` and `Cardinality` satisfy this directly. Any monotonic-increasing
-/// transform of a valid measure (scaling by a positive constant,
-/// shifting, composing with a monotonic function) is also valid; an
-/// inverted measure (e.g. `|s| -s.width().finite()`) is NOT — the
-/// search will walk the wrong way and converge on a meaningless point.
+/// [`Measure`](crate::measure::Measure) and [`Span`](crate::ops::Span)
+/// satisfy this directly. Any monotonic-increasing transform of a
+/// valid measure (scaling by a positive constant, shifting, composing
+/// with a monotonic function) is also valid; an inverted measure
+/// (e.g. `|s| -s.measure().finite()`) is NOT — the search will walk
+/// the wrong way and converge on a meaningless point.
 ///
 /// Violating the contract does not cause undefined behavior or
 /// non-termination — the loop still halts when the bracket midpoint
@@ -64,8 +66,8 @@ pub struct Bisection<T, S> {
 /// values), a measure that can yield `NaN` will silently bias the
 /// search: `NaN < x` and `NaN == x` are both `false`, so every
 /// comparison falls through to the "right is heavier" branch. Strip
-/// `NaN` at the measure boundary — `s.width().finite()` returns a
-/// finite `f64` and is the canonical pattern.
+/// `NaN` at the measure boundary — `s.measure().finite()` returns a
+/// finite value and is the canonical pattern.
 pub trait Bisect<T>: Sized {
     /// Bisect by `measure`. Returns `None` if the set is empty or not
     /// finitely bounded. `measure` must satisfy the monotonicity
@@ -194,7 +196,7 @@ where
 mod tests {
     use super::*;
     use crate::factory::traits::*;
-    use crate::measure::{Cardinality, Width};
+    use crate::measure::Measure;
 
     fn assert_close(a: f64, b: f64, eps: f64) {
         assert!((a - b).abs() <= eps, "expected {a} ≈ {b} (eps {eps})");
@@ -204,11 +206,11 @@ mod tests {
     fn connected_single_interval_splits_at_midpoint() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(0.0_f64, 10.0));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
         assert_close(b.midpoint, 5.0, 1e-12);
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
         assert_close(lw, rw, 1e-12);
     }
 
@@ -219,10 +221,10 @@ mod tests {
             EnumInterval::closed(9.0, 10.0),
         );
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
         assert_close(lw, rw, 1e-12);
         assert!(b.midpoint > 1.0 && b.midpoint < 9.0);
     }
@@ -238,10 +240,10 @@ mod tests {
             EnumInterval::closed(5.0, 15.0),
         );
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
         assert_close(lw, rw, 1e-9);
         assert_close(b.midpoint, 9.5, 1e-9);
     }
@@ -249,19 +251,19 @@ mod tests {
     #[test]
     fn empty_returns_none() {
         let md = MaybeDisjoint::<f64>::empty();
-        assert!(md.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(md.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 
     #[test]
     fn half_unbounded_returns_none() {
         let md = MaybeDisjoint::from_interval(EnumInterval::unbound_closed(0.0_f64));
-        assert!(md.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(md.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 
     #[test]
     fn fully_unbounded_returns_none() {
         let md = MaybeDisjoint::from_interval(EnumInterval::<f64>::unbounded());
-        assert!(md.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(md.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 
     // ---- i64 cases ----
@@ -274,10 +276,10 @@ mod tests {
         // closest midpoint.
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(0_i64, 10));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
         assert!(lw.abs_diff(rw) <= 1, "lw={lw}, rw={rw}");
     }
 
@@ -288,32 +290,33 @@ mod tests {
             EnumInterval::closed(100, 110),
         );
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
-        assert_eq!(lw, 10);
-        assert_eq!(rw, 10);
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
+        // Under unified Measure, i64 cardinality = b-a+1; [0,10] has 11 elements.
+        assert_eq!(lw, 11);
+        assert_eq!(rw, 11);
         assert!(b.midpoint > 10 && b.midpoint < 100);
     }
 
     #[test]
     fn i64_empty_returns_none() {
         let md = MaybeDisjoint::<i64>::empty();
-        assert!(md.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(md.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 
     #[test]
     fn i64_unbounded_returns_none() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed_unbound(0_i64));
-        assert!(md.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(md.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 
     #[test]
     fn i64_singleton_terminates() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(7_i64, 7));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
         assert_eq!(b.midpoint, 7);
     }
@@ -322,10 +325,10 @@ mod tests {
     fn generic_smoke_u32() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(0_u32, 1000));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
         assert!(lw.abs_diff(rw) <= 1, "lw={lw}, rw={rw}");
     }
 
@@ -333,7 +336,7 @@ mod tests {
     fn generic_smoke_f32() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(0.0_f32, 10.0));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
         assert!((b.midpoint - 5.0).abs() < 1e-5);
     }
@@ -344,7 +347,7 @@ mod tests {
     fn singleton_left_closed_puts_point_on_left() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(5_i64, 5));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
         assert_eq!(b.midpoint, 5);
         assert_eq!(
@@ -358,7 +361,7 @@ mod tests {
     fn singleton_right_closed_puts_point_on_right() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(5_i64, 5));
         let b = md
-            .bisect_by(Side::Right, |s| s.width().finite())
+            .bisect_by(Side::Right, |s| s.measure().finite())
             .expect("bounded");
         assert_eq!(b.midpoint, 5);
         assert_eq!(b.left, MaybeDisjoint::empty());
@@ -375,7 +378,7 @@ mod tests {
         let md =
             MaybeDisjoint::from_pair(EnumInterval::closed(1_i64, 1), EnumInterval::closed(5, 5));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
         assert_eq!(b.midpoint, 3);
         assert_eq!(
@@ -400,7 +403,7 @@ mod tests {
             EnumInterval::closed(100, 100),
         );
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
         assert_eq!(b.midpoint, 50);
         assert_eq!(
@@ -425,11 +428,11 @@ mod tests {
             EnumInterval::closed(100, 100),
         );
         let b = md
-            .bisect_by(Side::Left, |s| s.cardinality().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
         assert_eq!(b.midpoint, 50);
-        let lc = b.left.cardinality().finite();
-        let rc = b.right.cardinality().finite();
+        let lc = b.left.measure().finite();
+        let rc = b.right.measure().finite();
         assert_eq!(lc, 1);
         assert_eq!(rc, 1);
     }
@@ -452,10 +455,10 @@ mod tests {
         let md =
             MaybeDisjoint::from_pair(EnumInterval::closed(0_i64, 0), EnumInterval::closed(10, 20));
         let b = md
-            .bisect_by(Side::Left, |s| s.cardinality().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lc = b.left.cardinality().finite();
-        let rc = b.right.cardinality().finite();
+        let lc = b.left.measure().finite();
+        let rc = b.right.measure().finite();
         assert!(lc.abs_diff(rc) <= 1, "lc={lc}, rc={rc}");
     }
 
@@ -466,7 +469,7 @@ mod tests {
         // width gives the same midpoint as plain width.
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(0.0_f64, 10.0));
         let b = md
-            .bisect_by(Side::Left, |s| s.width().finite() * 2.0)
+            .bisect_by(Side::Left, |s| s.measure().finite() * 2.0)
             .expect("bounded");
         assert!((b.midpoint - 5.0).abs() < 1e-9);
     }
@@ -475,13 +478,13 @@ mod tests {
     fn closed_side_is_recorded_in_result() {
         let md = MaybeDisjoint::from_interval(EnumInterval::closed(0.0_f64, 10.0));
         assert_eq!(
-            md.bisect_by(Side::Left, |s| s.width().finite())
+            md.bisect_by(Side::Left, |s| s.measure().finite())
                 .unwrap()
                 .closed,
             Side::Left
         );
         assert_eq!(
-            md.bisect_by(Side::Right, |s| s.width().finite())
+            md.bisect_by(Side::Right, |s| s.measure().finite())
                 .unwrap()
                 .closed,
             Side::Right
@@ -494,17 +497,17 @@ mod tests {
     fn finite_interval_bisects() {
         let fi = FiniteInterval::closed(0_i64, 100);
         let b = fi
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
         assert!(lw.abs_diff(rw) <= 1, "lw={lw}, rw={rw}");
     }
 
     #[test]
     fn finite_interval_empty_returns_none() {
         let fi = FiniteInterval::<i64>::empty();
-        assert!(fi.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(fi.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 
     #[test]
@@ -517,22 +520,22 @@ mod tests {
     fn enum_interval_finite_variant_bisects() {
         let ei = EnumInterval::closed(0_i64, 100);
         let b = ei
-            .bisect_by(Side::Left, |s| s.width().finite())
+            .bisect_by(Side::Left, |s| s.measure().finite())
             .expect("bounded");
-        let lw = b.left.width().finite();
-        let rw = b.right.width().finite();
+        let lw = b.left.measure().finite();
+        let rw = b.right.measure().finite();
         assert!(lw.abs_diff(rw) <= 1, "lw={lw}, rw={rw}");
     }
 
     #[test]
     fn enum_interval_half_variant_returns_none() {
         let ei: EnumInterval<i64> = EnumInterval::closed_unbound(0);
-        assert!(ei.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(ei.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 
     #[test]
     fn enum_interval_unbounded_returns_none() {
         let ei = EnumInterval::<i64>::unbounded();
-        assert!(ei.bisect_by(Side::Left, |s| s.width().finite()).is_none());
+        assert!(ei.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
     }
 }

@@ -6,8 +6,8 @@
 //!
 //! Terminal failures that do not chain into further set operations
 //! (e.g. [`MathError`] from
-//! [`Cardinality::try_cardinality`](crate::measure::Cardinality::try_cardinality),
-//! which yields a scalar cardinality) surface as their own precise types
+//! [`Measure::try_measure`](crate::measure::Measure::try_measure),
+//! which yields a scalar measure) surface as their own precise types
 //! and live next to their producer instead of in this module.
 //!
 //! [`Error`] wraps [`intervalsets_core::error::Error`] so the variants

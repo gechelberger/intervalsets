@@ -274,7 +274,7 @@ commutative_merge_connected_impl!(HalfInterval<T>, EnumInterval<T>, EnumInterval
 
 // ===== MaybeDisjoint =====
 //
-// Cardinality is trivially bounded: the trait returns `Option<single
+// The natural Measure is trivially bounded: the trait returns `Option<single
 // piece>` regardless of input cardinality. Tied to the `Connects`
 // contract: `connects(rhs) ⇒ merge_connected(rhs).is_some()`.
 //

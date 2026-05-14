@@ -89,16 +89,22 @@ use num_traits::{
 
 use crate::bound::Side;
 use crate::cast::{LossyCastElement, TryCastElement};
-use crate::measure::{Countable, Widthable};
 use crate::numeric::{Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
 // ===== Element ======================================================
+//
+// `Saturating<T>` inherits the inner `T`'s element category and
+// measure type — saturating arithmetic doesn't change the
+// representable lattice, just the overflow semantics.
 
 impl<T> Element for Saturating<T>
 where
     T: Element + CheckedAdd + CheckedSub + One,
 {
+    type Kind = T::Kind;
+    type Measure = T::Measure;
+
     #[inline]
     fn try_adjacent(&self, side: Side) -> Option<Self> {
         match side {
@@ -106,6 +112,12 @@ where
             Side::Left => self.0.checked_sub(&T::one()).map(Saturating),
         }
     }
+
+    #[inline]
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+        T::try_measure_finite(&left.0, &right.0)
+    }
+
     // `validate` defaults: delegates to `partial_cmp(&self).is_some()`,
     // which is correct for integer inner types (no NaN). For an inner
     // type with intrinsic infinities the override on `T` is not
@@ -127,37 +139,10 @@ where
     }
 }
 
-// ===== Widthable / Countable ========================================
-//
 // `num_traits::{Bounded, Zero, One}` are intentionally not impl'd for
 // `Saturating<T>` here — both the trait and the type are foreign, so
 // the orphan rule blocks it. See the module-level docs for the
 // consequences and the deferred-follow-up plan.
-
-impl<T> Widthable for Saturating<T>
-where
-    T: Widthable,
-{
-    type Output = T::Output;
-
-    #[inline]
-    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
-        T::width_between(&left.0, &right.0)
-    }
-}
-
-impl<T> Countable for Saturating<T>
-where
-    T: Countable,
-    Self: Element,
-{
-    type Output = T::Output;
-
-    #[inline]
-    fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Output> {
-        T::count_inclusive(&left.0, &right.0)
-    }
-}
 
 // ===== Arithmetic: TryAdd / TrySub / TryMul / TryDiv ================
 
@@ -339,15 +324,11 @@ mod tests {
     // ----- Measure ------------------------------------------------------
 
     #[test]
-    fn cardinality_matches_inner() {
+    fn measure_matches_inner() {
+        // Cardinality semantics on discrete `Saturating<i32>` —
+        // `i32::Measure = u64` per stepwise widening.
         let x = EnumInterval::closed(Saturating(0_i32), Saturating(10));
-        assert_eq!(x.cardinality().finite(), 11u128);
-    }
-
-    #[test]
-    fn width_matches_inner() {
-        let x = EnumInterval::closed(Saturating(0_i32), Saturating(10));
-        assert_eq!(x.width().finite(), 10u128);
+        assert_eq!(x.measure().finite(), 11_u64);
     }
 
     // ----- Midpointable -----------------------------------------------------
