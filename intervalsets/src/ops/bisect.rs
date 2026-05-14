@@ -1,10 +1,12 @@
 //! [`Bisect`] impls for the outer crate's [`Interval`] and
-//! [`IntervalSet`]. The algorithm lives in
-//! [`intervalsets_core::ops::bisect_core`]; these impls supply the
-//! hull bounds and a split closure.
+//! [`IntervalSet`]. The iteration algorithm lives in
+//! [`intervalsets_core::ops::bisect_core`]; the single-interval path
+//! splits at the bound midpoint in one step.
 
 use core::convert::Infallible;
 
+use intervalsets_core::error::MathError;
+use intervalsets_core::ops::math::TryAdd;
 use intervalsets_core::ops::{bisect_core, Split};
 pub use intervalsets_core::ops::{Bisect, Bisection};
 
@@ -16,15 +18,15 @@ impl<T> Bisect<T> for Interval<T>
 where
     T: Element + Clone + Midpointable<Error = Infallible>,
 {
-    fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
-    where
-        F: Fn(&Self) -> U,
-        U: PartialOrd,
-    {
+    fn bisect(&self, closed: Side) -> Option<Bisection<T, Self>> {
+        // A connected interval — split at the bound midpoint in one
+        // step. Uniform measure density across the range means the
+        // midpoint is already the balance point (off by ±1 for
+        // discrete T due to integer rounding).
         let lo = self.lval()?.clone();
         let hi = self.rval()?.clone();
-        let (midpoint, left, right) =
-            bisect_core(lo, hi, measure, |m| self.clone().split(m, closed));
+        let midpoint = T::midpoint(lo, hi).unwrap();
+        let (left, right) = self.clone().split(midpoint.clone(), closed);
         Some(Bisection {
             midpoint,
             left,
@@ -37,17 +39,14 @@ where
 impl<T> Bisect<T> for IntervalSet<T>
 where
     T: Element + Clone + Midpointable<Error = Infallible>,
+    T::Measure: PartialOrd,
+    <T::Measure as TryAdd>::Error: Into<MathError>,
 {
-    fn bisect_by<F, U>(&self, closed: Side, measure: F) -> Option<Bisection<T, Self>>
-    where
-        F: Fn(&Self) -> U,
-        U: PartialOrd,
-    {
+    fn bisect(&self, closed: Side) -> Option<Bisection<T, Self>> {
         let hull = self.hull();
         let lo = hull.lval()?.clone();
         let hi = hull.rval()?.clone();
-        let (midpoint, left, right) =
-            bisect_core(lo, hi, measure, |m| self.clone().split(m, closed));
+        let (midpoint, left, right) = bisect_core(lo, hi, |m| self.clone().split(m, closed));
         Some(Bisection {
             midpoint,
             left,
@@ -70,9 +69,7 @@ mod tests {
     #[test]
     fn interval_finite_bisects() {
         let iv = Interval::closed(0_i64, 100);
-        let b = iv
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .expect("bounded");
+        let b = iv.bisect(Side::Left).expect("bounded");
         let lw = b.left.measure().finite();
         let rw = b.right.measure().finite();
         assert!(lw.abs_diff(rw) <= 1, "lw={lw}, rw={rw}");
@@ -81,27 +78,25 @@ mod tests {
     #[test]
     fn interval_empty_returns_none() {
         let iv = Interval::<i64>::empty();
-        assert!(iv.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
+        assert!(iv.bisect(Side::Left).is_none());
     }
 
     #[test]
     fn interval_unbounded_returns_none() {
         let iv = Interval::<i64>::unbounded();
-        assert!(iv.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
+        assert!(iv.bisect(Side::Left).is_none());
     }
 
     #[test]
     fn interval_half_bounded_returns_none() {
         let iv = Interval::closed_unbound(0_i64);
-        assert!(iv.bisect_by(Side::Left, |s| s.measure().finite()).is_none());
+        assert!(iv.bisect(Side::Left).is_none());
     }
 
     #[test]
     fn interval_set_single_piece_bisects() {
         let set: IntervalSet<i64> = Interval::closed(0, 100).into();
-        let b = set
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .expect("bounded");
+        let b = set.bisect(Side::Left).expect("bounded");
         let lw = b.left.measure().finite();
         let rw = b.right.measure().finite();
         assert!(lw.abs_diff(rw) <= 1, "lw={lw}, rw={rw}");
@@ -112,9 +107,7 @@ mod tests {
         // [0, 10] U [90, 100]: total cardinality 22 (11 each), half is 11.
         // Equal pieces, so the geometric midpoint falls in the gap and balances.
         let set = Interval::closed(0_i64, 10).union(Interval::closed(90, 100));
-        let b = set
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .expect("bounded");
+        let b = set.bisect(Side::Left).expect("bounded");
         let lw = b.left.measure().finite();
         let rw = b.right.measure().finite();
         assert_eq!(lw, 11);
@@ -125,9 +118,7 @@ mod tests {
     #[test]
     fn interval_set_empty_returns_none() {
         let set = IntervalSet::<i64>::empty();
-        assert!(set
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .is_none());
+        assert!(set.bisect(Side::Left).is_none());
     }
 
     #[test]
@@ -135,24 +126,20 @@ mod tests {
         // A set containing any half-bounded or unbounded piece has a
         // non-finite hull — bisection isn't defined.
         let set: IntervalSet<i64> = Interval::closed(0, 10).union(Interval::closed_unbound(100));
-        assert!(set
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .is_none());
+        assert!(set.bisect(Side::Left).is_none());
     }
 
-    /// Bisects an arbitrary `IntervalSet` by width and verifies the
-    /// balance property: `width(left) ≈ width(right) ≈ total / 2`.
-    /// This is the "split-at-mass-balance-point" guarantee bisect
-    /// promises, validated against the independently-computed total.
+    /// Bisects an arbitrary `IntervalSet` and verifies the balance
+    /// property: `measure(left) ≈ measure(right) ≈ total / 2`.
     #[quickcheck]
-    fn check_bisect_balances_width(set: IntervalSet<f64>) -> TestResult {
+    fn check_bisect_balances_measure(set: IntervalSet<f64>) -> TestResult {
         let total = match set.try_measure() {
             Ok(Extent::Finite(v)) if v.is_finite() && v > 0.0 => v,
             _ => return TestResult::discard(),
         };
         let half = total / 2.0;
 
-        let bisection = match set.bisect_by(Side::Left, |s| s.measure().finite()) {
+        let bisection = match set.bisect(Side::Left) {
             Some(b) => b,
             None => return TestResult::discard(),
         };
@@ -160,7 +147,7 @@ mod tests {
         let rw = bisection.right.measure().finite();
 
         // Compare each half to total/2 individually — avoids `lw + rw`
-        // overflowing to INF when the set's total width approaches
+        // overflowing to INF when the set's total measure approaches
         // f64::MAX. Both halves close to total/2 implies they're close
         // to each other.
         assert!(
@@ -177,31 +164,16 @@ mod tests {
     #[test]
     fn interval_f64_smoke() {
         let iv = Interval::closed(0.0_f64, 10.0);
-        let b = iv
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .expect("bounded");
+        let b = iv.bisect(Side::Left).expect("bounded");
         assert!((b.midpoint - 5.0).abs() < 1e-12);
     }
 
     #[test]
     fn interval_set_u32_smoke() {
         let set: IntervalSet<u32> = Interval::closed(0, 10).union(Interval::closed(90, 100));
-        let b = set
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .expect("bounded");
+        let b = set.bisect(Side::Left).expect("bounded");
         let lw = b.left.measure().finite();
         let rw = b.right.measure().finite();
         assert_eq!(lw, rw);
-    }
-
-    #[test]
-    fn interval_set_bisect_by_cardinality_works() {
-        let set = Interval::closed(0_i64, 10).union(Interval::closed(100, 110));
-        let b = set
-            .bisect_by(Side::Left, |s| s.measure().finite())
-            .expect("bounded");
-        let lc = b.left.measure().finite();
-        let rc = b.right.measure().finite();
-        assert!(lc.abs_diff(rc) <= 1, "lc={lc}, rc={rc}");
     }
 }

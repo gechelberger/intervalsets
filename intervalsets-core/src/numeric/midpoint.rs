@@ -49,7 +49,10 @@
 /// inherit std's `f*::midpoint` semantics — typically a NaN-tainted
 /// result rather than an error.
 pub trait Midpointable: Sized {
+    #[allow(missing_docs)]
     type Error;
+
+    /// Calculate the span midpoint of a Set
     fn midpoint(self, other: Self) -> Result<Self, Self::Error>;
 }
 
