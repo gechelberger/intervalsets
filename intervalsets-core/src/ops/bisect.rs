@@ -18,14 +18,17 @@ use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 /// `measure(left) ≈ measure(right)` — exactly equal when an exact
 /// balance point exists, otherwise within one step of the element
 /// type (one ulp for floats, one unit for integers).
-// Fields are deliberately `pub` for the initial trait surface; the
-// settled design (see scratch/bisection-notes.md) calls for private
-// fields + accessors before promotion past pre-alpha.
+// Fields are deliberately `pub` for the initial trait surface;
+// promote to private fields + accessors before pre-alpha is over.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Bisection<T, S> {
+    /// The midpoint that partitioned the set into 2 equal mass sets
     pub midpoint: T,
+    /// The left half of the set
     pub left: S,
+    /// The right half of the set
     pub right: S,
+    /// Which side contains the midpoint (if midpoint exists in the set)
     pub closed: Side,
 }
 

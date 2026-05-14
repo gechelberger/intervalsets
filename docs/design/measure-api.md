@@ -1,9 +1,9 @@
 # Measure API Redesign
 
-**Status:** design committed, implementation pending Stage 1 (api/domain merge)
+**Status:** implemented on branch `refactor/measure`. The shipped design diverges from the spec below on one point: the `Element` trait does not carry a `KindOps<T>` default-impl dispatch helper. Each T's impl provides `try_adjacent` and `try_measure_finite` directly, with the `DiscreteKind` / `ContinuousKind` markers used only for type-level kind narrowing. See the implementation notes at the bottom of this doc.
 **Date:** 2026-05-13
 **Revises:** the prior 2026-05-10 version (which split Cardinality + Width into two parallel kind-gated traits); this version unifies them into a single `Measure` trait.
-**Drives:** the api/domain merge/revert decision
+**Drives:** the api/domain merge/revert decision — outcome: Kind machinery built from scratch in this PR, no `KindOps` dispatch.
 
 ---
 
@@ -46,22 +46,23 @@ ops/span.rs                      Span          bounds on T: TrySub (any T)
 
 ### Trait hierarchy
 
-The api/domain branch (commit `b1a032f`) already introduced `Element { type Kind }` with sealed `DiscreteKind`/`ContinuousKind` markers and a `KindOps<T>` helper for coherence-disjoint dispatch. This redesign promotes the natural measure onto `Element` directly (a `Measure` associated type plus a `try_measure_finite` primitive) and reduces the api/domain subtraits to pure Kind markers.
+The Kind machinery was built from scratch in this PR (the `api/domain` branch the earlier drafts referenced was never merged). The shipped Element trait carries `type Kind`, `type Measure`, and a required `try_measure_finite` primitive; the discrete/continuous split is named at the type level via sealed marker types, without a `KindOps` dispatch helper.
 
 ```rust
-// numeric.rs
+// numeric/element.rs (as shipped)
 
-pub trait Element: Sized + PartialEq + PartialOrd
-where Self::Kind: KindOps<Self>,
-{
+mod sealed { pub trait Kind {} }
+
+pub struct DiscreteKind;   impl sealed::Kind for DiscreteKind {}
+pub struct ContinuousKind; impl sealed::Kind for ContinuousKind {}
+
+pub trait Element: Sized + PartialEq + PartialOrd {
     type Kind: sealed::Kind;
     type Measure: Zero
         + TryAdd<Self::Measure, Output = Self::Measure>
         + Clone;
 
-    fn try_adjacent_or_none(&self, side: Side) -> Option<Self> {
-        <Self::Kind as KindOps<Self>>::try_adjacent_or_none(self, side)
-    }
+    fn try_adjacent(&self, side: Side) -> Option<Self>;
 
     /// Compute the natural measure of `[left, right]` (inclusive).
     /// - Discrete T: cardinality (e.g. `right - left + 1` for primitive integers).
@@ -69,13 +70,29 @@ where Self::Kind: KindOps<Self>,
     /// `None` ⇒ representation overflow. (There is no "uncountable"
     /// sentinel — the natural measure on continuous T is width, not
     /// cardinality, so the uncountability distinction never enters.)
-    fn try_measure_finite(left: &Self, right: &Self)
-        -> Option<Self::Measure>;
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure>;
+
+    fn validate(self) -> Option<Self> {
+        self.partial_cmp(&self).map(|_| self)
+    }
 }
 
 pub trait DiscreteElement: Element<Kind = DiscreteKind> {}
+impl<T: Element<Kind = DiscreteKind>> DiscreteElement for T {}
+
 pub trait ContinuousElement: Element<Kind = ContinuousKind> {}
+impl<T: Element<Kind = ContinuousKind>> ContinuousElement for T {}
 ```
+
+Earlier drafts of this doc proposed a `KindOps<T>` helper that would
+let `Element` provide a default `try_adjacent_or_none` body
+dispatched through `Self::Kind`. The shipped implementation skips
+`KindOps`: each T impl writes its own `try_adjacent` directly, and
+the Kind markers are used purely for `where`-clause narrowing
+(`where T: DiscreteElement` or `where T: Element<Kind = DiscreteKind>`).
+This is the smallest machinery that supports the unified `Measure`
+trait; `KindOps`-style default dispatch can be reintroduced later
+without breaking existing impls if a future use case warrants it.
 
 `DiscreteElement` and `ContinuousElement` are pure Kind markers — they add no bounds beyond `Element` and exist for `where`-clause ergonomics and documentation (`where T: DiscreteElement` reads better than `where T: Element<Kind = DiscreteKind>`).
 
@@ -307,7 +324,7 @@ the domain naming.
 ## What survives unchanged
 
 - `Extent<T>` (renamed from `Measurement<T>`) keeps its core `Finite(T)` / `Infinite` shape and the existing tests; surrounding combinator/impl surface gets the cleanup described above
-- `Element` trait, `try_adjacent_or_none`, and the api/domain `Kind` machinery
+- `Element` trait, `try_adjacent`, and the new `Kind` markers (`DiscreteKind` / `ContinuousKind` + `DiscreteElement` / `ContinuousElement` blanket-impl'd marker traits)
 - The four-tier op contract documented in `ops/mod.rs`
 - `OrderedFloat`, `Decimal`, `BigInt`, `BigDecimal` feature modules (each gets a categorical impl)
 - All other ops (Union, Intersection, etc.)
@@ -343,22 +360,12 @@ Clean break, no deprecation aliases. CHANGELOG entry must point both integer-`wi
 
 ## Migration plan
 
-| Stage | Scope | Notes |
+| Stage | Scope | Status |
 |---|---|---|
-| 1 | api/domain merge or revert | Already partial on `api/domain` branch. Decision gated by Stage 2 outcome. |
-| 2 | **This redesign** | Unify Cardinality + Width into `Measure`, absorb the computation into `Element::Measure` + `Element::try_measure_finite`, macro renames (`default_countable_impl!` + `default_width_impl!` → `default_discrete_element_impl!` / `default_continuous_element_impl!`), `Measurement`→`Extent` rename + cleanup (drop Sub, add TryAdd, std-naming combinators, Option interop), IntervalSet folds via try_fold |
-| 3 | `Span` in `ops/span.rs` | Small, independent. Integer-width users now have a landing pad. |
-| 4 | Midpoint + Bisect | Resurrect Midpoint (Result vs Option call), implement Bisect on top |
-
-Stage 2 is the **empirical test for Stage 1**. The categorical pattern (Element with Kind-aware `Measure` associated type; `DiscreteElement` / `ContinuousElement` as pure markers) is the api/domain bet writ slightly larger. If Stage 2's bound chains stay tight at user-facing signatures and implementer-side cost is bounded, api/domain ships. If trait bounds metastasize or per-T impl cost explodes, revert api/domain before merging Stage 2.
-
-**Concrete pass/fail metrics:**
-
-- Count of `where T: ...` clauses on `try_measure` and `IntervalSet::try_measure` signatures (under unification these collapse to bounds on a single trait method, so the metric is tighter than the original two-trait scoring)
-- Lines of code an implementer of a custom type adds (today's `default_countable_impl!` macro use + `Element` impl + `Zero`/`Add`/`Sub` impls is the baseline)
-- Whether the existing primitive impls (i32 family, u8 family, f32/f64, OrderedFloat, Decimal, BigInt) port without surgery
-
-Numbers, not vibes.
+| 1 | Kind machinery (`type Kind`, `DiscreteKind` / `ContinuousKind` markers, `DiscreteElement` / `ContinuousElement` blanket-marker subtraits) | **Shipped** in this PR — built from scratch rather than merging the parked `api/domain` branch. No `KindOps` dispatch helper; each T's impl writes its own `try_adjacent` and `try_measure_finite` directly. |
+| 2 | Unify Cardinality + Width into `Measure`, absorb the computation into `Element::Measure` + `Element::try_measure_finite`, public macro `default_continuous_element_impl!`, helper fn `default_discrete_count_inclusive`, `Measurement` → `Extent` rename + cleanup (drop Sub, add TryAdd, std-naming combinators, Option interop), `IntervalSet` folds via `try_fold` | **Shipped** in this PR. |
+| 3 | `Span` in `ops/span.rs` | Already in tree (predates this PR). Integer users wanting `b − a` in the native type route through `.span()`. |
+| 4 | Bisect collapse: drop closure, bound on `Measure`, single-interval split-at-midpoint | **Shipped** in this PR. |
 
 ---
 

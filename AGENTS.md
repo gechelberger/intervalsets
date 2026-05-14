@@ -1,4 +1,4 @@
-This repository uses the `just` task runner for most canonical devops. The available tasks can be found by invoking `just --list`. Run `just fmt` before each commit. Use `just test` for code changes, or `just test-all` if doc examples were updated. Run `just ci` for a signal that a changeset might be correct when ready to push. It should catch most regressions.
+This repository uses the `just` task runner for most canonical devops. The available tasks can be found by invoking `just --list`. Run `just fmt` before each commit. Use `just test` for code changes, or `just test-all` if doc examples were updated. Run `just ci` for a signal that a changeset might be correct when ready to push. It should catch most regressions. If `just ci` fails, don't re-run; instead run the specific dependency which surfaced the error.
 
 The pre-commit hook (lefthook) runs `just fmt-check`, `just clippy`, and `just typos` in parallel. A fmt diff or new clippy warning blocks the commit — run `just fmt` first.
 
@@ -27,6 +27,10 @@ Notes graduate from `scratch/` into `docs/design/` when they stabilize.
 ## Stability
 
 Pre-1.0: breaking API changes are welcome until RC. Don't add backward-compatibility shims for hypothetical callers.
+
+### Changelog Policy
+
+Since we are Pre-1.0, breaking api changes are common. We want to keep a changelog that is useful but we should keep those entries high level and audit for correctness as new breaking changes land.
 
 ## Expected Available Tools
 

@@ -93,8 +93,8 @@ impl<T> Extent<T> {
     /// short-circuits to `Infinite`; `Finite + Finite` runs the
     /// closure and propagates any error.
     ///
-    /// Load-bearing for the wrapper crate's `IntervalSet::try_count`
-    /// and `IntervalSet::try_width` summation folds.
+    /// Load-bearing for the wrapper crate's `IntervalSet::try_measure`
+    /// summation fold.
     pub fn try_binop_map<E>(
         self,
         rhs: Self,
