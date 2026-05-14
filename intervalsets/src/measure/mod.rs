@@ -13,23 +13,21 @@
 //!         m(A0 U A1 .. An) <= Sum { m(Ai) for i in 0..n }
 //! ```
 //!
-//! Some common measures are Count and the Lebesgue measure
-//! (which is Width in R1).
+//! The unified [`Measure`] trait returns the natural additive measure
+//! of a set: cardinality on discrete element types, Lebesgue width on
+//! continuous element types.
 
-pub use intervalsets_core::measure::{
-    Count, CountOverflowError, Countable, Measurement, Width, WidthOverflowError, Widthable,
-};
+pub use intervalsets_core::measure::{Extent, Measure};
 
-mod count;
-mod midpoint;
-mod width;
+#[allow(clippy::module_inception)]
+mod measure;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_measurement_ord() {
-        assert!(Measurement::Finite(10) < Measurement::Infinite,);
+    fn test_extent_ord() {
+        assert!(Extent::Finite(10) < Extent::Infinite,);
     }
 }

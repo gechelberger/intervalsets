@@ -10,12 +10,12 @@
 
 pub use intervalsets_core::ops::{DisjointElements, Elements, IntoElementIterator};
 
-use crate::numeric::Element;
+use crate::numeric::DiscreteElement;
 use crate::{Interval, IntervalSet};
 
 // ---- Interval (newtype around EnumInterval) ----
 
-impl<T: Element + Ord> IntoElementIterator for Interval<T> {
+impl<T: DiscreteElement> IntoElementIterator for Interval<T> {
     type Item = T;
     type IntoIter = Elements<T>;
 
@@ -24,7 +24,7 @@ impl<T: Element + Ord> IntoElementIterator for Interval<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> Interval<T> {
+impl<T: DiscreteElement + Clone> Interval<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     pub fn elements(&self) -> Elements<T> {
         self.0.elements()
@@ -62,7 +62,7 @@ pub struct SetElements<T> {
     back: Option<Elements<T>>,
 }
 
-impl<T: Element + Ord> Iterator for SetElements<T> {
+impl<T: DiscreteElement> Iterator for SetElements<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> {
@@ -94,7 +94,7 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
         // Each pending interval is non-empty (IntervalSet invariant), so
         // contributes at least 1 element. Front and back walkers delegate
         // to Elements<T>::size_hint — (0, None) today, but a tighter hint
-        // (via Countable, deferred) is picked up for free.
+        // (via T::Measure / try_measure, deferred) is picked up for free.
         let (fl, fu) = self
             .front
             .as_ref()
@@ -103,7 +103,7 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
         let pending = self.intervals.len();
         let lower = fl.saturating_add(bl).saturating_add(pending);
         // Upper is known only if every pending piece's count is known —
-        // which today requires Countable, so we conservatively return
+        // which today requires going through T::try_measure_finite, so we conservatively return
         // None whenever any piece remains.
         let upper = match (fu, bu) {
             (Some(a), Some(b)) if pending == 0 => a.checked_add(b),
@@ -113,7 +113,7 @@ impl<T: Element + Ord> Iterator for SetElements<T> {
     }
 }
 
-impl<T: Element + Ord> DoubleEndedIterator for SetElements<T> {
+impl<T: DiscreteElement> DoubleEndedIterator for SetElements<T> {
     fn next_back(&mut self) -> Option<T> {
         loop {
             if let Some(it) = self.back.as_mut() {
@@ -137,9 +137,9 @@ impl<T: Element + Ord> DoubleEndedIterator for SetElements<T> {
     }
 }
 
-impl<T: Element + Ord> core::iter::FusedIterator for SetElements<T> {}
+impl<T: DiscreteElement> core::iter::FusedIterator for SetElements<T> {}
 
-impl<T: Element + Ord> IntoElementIterator for IntervalSet<T> {
+impl<T: DiscreteElement> IntoElementIterator for IntervalSet<T> {
     type Item = T;
     type IntoIter = SetElements<T>;
 
@@ -152,7 +152,7 @@ impl<T: Element + Ord> IntoElementIterator for IntervalSet<T> {
     }
 }
 
-impl<T: Element + Ord + Clone> IntervalSet<T> {
+impl<T: DiscreteElement + Clone> IntervalSet<T> {
     /// Borrow `self` and produce an iterator over its discrete elements.
     ///
     /// Walks each interval piece in order, yielding every element along
@@ -321,7 +321,7 @@ mod tests {
     #[test]
     fn set_elements_size_hint_lower_bound_counts_pending_pieces() {
         // Two unconsumed pieces; each contributes ≥1 by invariant.
-        // Upper is unknown without Countable.
+        // Upper is unknown without going through T::try_measure_finite.
         let set = IntervalSet::new([Interval::closed(0, 2), Interval::closed(10, 12)]);
         let it = set.into_elements();
         let (lower, upper) = it.size_hint();

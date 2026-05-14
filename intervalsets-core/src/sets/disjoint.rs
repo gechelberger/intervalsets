@@ -128,9 +128,9 @@ impl<T> IntoIterator for MaybeDisjoint<T> {
 
     /// Yields the non-empty pieces of this `MaybeDisjoint` in order.
     /// Used as `IntoIterator` rather than `Iterator` directly so the
-    /// iterator-trait methods (`cmp`, `partial_cmp`, `count`, `lt`,
-    /// `gt`, etc.) don't shadow this type's `Ord`/`PartialOrd`/`Count`
-    /// trait impls during method resolution.
+    /// iterator-trait methods (`cmp`, `partial_cmp`, `lt`, `gt`, etc.)
+    /// don't shadow this type's `Ord`/`PartialOrd` trait impls during
+    /// method resolution.
     fn into_iter(self) -> Self::IntoIter {
         MaybeDisjointIntoIter { md: self }
     }

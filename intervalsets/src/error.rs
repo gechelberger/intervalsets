@@ -5,10 +5,10 @@
 //! type along that chain keeps `?`-propagation simple.
 //!
 //! Terminal failures that do not chain into further set operations
-//! (e.g. [`CountOverflowError`](crate::measure::CountOverflowError)
-//! from [`Count::try_count`](crate::measure::Count::try_count), which
-//! yields a scalar count) are returned as their own precise types and
-//! live next to their producer instead of in this module.
+//! (e.g. [`MathError`] from
+//! [`Measure::try_measure`](crate::measure::Measure::try_measure),
+//! which yields a scalar measure) surface as their own precise types
+//! and live next to their producer instead of in this module.
 //!
 //! [`Error`] wraps [`intervalsets_core::error::Error`] so the variants
 //! it carries can grow alloc-enabled context (messages, source chains,

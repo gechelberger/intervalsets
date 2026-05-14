@@ -5,15 +5,14 @@ use bigdecimal::{BigDecimal, Signed, Zero};
 use num_traits::{Bounded, NumCast};
 
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
+use crate::default_continuous_element_impl;
 use crate::error::MathError;
-use crate::numeric::Midpoint;
+use crate::numeric::Midpointable;
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
-use crate::{continuous_domain_impl, default_width_impl};
 
-continuous_domain_impl!(BigDecimal);
-default_width_impl!(BigDecimal);
+default_continuous_element_impl!(BigDecimal);
 
-impl Midpoint for BigDecimal {
+impl Midpointable for BigDecimal {
     type Error = core::convert::Infallible;
 
     /// Infallible: `BigDecimal` is arbitrary precision, so the midpoint
@@ -247,7 +246,7 @@ mod tests {
     #[test]
     fn test_big_decimal() -> Result<(), bigdecimal::ParseBigDecimalError> {
         let x = EnumInterval::closed(BigDecimal::from_str("0.0")?, BigDecimal::from_str("10.0")?);
-        assert_eq!(x.width().finite(), BigDecimal::from_str("10")?);
+        assert_eq!(x.measure().finite(), BigDecimal::from_str("10")?);
         Ok(())
     }
 

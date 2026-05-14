@@ -1,26 +1,43 @@
 use num_traits::{Bounded, NumCast};
 use rust_decimal::Decimal;
 
+use crate::bound::Side;
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
-use crate::continuous_domain_impl;
 use crate::error::MathError;
-use crate::measure::Widthable;
-use crate::numeric::Midpoint;
+use crate::numeric::{ContinuousKind, Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
-continuous_domain_impl!(Decimal);
+impl Element for Decimal {
+    type Kind = ContinuousKind;
+    type Measure = Decimal;
 
-impl Widthable for Decimal {
-    type Output = Decimal;
+    #[inline]
+    fn try_adjacent(&self, _: Side) -> Option<Self> {
+        None
+    }
 
-    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
+    #[inline]
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
         // Decimal has bounded precision (≈ ±7.92e28); the diff can
         // overflow at extremes (e.g. `Decimal::MAX - Decimal::MIN`).
         right.checked_sub(*left)
     }
 }
 
-impl Midpoint for Decimal {
+/// `Decimal` is `Ord` but `Kind = ContinuousKind`, so element iteration
+/// is rejected at compile time by the `DiscreteElement` bound — the
+/// gate catches the case that pure-`Ord` filtering missed (continuous
+/// types have no adjacency to enumerate).
+///
+/// ```compile_fail
+/// use intervalsets_core::prelude::*;
+/// use rust_decimal::Decimal;
+/// let _ = FiniteInterval::closed(Decimal::ZERO, Decimal::ONE).into_elements();
+/// ```
+#[allow(dead_code)]
+struct DecimalContinuousNotIterable;
+
+impl Midpointable for Decimal {
     type Error = MathError;
 
     /// Computes the midpoint as `(self / 2) + (other / 2)`, halving
@@ -235,7 +252,7 @@ mod test {
         assert!(interval.contains(&Decimal::new(5, 0)));
         assert!(!interval.contains(&Decimal::new(10, 0)));
 
-        assert_eq!(interval.width().finite(), Decimal::new(798, 2));
+        assert_eq!(interval.measure().finite(), Decimal::new(798, 2));
     }
 
     #[test]

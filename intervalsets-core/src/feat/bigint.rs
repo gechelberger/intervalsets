@@ -6,23 +6,26 @@ use num_traits::{Bounded, CheckedAdd, CheckedSub, FromPrimitive, NumCast, One, S
 use crate::bound::Side::{self, *};
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
-use crate::numeric::{Element, Midpoint};
+use crate::numeric::{default_discrete_count_inclusive, DiscreteKind, Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
-use crate::{default_countable_impl, default_width_impl};
 
 impl Element for BigInt {
+    type Kind = DiscreteKind;
+    type Measure = BigInt;
+
     fn try_adjacent(&self, side: Side) -> Option<Self> {
         match side {
             Left => self.checked_sub(&BigInt::one()),
             Right => self.checked_add(&BigInt::one()),
         }
     }
+
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+        default_discrete_count_inclusive(left, right)
+    }
 }
 
-default_countable_impl!(BigInt);
-default_width_impl!(BigInt);
-
-impl Midpoint for BigInt {
+impl Midpointable for BigInt {
     type Error = core::convert::Infallible;
 
     /// Infallible: `BigInt` is arbitrary precision, so the midpoint of
@@ -34,18 +37,22 @@ impl Midpoint for BigInt {
 }
 
 impl Element for BigUint {
+    type Kind = DiscreteKind;
+    type Measure = BigUint;
+
     fn try_adjacent(&self, side: Side) -> Option<Self> {
         match side {
             Left => self.checked_sub(&BigUint::one()),
             Right => self.checked_add(&BigUint::one()),
         }
     }
+
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+        default_discrete_count_inclusive(left, right)
+    }
 }
 
-default_countable_impl!(BigUint);
-default_width_impl!(BigUint);
-
-impl Midpoint for BigUint {
+impl Midpointable for BigUint {
     type Error = core::convert::Infallible;
 
     /// Infallible: `BigUint` is arbitrary precision, so the midpoint
@@ -406,16 +413,18 @@ mod tests {
     use num_bigint::{BigInt, BigUint, ToBigInt};
 
     use crate::factory::FiniteFactory;
-    use crate::measure::{Count, Width};
-    use crate::numeric::Midpoint;
+    use crate::measure::Measure;
+    use crate::numeric::Midpointable;
     use crate::EnumInterval;
 
     #[test]
-    fn test_bigint() {
+    fn test_bigint_measure() {
+        // BigInt is discrete, so .measure() is cardinality (count of
+        // integers in [a, b] inclusive).
         let a = 100.to_bigint().unwrap();
         let b = 200.to_bigint().unwrap();
-        let interval = EnumInterval::closed(a.clone(), b);
-        assert_eq!(interval.width().finite(), a);
+        let interval = EnumInterval::closed(a, b);
+        assert_eq!(interval.measure().finite(), BigInt::from(101));
     }
 
     #[test]
@@ -623,10 +632,10 @@ mod tests {
     }
 
     #[test]
-    fn test_count_exceeds_primitive_range() {
-        // 2^200 + 1 elements - well beyond what any primitive integer
+    fn test_cardinality_exceeds_primitive_range() {
+        // 2^200 + 1 elements — well beyond what any primitive integer
         // (including u128) can represent. Demonstrates that BigInt's
-        // arbitrary-precision Countable::Output can carry counts that
+        // arbitrary-precision Measure can carry cardinalities that
         // would overflow the primitive widening path.
         let lower = BigInt::from(0u8);
         let upper: BigInt = BigInt::from(1u8) << 200;
@@ -635,6 +644,6 @@ mod tests {
         let expected = upper + BigInt::from(1u8);
         assert!(expected > BigInt::from(usize::MAX));
         assert!(expected > BigInt::from(u128::MAX));
-        assert_eq!(interval.count().finite(), expected);
+        assert_eq!(interval.measure().finite(), expected);
     }
 }

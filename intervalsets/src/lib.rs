@@ -86,33 +86,35 @@
 //!
 //! ## Measure of a Set
 //!
-//! Two [measures](measure) are provided.
+//! The unified [`Measure`](measure::Measure) trait returns the natural
+//! additive measure of a set — Lebesgue width on continuous T,
+//! cardinality on discrete T. The result is an
+//! [`Extent`](measure::Extent) which may be infinite.
 //!
-//! They each return a [`Measurement`](measure::Measurement) which may be infinite.
-//!
-//! ### [`Width`](measure::Width) for continuous data types
+//! ### Continuous (Lebesgue width)
 //! ```
 //! use intervalsets::prelude::*;
 //!
 //! let x = Interval::open(0.0, 10.0);
-//! assert_eq!(x.width().finite(), 10.0);
+//! assert_eq!(x.measure().finite(), 10.0);
 //!
 //! let x = Interval::closed(0.0, 10.0);
-//! assert_eq!(x.width().finite(), 10.0);
+//! assert_eq!(x.measure().finite(), 10.0);
 //!
 //! let x = Interval::closed_unbound(0.0);
-//! assert_eq!(x.width().is_finite(), false);
+//! assert_eq!(x.measure().is_finite(), false);
 //! ```
 //!
-//! ### [`Count`](measure::Count) for discrete data types
+//! ### Discrete (cardinality)
 //! ```
 //! use intervalsets::prelude::*;
 //!
-//! let x = Interval::closed(0, 10);
-//! assert_eq!(x.count().finite(), 11u128);
+//! // i32::Measure = u64 under stepwise widening.
+//! let x = Interval::closed(0_i32, 10);
+//! assert_eq!(x.measure().finite(), 11_u64);
 //!
-//! let x = Interval::closed_unbound(0);
-//! assert_eq!(x.count().is_finite(), false);
+//! let x = Interval::closed_unbound(0_i32);
+//! assert_eq!(x.measure().is_finite(), false);
 //! ```
 //!
 //! # Optional Features
@@ -142,7 +144,7 @@ extern crate quickcheck_macros;
 pub use intervalsets_core::bound::ord::OrdBounded;
 pub use intervalsets_core::bound::{SetBounds, Side};
 pub use intervalsets_core::numeric::Element;
-pub use intervalsets_core::{bound, continuous_domain_impl, default_countable_impl, numeric};
+pub use intervalsets_core::{bound, default_continuous_element_impl, numeric};
 
 pub mod error;
 pub mod factory;
@@ -166,7 +168,7 @@ pub mod prelude {
     pub use intervalsets_core::cast::{Cast, LossyCast, TryCast};
     pub use intervalsets_core::factory::traits::*;
 
-    pub use crate::measure::{Count, Width};
+    pub use crate::measure::Measure;
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
     pub use crate::{Element, MaybeEmpty, OrdBounded, SetBounds, Side};

@@ -27,9 +27,10 @@ use crate::{EnumInterval, FiniteInterval, HalfInterval};
 /// use intervalsets_core::prelude::*;
 ///
 /// let positive = EnumInterval::closed_unbound(1i8);
-/// assert_eq!(positive.count(), Measurement::Infinite);
+/// assert_eq!(positive.measure(), Extent::Infinite);
 /// let as_finite = positive.into_finite_interval();
-/// assert_eq!(as_finite.count(), Measurement::Finite(127));
+/// // i8 Measure widens to u16 under stepwise widening; cardinality of [1, 127] = 127.
+/// assert_eq!(as_finite.measure(), Extent::Finite(127u16));
 /// ```
 pub trait IntoFiniteInterval {
     /// The type of set to create.

@@ -1,15 +1,16 @@
-//! Phase 2 — measure ops at i64. `try_count` / `try_width` /
-//! `midpoint` are panic-free by contract: representation overflow
-//! surfaces as `Err`, and the unbounded / empty / half-bounded shapes
-//! return their canonical sentinel (`Measurement::Infinite` for
-//! count/width, `Err(Domain)` for midpoint).
+//! Phase 2 — measure ops at i64. `try_measure` / `midpoint` are
+//! panic-free by contract: representation overflow surfaces as `Err`,
+//! and the unbounded / empty / half-bounded shapes return their
+//! canonical sentinel (`Extent::Infinite` for measure, `Err(Domain)`
+//! for midpoint).
 //!
-//! The panicking siblings `count()` / `width()` are explicitly
-//! documented to panic on overflow and live outside the canary.
+//! The panicking sibling `measure()` is explicitly documented to
+//! panic on overflow and lives outside the canary.
 
 use intervalsets_core::bound::FiniteBound;
 use intervalsets_core::factory::traits::*;
-use intervalsets_core::measure::{Count, Width};
+use intervalsets_core::measure::Measure;
+use intervalsets_core::ops::Midpoint;
 use intervalsets_core::sets::{EnumInterval, FiniteInterval, HalfInterval};
 
 fn make_finite() -> FiniteInterval<i64> {
@@ -44,33 +45,18 @@ fn make_enum() -> EnumInterval<i64> {
 }
 
 #[kani::proof]
-fn try_count_finite_i64_no_panic() {
-    let _ = make_finite().try_count();
+fn try_measure_finite_i64_no_panic() {
+    let _ = make_finite().try_measure();
 }
 
 #[kani::proof]
-fn try_count_half_i64_no_panic() {
-    let _ = make_half().try_count();
+fn try_measure_half_i64_no_panic() {
+    let _ = make_half().try_measure();
 }
 
 #[kani::proof]
-fn try_count_enum_i64_no_panic() {
-    let _ = make_enum().try_count();
-}
-
-#[kani::proof]
-fn try_width_finite_i64_no_panic() {
-    let _ = make_finite().try_width();
-}
-
-#[kani::proof]
-fn try_width_half_i64_no_panic() {
-    let _ = make_half().try_width();
-}
-
-#[kani::proof]
-fn try_width_enum_i64_no_panic() {
-    let _ = make_enum().try_width();
+fn try_measure_enum_i64_no_panic() {
+    let _ = make_enum().try_measure();
 }
 
 #[kani::proof]

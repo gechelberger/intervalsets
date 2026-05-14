@@ -1,8 +1,9 @@
 # Measure API Redesign
 
-**Status:** design committed, implementation pending Stage 1 (api/domain merge)
-**Date:** 2026-05-10
-**Drives:** the api/domain merge/revert decision
+**Status:** implemented on branch `refactor/measure`. The shipped design diverges from the spec below on one point: the `Element` trait does not carry a `KindOps<T>` default-impl dispatch helper. Each T's impl provides `try_adjacent` and `try_measure_finite` directly, with the `DiscreteKind` / `ContinuousKind` markers used only for type-level kind narrowing. See the implementation notes at the bottom of this doc.
+**Date:** 2026-05-13
+**Revises:** the prior 2026-05-10 version (which split Cardinality + Width into two parallel kind-gated traits); this version unifies them into a single `Measure` trait.
+**Drives:** the api/domain merge/revert decision — outcome: Kind machinery built from scratch in this PR, no `KindOps` dispatch.
 
 ---
 
@@ -16,33 +17,27 @@ The current measure module has three latent issues:
 
 3. **`Count` collides with `Iterator::count`.** Method chains like `a.complement().count()` are ambiguous between the iterator combinator and the cardinality measure. README drafting surfaced this; a rename to `Cardinality` was parked.
 
-A fourth issue is structural: `Width` and `Countable` are parallel per-T traits that don't acknowledge the deeper structural distinction the crate already encodes (discrete vs continuous via `Element::try_adjacent`). This redesign re-expresses the trait surface so that the math drives the types.
+A fourth issue is structural: `Width` and `Countable` are parallel per-T traits that don't acknowledge the deeper structural distinction the crate already encodes (discrete vs continuous via the api/domain `Element::Kind` machinery). This redesign collapses Width and Cardinality into a single `Measure` trait whose output is the natural measure of T (cardinality for discrete, Lebesgue width for continuous).
 
 ---
 
 ## Decision summary
 
 ```
-Element { type Kind; try_adjacent_or_none(side) -> Option<Self> }   // from api/domain
-  ├─ DiscreteElement: Element<Kind=DiscreteKind> + Ord
-  │     type Cardinality: Zero + TryAdd<Self, Output=Self> + Clone
-  │     fn try_adjacent(&self, side: Side) -> Option<Self>
-  │     fn count_inclusive(left: &Self, right: &Self) -> Option<Self::Cardinality>
-  │
-  └─ ContinuousElement: Element<Kind=ContinuousKind>
-        type Displacement: Zero + TryAdd<Self, Output=Self> + Clone
-        fn try_diff(left: &Self, right: &Self) -> Option<Self::Displacement>
+Element { type Kind; type Measure; try_adjacent_or_none; try_measure_finite }
+  ├─ DiscreteElement: Element<Kind=DiscreteKind>           (pure Kind marker)
+  └─ ContinuousElement: Element<Kind=ContinuousKind>       (pure Kind marker)
 
 
-measure/cardinality.rs           Cardinality   bounds on T: DiscreteElement
-measure/width.rs                 Width         bounds on T: ContinuousElement
+measure/mod.rs                   Measure       bounds on T: Element
 ops/span.rs                      Span          bounds on T: TrySub (any T)
 ```
 
-- `Count` → `Cardinality`; method `.count()` → `.cardinality()`. Clean break.
-- `Width` no longer compiles on integer types. Users call `.span()` or cast.
-- `Span` is **not a measure** (fails subadditivity on disjoint sets) and lives in `ops/`, not `measure/`.
-- Both measures are Tier 3 — `try_*` + panicking sugar — returning `Result<Measure<X>, Err>`.
+- `Count` / `Cardinality` / `Width` → unified `Measure`; method `.count()` → `.measure()`. Clean break.
+- `.measure()` returns `Extent<T::Measure>` — cardinality count for discrete T, Lebesgue width for continuous T. Same trait, same call site, kind-projected output.
+- `Span` stays in `ops/`, unchanged. Integer users who used to call `.width()` for `b−a` call `.span()` now.
+- Per-T cardinality and width *computations* are no longer separate methods — both fold into `Element::try_measure_finite`.
+- The unified `Measure` is Tier 3 — `try_measure` + panicking `measure` sugar — returning `Result<Extent<T::Measure>, MathError>`.
 - Three states per call: `Ok(Finite)` / `Ok(Infinite)` (structural for Half/Unbounded) / `Err(overflow)`.
 
 ---
@@ -51,89 +46,147 @@ ops/span.rs                      Span          bounds on T: TrySub (any T)
 
 ### Trait hierarchy
 
-The api/domain branch (commit `b1a032f`) already introduced `Element { type Kind }` with sealed `DiscreteKind`/`ContinuousKind` markers and a `KindOps<T>` helper for coherence-disjoint dispatch. This redesign **collapses** api/domain's `Discrete: Element + Ord` and the old `Countable: Discrete` into a single `DiscreteElement`, and similarly defines `ContinuousElement` to carry displacement.
+The Kind machinery was built from scratch in this PR (the `api/domain` branch the earlier drafts referenced was never merged). The shipped Element trait carries `type Kind`, `type Measure`, and a required `try_measure_finite` primitive; the discrete/continuous split is named at the type level via sealed marker types, without a `KindOps` dispatch helper.
 
 ```rust
-// numeric.rs
+// numeric/element.rs (as shipped)
 
-pub trait Element: Sized + PartialEq + PartialOrd
-where Self::Kind: KindOps<Self>,
-{
+mod sealed { pub trait Kind {} }
+
+pub struct DiscreteKind;   impl sealed::Kind for DiscreteKind {}
+pub struct ContinuousKind; impl sealed::Kind for ContinuousKind {}
+
+pub trait Element: Sized + PartialEq + PartialOrd {
     type Kind: sealed::Kind;
-    fn try_adjacent_or_none(&self, side: Side) -> Option<Self> {
-        <Self::Kind as KindOps<Self>>::try_adjacent_or_none(self, side)
-    }
-}
-
-pub trait DiscreteElement: Element<Kind = DiscreteKind> + Ord {
-    type Cardinality: Zero
-        + TryAdd<Self::Cardinality, Output = Self::Cardinality>
+    type Measure: Zero
+        + TryAdd<Self::Measure, Output = Self::Measure>
         + Clone;
 
     fn try_adjacent(&self, side: Side) -> Option<Self>;
 
-    fn count_inclusive(left: &Self, right: &Self)
-        -> Option<Self::Cardinality>;
+    /// Compute the natural measure of `[left, right]` (inclusive).
+    /// - Discrete T: cardinality (e.g. `right - left + 1` for primitive integers).
+    /// - Continuous T: Lebesgue width, i.e. `right - left`.
+    /// `None` ⇒ representation overflow. (There is no "uncountable"
+    /// sentinel — the natural measure on continuous T is width, not
+    /// cardinality, so the uncountability distinction never enters.)
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure>;
+
+    fn validate(self) -> Option<Self> {
+        self.partial_cmp(&self).map(|_| self)
+    }
 }
 
-pub trait ContinuousElement: Element<Kind = ContinuousKind> {
-    type Displacement: Zero
-        + TryAdd<Self::Displacement, Output = Self::Displacement>
-        + Clone;
+pub trait DiscreteElement: Element<Kind = DiscreteKind> {}
+impl<T: Element<Kind = DiscreteKind>> DiscreteElement for T {}
 
-    fn try_diff(left: &Self, right: &Self)
-        -> Option<Self::Displacement>;
-}
+pub trait ContinuousElement: Element<Kind = ContinuousKind> {}
+impl<T: Element<Kind = ContinuousKind>> ContinuousElement for T {}
 ```
+
+Earlier drafts of this doc proposed a `KindOps<T>` helper that would
+let `Element` provide a default `try_adjacent_or_none` body
+dispatched through `Self::Kind`. The shipped implementation skips
+`KindOps`: each T impl writes its own `try_adjacent` directly, and
+the Kind markers are used purely for `where`-clause narrowing
+(`where T: DiscreteElement` or `where T: Element<Kind = DiscreteKind>`).
+This is the smallest machinery that supports the unified `Measure`
+trait; `KindOps`-style default dispatch can be reintroduced later
+without breaking existing impls if a future use case warrants it.
+
+`DiscreteElement` and `ContinuousElement` are pure Kind markers — they add no bounds beyond `Element` and exist for `where`-clause ergonomics and documentation (`where T: DiscreteElement` reads better than `where T: Element<Kind = DiscreteKind>`).
 
 **Asymmetries (intentional):**
 
-- `DiscreteElement: Ord` — every discrete type is totally ordered. Required for the panicking-sugar Tier-3 unwraps.
-- `ContinuousElement` has no `Ord` — floats stay in domain at `PartialOrd`-only. This is the load-bearing reason api/domain's Kind dispatch exists: half the crate's complexity exists to make floats work.
-- Both Output types bound `Zero + TryAdd + Clone` — the bound is for folding per-piece measures on `IntervalSet`. Baked into the trait so `IntervalSet::try_width` / `try_cardinality` have one-line where-clauses.
+- `Element` bounds on `PartialEq + PartialOrd`, not `Eq + Ord`. This serves floats (NaN-bearing, !Ord) and any PartialOrd-only discrete type (Gaussian integers, multi-dimensional integer grids, power-set-discrete posets). Total order is **not** a property of discreteness — it's an orthogonal axis. Operations that require total order bound `+ Ord` at the call site, not on the marker trait.
+- `Element::Measure` bounds `Zero + TryAdd + Clone`. One associated type per T, one bound chain, drives both the per-piece result and the `IntervalSet` fold so `IntervalSet::try_measure` has a one-line where-clause.
+- `DiscreteElement` and `ContinuousElement` are intentionally empty markers. Their job is to name the Kind disjunction at bound sites, not to gate capability.
 
 ### Measures
 
 ```rust
-// measure/cardinality.rs
+// measure/mod.rs
 
-pub trait Cardinality {
+pub trait Measure {
     type Output;
     type Error: core::error::Error;
 
-    fn cardinality(&self) -> Measure<Self::Output> {
-        self.try_cardinality().unwrap()
+    fn measure(&self) -> Extent<Self::Output> {
+        self.try_measure().unwrap()
     }
 
-    fn try_cardinality(&self) -> Result<Measure<Self::Output>, Self::Error>;
+    fn try_measure(&self) -> Result<Extent<Self::Output>, Self::Error>;
 }
 
-impl<T: DiscreteElement> Cardinality for FiniteInterval<T> {
-    type Output = T::Cardinality;
-    type Error = CardinalityOverflowError;
+impl<T: Element> Measure for FiniteInterval<T> {
+    type Output = T::Measure;
+    type Error = MathError;
 
-    fn try_cardinality(&self) -> Result<Measure<Self::Output>, Self::Error> {
+    fn try_measure(&self) -> Result<Extent<Self::Output>, Self::Error> {
         match self.view_raw() {
-            None => Ok(Measure::Finite(T::Cardinality::zero())),
-            Some((l, r)) => T::count_inclusive(l.value(), r.value())
-                .map(Measure::Finite)
-                .ok_or(CardinalityOverflowError),
+            None => Ok(Extent::Finite(T::Measure::zero())),
+            Some((l, r)) => T::try_measure_finite(l.value(), r.value())
+                .map(Extent::Finite)
+                .ok_or(MathError::Range),
         }
     }
 }
 
-impl<T: DiscreteElement> Cardinality for HalfInterval<T> {
-    type Output = T::Cardinality;
-    type Error = CardinalityOverflowError;
-    fn try_cardinality(&self) -> Result<Measure<Self::Output>, Self::Error> {
-        Ok(Measure::Infinite)
+impl<T: Element> Measure for HalfInterval<T> {
+    type Output = T::Measure;
+    type Error = MathError;
+    fn try_measure(&self) -> Result<Extent<Self::Output>, Self::Error> {
+        Ok(Extent::Infinite)
     }
 }
 
-// EnumInterval dispatches; IntervalSet folds via TryAdd on Measure<Cardinality>.
+// EnumInterval dispatches (Unbounded → Infinite);
+// MaybeDisjoint folds per-piece extents via TryAdd, propagating Err and Infinite.
 ```
 
-`Width` is structurally identical with `ContinuousElement::try_diff` substituted for `count_inclusive` and `WidthOverflowError` (or a shared error type) substituted for `CardinalityOverflowError`.
+*Naming.* The trait is named `Measure` to express the math directly. `.measure()` returns the natural measure of the type — cardinality for discrete T, Lebesgue width for continuous T. The names `cardinality` and `width` are not exported as method aliases; users who want the descriptive name in call sites should rebind locally (`let cardinality = iv.measure();`) or read the type's documentation to confirm what `.measure()` computes for their T.
+
+*Semantics on concrete types:*
+
+| Interval                    | `.measure()` result            |
+|-----------------------------|--------------------------------|
+| empty                       | `Finite(0)`                    |
+| `[0, 10]: i32`              | `Finite(11_u64)`  (cardinality, widened to `i32::Measure = u64`) |
+| `[i128::MIN, i128::MAX]: i128` | `Err(MathError::Range)`     |
+| `[0, ∞): i32`               | `Infinite`                     |
+| `[5.0, 5.0]: f64`           | `Finite(0.0)` (Lebesgue width of a singleton on ℝ is 0) |
+| `[0.0, 10.0]: f64`          | `Finite(10.0)`                 |
+| `[0.0, ∞): f64`             | `Infinite`                     |
+| `[0,5]: i32 ∪ [10,20]: i32` | `Finite(17_u64)` (sum of counts) |
+
+The continuous-singleton case is a deliberate semantic change from the pre-unification `Cardinality`: today's `cardinality([5.0, 5.0])` returns `Finite(1)` (counting-measure interpretation); under the unified trait `.measure([5.0, 5.0])` returns `Finite(0.0)` because the natural measure on continuous T is Lebesgue width. Users who need "is this a single point?" check `measure == 0` or use a dedicated predicate. The counting-on-continuous distinction (`{0, ℵ₁}`) was always degenerate and is dropped.
+
+#### `T::Measure` type convention
+
+A measure is by definition a non-negative magnitude. The type system can't easily bound `Measure: Unsigned` (it would exclude `f32`/`f64`/`Decimal`/`BigDecimal`, which are signed types we use non-negatively by convention), so the convention is enforced per-impl rather than via a trait bound.
+
+**Stepwise widening for integer primitives.** Each integer type widens its `Measure` by one bit-class to the next unsigned type. Width always fits; cardinality also fits except at the literal `[MIN, MAX]` edge of 128-bit types, which surfaces as `Err(MathError::Range)`.
+
+| `T` (primitive)   | `T::Measure` | Width range            | Cardinality range       |
+|-------------------|---------------|-------------------------|--------------------------|
+| `u8`, `i8`        | `u16`         | ≤ 255                   | ≤ 256                    |
+| `u16`, `i16`      | `u32`         | ≤ 2¹⁶ − 1               | ≤ 2¹⁶                    |
+| `u32`, `i32`      | `u64`         | ≤ 2³² − 1               | ≤ 2³²                    |
+| `u64`, `usize`, `i64`, `isize` | `u128` | ≤ 2⁶⁴ − 1            | ≤ 2⁶⁴                    |
+| `u128`, `i128`    | `u128`        | ≤ 2¹²⁸ − 1              | `[MIN, MAX]` = 2¹²⁸, overflows → `Err` |
+| `f32`             | `f32`         | up to `f32::MAX` finite | (n/a — Lebesgue width)   |
+| `f64`             | `f64`         | up to `f64::MAX` finite | (n/a — Lebesgue width)   |
+
+`usize` / `isize` widen to `u128` rather than to a platform-dependent type so the API surface is stable across 32-bit and 64-bit targets.
+
+**Why stepwise (vs uniform `u128`).** Two reasons:
+
+1. **Embedded performance.** On targets without native 128-bit arithmetic (Cortex-M, RISC-V RV32, anything sub-64-bit), `u128` operations are software-emulated and ~2× the cost of `u64` and several times the cost of `u32`. A tight loop over `interval.measure()` on `i32` data pays this on every call. Stepwise widening keeps the arithmetic in native or near-native widths.
+2. **Fold-overflow headroom.** `IntervalSet::try_measure` sums per-piece measures via `TryAdd`. With same-width unsigned (e.g. `i32` → `u32`), summing two `[i32::MIN, 0]` + `[1, i32::MAX]` cardinalities exactly overflows `u32`. Stepwise widening (`i32` → `u64`) leaves ~32 bits of headroom — enough that fold-overflow is practically unreachable.
+
+**Float primitives stay self-typed.** No native float widening exists in stable Rust; `f32 → f32`, `f64 → f64`. Overflow to non-finite surfaces as `Err(MathError::Range)`, same as today.
+
+**Custom types pick their own.** `BigInt::Measure = BigUint`, `Decimal::Measure = Decimal`, fixed-point types use the smallest unsigned integer that fits their representable width. The trait bounds (`Zero + TryAdd + Clone`) are necessary; the non-negativity and one-step-widening conventions are documentary.
 
 ### Span
 
@@ -145,13 +198,12 @@ impl<T: DiscreteElement> Cardinality for HalfInterval<T> {
 /// NOT a measure: fails subadditivity on disjoint sets
 /// (span([0,1] ∪ [3,4]) = 4, but Σ span = 2).
 ///
-/// For Lebesgue measure on continuous sets, see [`Width`].
-/// For cardinality on discrete sets, see [`Cardinality`].
+/// For the additive Lebesgue/counting measure of a set, see [`Measure`].
 pub trait Span {
     type Output;
     type Error: core::error::Error;
-    fn span(&self) -> Measure<Self::Output> { self.try_span().unwrap() }
-    fn try_span(&self) -> Result<Measure<Self::Output>, Self::Error>;
+    fn span(&self) -> Extent<Self::Output> { self.try_span().unwrap() }
+    fn try_span(&self) -> Result<Extent<Self::Output>, Self::Error>;
 }
 
 // impls require for<'a> &'a T: TrySub<&'a T, Output = ...>
@@ -162,19 +214,19 @@ Span is the right tool for users who want "max − min on any T." It subsumes to
 
 ### Three-state return semantics
 
-Every user-facing measure call returns `Result<Measure<X>, Err>`:
+Every user-facing measure call returns `Result<Extent<X>, Err>`:
 
 | Outcome | Return |
 |---|---|
-| Finite-bounded interval, arithmetic succeeded | `Ok(Measure::Finite(_))` |
-| Half-bounded or unbounded set | `Ok(Measure::Infinite)` |
-| Finite-bounded, primitive op overflowed (e.g. `[i128::MIN, i128::MAX].try_cardinality()`) | `Err(_)` |
+| Finite-bounded interval, arithmetic succeeded | `Ok(Extent::Finite(_))` |
+| Half-bounded or unbounded set | `Ok(Extent::Infinite)` |
+| Finite-bounded, primitive op overflowed (e.g. `[i128::MIN, i128::MAX].try_measure()`) | `Err(_)` |
 
-Internally, `count_inclusive` and `try_diff` use `Option<Output>` (`None` = primitive overflow); the measure trait wraps `None` into the typed `Err`. `Measure::Infinite` is constructed structurally by `HalfInterval` and `EnumInterval::Unbounded`, never as a fallback for overflow.
+Internally, `Element::try_measure_finite` returns `Option<T::Measure>` (`None` = primitive overflow); the `Measure` impl wraps `None` into `Err(MathError::Range)`. `Extent::Infinite` is constructed structurally by `HalfInterval` and `EnumInterval::Unbounded`, never as a fallback for overflow.
 
-### `Measurement` → `Measure`: rename and cleanup
+### `Measurement` → `Extent`: rename and cleanup
 
-Rename `Measurement<T>` to `Measure<T>` and address accumulated shortcomings in the current implementation. The cleanup ships in Stage 2 alongside the trait rename.
+Rename `Measurement<T>` to `Extent<T>` and address accumulated shortcomings in the current implementation. The cleanup ships in Stage 2 alongside the trait rename.
 
 #### Shortcomings of the current `Measurement<T>`
 
@@ -194,93 +246,85 @@ Rename `Measurement<T>` to `Measure<T>` and address accumulated shortcomings in 
 
 8. **Panic-prefixed naming doesn't match std.** `expect_finite(msg)` / `finite()` instead of `expect(msg)` / `unwrap()` adds no information std's names lack.
 
-#### Replacement: `Measure<T>`
+#### Replacement: `Extent<T>` (final spec)
+
+The spec landed differs from earlier drafts of this doc on two
+points: (1) `finite()` is **kept** as the panicking accessor (the
+domain-named "give me the finite value, panic if it's infinite" is
+more informative than `unwrap`); (2) `From<Option<T>>` **is**
+provided in addition to `From<Extent<T>>` (the `None ≡ Infinite`
+mapping is canonical by fiat). The full spec lives in
+`/home/greg/.claude/plans/lets-come-up-with-proud-swing.md`.
 
 ```rust
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]  // T-conditional via auto-derive
-pub enum Measure<T> {
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Extent<T> {
     Finite(T),
     Infinite,
 }
 
-impl<T> Measure<T> {
-    pub fn is_finite(&self) -> bool { matches!(self, Self::Finite(_)) }
-    pub fn is_infinite(&self) -> bool { matches!(self, Self::Infinite) }
-
-    // std-aligned naming
-    pub fn unwrap(self) -> T { /* panics on Infinite */ }
-    pub fn expect(self, msg: &str) -> T { /* panics with msg on Infinite */ }
-    pub fn unwrap_or(self, default: T) -> T { ... }
-    pub fn unwrap_or_else(self, f: impl FnOnce() -> T) -> T { ... }
-    pub fn unwrap_or_default(self) -> T where T: Default { ... }
-
-    pub fn map<U>(self, f: impl FnOnce(T) -> U) -> Measure<U> { ... }
-    pub fn and_then<U>(self, f: impl FnOnce(T) -> Measure<U>) -> Measure<U> { ... }
-
-    pub fn as_ref(&self) -> Measure<&T> { ... }
-    pub fn into_option(self) -> Option<T> { ... }
+impl<T> Extent<T> {
+    pub fn is_finite(&self) -> bool;
+    pub fn is_infinite(&self) -> bool;
+    pub fn finite(self) -> T;                       // panics on Infinite
+    pub fn try_binop_map<E>(self, rhs: Self,
+        f: impl FnOnce(T, T) -> Result<T, E>)
+        -> Result<Self, E>;                         // load-bearing internal
 }
 
-impl<T> From<Measure<T>> for Option<T> { /* Finite(t) -> Some(t); Infinite -> None */ }
-// No `From<Option<T>>` — `None` is ambiguous (absent-result vs unbounded-set);
-// require explicit construction.
-
-// Explicit, not derived, so ordering is documented and stable across variant reorders.
-impl<T: PartialOrd> PartialOrd for Measure<T> { /* Finite(_) < Infinite */ }
-impl<T: Ord> Ord for Measure<T> { ... }
-
-impl<T: TryAdd<T, Output = T>> TryAdd for Measure<T> {
-    type Output = Measure<T>;
-    type Error = T::Error;
-    fn try_add(self, rhs: Self) -> Result<Self::Output, Self::Error> { ... }
-}
-
-// Keep infallible Add for callers whose T's Add is infallible by construction.
-impl<T: Add<T, Output = T>> Add for Measure<T> { ... }
-
-impl<T> IntoIterator for Measure<T> {
-    type Item = T;
-    type IntoIter = core::option::IntoIter<T>;
-    fn into_iter(self) -> Self::IntoIter { self.into_option().into_iter() }
-}
+impl<T> From<Extent<T>> for Option<T>;             // Finite → Some; Infinite → None
+impl<T> From<Option<T>> for Extent<T>;             // canonical None ≡ Infinite
+impl<T: Add<T, Output = T>> Add for Extent<T>;     // Infinite absorbs
+impl<T: TryAdd<T, Output = T>> TryAdd for Extent<T>; // Err preserved, NOT collapsed to Ok(Infinite)
+impl<T: Display> Display for Extent<T>;            // Finite delegates; Infinite → "∞"
 ```
 
-`IntervalSet::try_cardinality` and `try_width` then fold via `try_fold` over per-piece measures, propagating both overflow `Err` and `Infinite` correctly through `TryAdd`.
+`IntervalSet::try_measure` folds via `try_binop_map` over per-piece
+extents, propagating both `Err` and `Infinite` correctly.
 
-#### Cleanup checklist (Stage 2)
+`Sub` / `Mul` / `Div` / `Neg` and their `Try*` siblings are intentionally
+not implemented. The three-state contract (`Ok(Finite)` / `Ok(Infinite)` /
+`Err`) is preserved by `TryAdd` — overflow surfaces as `Err`, never
+collapses into `Ok(Infinite)`. Saturate-on-overflow semantics belong to
+the `core::num::Saturating<T>` storage type.
 
-**Drop:**
+#### Shipped (this redesign)
 
-- `Sub` impl entirely (no measure-theoretic meaning)
-- `finite()` / `expect_finite(msg)` — replace with `unwrap()` / `expect(msg)` (std naming)
-- `flat_map` — rename to `and_then` (matches `Option` / `Result`)
-- `finite_or(default)` — rename to `unwrap_or(default)`
-- The `PartialOrd` derive — replace with explicit impl
-- `#[allow(dead_code)]` on `binop_try_map` — wire it up as the `TryAdd` impl
-- `T: Clone` bound on `Add` impl (defensive, unused)
+- Rename `Measurement<T>` → `Extent<T>`, move to `measure/extent.rs`
+- Add `Eq`, `Hash`, `Ord` to the derive set (T-conditional)
+- Keep `finite()` / `is_finite()` / `is_infinite()` / `try_binop_map()`
+- Drop `Sub`, `expect_finite`, `finite_or`, `flat_map`, `map`
+- Drop dead `T: Clone` bound on `Add`
+- Add bidirectional `From` with `Option`
+- Add `TryAdd` impl (no Range-error collapse to `Ok(Infinite)`)
+- Add `Display` impl (`Infinite` prints as `"∞"`)
 
-**Add:**
+#### Deferred (won't address now)
 
-- `TryAdd` impl (Tier-3 alignment; the path through which `IntervalSet::try_*` folds propagate overflow)
-- `From<Measure<T>> for Option<T>` (one-way only; `None` is ambiguous in the reverse direction)
-- `IntoIterator` yielding 0-or-1 `T`
-- std-shaped combinators: `unwrap_or_else`, `unwrap_or_default`, `as_ref`
-- Explicit `PartialOrd` / `Ord` impls documenting `Finite(_) < Infinite`
+- Signed-measure refactor (`PosInfinite` / `NegInfinite` variants)
+- `IntoIterator`, `Default` impls
+- Renaming `try_binop_map` (e.g. to `try_zip_with`)
+- `unwrap_or_else`, `as_ref`, etc. — users access via `Option::from(extent)`
 
-**Deferred (won't address now):**
+#### Why `Extent<T>` and not just `Option<T>`?
 
-- Signed-measure refactor (`PosInfinite` / `NegInfinite` variants). Until in-crate code needs it, the cost-of-change is the rename plus a small set of pattern-match updates — manageable later.
-
-#### Why `Measure<T>` and not just `Option<T>`?
-
-A type alias (`pub type Measure<T> = Option<T>;`) is the most honest option: full `Option` ecosystem for free, zero code to maintain. **But the domain type pays for itself in rustdoc.** `try_cardinality() -> Result<Measure<u128>, CardinalityOverflowError>` reads as "this might fail to compute (Err) OR tell you the set is unbounded (Infinite)." `Result<Option<u128>, _>` reads as "this might fail to compute (Err) OR have no value (None)" — true, but the "set is unbounded" semantic is lost. Domain types carry meaning that aliases erase.
+A type alias (`pub type Extent<T> = Option<T>;`) gets the full
+`Option` ecosystem for free, zero code to maintain. **But the domain
+type pays for itself in rustdoc.** `try_measure() -> Result<Extent<u64>, MathError>`
+reads as "this might fail to compute (Err) OR tell you the set is
+unbounded (Infinite)." `Result<Option<u64>, _>` reads as "this might
+fail to compute (Err) OR have no value (None)" — true, but the "set
+is unbounded" semantic is lost. Domain types carry meaning that
+aliases erase. Bidirectional `From` lets callers reach into the
+`Option` combinator ecosystem when they want it, without sacrificing
+the domain naming.
 
 ---
 
 ## What survives unchanged
 
-- `Measure<T>` (renamed from `Measurement<T>`) keeps its core `Finite(T)` / `Infinite` shape and the existing tests; surrounding combinator/impl surface gets the cleanup described above
-- `Element` trait and `try_adjacent_or_none` (from api/domain)
+- `Extent<T>` (renamed from `Measurement<T>`) keeps its core `Finite(T)` / `Infinite` shape and the existing tests; surrounding combinator/impl surface gets the cleanup described above
+- `Element` trait, `try_adjacent`, and the new `Kind` markers (`DiscreteKind` / `ContinuousKind` + `DiscreteElement` / `ContinuousElement` blanket-impl'd marker traits)
 - The four-tier op contract documented in `ops/mod.rs`
 - `OrderedFloat`, `Decimal`, `BigInt`, `BigDecimal` feature modules (each gets a categorical impl)
 - All other ops (Union, Intersection, etc.)
@@ -289,54 +333,49 @@ A type alias (`pub type Measure<T> = Option<T>;`) is the most honest option: ful
 
 | Before | After |
 |---|---|
-| `Count` trait | `Cardinality` trait |
-| `.count()` / `.try_count()` | `.cardinality()` / `.try_cardinality()` |
-| `Countable` trait | absorbed into `DiscreteElement` |
-| `CountOverflowError` | `CardinalityOverflowError` |
-| `default_countable_impl!` | `default_discrete_element_impl!` |
+| `Count`, `Cardinality`, `Width` traits | unified `Measure` trait |
+| `.count()` / `.try_count()` | removed |
+| `.cardinality()` / `.try_cardinality()` | `.measure()` / `.try_measure()` |
+| `.width()` / `.try_width()` | `.measure()` / `.try_measure()` for continuous T; `.span()` for "diameter on any T" |
+| `Countable` trait + `IS_CONTINUOUS` flag | absorbed: `Element::Measure` + `Element::try_measure_finite` |
+| `Widthable` trait | absorbed (same as above) |
+| `CountOverflowError`, `WidthOverflowError` | already unified into `MathError` (no further change) |
+| `default_countable_impl!`, `default_width_impl!`, `continuous_countable_impl!` | unified: `default_discrete_element_impl!`, `default_continuous_element_impl!` |
 | `integer_domain_impl!` | `default_discrete_element_impl_primitives!` |
 | `continuous_domain_impl!` | `default_continuous_element_impl!` |
-| `interval.width()` on `Interval<i32>` works | compile error; use `.span()` or cast to `f64` |
-| `Measurement<T>` type | `Measure<T>` |
-| `.finite()` / `.expect_finite(msg)` on the value | `.unwrap()` / `.expect(msg)` (std naming) |
-| `.flat_map(f)` on the value | `.and_then(f)` (std naming) |
-| `.finite_or(default)` on the value | `.unwrap_or(default)` (std naming) |
+| `[5.0_f64, 5.0].cardinality() == Finite(1)` | `[5.0_f64, 5.0].measure() == Finite(0.0)` ← Lebesgue-width semantics on continuous singletons |
+| `[0_i32, 10].width() == Finite(10_u128)` | no longer exists; users call `.span()` (`= 10_i32`) or `.measure()` (`= 11_u64` under stepwise widening) |
+| `Measurement<T>` type | `Extent<T>` |
+| `.finite()` on the value | unchanged (kept; domain-named panicking accessor) |
+| `.expect_finite(msg)` on the value | `Option::from(x).expect(msg)` |
+| `.flat_map(f)` on the value | `Option::from(x).and_then(...).into()` |
+| `.finite_or(default)` on the value | `Option::from(x).unwrap_or(default)` |
+| `.map(f)` on the value | `Option::from(x).map(f).into()` |
 | `impl Sub for Measurement<T>` | removed (no measure-theoretic meaning) |
 | `impl Add for Measurement<T>` requiring `T: Clone` | `impl Add` drops the `Clone` bound; `impl TryAdd` added for Tier-3 folds |
 
-Clean break, no deprecation aliases. CHANGELOG entry must point integer-`width` users at `span` (semantically equivalent for single intervals; differs only on disjoint sets where users will want `cardinality` anyway).
+Clean break, no deprecation aliases. CHANGELOG entry must point both integer-`width` users at `span` (semantically equivalent for single intervals; differs only on disjoint sets where users will want `.measure()` anyway) AND `cardinality` / `width` users at the new unified `.measure()` spelling.
 
 ---
 
 ## Migration plan
 
-| Stage | Scope | Notes |
+| Stage | Scope | Status |
 |---|---|---|
-| 1 | api/domain merge or revert | Already partial on `api/domain` branch. Decision gated by Stage 2 outcome. |
-| 2 | **This redesign** | Cardinality rename, Width gated on ContinuousElement, macro renames, `Measurement`→`Measure` rename + cleanup (drop Sub, add TryAdd, std-naming combinators, Option interop), IntervalSet folds via try_fold |
-| 3 | `Span` in `ops/span.rs` | Small, independent. Integer-width users now have a landing pad. |
-| 4 | Midpoint + Bisect | Resurrect Midpoint (Result vs Option call), implement Bisect on top |
-
-Stage 2 is the **empirical test for Stage 1**. The categorical pattern (Element → {DiscreteElement, ContinuousElement} with fused storage types) is the api/domain bet writ slightly larger. If Stage 2's bound chains stay tight at user-facing signatures and implementer-side cost is bounded, api/domain ships. If trait bounds metastasize or per-T impl cost explodes, revert api/domain before merging Stage 2.
-
-**Concrete pass/fail metrics:**
-
-- Count of `where T: ...` clauses on `try_width`, `try_cardinality`, `IntervalSet::try_*` signatures
-- Lines of code an implementer of a custom type adds (today's `default_countable_impl!` macro use + `Element` impl + `Zero`/`Add`/`Sub` impls is the baseline)
-- Whether the existing primitive impls (i32 family, u8 family, f32/f64, OrderedFloat, Decimal, BigInt) port without surgery
-
-Numbers, not vibes.
+| 1 | Kind machinery (`type Kind`, `DiscreteKind` / `ContinuousKind` markers, `DiscreteElement` / `ContinuousElement` blanket-marker subtraits) | **Shipped** in this PR — built from scratch rather than merging the parked `api/domain` branch. No `KindOps` dispatch helper; each T's impl writes its own `try_adjacent` and `try_measure_finite` directly. |
+| 2 | Unify Cardinality + Width into `Measure`, absorb the computation into `Element::Measure` + `Element::try_measure_finite`, public macro `default_continuous_element_impl!`, helper fn `default_discrete_count_inclusive`, `Measurement` → `Extent` rename + cleanup (drop Sub, add TryAdd, std-naming combinators, Option interop), `IntervalSet` folds via `try_fold` | **Shipped** in this PR. |
+| 3 | `Span` in `ops/span.rs` | Already in tree (predates this PR). Integer users wanting `b − a` in the native type route through `.span()`. |
+| 4 | Bisect collapse: drop closure, bound on `Measure`, single-interval split-at-midpoint | **Shipped** in this PR. |
 
 ---
 
 ## Documentation responsibilities
 
-- **`measure/mod.rs`** — retains the monotonicity + subadditivity contract for the measures it exports. The "Some common measures are Cardinality, Count, and the Lebesgue measure" sentence updates to drop the stale `Count` reference.
-- **`ops/span.rs`** — docstring explicitly states: *"Span is the diameter sup − inf. NOT a measure: fails subadditivity on disjoint sets. For Lebesgue measure on continuous sets, see Width; for cardinality on discrete sets, see Cardinality."*
-- **`measure/cardinality.rs`** — explains why the trait gates on `DiscreteElement` (cardinality is only meaningful on countable sets) and points integer-width users at `span` in the migration note.
-- **`measure/width.rs`** — explains why the trait gates on `ContinuousElement` (Lebesgue measure on a countable set is 0; the math forbids the call) and points integer users at `span` or numeric conversion.
-- **CHANGELOG** — migration table mirroring the breaking-changes section above.
-- **Book** — at minimum, the existing measure chapter (if any) updates; ideally a "which measure do I want?" decision tree.
+- **`measure/mod.rs`** — now hosts the `Measure` trait and retains the monotonicity + subadditivity contract. Update the copy from "Some common measures are Cardinality, Count, and the Lebesgue measure" to "`Measure` returns the natural additive measure of a set: cardinality on discrete types, Lebesgue width on continuous types."
+- **`ops/span.rs`** — single cross-reference: *"Span is the diameter sup − inf. NOT a measure: fails subadditivity on disjoint sets. For the additive Lebesgue/counting measure of a set, see [`Measure`]."*
+- ~~`measure/cardinality.rs`~~ and ~~`measure/width.rs`~~ — files cease to exist; their tests fold into the unified `Measure` impl tests.
+- **CHANGELOG** — migration table mirroring the breaking-changes section above. Point both integer-`.width()` users at `.span()` AND discrete-`.cardinality()` / float-`.cardinality()` users at `.measure()`.
+- **Book** — drop the "which measure do I want?" decision tree (the unification makes the decision for them). Add a "what does `.measure()` return for my T?" table mirroring the semantics table under §Architecture > Measures.
 
 ---
 
@@ -348,70 +387,34 @@ Stays `pub(crate)` through Stage 2. The open question of `Result<Self, Self::Err
 
 ### Set-level cast / `Widen`
 
-The `Widen` trait from the original design summary is **dropped** — the per-T `Wider` type can't simultaneously serve as displacement type (Width's natural output: DateTime → Duration) AND arithmetic-headroom type (Cardinality's natural output: i32 → u128). These are different roles, and forcing one trait to bear both conflates affine-point semantics with overflow-prevention.
+The `Widen` trait from the original design summary is **dropped** — `T::Measure` plays two different roles depending on T's Kind, and a single per-T `Wider` type can't simultaneously serve both. For continuous T it is the displacement type (e.g. `DateTime::Measure = Duration`); for discrete T it is the arithmetic-headroom type (e.g. `i32::Measure = u64` under stepwise widening). These roles conflate affine-point semantics with overflow-prevention; forcing one trait to bear both was the original design error.
 
 Users who want `i32` cardinality expressed as `u128`, or `f32` width as `f64`, are best served by a future set-level cast API — `IntervalSet<i32>::cast::<i64>()` style. That's a parallel PR not coupled to this design.
 
-`Measure::map` is **not** an adequate substitute for caller-driven widening: the cast happens *after* subtraction, so any overflow already corrupted the result.
+`Extent::map` is **not** an adequate substitute for caller-driven widening: the cast happens *after* subtraction, so any overflow already corrupted the result.
 
-### Continuous types without meaningful Displacement
+### Continuous types without meaningful `Measure`
 
-The 2-tier collapse (`Continuous == ContinuousElement`) forces every continuous type to commit to a `Displacement`. No such type exists in-crate today; if one appears, re-evaluate splitting back to a 3-tier `Continuous` marker + `ContinuousElement: Continuous`.
+Every continuous type must commit to a `T::Measure` (its Lebesgue-width displacement type). No in-crate continuous type lacks one today; if one appears, re-evaluate splitting back to a 3-tier `Continuous` marker + `ContinuousElement: Continuous` (where the inner trait carries `Measure`).
 
 ---
 
 ## Appendix: Measure-as-codomain (not in-crate)
 
-This redesign treats `Cardinality` and `Width` as two distinct traits keyed by element-category. An alternative axis the math allows is to keep one measure trait and parameterize it over its codomain — useful for signed measures (`m: Set → ℝ`), complex-valued measures (`m: Set → ℂ`), or vector-valued measures (`m: Set → ℝⁿ`).
+Earlier drafts of this doc proposed two parallel measure traits keyed on Element kind. The shipped design instead uses a single `Measure` trait with `Output = T::Measure`; the codomain (cardinality type or displacement type) is committed by the T impl, and the Kind machinery picks the right interpretation at the computation site.
 
-**Why not in-crate now:** the crate has no use case for non-Cardinality non-Width measures. Adding the abstraction now is premature; the categorical-trait pattern doesn't preclude adding it later if needed.
-
-**For users who want it:** the recipe is straightforward. Define a trait parameterized over the codomain. (Named `Measurable` here to avoid clashing with the `Measure<T>` value type.)
-
-```rust
-pub trait Measurable<Codomain> {
-    type Error: core::error::Error;
-    fn measure(&self) -> Result<Codomain, Self::Error>;
-}
-
-// Cardinality and Width become impls:
-impl<T: DiscreteElement> Measurable<Measure<T::Cardinality>> for FiniteInterval<T> {
-    type Error = CardinalityOverflowError;
-    fn measure(&self) -> Result<Measure<T::Cardinality>, Self::Error> {
-        self.try_cardinality()
-    }
-}
-
-// And a user-defined signed measure for an interval-weighted-by-position:
-pub struct SignedDisplacement<T>(T);
-
-impl<T: ContinuousElement + Neg<Output = T>> Measurable<SignedDisplacement<T::Displacement>>
-    for FiniteInterval<T>
-{
-    type Error = SignedMeasureError;
-    fn measure(&self) -> Result<SignedDisplacement<T::Displacement>, Self::Error> {
-        // ... compute signed displacement weighted by something user-specific
-        todo!()
-    }
-}
-```
-
-The categorical Element split (`DiscreteElement` / `ContinuousElement`) is **orthogonal** to the codomain axis: a user's `Measurable<Codomain>` impl is free to bound on either categorical trait or on `Element` directly.
-
-The two axes compose: element-category determines what set-structure information is available (cardinality vs displacement); codomain determines what the measure values look like. The crate commits to the first axis; users who need the second axis can build it on top.
+The math allows further axes — signed measures (`m: Set → ℝ`), complex-valued measures (`m: Set → ℂ`), or vector-valued measures (`m: Set → ℝⁿ`) — that would parameterize over their codomain. The crate has no in-tree use case for these. Users who need them define their own trait alongside `Measure` (e.g. `pub trait SignedMeasure { type Output; fn signed_measure(&self) -> Result<Self::Output, ...> }`) and impl it directly on the container types they care about. The `Measure` trait does not need to grow to accommodate; orthogonal user traits compose naturally with the Kind machinery via `where T: Element<Kind = ...>` bounds.
 
 ---
 
 ## Why the asymmetries are correct
 
-A reasonable critique: "Width and Cardinality have parallel shape, but Span lives somewhere else and has a different bound shape. Inconsistent?"
+1. **`Measure` is one trait, not two.** Earlier drafts gated `Width` and `Cardinality` separately by Element kind, on the theory that the math forbade cross-category calls. The math actually says each T has *one* natural measure (cardinality for discrete, Lebesgue width for continuous), and the Kind machinery already disambiguates. A single `Measure` trait with `Output = T::Measure` expresses this directly; the gating becomes redundant.
 
-The asymmetries reflect mathematical reality:
+2. **`Span` is not a `Measure`.** Span fails subadditivity on disjoint sets (`span([0,1]∪[3,4]) = 4`, but the additive measure is `2`). It is the diameter `sup − inf`, not an integral. Keeping it in `ops/` rather than `measure/` is the contract-enforcing choice. `Span` bounds directly on `TrySub` — Span's whole point is being available on any T with subtraction, so a categorical gate would defeat it.
 
-1. **Width and Cardinality are measures; Span is not.** Span fails subadditivity on disjoint sets. Putting Span in `measure/` would break the module's own contract.
+3. **Discreteness and total order are orthogonal.** Earlier drafts wrote `DiscreteElement: ... + Ord` on the basis that every in-crate discrete primitive is Ord. But discreteness is about adjacency — every element has a unique successor/predecessor under the type's order — not about totality. PartialOrd-only discrete types (Gaussian integers, integer lattices, power-set posets) are legitimate; pinning Ord onto the marker would exclude them for no structural reason. `Element` bounds on `PartialOrd + PartialEq` for the same reason it doesn't bound on `Ord` for floats: total order is its own axis. Operations that need it bound `+ Ord` locally.
 
-2. **DiscreteElement: Ord; ContinuousElement: no Ord.** Floats live in continuous; they're !Ord because of NaN. Forcing Ord on ContinuousElement would exclude `f32`/`f64`, which is half of the crate's user base. The asymmetry is the crate's central design tension; it doesn't get to disappear here.
+4. **Bound-validity has a known leak we're not closing here.** `Element` says "this type can appear as an interval bound." But `Extent<T>` derives `Ord` when `T: Ord`, which means `Extent<u32>` would type-check as a bound — yet `Extent::Infinite` doesn't represent a real element, only the absence of one. The current trait surface relies on convention to keep nonsense bounds out. A future revision could introduce a `BoundEligible` marker that gates "this `Element` impl is meaningful as a bound type," but that's parallel to (and not blocked by) this redesign.
 
-3. **Span bounds directly on `TrySub`, not on a categorical trait.** Span's whole point is being available on any T with subtraction — including discrete T. If Span required `ContinuousElement`, integer users lose their replacement for integer-Width. If Span required `DiscreteElement`, float users lose diameter. The direct bound is the only one that serves both audiences.
-
-The unifying principle is **"each operation expresses its math directly."** Width has a category (continuous); Cardinality has a category (discrete); Span doesn't have a category (it's pre-measure-theoretic). Naming the categories at the type level catches the math errors users would otherwise make.
+The unifying principle is **"each operation expresses its math directly."** `Measure` is the additive measure; `Span` is the diameter; the Kind machinery names the disjunction between discrete and continuous element types without forcing extra bounds. Naming the math directly catches the category errors users would otherwise make without inventing artificial asymmetries.

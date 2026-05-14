@@ -32,7 +32,7 @@
 ///
 /// # Errors
 ///
-/// The associated [`Error`](Midpoint::Error) type is a user-extension
+/// The associated [`Error`](Midpointable::Error) type is a user-extension
 /// hook. Every library-provided impl uses
 /// [`core::convert::Infallible`] except [`Decimal`](rust_decimal::Decimal),
 /// whose bounded precision means rounding the two halves can push their
@@ -42,21 +42,24 @@
 /// (`FiniteInterval`, `HalfInterval`, `EnumInterval`, `Interval`) are
 /// validated finite at construction (see [`Element::validate`](super::Element::validate)). When
 /// `T::midpoint` is reached through the set-level
-/// [`midpoint`](crate::sets::FiniteInterval::midpoint) accessors, the
-/// inputs are guaranteed finite, so library impls succeed.
+/// [`Midpoint`](crate::ops::Midpoint) trait, the inputs are guaranteed
+/// finite, so library impls succeed.
 ///
 /// Direct callers passing arbitrary values (e.g. `f32::midpoint(NAN, 0.0)`)
 /// inherit std's `f*::midpoint` semantics — typically a NaN-tainted
 /// result rather than an error.
-pub trait Midpoint: Sized {
+pub trait Midpointable: Sized {
+    #[allow(missing_docs)]
     type Error;
+
+    /// Calculate the span midpoint of a Set
     fn midpoint(self, other: Self) -> Result<Self, Self::Error>;
 }
 
 macro_rules! integer_midpoint_delegate_impl {
     ($($t:ty), +) => {
         $(
-            impl $crate::numeric::Midpoint for $t {
+            impl $crate::numeric::Midpointable for $t {
                 type Error = ::core::convert::Infallible;
 
                 /// Infallible: std's inherent integer `midpoint` is
@@ -77,17 +80,17 @@ integer_midpoint_delegate_impl!(i8, i16, i32, i64, i128, isize);
 macro_rules! float_midpoint_delegate_impl {
     ($($t:ty), +) => {
         $(
-            impl $crate::numeric::Midpoint for $t {
+            impl $crate::numeric::Midpointable for $t {
                 type Error = ::core::convert::Infallible;
 
                 /// Infallible by contract: values stored in any in-tree
                 /// set type are validated finite at construction
                 /// ([`Element::validate`](crate::numeric::Element::validate)
                 /// rejects `±INF`/`NaN`), so the set-level
-                /// [`midpoint`](crate::sets::FiniteInterval::midpoint)
-                /// accessors only ever reach this impl with finite
-                /// inputs. Delegates to the inherent float `midpoint`,
-                /// which avoids spurious overflow/underflow at extremes.
+                /// [`Midpoint`](crate::ops::Midpoint) trait only ever
+                /// reaches this impl with finite inputs. Delegates to
+                /// the inherent float `midpoint`, which avoids spurious
+                /// overflow/underflow at extremes.
                 ///
                 /// Direct callers passing non-finite values bypass the
                 /// in-tree contract and inherit std's `f*::midpoint`
@@ -108,7 +111,7 @@ mod tests {
     use super::*;
 
     // force resolution through trait
-    fn get_midpoint<T: Midpoint>(a: T, b: T) -> Result<T, T::Error> {
+    fn get_midpoint<T: Midpointable>(a: T, b: T) -> Result<T, T::Error> {
         a.midpoint(b)
     }
 

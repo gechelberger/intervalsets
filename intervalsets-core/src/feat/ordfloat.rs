@@ -5,13 +5,24 @@ use ordered_float::{NotNan, OrderedFloat};
 
 use crate::cast::{CastElement, LossyCastElement, TryCastElement};
 use crate::error::MathError;
-use crate::measure::Widthable;
-use crate::numeric::{Element, Midpoint};
+use crate::numeric::{ContinuousKind, Element, Midpointable};
 use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
 
-impl<T: FloatCore + Element> Element for NotNan<T> {
+impl<T> Element for NotNan<T>
+where
+    T: FloatCore + Element<Kind = ContinuousKind, Measure = T> + TryAdd<Output = T>,
+{
+    type Kind = ContinuousKind;
+    type Measure = T;
+
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
+    }
+
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+        // Delegates to the inner float's `try_measure_finite`, which
+        // returns `None` on non-finite diff (overflow at extremes).
+        T::try_measure_finite(&**left, &**right)
     }
 
     /// Rejects ±INF. `NotNan<T>` already excludes NaN by construction,
@@ -23,9 +34,19 @@ impl<T: FloatCore + Element> Element for NotNan<T> {
     }
 }
 
-impl<T: FloatCore + Element> Element for OrderedFloat<T> {
+impl<T> Element for OrderedFloat<T>
+where
+    T: FloatCore + Element<Kind = ContinuousKind, Measure = T> + TryAdd<Output = T>,
+{
+    type Kind = ContinuousKind;
+    type Measure = T;
+
     fn try_adjacent(&self, _: crate::bound::Side) -> Option<Self> {
         None
+    }
+
+    fn try_measure_finite(left: &Self, right: &Self) -> Option<Self::Measure> {
+        T::try_measure_finite(&left.0, &right.0)
     }
 
     /// Rejects NaN and ±INF. `OrderedFloat<T>` admits NaN under its
@@ -36,7 +57,7 @@ impl<T: FloatCore + Element> Element for OrderedFloat<T> {
     }
 }
 
-impl<T: FloatCore + Midpoint<Error = Infallible>> Midpoint for NotNan<T> {
+impl<T: FloatCore + Midpointable<Error = Infallible>> Midpointable for NotNan<T> {
     type Error = Infallible;
 
     /// Infallible by contract: values stored in any in-tree set type
@@ -50,27 +71,7 @@ impl<T: FloatCore + Midpoint<Error = Infallible>> Midpoint for NotNan<T> {
     }
 }
 
-impl<T: FloatCore + Widthable<Output = T>> Widthable for NotNan<T> {
-    type Output = T;
-
-    /// Delegates to the inner float's `Widthable`. Returns `None` if
-    /// the diff is non-finite (overflow at extreme inputs).
-    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
-        T::width_between(&**left, &**right)
-    }
-}
-
-impl<T: FloatCore + Widthable<Output = T>> Widthable for OrderedFloat<T> {
-    type Output = T;
-
-    /// Delegates to the inner float's `Widthable`. Returns `None` if
-    /// the diff is non-finite (overflow at extreme inputs).
-    fn width_between(left: &Self, right: &Self) -> Option<Self::Output> {
-        T::width_between(&left.0, &right.0)
-    }
-}
-
-impl<T: Midpoint<Error = Infallible>> Midpoint for OrderedFloat<T> {
+impl<T: Midpointable<Error = Infallible>> Midpointable for OrderedFloat<T> {
     type Error = Infallible;
 
     /// Infallible by contract: values stored in any in-tree set type
