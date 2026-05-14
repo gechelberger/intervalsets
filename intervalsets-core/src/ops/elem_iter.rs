@@ -90,7 +90,7 @@ pub trait IntoElementIterator {
 
 /// Iterator over the discrete element values of an interval.
 ///
-/// Yields `T` by value via [`Element::try_adjacent`]. Implements
+/// Yields `T` by value via [`Element::try_adjacent`](crate::numeric::Element::try_adjacent). Implements
 /// [`Iterator`], [`DoubleEndedIterator`], and [`core::iter::FusedIterator`],
 /// so combinators like `.rev()`, `.collect()`, `.take_while()`, and
 /// `.fuse()` all work as expected.
