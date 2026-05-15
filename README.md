@@ -84,3 +84,18 @@ let hinted = interval!("(.., ..)", i32);
 
 `intervalsets_core::enum_interval!` is the no-std / no-alloc analogue.
 Both macros share the same grammar as the runtime `FromStr` impl.
+
+The `set!` macro is the multi-piece analogue, accepting the `Display`
+form for `IntervalSet`:
+
+```rust
+use intervalsets::prelude::*;
+
+let empty: IntervalSet<i32> = set!("{}");
+let single: IntervalSet<i32> = set!("{[0, 10]}");
+let multi = set!("{[0, 5] U [10, 15] U [20, 30]}", i32);
+```
+
+Pieces don't need to be sorted, non-overlapping, or non-empty —
+`IntervalSet`'s union machinery normalizes everything to satisfy the
+set invariants.

@@ -39,8 +39,20 @@ pub(crate) struct Paths {
 }
 
 pub(crate) fn build(form: Form, paths: &Paths, span: Span) -> Result<TokenStream> {
+    let ctor = build_ctor(form, paths, span)?;
+    let crate_root = &paths.crate_root;
+    Ok(quote!({
+        #[allow(unused_imports)]
+        use #crate_root::factory::traits::*;
+        #ctor
+    }))
+}
+
+/// Build just the constructor call (no surrounding block / trait imports).
+/// Used by `interval!` (wrapped in a block) and by `set!` (chained with `.union(...)`).
+pub(crate) fn build_ctor(form: Form, paths: &Paths, span: Span) -> Result<TokenStream> {
     let Paths {
-        crate_root,
+        crate_root: _,
         type_path,
         type_param,
     } = paths;
@@ -50,7 +62,7 @@ pub(crate) fn build(form: Form, paths: &Paths, span: Span) -> Result<TokenStream
         None => quote!(#type_path),
     };
 
-    let body = match form {
+    Ok(match form {
         Form::Empty => quote!(#qualified::empty()),
         Form::Unbounded => quote!(#qualified::unbounded()),
         Form::Closed(l, r) => {
@@ -85,13 +97,7 @@ pub(crate) fn build(form: Form, paths: &Paths, span: Span) -> Result<TokenStream
             let rhs = body_expr(r, span)?;
             quote!(#qualified::unbound_open(#rhs))
         }
-    };
-
-    Ok(quote!({
-        #[allow(unused_imports)]
-        use #crate_root::factory::traits::*;
-        #body
-    }))
+    })
 }
 
 fn parse_pair(l: TokenStream, r: TokenStream, span: Span) -> Result<(Expr, Expr)> {

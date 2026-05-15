@@ -91,15 +91,16 @@ impl<T: fmt::Display> fmt::Display for EnumInterval<T> {
 impl<T: fmt::Display> fmt::Display for MaybeDisjoint<T> {
     /// `Connected(iv)` delegates to the inner `EnumInterval`'s
     /// `Display`. `Disjoint(a, b)` wraps both pieces in set-notation
-    /// braces, e.g. `{[0, 5], [10, 15]}`. Empty MD prints as `{}`
-    /// (inherited from the empty `FiniteInterval` display).
+    /// braces with a ` U ` (union) separator, e.g. `{[0, 5] U [10, 15]}`.
+    /// Empty MD prints as `{}` (inherited from the empty `FiniteInterval`
+    /// display).
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Connected(iv) => iv.fmt(f),
             Self::Disjoint(a, b) => {
                 f.write_char('{')?;
                 a.fmt(f)?;
-                f.write_str(", ")?;
+                f.write_str(" U ")?;
                 b.fmt(f)?;
                 f.write_char('}')
             }
@@ -185,7 +186,7 @@ mod tests {
     #[test]
     fn test_display_maybe_disjoint_disjoint_uses_set_notation() {
         let md = MaybeDisjoint::from_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15));
-        assert_eq!(std::format!("{}", md), "{[0, 5], [10, 15]}");
+        assert_eq!(std::format!("{}", md), "{[0, 5] U [10, 15]}");
     }
 
     #[test]
@@ -194,6 +195,6 @@ mod tests {
             EnumInterval::unbound_closed(0_i32),
             EnumInterval::closed_unbound(10),
         );
-        assert_eq!(std::format!("{}", md), "{(.., 0], [10, ..)}");
+        assert_eq!(std::format!("{}", md), "{(.., 0] U [10, ..)}");
     }
 }

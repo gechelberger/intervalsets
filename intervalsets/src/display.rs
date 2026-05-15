@@ -13,9 +13,9 @@ impl<T: fmt::Display> fmt::Display for Interval<T> {
 impl<T: fmt::Display> fmt::Display for IntervalSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.is_empty() {
-            Interval::<i32>::empty().fmt(f)
+            write!(f, "{{}}")
         } else {
-            write!(f, "{{{}}}", self.iter().join(", "))
+            write!(f, "{{{}}}", self.iter().join(" U "))
         }
     }
 }
@@ -67,7 +67,20 @@ mod tests {
                     .union(Interval::closed_open(11.1, 22.2))
                     .union(Interval::open_unbound(33.3))
             ),
-            "{(.., -9.9], (5.5, 9.9), [11.1, 22.2), (33.3, ..)}"
+            "{(.., -9.9] U (5.5, 9.9) U [11.1, 22.2) U (33.3, ..)}"
         )
+    }
+
+    #[test]
+    fn test_display_set_empty() {
+        assert_eq!(format!("{}", IntervalSet::<i32>::empty()), "{}");
+    }
+
+    #[test]
+    fn test_display_set_single_piece() {
+        assert_eq!(
+            format!("{}", IntervalSet::from(Interval::closed(0, 10))),
+            "{[0, 10]}"
+        );
     }
 }

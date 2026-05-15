@@ -1,9 +1,10 @@
 //! Compile-time-checked interval literal macros for the
 //! [`intervalsets`](https://docs.rs/intervalsets) family of crates.
 //!
-//! This crate provides two procedural macros:
+//! This crate provides three procedural macros:
 //!
 //! - [`interval!`] — produces an `intervalsets::Interval<T>`.
+//! - [`set!`] — produces an `intervalsets::IntervalSet<T>` (multi-piece).
 //! - [`enum_interval!`] — produces an `intervalsets_core::EnumInterval<T>`
 //!   (no-std / no-alloc friendly).
 //!
@@ -75,6 +76,7 @@ extern crate proc_macro;
 
 mod cross;
 mod expand;
+mod set;
 mod shape;
 
 use proc_macro::TokenStream;
@@ -138,6 +140,41 @@ pub fn enum_interval(input: TokenStream) -> TokenStream {
     expand_entry(input, Target::EnumInterval)
 }
 
+/// Compile-time-checked literal for [`intervalsets::IntervalSet<T>`](https://docs.rs/intervalsets/latest/intervalsets/struct.IntervalSet.html).
+///
+/// Accepts a string literal in the multi-piece set grammar, matching
+/// the runtime `Display` form for `IntervalSet`:
+///
+/// - `{}` — empty set.
+/// - `{[0, 10]}` — single-piece set.
+/// - `{[0, 5] U [10, 15] U [20, 30]}` — multi-piece, ASCII `U`
+///   separator with whitespace on both sides.
+///
+/// Each piece is a valid interval per the [`interval!`] grammar. The
+/// macro emits a chain of `Interval::ctor(...).union(...)` calls — the
+/// resulting `IntervalSet<T>` is normalized (sorted, merged) by the
+/// existing `Union::union` machinery, so pieces don't need to be
+/// sorted, non-overlapping, or non-empty in source.
+///
+/// An optional second argument supplies a storage-type hint as a
+/// turbofish on the **first** piece (subsequent pieces inherit `T`
+/// through type inference on `Union::union`).
+///
+/// ```ignore
+/// use intervalsets::prelude::*;
+///
+/// let a: IntervalSet<i32> = set!("{}");
+/// let b: IntervalSet<i32> = set!("{[0, 10]}");
+/// let c = set!("{[0, 1] U (10, 24) U [20, 35)}", i32);
+/// ```
+#[proc_macro]
+pub fn set(input: TokenStream) -> TokenStream {
+    match build_set(input.into()) {
+        Ok(ts) => ts.into(),
+        Err(err) => err.to_compile_error().into(),
+    }
+}
+
 #[derive(Copy, Clone)]
 enum Target {
     Interval,
@@ -196,6 +233,66 @@ fn build(input: TokenStream2, target: Target) -> syn::Result<TokenStream2> {
     let paths = paths_for(target, ty);
 
     expand::build(form, &paths, span)
+}
+
+fn build_set(input: TokenStream2) -> syn::Result<TokenStream2> {
+    let MacroInput { lit, ty } = syn::parse2::<MacroInput>(input)?;
+    let span = lit.span();
+    let s = lit.value();
+
+    let parts = crate::set::parse_set(&s).map_err(|e| syn::Error::new(span, e.message()))?;
+
+    let root = resolve_crate("intervalsets");
+
+    // Pre-compute the `IntervalSet`-targeted turbofish before consuming `ty`
+    // into the first piece's Paths. Used by the empty and single-piece arms;
+    // the multi-piece arm doesn't need it.
+    let qualified_set = match &ty {
+        Some(t) => quote!(#root::IntervalSet::<#t>),
+        None => quote!(#root::IntervalSet),
+    };
+
+    if parts.pieces.is_empty() {
+        return Ok(quote!(#qualified_set::empty()));
+    }
+
+    let mut pieces_iter = parts.pieces.into_iter();
+    let first_form = pieces_iter.next().expect("non-empty pieces");
+    // First piece carries the type hint; subsequent pieces are inferred
+    // via `Union::union`'s signature.
+    let first_paths = Paths {
+        crate_root: root.clone(),
+        type_path: quote!(#root::Interval),
+        type_param: ty,
+    };
+    let first_ctor = expand::build_ctor(first_form, &first_paths, span)?;
+
+    let rest_paths = Paths {
+        crate_root: root.clone(),
+        type_path: quote!(#root::Interval),
+        type_param: None,
+    };
+    let mut rest_ctors: Vec<TokenStream2> = Vec::new();
+    for form in pieces_iter {
+        rest_ctors.push(expand::build_ctor(form, &rest_paths, span)?);
+    }
+
+    let body = if rest_ctors.is_empty() {
+        // Single piece — coerce to IntervalSet via From.
+        quote!(#qualified_set::from(#first_ctor))
+    } else {
+        // Multi-piece — chain unions. Interval::union(Interval) → IntervalSet<T>,
+        // then IntervalSet::union(Interval) → IntervalSet<T>.
+        quote!(#first_ctor #( .union(#rest_ctors) )*)
+    };
+
+    Ok(quote!({
+        #[allow(unused_imports)]
+        use #root::factory::traits::*;
+        #[allow(unused_imports)]
+        use #root::ops::Union;
+        #body
+    }))
 }
 
 fn paths_for(target: Target, type_param: Option<syn::Type>) -> Paths {

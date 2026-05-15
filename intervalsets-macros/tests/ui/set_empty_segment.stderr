@@ -1,0 +1,5 @@
+error: empty segment between `U` separators; check for leading, trailing, or doubled `U`
+ --> tests/ui/set_empty_segment.rs:4:18
+  |
+4 |     let _ = set!("{ U [0, 10]}");
+  |                  ^^^^^^^^^^^^^^

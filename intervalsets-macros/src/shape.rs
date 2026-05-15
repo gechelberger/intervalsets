@@ -66,8 +66,8 @@ impl ShapeError {
                  (infinity is never \"included\")"
             }
             Self::SetNotation => {
-                "`{...}` is set notation; `interval!` produces a single interval \
-                 (use `{}` for the empty interval)"
+                "`{...}` is set notation; `interval!` produces a single interval — \
+                 use `set!` for multi-piece sets, or `{}` for the empty interval"
             }
         }
     }

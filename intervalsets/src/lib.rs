@@ -88,6 +88,24 @@
 //! assert_eq!(u, Interval::<i32>::unbounded());
 //! ```
 //!
+//! The [`set!`] macro is the multi-piece analogue. It accepts the
+//! runtime `Display` form for `IntervalSet`: `{}`, `{piece}`, or
+//! `{piece U piece U ...}`. Pieces don't need to be sorted, normalized,
+//! or non-overlapping — `IntervalSet`'s union machinery handles that.
+//!
+//! ```
+//! use intervalsets::prelude::*;
+//!
+//! let empty: IntervalSet<i32> = set!("{}");
+//! let single: IntervalSet<i32> = set!("{[0, 10]}");
+//! let multi = set!("{[0, 5] U [10, 15] U [20, 30]}", i32);
+//!
+//! // Round-trips with Display:
+//! let x = Interval::closed(0, 5).union(Interval::closed(10, 15));
+//! let y: IntervalSet<i32> = set!("{[0, 5] U [10, 15]}");
+//! assert_eq!(x, y);
+//! ```
+//!
 //! ## Set Operations
 //! ```
 //! use intervalsets::prelude::*;
@@ -205,6 +223,44 @@ pub use intervalsets_core::{bound, default_continuous_element_impl, numeric};
 /// assert_eq!(w, Interval::<i32>::unbounded());
 /// ```
 pub use intervalsets_macros::interval;
+/// Compile-time-checked literal macro for [`IntervalSet`]. Parses a
+/// string literal at expansion time in the same grammar as the runtime
+/// [`FromStr`](crate::IntervalSet) impl; malformed input fails to build
+/// instead of panicking at runtime.
+///
+/// The grammar matches `Display for IntervalSet`:
+/// - `{}` — empty.
+/// - `{[0, 10]}` — single piece.
+/// - `{[0, 5] U [10, 15]}` — multi-piece, ` U ` separator.
+///
+/// Each piece is a valid interval per the [`interval!`] grammar. The
+/// macro emits a chain of `.union(...)` calls; `IntervalSet`
+/// normalization handles sort/merge/empty-drop.
+///
+/// An optional second argument supplies a storage-type hint as a
+/// turbofish on the **first** piece (rest inferred via `Union::union`).
+///
+/// ```
+/// use intervalsets::prelude::*;
+///
+/// let e: IntervalSet<i32> = set!("{}");
+/// assert_eq!(e, IntervalSet::empty());
+///
+/// let s: IntervalSet<i32> = set!("{[0, 10]}");
+/// assert_eq!(s, IntervalSet::from(Interval::closed(0, 10)));
+///
+/// let multi = set!("{[0, 5] U [10, 15] U [20, 30]}", i32);
+/// let expected = Interval::closed(0, 5)
+///     .union(Interval::closed(10, 15))
+///     .union(Interval::closed(20, 30));
+/// assert_eq!(multi, expected);
+///
+/// // Round-trip with Display:
+/// let x = Interval::closed(0, 5).union(Interval::closed(10, 15));
+/// let y: IntervalSet<i32> = set!("{[0, 5] U [10, 15]}");
+/// assert_eq!(x, y);
+/// ```
+pub use intervalsets_macros::set;
 
 pub mod error;
 pub mod factory;
@@ -232,5 +288,5 @@ pub mod prelude {
     pub use crate::measure::Measure;
     pub use crate::ops::*;
     pub use crate::sets::{Interval, IntervalSet};
-    pub use crate::{interval, Element, MaybeEmpty, OrdBounded, SetBounds, Side};
+    pub use crate::{interval, set, Element, MaybeEmpty, OrdBounded, SetBounds, Side};
 }
