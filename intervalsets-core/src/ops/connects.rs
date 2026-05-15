@@ -74,7 +74,7 @@ pub fn are_bounds_connected<T: Element>(right: &FiniteBound<T>, left: &FiniteBou
         (Some(right_up), Some(left_down)) => {
             // std normalized comparison. a discrete bound may only be open if
             // it is the MIN/MAX of the data type which is handled by the prev
-            // two cases. ie. connects([0, MAX-1], (MAX, ->)) -> should be false.
+            // two cases. ie. connects([0, MAX-1], (MAX, ..)) -> should be false.
             right_up == *left.value()
                 && left_down == *right.value()
                 && left.is_closed()

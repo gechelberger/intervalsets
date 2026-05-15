@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn maybe_disjoint_pair_with_infinite_hull() {
-        // (<-, 0] ∪ [5, ->) — outer hull is unbounded on both sides.
+        // (.., 0] ∪ [5, ..) — outer hull is unbounded on both sides.
         let a = EnumInterval::unbound_closed(0_i32);
         let b = EnumInterval::closed_unbound(5_i32);
         let x = MaybeDisjoint::from_pair(a, b);

@@ -41,20 +41,20 @@ mod tests {
 
     #[test]
     fn test_display_half() {
-        assert_eq!(format!("{}", Interval::unbound_closed(0.5)), "(<-, 0.5]");
+        assert_eq!(format!("{}", Interval::unbound_closed(0.5)), "(.., 0.5]");
 
-        assert_eq!(format!("{}", Interval::unbound_open(0.5)), "(<-, 0.5)");
+        assert_eq!(format!("{}", Interval::unbound_open(0.5)), "(.., 0.5)");
 
-        assert_eq!(format!("{}", Interval::closed_unbound(0.5)), "[0.5, ->)");
+        assert_eq!(format!("{}", Interval::closed_unbound(0.5)), "[0.5, ..)");
 
-        assert_eq!(format!("{}", Interval::open_unbound(0.5)), "(0.5, ->)")
+        assert_eq!(format!("{}", Interval::open_unbound(0.5)), "(0.5, ..)")
     }
 
     #[test]
     fn test_display_interval() {
         assert_eq!(format!("{}", Interval::<i8>::empty()), "{}");
 
-        assert_eq!(format!("{}", Interval::<i8>::unbounded()), "(<-, ->)");
+        assert_eq!(format!("{}", Interval::<i8>::unbounded()), "(.., ..)");
     }
 
     #[test]
@@ -67,7 +67,7 @@ mod tests {
                     .union(Interval::closed_open(11.1, 22.2))
                     .union(Interval::open_unbound(33.3))
             ),
-            "{(<-, -9.9], (5.5, 9.9), [11.1, 22.2), (33.3, ->)}"
+            "{(.., -9.9], (5.5, 9.9), [11.1, 22.2), (33.3, ..)}"
         )
     }
 }

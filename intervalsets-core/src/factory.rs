@@ -82,7 +82,7 @@ pub trait Factory<T> {
 
     /// The error type for fallible (`try_*`) factory fns. Required to
     /// be `From<Error>` so factory methods can propagate
-    /// [`Error::InvalidBoundLimit`]
+    /// [`Error::InvalidElement`]
     /// without per-method conversion plumbing.
     type Error: From<Error>;
 }
@@ -191,7 +191,7 @@ pub trait FiniteFactory<T: Element>: TryFiniteFactory<T> {
     /// ([`Error::InvalidBoundPair`])
     /// or if either limit is rejected by
     /// [`Element::validate`]
-    /// ([`Error::InvalidBoundLimit`]).
+    /// ([`Error::InvalidElement`]).
     ///
     /// For coercive semantics (crossed → `Empty`), see
     /// [`SatisfyFiniteInterval::satisfy_bounds`].
@@ -409,22 +409,22 @@ pub trait TryHalfBoundedFactory<T: Element>: Factory<T> {
         Self::try_half_bounded(Side::Right, bound)
     }
 
-    /// Fallible (a, ->) — open left bound, unbounded right.
+    /// Fallible (a, ..) — open left bound, unbounded right.
     fn try_open_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
         Self::try_left_bounded(FiniteBound::try_open(lhs)?)
     }
 
-    /// Fallible [a, ->) — closed left bound, unbounded right.
+    /// Fallible [a, ..) — closed left bound, unbounded right.
     fn try_closed_unbound(lhs: T) -> Result<Self::Output, Self::Error> {
         Self::try_left_bounded(FiniteBound::try_closed(lhs)?)
     }
 
-    /// Fallible (<-, b) — unbounded left, open right bound.
+    /// Fallible (.., b) — unbounded left, open right bound.
     fn try_unbound_open(rhs: T) -> Result<Self::Output, Self::Error> {
         Self::try_right_bounded(FiniteBound::try_open(rhs)?)
     }
 
-    /// Fallible (<-, b] — unbounded left, closed right bound.
+    /// Fallible (.., b] — unbounded left, closed right bound.
     fn try_unbound_closed(rhs: T) -> Result<Self::Output, Self::Error> {
         Self::try_right_bounded(FiniteBound::try_closed(rhs)?)
     }
@@ -446,22 +446,22 @@ pub trait HalfBoundedFactory<T: Element>: TryHalfBoundedFactory<T> {
     /// ```
     fn half_bounded(side: Side, bound: FiniteBound<T>) -> Self::Output;
 
-    /// Right-bounded interval (`(<-, b]` or `(<-, b)`).
+    /// Right-bounded interval (`(.., b]` or `(.., b)`).
     fn right_bounded(bound: FiniteBound<T>) -> Self::Output;
 
-    /// Left-bounded interval (`[a, ->)` or `(a, ->)`).
+    /// Left-bounded interval (`[a, ..)` or `(a, ..)`).
     fn left_bounded(bound: FiniteBound<T>) -> Self::Output;
 
-    /// Returns a new open, right-unbound interval `(a, ->)`.
+    /// Returns a new open, right-unbound interval `(a, ..)`.
     fn open_unbound(left: T) -> Self::Output;
 
-    /// Returns a new closed, right-unbound interval `[a, ->)`.
+    /// Returns a new closed, right-unbound interval `[a, ..)`.
     fn closed_unbound(left: T) -> Self::Output;
 
-    /// Returns a new open, left-unbound interval `(<-, b)`.
+    /// Returns a new open, left-unbound interval `(.., b)`.
     fn unbound_open(right: T) -> Self::Output;
 
-    /// Returns a new closed, left-unbound interval `(<-, b]`.
+    /// Returns a new closed, left-unbound interval `(.., b]`.
     fn unbound_closed(right: T) -> Self::Output;
 }
 
@@ -496,14 +496,14 @@ impl<T: Element, F: TryHalfBoundedFactory<T>> HalfBoundedFactory<T> for F {
     }
 }
 
-/// Constructs the unbounded interval `(<-, ->)`.
+/// Constructs the unbounded interval `(.., ..)`.
 pub trait UnboundedFactory<T>: Factory<T> {
     /// Returns a new unbounded interval.
     ///
     /// An unbounded interval contains every element in `T`,
     /// and therefore is a superset of all sets of `T`.
     ///
-    /// (<-, ->) = { x in T }
+    /// (.., ..) = { x in T }
     ///
     /// # Example
     ///
@@ -611,7 +611,7 @@ mod tests {
         assert!(EnumInterval::try_open(10.0, 0.0).is_err());
         assert!(EnumInterval::try_closed(10, 0).is_err());
 
-        // NaN surfaces as InvalidBoundLimit at the bound chokepoint.
+        // NaN surfaces as InvalidElement at the bound chokepoint.
         assert_eq!(EnumInterval::try_singleton(f32::NAN).ok(), None);
         assert_eq!(EnumInterval::try_unbound_open(f32::NAN).ok(), None);
 

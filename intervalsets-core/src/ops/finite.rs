@@ -55,7 +55,7 @@ impl<T: Element + num_traits::Bounded> IntoFiniteInterval for HalfInterval<T> {
     #[inline(always)]
     fn into_finite_interval(self) -> Self::Output {
         // An open bound at the type's saturating extreme (e.g.
-        // `(255, ->)` for u8) describes an empty set after truncation.
+        // `(255, ..)` for u8) describes an empty set after truncation.
         // The half-bounded `bound` came from a validated interval, so
         // I2 + I4 hold; the Tier-3 helper evaluates the pair
         // satisfiability against the saturating closed bound.

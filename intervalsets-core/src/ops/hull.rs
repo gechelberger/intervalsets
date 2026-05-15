@@ -323,10 +323,10 @@ mod tests {
     #[test]
     fn test_hull_t() {
         let x = FiniteInterval::try_hull([f32::NAN]);
-        assert_eq!(x, Err(Error::InvalidBoundLimit));
+        assert_eq!(x, Err(Error::InvalidElement));
 
         let x = FiniteInterval::try_hull([&f32::NAN]);
-        assert_eq!(x, Err(Error::InvalidBoundLimit));
+        assert_eq!(x, Err(Error::InvalidElement));
 
         let data = [0.0, 1.0, 2.0, 3.0, 4.0, 5.0];
 

@@ -71,7 +71,7 @@ fn test_restricted_universe() {
 
 #[test]
 fn test_unsigned_edge_case() {
-    let x = Interval::<u8>::unbound_open(0); // (<-, 0)
+    let x = Interval::<u8>::unbound_open(0); // (.., 0)
     let all_valid_u8_values = Interval::<u8>::closed(0, 255);
 
     assert_eq!(x.intersection(all_valid_u8_values), Interval::empty());

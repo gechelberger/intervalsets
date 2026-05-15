@@ -69,7 +69,7 @@ where
     #[inline]
     fn try_cast(self) -> Result<Self::Output, Self::Error> {
         let (bt, v) = self.into_raw();
-        let u = v.try_cast_element().ok_or(Error::InvalidBoundLimit)?;
+        let u = v.try_cast_element().ok_or(Error::InvalidElement)?;
         FiniteBound::try_new(bt, u)
     }
 }
@@ -117,7 +117,7 @@ where
                 let l = lhs.lossy_cast();
                 let r = rhs.lossy_cast();
                 // Coercive: crossed bounds (two distinct T's collapsing
-                // to the same U) → Empty. InvalidBoundLimit is
+                // to the same U) → Empty. InvalidElement is
                 // unreachable for library types — az::SaturatingCast
                 // always produces finite, in-range U — so the
                 // unwrap_or_else is a Tier-1 safety floor only
@@ -442,7 +442,7 @@ mod tests {
     fn try_cast_element_overflow_errors() {
         let x = FiniteInterval::closed(0_i64, i64::MAX);
         let y: Result<FiniteInterval<i32>, _> = x.try_cast();
-        assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        assert!(matches!(y, Err(Error::InvalidElement)));
     }
 
     #[test]
@@ -452,7 +452,7 @@ mod tests {
         // which rejects non-finite.
         let x = FiniteInterval::closed(0.0_f64, f64::MAX);
         let y: Result<FiniteInterval<f32>, _> = x.try_cast();
-        assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+        assert!(matches!(y, Err(Error::InvalidElement)));
     }
 
     #[test]

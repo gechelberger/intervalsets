@@ -557,7 +557,7 @@ mod tests {
             let huge = BigInt::from(i64::MAX);
             let x = FiniteInterval::closed(BigInt::from(0), huge);
             let y: Result<FiniteInterval<i32>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         // ---------- TryCast (primitive → BigInt) ----------
@@ -583,14 +583,14 @@ mod tests {
         fn try_cast_negative_to_biguint_errors() {
             let x = FiniteInterval::closed(-10_i32, 10);
             let y: Result<FiniteInterval<BigUint>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         #[test]
         fn try_cast_bigint_to_biguint_negative_errors() {
             let x = FiniteInterval::closed(BigInt::from(-5), BigInt::from(10));
             let y: Result<FiniteInterval<BigUint>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         // ---------- LossyCast (BigInt → primitive with saturation) ----------

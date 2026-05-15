@@ -22,8 +22,8 @@ pub enum Error {
     #[error("interval or bound-pair invariants violated (crossed bounds, or structurally invalid OrdBoundPair)")]
     InvalidBoundPair,
 
-    /// A bound's limit value was rejected as a valid bound limit.
-    /// Covers two related conditions:
+    /// An element value was rejected as a valid bound. Covers two
+    /// related conditions:
     ///
     /// 1. **Validate rejection** — `Element::validate` returned `None`.
     ///    Library float types reject `±INF` and `NaN` here; user types
@@ -37,10 +37,10 @@ pub enum Error {
     ///    `Element::validate` if it matters.
     ///
     /// The two contexts share this variant because the user-facing
-    /// answer is the same: "this value isn't a usable bound limit."
+    /// answer is the same: "this element isn't usable as a bound."
     /// `From<TotalOrderError> for Error` produces this variant.
-    #[error("bound limit rejected (validate or partial_cmp failure)")]
-    InvalidBoundLimit,
+    #[error("element value rejected (validate or partial_cmp failure)")]
+    InvalidElement,
 
     /// Arithmetic-on-bounds failure. Wraps [`MathError`].
     #[error(transparent)]
@@ -49,7 +49,7 @@ pub enum Error {
 
 impl From<TotalOrderError> for Error {
     fn from(_: TotalOrderError) -> Self {
-        Error::InvalidBoundLimit
+        Error::InvalidElement
     }
 }
 
@@ -118,3 +118,49 @@ impl From<Infallible> for MathError {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
 #[error("incomparable values")]
 pub struct TotalOrderError;
+
+/// Failure parsing an interval from its string form.
+///
+/// `E` is the element type's `FromStr::Err`, kept generic so the
+/// element error is preserved verbatim — no allocation, no erasure.
+///
+/// The two `Invalid*` variants mirror the corresponding [`Error`]
+/// variants so a [`From<Error>`] lift is lossless for the cases the
+/// parser can encounter.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, ::thiserror::Error)]
+#[non_exhaustive]
+pub enum ParseIntervalError<E> {
+    /// Top-level grammar didn't match — bad delimiters, missing
+    /// separator, unbounded marker on the wrong side, etc.
+    #[error("malformed interval syntax")]
+    Syntax,
+
+    /// A bound's value text was rejected by `T::from_str`.
+    #[error("element parse error: {0}")]
+    Element(E),
+
+    /// An element parsed successfully but was rejected by
+    /// `Element::validate` (e.g. `NaN`, `±INF` for floats). Mirrors
+    /// [`Error::InvalidElement`].
+    #[error("element value rejected")]
+    InvalidElement,
+
+    /// Both elements were valid but the resulting bound pair was
+    /// rejected (crossed bounds). Mirrors [`Error::InvalidBoundPair`].
+    #[error("interval bound pair invalid (crossed bounds)")]
+    InvalidBoundPair,
+}
+
+impl<E> From<Error> for ParseIntervalError<E> {
+    fn from(e: Error) -> Self {
+        match e {
+            Error::InvalidBoundPair => ParseIntervalError::InvalidBoundPair,
+            Error::InvalidElement => ParseIntervalError::InvalidElement,
+            // The parser only invokes factory `try_*` constructors,
+            // which can't surface `Math` errors. A future additive
+            // variant of `Error` lands here as a syntax-shaped failure
+            // until this match is extended.
+            _ => ParseIntervalError::Syntax,
+        }
+    }
+}

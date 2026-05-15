@@ -16,10 +16,10 @@
 //! [`TotalOrderError`] is re-exported from core verbatim — it's the
 //! return type of `TryCmp::try_cmp` for callers that want the precise
 //! single-bit "incomparable" failure; in the umbrella `Error` it
-//! collapses to [`InvalidBoundLimit`](Error::InvalidBoundLimit).
+//! collapses to [`InvalidElement`](Error::InvalidElement).
 
 use intervalsets_core::error::Error as CoreError;
-pub use intervalsets_core::error::{MathError, TotalOrderError};
+pub use intervalsets_core::error::{MathError, ParseIntervalError, TotalOrderError};
 use thiserror::Error as ThisError;
 
 /// Errors returned by fallible `intervalsets` APIs.
@@ -54,12 +54,12 @@ pub enum Error {
     #[error("interval set invariants violated")]
     InvalidIntervalSet,
 
-    /// A bound's limit value was rejected as a valid bound limit.
-    /// Covers both `Element::validate` rejection and `partial_cmp`
-    /// failure (NaN-style incomparability) — see the core variant
-    /// docs for details.
-    #[error("bound limit rejected (validate or partial_cmp failure)")]
-    InvalidBoundLimit,
+    /// An element value was rejected as a valid bound. Covers both
+    /// `Element::validate` rejection and `partial_cmp` failure
+    /// (NaN-style incomparability) — see the core variant docs for
+    /// details.
+    #[error("element value rejected (validate or partial_cmp failure)")]
+    InvalidElement,
 
     /// Arithmetic-on-bounds failure surfaced by a `try_*` math impl —
     /// integer overflow / signed `MIN / -1` (`MathError::Range`),
@@ -71,7 +71,7 @@ pub enum Error {
 
 impl From<TotalOrderError> for Error {
     fn from(_: TotalOrderError) -> Self {
-        Error::InvalidBoundLimit
+        Error::InvalidElement
     }
 }
 
@@ -79,7 +79,7 @@ impl From<CoreError> for Error {
     fn from(e: CoreError) -> Self {
         match e {
             CoreError::InvalidBoundPair => Error::InvalidBoundPair,
-            CoreError::InvalidBoundLimit => Error::InvalidBoundLimit,
+            CoreError::InvalidElement => Error::InvalidElement,
             CoreError::Math(m) => Error::Math(m),
             // CoreError is #[non_exhaustive]; if a new variant is added,
             // this `From` lift must be extended to map it. The wildcard

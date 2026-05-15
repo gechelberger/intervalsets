@@ -450,13 +450,13 @@ impl<T: Element> FiniteBound<T> {
     /// # Errors
     ///
     /// Returns
-    /// [`Error::InvalidBoundLimit`]
+    /// [`Error::InvalidElement`]
     /// when `T::validate` returns `None`.
     #[inline]
     pub fn try_new(bound_type: BoundType, limit: T) -> Result<Self, Error> {
         match limit.validate() {
             Some(v) => Ok(Self(bound_type, v)),
-            None => Err(Error::InvalidBoundLimit),
+            None => Err(Error::InvalidElement),
         }
     }
 
@@ -1146,7 +1146,7 @@ mod test {
                 OrdBound::closed(f32::NAN),
             )
             .unwrap_err();
-            assert!(matches!(err, Error::InvalidBoundLimit));
+            assert!(matches!(err, Error::InvalidElement));
         }
 
         #[test]
@@ -1344,40 +1344,40 @@ mod test {
         #[test]
         fn rejects_positive_infinity_f64() {
             let r = FiniteBound::<f64>::try_closed(f64::INFINITY);
-            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(r, Err(Error::InvalidElement)));
 
             let r = FiniteBound::<f64>::try_open(f64::INFINITY);
-            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(r, Err(Error::InvalidElement)));
 
             let r = FiniteBound::<f64>::try_new(BoundType::Closed, f64::INFINITY);
-            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(r, Err(Error::InvalidElement)));
         }
 
         #[test]
         fn rejects_negative_infinity_f64() {
             let r = FiniteBound::<f64>::try_closed(f64::NEG_INFINITY);
-            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(r, Err(Error::InvalidElement)));
         }
 
         #[test]
         fn rejects_nan_f64() {
             let r = FiniteBound::<f64>::try_closed(f64::NAN);
-            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(r, Err(Error::InvalidElement)));
         }
 
         #[test]
         fn rejects_non_finite_f32() {
             assert!(matches!(
                 FiniteBound::<f32>::try_closed(f32::INFINITY),
-                Err(Error::InvalidBoundLimit)
+                Err(Error::InvalidElement)
             ));
             assert!(matches!(
                 FiniteBound::<f32>::try_closed(f32::NEG_INFINITY),
-                Err(Error::InvalidBoundLimit)
+                Err(Error::InvalidElement)
             ));
             assert!(matches!(
                 FiniteBound::<f32>::try_closed(f32::NAN),
-                Err(Error::InvalidBoundLimit)
+                Err(Error::InvalidElement)
             ));
         }
 
@@ -1411,10 +1411,10 @@ mod test {
             use crate::sets::FiniteInterval;
 
             let r = FiniteInterval::<f64>::try_closed(0.0, f64::INFINITY);
-            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(r, Err(Error::InvalidElement)));
 
             let r = FiniteInterval::<f64>::try_open(f64::NEG_INFINITY, 0.0);
-            assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(r, Err(Error::InvalidElement)));
         }
     }
 }

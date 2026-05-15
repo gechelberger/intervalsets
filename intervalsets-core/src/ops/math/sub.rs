@@ -89,8 +89,8 @@ where
     type Error = Error;
 
     fn try_sub(self, rhs: HalfInterval<T>) -> Result<Self::Output, Self::Error> {
-        // (a, b) - (c, ->) => (<-, b - c)
-        // (a, b) - (<-, c) => (a - c, ->)
+        // (a, b) - (c, ..) => (.., b - c)
+        // (a, b) - (.., c) => (a - c, ..)
         let Some((lhs_min, lhs_max)) = self.into_raw() else {
             return Ok(EnumInterval::empty());
         };
@@ -111,8 +111,8 @@ where
     type Error = Error;
 
     fn try_sub(self, rhs: FiniteInterval<T>) -> Result<Self::Output, Self::Error> {
-        // (<-, c) - (a, b) => (<-, c - a)
-        // (c, ->) - (a, b) => (c - b, ->)
+        // (.., c) - (a, b) => (.., c - a)
+        // (c, ..) - (a, b) => (c - b, ..)
         let Some((rhs_min, rhs_max)) = rhs.into_raw() else {
             return Ok(EnumInterval::empty());
         };

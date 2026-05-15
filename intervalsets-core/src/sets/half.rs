@@ -57,21 +57,21 @@ impl<T: Element> HalfInterval<T> {
     ///
     /// # Errors
     ///
-    /// - [`Error::InvalidBoundLimit`] —
+    /// - [`Error::InvalidElement`] —
     ///   bound value is incomparable (e.g. NaN).
     pub fn try_new(side: Side, bound: FiniteBound<T>) -> Result<Self, Error> {
         let bound = bound.normalized(side);
         Ok(Self { side, bound })
     }
 
-    /// Constructs a left-bounded `HalfInterval` `[a, ->)` or `(a, ->)`.
+    /// Constructs a left-bounded `HalfInterval` `[a, ..)` or `(a, ..)`.
     /// Panics on invalid bound limit. Convenience for
     /// `HalfInterval::new(Side::Left, bound)`.
     pub fn left(bound: FiniteBound<T>) -> Self {
         Self::new(Side::Left, bound)
     }
 
-    /// Constructs a right-bounded `HalfInterval` `(<-, b]` or `(<-, b)`.
+    /// Constructs a right-bounded `HalfInterval` `(.., b]` or `(.., b)`.
     /// Panics on invalid bound limit. Convenience for
     /// `HalfInterval::new(Side::Right, bound)`.
     pub fn right(bound: FiniteBound<T>) -> Self {

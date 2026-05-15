@@ -456,7 +456,7 @@ mod tests {
 
     #[test]
     fn into_hull_disjoint_with_left_unbounded_first_piece() {
-        // (<-, 5] ∪ [10, 20] → (<-, 20]
+        // (.., 5] ∪ [10, 20] → (.., 20]
         let md = MaybeDisjoint::from_pair(
             EnumInterval::unbound_closed(5_i32),
             EnumInterval::closed(10, 20),
@@ -466,7 +466,7 @@ mod tests {
 
     #[test]
     fn into_hull_disjoint_with_right_unbounded_second_piece() {
-        // [0, 5] ∪ [10, ->) → [0, ->)
+        // [0, 5] ∪ [10, ..) → [0, ..)
         let md = MaybeDisjoint::from_pair(
             EnumInterval::closed(0_i32, 5),
             EnumInterval::closed_unbound(10),
@@ -476,7 +476,7 @@ mod tests {
 
     #[test]
     fn into_hull_disjoint_with_both_pieces_unbounded_is_unbounded() {
-        // (<-, 0] ∪ [10, ->) → unbounded
+        // (.., 0] ∪ [10, ..) → unbounded
         let md = MaybeDisjoint::from_pair(
             EnumInterval::unbound_closed(0_i32),
             EnumInterval::closed_unbound(10),

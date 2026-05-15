@@ -482,7 +482,7 @@ mod impls {
                 div_non_zero_bounds_by_bound(b, a, cd_bound)
             }
             (ECat::Pos(MaybeZero::NonZero), ECat::NegPos) => {
-                // [a>0, b>0] / [c<0, d>0] => (<-, a/c) U (a/d, ->)
+                // [a>0, b>0] / [c<0, d>0] => (.., a/c) U (a/d, ..)
                 if cd_bound.value() == &T::zero() {
                     return all_except_zero();
                 }
@@ -506,7 +506,7 @@ mod impls {
                 Ok(MaybeDisjoint::new_disjoint_assume_valid(left, right))
             }
             (ECat::Neg(MaybeZero::NonZero), ECat::NegPos) => {
-                // [a<0, b<0] / [c<0, d>0] => (<-, b/d) U (b/c, ->)
+                // [a<0, b<0] / [c<0, d>0] => (.., b/d) U (b/c, ..)
                 // c = -inf OR d = +inf
                 if cd_bound.value() == &T::zero() {
                     return all_except_zero();
@@ -822,7 +822,7 @@ mod tests {
         // closed-zero pos numer, closed-zero pos denom
         assert_eq!(d(fc(0.0, 10.0), fc(0.0, 5.0)), ecu(0.0).into());
 
-        // (+e, 1.0) / [-1.0, 1.0] => (<-, 0.0) U (0.0, ->)
+        // (+e, 1.0) / [-1.0, 1.0] => (.., 0.0) U (0.0, ..)
         assert_eq!(
             d(fo(0.0, 1.0), fc(-1.0, 1.0)),
             MaybeDisjoint::from_pair(euo(0.0), eou(0.0))
