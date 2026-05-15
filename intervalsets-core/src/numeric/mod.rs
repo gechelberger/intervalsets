@@ -114,7 +114,7 @@
 //! them. Construction sites that funnel through
 //! [`FiniteBound::try_new`](crate::bound::FiniteBound::try_new) then
 //! surface the rejection as
-//! [`Error::InvalidBoundLimit`](crate::error::Error::InvalidBoundLimit).
+//! [`Error::InvalidElement`](crate::error::Error::InvalidElement).
 //!
 //! ```
 //! use intervalsets_core::bound::Side;

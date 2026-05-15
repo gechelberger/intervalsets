@@ -283,7 +283,7 @@
 //!   [`FiniteInterval::try_new`], [`HalfInterval::new`],
 //!   [`HalfInterval::try_new`]): reject anything that isn't a
 //!   well-formed pair. NaN / ±INF →
-//!   `Err(InvalidBoundLimit)` (or panic). Crossed bounds →
+//!   `Err(InvalidElement)` (or panic). Crossed bounds →
 //!   `Err(InvalidBoundPair)` (or panic). Used by `Deserialize`.
 //!
 //! - **Strict factories** (Family A:
@@ -393,6 +393,7 @@ pub mod try_cmp;
 
 mod display;
 mod from;
+mod parse;
 
 mod empty;
 pub use empty::MaybeEmpty;
@@ -403,7 +404,6 @@ pub mod prelude {
     pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
     pub use crate::cast::{Cast, LossyCast, TryCast};
     pub use crate::empty::MaybeEmpty;
-    //pub use crate::error::Error;
     pub use crate::factory::traits::*;
     pub use crate::measure::{Extent, Measure};
     pub use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};

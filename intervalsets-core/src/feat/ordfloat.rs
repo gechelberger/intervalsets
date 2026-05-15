@@ -257,14 +257,14 @@ mod tests {
         let inf = NotNan::new(f32::INFINITY).unwrap();
         let zero = NotNan::new(0.0_f32).unwrap();
         let r = EnumInterval::try_closed(zero, inf);
-        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        assert!(matches!(r, Err(Error::InvalidElement)));
 
         // OrderedFloat admits any T; both NaN and ±INF reach validate.
         let r = EnumInterval::try_closed(OrderedFloat(0.0_f32), OrderedFloat(f32::NAN));
-        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        assert!(matches!(r, Err(Error::InvalidElement)));
 
         let r = EnumInterval::try_closed(OrderedFloat(0.0_f32), OrderedFloat(f32::INFINITY));
-        assert!(matches!(r, Err(Error::InvalidBoundLimit)));
+        assert!(matches!(r, Err(Error::InvalidElement)));
     }
 
     #[test]
@@ -353,14 +353,14 @@ mod tests {
         assert_eq!(one.validate(), Some(one));
 
         // FiniteBound chokepoint: factory-style construction surfaces
-        // the rejection as `Error::InvalidBoundLimit`.
+        // the rejection as `Error::InvalidElement`.
         assert!(matches!(
             FiniteBound::try_new(BoundType::Closed, OrderedFloat(f64::INFINITY)),
-            Err(Error::InvalidBoundLimit)
+            Err(Error::InvalidElement)
         ));
         assert!(matches!(
             FiniteBound::try_new(BoundType::Closed, NotNan::new(f64::INFINITY).unwrap()),
-            Err(Error::InvalidBoundLimit)
+            Err(Error::InvalidElement)
         ));
     }
 
@@ -398,7 +398,7 @@ mod tests {
             // post-cast `Element::validate` rejects non-finite.
             let x = FiniteInterval::closed(OrderedFloat(0.0_f64), OrderedFloat(f64::MAX));
             let y: Result<FiniteInterval<OrderedFloat<f32>>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         #[test]

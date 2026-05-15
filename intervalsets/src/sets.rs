@@ -590,19 +590,19 @@ mod tests {
         // [0, 50] < [0, 100]
         assert_lt(Interval::closed(0.0, 50.0), Interval::closed(0.0, 100.0));
 
-        // (0, 50) < (0, ->)
+        // (0, 50) < (0, ..)
         assert_lt(Interval::open(0.0, 50.0), Interval::open_unbound(0.0));
 
-        // (<-, _) < (0.0, _)
+        // (.., _) < (0.0, _)
         assert_lt(Interval::unbound_open(5.0), Interval::open(0.0, 3.0));
 
-        // (0, 50) < (<-, ->)
+        // (0, 50) < (.., ..)
         assert_lt(Interval::unbound_open(50.0), Interval::unbounded());
 
-        // (<-, ->) < (0, 50)
+        // (.., ..) < (0, 50)
         assert_lt(Interval::unbounded(), Interval::open(0.0, 50.0));
 
-        // (<-, ->) < (0, ->)
+        // (.., ..) < (0, ..)
         assert_lt(Interval::unbounded(), Interval::open_unbound(0.0));
 
         // Empty Set < everything else

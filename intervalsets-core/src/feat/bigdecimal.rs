@@ -328,11 +328,11 @@ mod tests {
         #[test]
         fn try_cast_bigdecimal_to_i32_overflow_errors() {
             // BigDecimal value bigger than i32::MAX → NumCast returns
-            // None → Error::InvalidBoundLimit.
+            // None → Error::InvalidElement.
             let huge = BigDecimal::from(i64::MAX);
             let x = FiniteInterval::closed(BigDecimal::from(0), huge);
             let y: Result<FiniteInterval<i32>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         #[test]

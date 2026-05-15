@@ -416,7 +416,7 @@ mod tests {
             // I6F2 only holds [-32.0, 31.75] approximately.
             let x = FiniteInterval::closed(0_i32, 1000);
             let y: Result<FiniteInterval<I6F2>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         #[test]
@@ -433,7 +433,7 @@ mod tests {
         fn try_cast_f64_to_i6f2_overflow_errors() {
             let x = FiniteInterval::closed(0.0_f64, 1000.0);
             let y: Result<FiniteInterval<I6F2>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         // ---------- TryCast: Fixed → primitive ----------
@@ -449,7 +449,7 @@ mod tests {
         fn try_cast_i16f16_to_i8_overflow_errors() {
             let x = FiniteInterval::closed(I16F16::from_num(-1000), I16F16::from_num(1000));
             let y: Result<FiniteInterval<i8>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         // ---------- TryCast: Fixed → Fixed (cross-type) ----------
@@ -468,7 +468,7 @@ mod tests {
         fn try_cast_i16f16_to_i6f2_overflow_errors() {
             let x = FiniteInterval::closed(I16F16::from_num(-100), I16F16::from_num(100));
             let y: Result<FiniteInterval<I6F2>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         // ---------- TryCast: signed Fixed → unsigned Fixed ----------
@@ -477,7 +477,7 @@ mod tests {
         fn try_cast_i6f2_negative_to_u6f2_errors() {
             let x = FiniteInterval::closed(I6F2::from_num(-5), I6F2::from_num(5));
             let y: Result<FiniteInterval<U6F2>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         // ---------- LossyCast: primitive → Fixed (saturating) ----------

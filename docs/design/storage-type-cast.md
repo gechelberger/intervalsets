@@ -555,7 +555,7 @@ Defined in `num-traits-0.2.19/src/cast.rs`:
 | `cast::cast<T, U>(n: T) -> Option<U>` | free function sugar over `NumCast::from` | Same as `NumCast`. | No — free function, not a trait. |
 | `AsPrimitive<T>::as_(self) -> T` | infallible `as`-semantics | **Mostly no.** `as` semantics are non-uniform: saturating for `f -> i`, wrapping for `i -> i`, INF for `f64 -> f32`. Not what saturating-cast wants. | No. |
 
-**Critical detail re `NumCast`:** its doc explicitly admits *precision-loss / saturation-to-INF as success*: "even a large f64 saturating to f32 infinity" returns `Some(INF)`. So a `TryCast` built on `NumCast` is *not* automatically a strict cast — it must follow up with `Element::validate` (which the chokepoint pattern in the design already does). For `f64 -> f32` of `f64::MAX`, `NumCast` returns `Some(INF)` and `Element::validate` then rejects via `InvalidBoundLimit`. End-to-end semantics are correct.
+**Critical detail re `NumCast`:** its doc explicitly admits *precision-loss / saturation-to-INF as success*: "even a large f64 saturating to f32 infinity" returns `Some(INF)`. So a `TryCast` built on `NumCast` is *not* automatically a strict cast — it must follow up with `Element::validate` (which the chokepoint pattern in the design already does). For `f64 -> f32` of `f64::MAX`, `NumCast` returns `Some(INF)` and `Element::validate` then rejects via `InvalidElement`. End-to-end semantics are correct.
 
 `num_traits` does **not** offer a saturating cast trait. It does not offer a structured error for failed casts (just `Option`).
 
@@ -717,7 +717,7 @@ Tests added in `intervalsets-core/src/ops/cast.rs` and `intervalsets/src/ops/cas
 
 - **Widening**: `FiniteInterval::closed(0_i32, 10).try_cast::<i64>()` round-trips. `f32 -> f64` likewise. Compile-check that `CastError<Infallible>` lets `let x: Result<_, _> = ...; let x = x.unwrap_or_else(|e| match e {});` work.
 - **Element overflow**: `closed(0_i64, i64::MAX).try_cast::<i32>()` -> `CastError::Element(_)`.
-- **Post-cast non-finite**: `closed(0.0_f64, f64::MAX).try_cast::<f32>()` -> `CastError::Set(InvalidBoundLimit)`.
+- **Post-cast non-finite**: `closed(0.0_f64, f64::MAX).try_cast::<f32>()` -> `CastError::Set(InvalidElement)`.
 - **Bound collision**: open-open pair of `f64` values that round to the same `f32`. Strict variant -> `Set(InvalidBoundPair)`; coercive variant (if bundle has it) -> `Empty`.
 - **HalfInterval**: side preserved through cast.
 - **EnumInterval::Unbounded**: `Unbounded` for any `U`.

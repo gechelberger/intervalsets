@@ -23,7 +23,7 @@ impl<T: Element + Clone + Arbitrary + Zero> Arbitrary for IntervalSet<T> {
         for _ in 0..n {
             let interval = Interval::<T>::arbitrary(g);
             if iset.is_disjoint_from(&interval) {
-                // otherwise the result will practically always be (<-, ->)
+                // otherwise the result will practically always be (.., ..)
                 iset = iset.union(interval);
             }
         }

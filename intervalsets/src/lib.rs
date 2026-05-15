@@ -161,6 +161,7 @@ mod cast;
 mod display;
 mod feat;
 mod from;
+mod parse;
 //mod util;
 
 /// Common operations & traits

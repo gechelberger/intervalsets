@@ -346,7 +346,7 @@ mod test {
             // Finite, but well beyond Decimal::MAX (≈ 7.92e28).
             let x = FiniteInterval::closed(0.0_f64, 1e30_f64);
             let y: Result<FiniteInterval<Decimal>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         // ---------- TryCast: Decimal → primitive ----------
@@ -363,7 +363,7 @@ mod test {
             // Decimal::MAX is way beyond i32::MAX.
             let x = FiniteInterval::closed(Decimal::ZERO, Decimal::MAX);
             let y: Result<FiniteInterval<i32>, _> = x.try_cast();
-            assert!(matches!(y, Err(Error::InvalidBoundLimit)));
+            assert!(matches!(y, Err(Error::InvalidElement)));
         }
 
         #[test]

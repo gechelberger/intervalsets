@@ -111,7 +111,7 @@ impl<T: Element> FiniteInterval<T> {
     ///
     /// # Errors
     ///
-    /// - [`Error::InvalidBoundLimit`] —
+    /// - [`Error::InvalidElement`] —
     ///   a bound value is incomparable (e.g. NaN).
     /// - [`Error::InvalidBoundPair`] —
     ///   after normalization, the pair is not a non-empty `Bounded`

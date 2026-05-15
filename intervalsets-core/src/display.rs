@@ -28,13 +28,13 @@ where
         Side::Left => {
             write_bound_type(f, side, bound.map(|x| x.bound_type()))?;
             match bound {
-                None => f.write_str("<-")?,
+                None => f.write_str("..")?,
                 Some(inner) => f.write_fmt(format_args!("{}", inner.value()))?,
             }
         }
         Side::Right => {
             match bound {
-                None => f.write_str("->")?,
+                None => f.write_str("..")?,
                 Some(inner) => f.write_fmt(format_args!("{}", inner.value()))?,
             }
             write_bound_type(f, side, bound.map(|x| x.bound_type()))?;
@@ -81,7 +81,7 @@ impl<T: fmt::Display> fmt::Display for HalfInterval<T> {
 impl<T: fmt::Display> fmt::Display for EnumInterval<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Unbounded => f.write_str("(<-, ->)"),
+            Self::Unbounded => f.write_str("(.., ..)"),
             Self::Finite(inner) => inner.fmt(f),
             Self::Half(inner) => inner.fmt(f),
         }
@@ -140,22 +140,22 @@ mod tests {
     fn test_display_half() {
         assert_eq!(
             std::format!("{}", EnumInterval::unbound_closed(0.5)),
-            "(<-, 0.5]"
+            "(.., 0.5]"
         );
 
         assert_eq!(
             std::format!("{}", EnumInterval::unbound_open(0.5)),
-            "(<-, 0.5)"
+            "(.., 0.5)"
         );
 
         assert_eq!(
             std::format!("{}", EnumInterval::closed_unbound(0.5)),
-            "[0.5, ->)"
+            "[0.5, ..)"
         );
 
         assert_eq!(
             std::format!("{}", EnumInterval::open_unbound(0.5)),
-            "(0.5, ->)"
+            "(0.5, ..)"
         )
     }
 
@@ -165,7 +165,7 @@ mod tests {
 
         assert_eq!(
             std::format!("{}", EnumInterval::<i8>::unbounded()),
-            "(<-, ->)"
+            "(.., ..)"
         );
     }
 
@@ -194,6 +194,6 @@ mod tests {
             EnumInterval::unbound_closed(0_i32),
             EnumInterval::closed_unbound(10),
         );
-        assert_eq!(std::format!("{}", md), "{(<-, 0], [10, ->)}");
+        assert_eq!(std::format!("{}", md), "{(.., 0], [10, ..)}");
     }
 }
