@@ -31,48 +31,59 @@ pub(crate) struct Paths {
     /// Fully-qualified target type (e.g. `::intervalsets::Interval`,
     /// `::intervalsets_core::EnumInterval`).
     pub type_path: TokenStream,
+    /// Optional storage-type hint. When `Some(T)`, every emitted
+    /// factory call is qualified as `type_path::<T>::ctor(...)`,
+    /// forcing rustc to use `T` and disabling inference at the
+    /// call site.
+    pub type_param: Option<syn::Type>,
 }
 
 pub(crate) fn build(form: Form, paths: &Paths, span: Span) -> Result<TokenStream> {
     let Paths {
         crate_root,
         type_path,
+        type_param,
     } = paths;
 
+    let qualified = match type_param {
+        Some(t) => quote!(#type_path::<#t>),
+        None => quote!(#type_path),
+    };
+
     let body = match form {
-        Form::Empty => quote!(#type_path::empty()),
-        Form::Unbounded => quote!(#type_path::unbounded()),
+        Form::Empty => quote!(#qualified::empty()),
+        Form::Unbounded => quote!(#qualified::unbounded()),
         Form::Closed(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
-            quote!(#type_path::closed(#lhs, #rhs))
+            quote!(#qualified::closed(#lhs, #rhs))
         }
         Form::Open(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
-            quote!(#type_path::open(#lhs, #rhs))
+            quote!(#qualified::open(#lhs, #rhs))
         }
         Form::ClosedOpen(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
-            quote!(#type_path::closed_open(#lhs, #rhs))
+            quote!(#qualified::closed_open(#lhs, #rhs))
         }
         Form::OpenClosed(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
-            quote!(#type_path::open_closed(#lhs, #rhs))
+            quote!(#qualified::open_closed(#lhs, #rhs))
         }
         Form::ClosedUnbound(l) => {
             let lhs = body_expr(l, span)?;
-            quote!(#type_path::closed_unbound(#lhs))
+            quote!(#qualified::closed_unbound(#lhs))
         }
         Form::OpenUnbound(l) => {
             let lhs = body_expr(l, span)?;
-            quote!(#type_path::open_unbound(#lhs))
+            quote!(#qualified::open_unbound(#lhs))
         }
         Form::UnboundClosed(r) => {
             let rhs = body_expr(r, span)?;
-            quote!(#type_path::unbound_closed(#rhs))
+            quote!(#qualified::unbound_closed(#rhs))
         }
         Form::UnboundOpen(r) => {
             let rhs = body_expr(r, span)?;
-            quote!(#type_path::unbound_open(#rhs))
+            quote!(#qualified::unbound_open(#rhs))
         }
     };
 

@@ -69,7 +69,8 @@
 //! — bad syntax, closed bracket on an unbounded side, crossed
 //! numeric-literal bounds — fails to build instead of panicking at
 //! runtime. Bound bodies are tokenized as Rust expressions, not just
-//! literals.
+//! literals. An optional second argument supplies a storage-type hint
+//! as a turbofish on the constructor call.
 //!
 //! ```
 //! use intervalsets::prelude::*;
@@ -81,6 +82,10 @@
 //! let n = 5_i32;
 //! let from_expr: Interval<i32> = interval!("[n, n + 10]");
 //! assert_eq!(from_expr, Interval::closed(5, 15));
+//!
+//! // Storage-type hint — useful when there's no T-bearing argument:
+//! let u = interval!("(.., ..)", i32);
+//! assert_eq!(u, Interval::<i32>::unbounded());
 //! ```
 //!
 //! ## Set Operations
@@ -193,6 +198,11 @@ pub use intervalsets_core::{bound, default_continuous_element_impl, numeric};
 /// let n = 5_i32;
 /// let v: Interval<i32> = interval!("[n, n + 10]");
 /// assert_eq!(v, Interval::closed(5, 15));
+///
+/// // An optional second argument supplies a storage-type hint
+/// // (emitted as a turbofish on the constructor call):
+/// let w = interval!("(.., ..)", i32);
+/// assert_eq!(w, Interval::<i32>::unbounded());
 /// ```
 pub use intervalsets_macros::interval;
 

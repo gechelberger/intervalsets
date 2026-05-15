@@ -113,3 +113,45 @@ fn crossed_bounds_at_runtime_for_non_literal() {
     let lo: i32 = 0;
     let _x: Interval<i32> = interval!("[hi, lo]");
 }
+
+// --- Storage-type hint forms ---
+
+#[test]
+fn hint_resolves_unbounded_inference() {
+    // Without the hint, `let _ = interval!("(.., ..)")` can't infer T.
+    let x = interval!("(.., ..)", i32);
+    assert_eq!(x, Interval::<i32>::unbounded());
+}
+
+#[test]
+fn hint_resolves_empty_inference() {
+    let x = interval!("{}", f64);
+    assert_eq!(x, Interval::<f64>::empty());
+}
+
+#[test]
+fn hint_pins_float_width() {
+    // Float literals default to f64; the hint pins them to f32.
+    let x = interval!("[0.0, 10.0]", f32);
+    assert_eq!(x, Interval::<f32>::closed(0.0, 10.0));
+}
+
+#[test]
+fn hint_works_with_half_unbounded() {
+    let x = interval!("(.., 10]", i32);
+    assert_eq!(x, Interval::unbound_closed(10));
+}
+
+#[test]
+fn hint_accepts_underscore_placeholder() {
+    // `_` is a valid syn::Type and means "infer", same as omitting the hint.
+    let x: Interval<i32> = interval!("[0, 10]", _);
+    assert_eq!(x, Interval::closed(0, 10));
+}
+
+#[test]
+fn hint_accepts_generic_type() {
+    use core::num::Saturating;
+    let x = interval!("[Saturating(0_i32), Saturating(10_i32)]", Saturating<i32>);
+    assert_eq!(x, Interval::closed(Saturating(0_i32), Saturating(10)));
+}

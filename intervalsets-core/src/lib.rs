@@ -397,6 +397,11 @@ pub mod numeric;
 ///
 /// let e: EnumInterval<i32> = enum_interval!("{}");
 /// assert_eq!(e, EnumInterval::empty());
+///
+/// // An optional second argument supplies a storage-type hint
+/// // (emitted as a turbofish on the constructor call):
+/// let u = enum_interval!("(.., ..)", i32);
+/// assert_eq!(u, EnumInterval::<i32>::unbounded());
 /// ```
 pub use intervalsets_macros::enum_interval;
 

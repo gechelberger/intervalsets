@@ -115,3 +115,43 @@ fn crossed_bounds_at_runtime_for_non_literal() {
     let lo: i32 = 0;
     let _x: EnumInterval<i32> = enum_interval!("[hi, lo]");
 }
+
+// --- Storage-type hint forms ---
+
+#[test]
+fn hint_resolves_unbounded_inference() {
+    let x = enum_interval!("(.., ..)", i32);
+    assert_eq!(x, EnumInterval::<i32>::unbounded());
+}
+
+#[test]
+fn hint_resolves_empty_inference() {
+    let x = enum_interval!("{}", f64);
+    assert_eq!(x, EnumInterval::<f64>::empty());
+}
+
+#[test]
+fn hint_pins_float_width() {
+    // Float literals default to f64; the hint pins them to f32.
+    let x = enum_interval!("[0.0, 10.0]", f32);
+    assert_eq!(x, EnumInterval::<f32>::closed(0.0, 10.0));
+}
+
+#[test]
+fn hint_works_with_half_unbounded() {
+    let x = enum_interval!("(.., 10]", i32);
+    assert_eq!(x, EnumInterval::unbound_closed(10));
+}
+
+#[test]
+fn hint_accepts_underscore_placeholder() {
+    let x: EnumInterval<i32> = enum_interval!("[0, 10]", _);
+    assert_eq!(x, EnumInterval::closed(0, 10));
+}
+
+#[test]
+fn hint_accepts_generic_type() {
+    use core::num::Saturating;
+    let x = enum_interval!("[Saturating(0_i32), Saturating(10_i32)]", Saturating<i32>);
+    assert_eq!(x, EnumInterval::closed(Saturating(0_i32), Saturating(10)));
+}

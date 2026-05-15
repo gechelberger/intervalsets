@@ -1,0 +1,5 @@
+error: expected one of: `for`, parentheses, `fn`, `unsafe`, `extern`, identifier, `::`, `<`, `dyn`, square brackets, `*`, `&`, `!`, `impl`, `_`, lifetime
+ --> tests/ui/bad_type_arg.rs:5:34
+  |
+5 |     let _ = interval!("[0, 10]", 0);
+  |                                  ^

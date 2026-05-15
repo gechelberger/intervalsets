@@ -21,6 +21,10 @@ use intervalsets::prelude::*;
 
 let x: Interval<i32> = interval!("[0, 10)");
 assert_eq!(x, Interval::closed_open(0, 10));
+
+// Optional storage-type hint (turbofish):
+let y = interval!("(.., ..)", i32);
+assert_eq!(y, Interval::<i32>::unbounded());
 ```
 
 See each macro's documentation for the full grammar table.

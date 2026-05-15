@@ -66,7 +66,9 @@ The `interval!` and `enum_interval!` macros parse a string literal at
 macro expansion time. Malformed input — bad syntax, closed bracket on
 an unbounded side, crossed numeric-literal bounds — fails to build
 instead of panicking at runtime. Bound bodies are tokenized as Rust
-expressions, so they're not limited to literals.
+expressions, so they're not limited to literals. An optional second
+argument supplies a storage-type hint as a turbofish on the
+constructor.
 
 ```rust
 use intervalsets::prelude::*;
@@ -75,6 +77,9 @@ let half_open: Interval<i32> = interval!("[0, 10)");
 let unbounded: Interval<f64> = interval!("(.., ..)");
 let n = 5_i32;
 let from_expr: Interval<i32> = interval!("[n, n + 10]");
+
+// Storage-type hint resolves inference for forms with no T-bearing arg:
+let hinted = interval!("(.., ..)", i32);
 ```
 
 `intervalsets_core::enum_interval!` is the no-std / no-alloc analogue.
