@@ -1,0 +1,7 @@
+error: expected a type after `,`
+ --> tests/ui/trailing_comma.rs:4:13
+  |
+4 |     let _ = interval!("[0, 10]",);
+  |             ^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: this error originates in the macro `interval` (in Nightly builds, run with -Z macro-backtrace for more info)

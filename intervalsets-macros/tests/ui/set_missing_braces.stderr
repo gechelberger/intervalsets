@@ -1,0 +1,5 @@
+error: expected a brace-wrapped set literal: `{}`, `{piece}`, or `{piece U piece U ...}`
+ --> tests/ui/set_missing_braces.rs:4:18
+  |
+4 |     let _ = set!("[0, 10]");
+  |                  ^^^^^^^^^

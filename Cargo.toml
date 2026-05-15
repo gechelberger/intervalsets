@@ -1,6 +1,6 @@
 [workspace]
-members = [ "benchmarks", "core-panic-canary", "intervalsets", "intervalsets-core"]
-default-members = ["intervalsets", "intervalsets-core"]
+members = [ "benchmarks", "core-panic-canary", "intervalsets", "intervalsets-core", "intervalsets-macros"]
+default-members = ["intervalsets", "intervalsets-core", "intervalsets-macros"]
 resolver = "3"
 
 [workspace.package]
@@ -27,3 +27,4 @@ private_intra_doc_links = "warn"
 
 [workspace.dependencies]
 intervalsets-core = { version = "=0.1.0-alpha.3", path = "intervalsets-core" }
+intervalsets-macros = { version = "=0.1.0-alpha.3", path = "intervalsets-macros" }

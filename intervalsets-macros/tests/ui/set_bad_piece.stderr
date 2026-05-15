@@ -1,0 +1,5 @@
+error: interval bounds are crossed: 10 > 0
+ --> tests/ui/set_bad_piece.rs:4:18
+  |
+4 |     let _ = set!("{[10, 0]}");
+  |                  ^^^^^^^^^^^

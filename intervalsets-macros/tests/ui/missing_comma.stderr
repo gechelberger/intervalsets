@@ -1,0 +1,5 @@
+error: malformed interval syntax: missing `,` between bounds
+ --> tests/ui/missing_comma.rs:4:23
+  |
+4 |     let _ = interval!("[0 10]");
+  |                       ^^^^^^^^

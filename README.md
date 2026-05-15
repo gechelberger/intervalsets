@@ -59,3 +59,43 @@ assert_eq!(rejected, vec![
     Interval::closed(200, 210),
 ])
 ```
+
+## Compile-time-checked literals
+
+The `interval!` and `enum_interval!` macros parse a string literal at
+macro expansion time. Malformed input — bad syntax, closed bracket on
+an unbounded side, crossed numeric-literal bounds — fails to build
+instead of panicking at runtime. Bound bodies are tokenized as Rust
+expressions, so they're not limited to literals. An optional second
+argument supplies a storage-type hint as a turbofish on the
+constructor.
+
+```rust
+use intervalsets::prelude::*;
+
+let half_open: Interval<i32> = interval!("[0, 10)");
+let unbounded: Interval<f64> = interval!("(.., ..)");
+let n = 5_i32;
+let from_expr: Interval<i32> = interval!("[n, n + 10]");
+
+// Storage-type hint resolves inference for forms with no T-bearing arg:
+let hinted = interval!("(.., ..)", i32);
+```
+
+`intervalsets_core::enum_interval!` is the no-std / no-alloc analogue.
+Both macros share the same grammar as the runtime `FromStr` impl.
+
+The `set!` macro is the multi-piece analogue, accepting the `Display`
+form for `IntervalSet`:
+
+```rust
+use intervalsets::prelude::*;
+
+let empty: IntervalSet<i32> = set!("{}");
+let single: IntervalSet<i32> = set!("{[0, 10]}");
+let multi = set!("{[0, 5] U [10, 15] U [20, 30]}", i32);
+```
+
+Pieces don't need to be sorted, non-overlapping, or non-empty —
+`IntervalSet`'s union machinery normalizes everything to satisfy the
+set invariants.

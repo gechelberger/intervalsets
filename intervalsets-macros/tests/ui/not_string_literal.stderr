@@ -1,0 +1,5 @@
+error: expected a string literal followed by an optional type, e.g. `interval!("[0, 10)")` or `interval!("[0, 10)", i32)`
+ --> tests/ui/not_string_literal.rs:4:23
+  |
+4 |     let _ = interval!(0, 10);
+  |                       ^

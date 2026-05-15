@@ -1,0 +1,5 @@
+error: unexpected tokens after macro arguments; expected at most `"<literal>", <Type>`
+ --> tests/ui/three_args.rs:4:37
+  |
+4 |     let _ = interval!("[0, 10]", i32, 0);
+  |                                     ^

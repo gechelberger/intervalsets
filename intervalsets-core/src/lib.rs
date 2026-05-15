@@ -377,6 +377,34 @@ pub mod bound;
 pub mod cast;
 pub mod numeric;
 
+/// Compile-time-checked literal macro for [`EnumInterval`]. Parses a
+/// string literal at expansion time in the same grammar as the runtime
+/// [`FromStr`](crate::sets::EnumInterval#impl-FromStr-for-EnumInterval%3CT%3E)
+/// impl; malformed input fails to build instead of panicking at
+/// runtime.
+///
+/// ```
+/// use intervalsets_core::prelude::*;
+///
+/// let x: EnumInterval<i32> = enum_interval!("[0, 10]");
+/// assert_eq!(x, EnumInterval::closed(0, 10));
+///
+/// let y: EnumInterval<f64> = enum_interval!("(.., 10.0)");
+/// assert_eq!(y, EnumInterval::unbound_open(10.0));
+///
+/// let z: EnumInterval<i32> = enum_interval!("(.., ..)");
+/// assert_eq!(z, EnumInterval::unbounded());
+///
+/// let e: EnumInterval<i32> = enum_interval!("{}");
+/// assert_eq!(e, EnumInterval::empty());
+///
+/// // An optional second argument supplies a storage-type hint
+/// // (emitted as a turbofish on the constructor call):
+/// let u = enum_interval!("(.., ..)", i32);
+/// assert_eq!(u, EnumInterval::<i32>::unbounded());
+/// ```
+pub use intervalsets_macros::enum_interval;
+
 pub mod error;
 
 mod feat;
@@ -404,6 +432,7 @@ pub mod prelude {
     pub use crate::bound::{BoundType, FiniteBound, SetBounds, Side};
     pub use crate::cast::{Cast, LossyCast, TryCast};
     pub use crate::empty::MaybeEmpty;
+    pub use crate::enum_interval;
     pub use crate::factory::traits::*;
     pub use crate::measure::{Extent, Measure};
     pub use crate::ops::math::{TryAdd, TryDiv, TryMul, TrySub};
