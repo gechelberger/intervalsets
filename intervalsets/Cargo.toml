@@ -31,6 +31,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 approx = { version = "0.5.1", default-features = false, optional = true }
 arbitrary = { version = "1.4.1", optional = true }
 intervalsets-core = { workspace = true }
+intervalsets-macros = { workspace = true }
 itertools = "0.14.0"
 num-traits = "0.2.19"
 quickcheck = { version = "1.0.3", optional = true }

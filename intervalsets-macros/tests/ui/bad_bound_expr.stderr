@@ -1,0 +1,5 @@
+error: failed to parse `let` as a Rust expression: unexpected end of input, expected one of: identifier, `::`, `<`, `_`, literal, `const`, `ref`, `mut`, `&`, parentheses, square brackets, `..`, `const`
+ --> tests/ui/bad_bound_expr.rs:5:23
+  |
+5 |     let _ = interval!("[let, 10]");
+  |                       ^^^^^^^^^^^

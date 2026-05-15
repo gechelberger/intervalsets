@@ -59,3 +59,23 @@ assert_eq!(rejected, vec![
     Interval::closed(200, 210),
 ])
 ```
+
+## Compile-time-checked literals
+
+The `interval!` and `enum_interval!` macros parse a string literal at
+macro expansion time. Malformed input — bad syntax, closed bracket on
+an unbounded side, crossed numeric-literal bounds — fails to build
+instead of panicking at runtime. Bound bodies are tokenized as Rust
+expressions, so they're not limited to literals.
+
+```rust
+use intervalsets::prelude::*;
+
+let half_open: Interval<i32> = interval!("[0, 10)");
+let unbounded: Interval<f64> = interval!("(.., ..)");
+let n = 5_i32;
+let from_expr: Interval<i32> = interval!("[n, n + 10]");
+```
+
+`intervalsets_core::enum_interval!` is the no-std / no-alloc analogue.
+Both macros share the same grammar as the runtime `FromStr` impl.
