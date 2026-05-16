@@ -15,6 +15,14 @@
 //! scope. `#[allow(unused_imports)]` silences the lint for forms that
 //! only need one of the traits (`empty()` for instance hits the
 //! inherent method, leaving the imports formally unused).
+//!
+//! When a storage-type hint is supplied, each bound expression is
+//! wrapped in `<T as ::core::convert::From<_>>::from(expr)`. The
+//! reflexive `From<T> for T` blanket impl keeps already-T arguments
+//! working; mismatched source types now succeed when `T: From<U>` and
+//! fail with a missing-`From`-impl error otherwise. UFCS is used
+//! instead of the shorthand `T::from(expr)` to avoid shadowing by an
+//! inherent `from` method on the user's type.
 
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
@@ -34,7 +42,8 @@ pub(crate) struct Paths {
     /// Optional storage-type hint. When `Some(T)`, every emitted
     /// factory call is qualified as `type_path::<T>::ctor(...)`,
     /// forcing rustc to use `T` and disabling inference at the
-    /// call site.
+    /// call site. Each bound expression is also coerced via
+    /// `<T as From<_>>::from(expr)`.
     pub type_param: Option<syn::Type>,
 }
 
@@ -62,39 +71,54 @@ pub(crate) fn build_ctor(form: Form, paths: &Paths, span: Span) -> Result<TokenS
         None => quote!(#type_path),
     };
 
+    let wrap = |e: &Expr| -> TokenStream {
+        match type_param {
+            Some(t) => quote!(<#t as ::core::convert::From<_>>::from(#e)),
+            None => quote!(#e),
+        }
+    };
+
     Ok(match form {
         Form::Empty => quote!(#qualified::empty()),
         Form::Unbounded => quote!(#qualified::unbounded()),
         Form::Closed(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
+            let (lhs, rhs) = (wrap(&lhs), wrap(&rhs));
             quote!(#qualified::closed(#lhs, #rhs))
         }
         Form::Open(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
+            let (lhs, rhs) = (wrap(&lhs), wrap(&rhs));
             quote!(#qualified::open(#lhs, #rhs))
         }
         Form::ClosedOpen(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
+            let (lhs, rhs) = (wrap(&lhs), wrap(&rhs));
             quote!(#qualified::closed_open(#lhs, #rhs))
         }
         Form::OpenClosed(l, r) => {
             let (lhs, rhs) = parse_pair(l, r, span)?;
+            let (lhs, rhs) = (wrap(&lhs), wrap(&rhs));
             quote!(#qualified::open_closed(#lhs, #rhs))
         }
         Form::ClosedUnbound(l) => {
             let lhs = body_expr(l, span)?;
+            let lhs = wrap(&lhs);
             quote!(#qualified::closed_unbound(#lhs))
         }
         Form::OpenUnbound(l) => {
             let lhs = body_expr(l, span)?;
+            let lhs = wrap(&lhs);
             quote!(#qualified::open_unbound(#lhs))
         }
         Form::UnboundClosed(r) => {
             let rhs = body_expr(r, span)?;
+            let rhs = wrap(&rhs);
             quote!(#qualified::unbound_closed(#rhs))
         }
         Form::UnboundOpen(r) => {
             let rhs = body_expr(r, span)?;
+            let rhs = wrap(&rhs);
             quote!(#qualified::unbound_open(#rhs))
         }
     })

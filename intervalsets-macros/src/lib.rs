@@ -23,6 +23,25 @@
 //! interval!("(.., ..)", f64)      // → resolves T for forms with no T-bearing arg
 //! ```
 //!
+//! # Storage-type coercion
+//!
+//! When the second argument is supplied, every bound expression is
+//! wrapped in `<T as From<_>>::from(expr)`. Existing call sites keep
+//! compiling via the reflexive `From<T> for T` blanket impl. The
+//! noteworthy effect is on heterogeneous bounds:
+//!
+//! ```ignore
+//! struct Unit(f64);
+//! impl From<f64> for Unit { fn from(v: f64) -> Self { Self(v) } }
+//!
+//! enum_interval!("[0.0, 1.0]", Unit)   // → Unit::from(0.0), Unit::from(1.0)
+//! enum_interval!("[0, 1]", Unit)       // compile error: no From<i32> for Unit
+//! interval!("[0_i32, 10_i32]", f64)    // works: From<i32> for f64
+//! ```
+//!
+//! The wrap uses fully-qualified UFCS so an inherent `from` method on
+//! the user's type can't accidentally shadow the trait method.
+//!
 //! The macros are re-exported from their respective parent crates;
 //! depend on those crates directly rather than on `intervalsets-macros`.
 //!
@@ -94,8 +113,11 @@ use crate::shape::parse_shape;
 /// crate-level docs for the full table) and expands to a constructor
 /// call. An optional second argument supplies a storage-type hint
 /// emitted as a turbofish on the constructor — useful when there's no
-/// T-bearing argument to infer from (`{}`, `(.., ..)`). Bound bodies
-/// are arbitrary Rust expressions tokenized at the macro call site.
+/// T-bearing argument to infer from (`{}`, `(.., ..)`). When the hint
+/// is present each bound expression is additionally wrapped in
+/// `<T as From<_>>::from(...)`, so any type with `T: From<U>` can be
+/// used as a bound source. Bound bodies are arbitrary Rust expressions
+/// tokenized at the macro call site.
 ///
 /// ```ignore
 /// use intervalsets::prelude::*;
@@ -107,6 +129,9 @@ use crate::shape::parse_shape;
 /// // With a storage-type hint (no ascription required):
 /// let d = interval!("(.., ..)", i32);
 /// let e = interval!("{}", f64);
+///
+/// // Hint also drives `From`-conversion on each bound:
+/// let f = interval!("[0_i32, 10_i32]", f64);  // From<i32> for f64
 /// ```
 ///
 /// Malformed input produces a build error:
@@ -125,7 +150,8 @@ pub fn interval(input: TokenStream) -> TokenStream {
 /// Accepts a string literal in the interval grammar (see the
 /// crate-level docs for the full table) and expands to a constructor
 /// call on `EnumInterval`. An optional second argument supplies a
-/// storage-type hint as a turbofish. Suitable for `no_std` /
+/// storage-type hint as a turbofish; when present each bound is also
+/// wrapped in `<T as From<_>>::from(...)`. Suitable for `no_std` /
 /// `no_alloc` callers.
 ///
 /// ```ignore
@@ -134,6 +160,12 @@ pub fn interval(input: TokenStream) -> TokenStream {
 /// let a: EnumInterval<i32> = enum_interval!("[0, 10]");
 /// let b: EnumInterval<f64> = enum_interval!("(.., 10.5]");
 /// let c = enum_interval!("(.., ..)", i32);
+///
+/// // Hint coerces bound sources via `From`:
+/// struct Unit(f64);
+/// impl From<f64> for Unit { fn from(v: f64) -> Self { Self(v) } }
+/// // ... Element impl elided ...
+/// let d = enum_interval!("[0.0, 1.0]", Unit);
 /// ```
 #[proc_macro]
 pub fn enum_interval(input: TokenStream) -> TokenStream {
@@ -258,23 +290,21 @@ fn build_set(input: TokenStream2) -> syn::Result<TokenStream2> {
 
     let mut pieces_iter = parts.pieces.into_iter();
     let first_form = pieces_iter.next().expect("non-empty pieces");
-    // First piece carries the type hint; subsequent pieces are inferred
-    // via `Union::union`'s signature.
-    let first_paths = Paths {
+    // Every piece carries the type hint so each piece's bound
+    // expressions get the `<T as From<_>>::from(...)` coercion wrap;
+    // `Union::union`'s signature would propagate `T` from the first
+    // piece, but the coercion happens per-bound and needs the hint at
+    // each call site.
+    let piece_paths = Paths {
         crate_root: root.clone(),
         type_path: quote!(#root::Interval),
         type_param: ty,
     };
-    let first_ctor = expand::build_ctor(first_form, &first_paths, span)?;
+    let first_ctor = expand::build_ctor(first_form, &piece_paths, span)?;
 
-    let rest_paths = Paths {
-        crate_root: root.clone(),
-        type_path: quote!(#root::Interval),
-        type_param: None,
-    };
     let mut rest_ctors: Vec<TokenStream2> = Vec::new();
     for form in pieces_iter {
-        rest_ctors.push(expand::build_ctor(form, &rest_paths, span)?);
+        rest_ctors.push(expand::build_ctor(form, &piece_paths, span)?);
     }
 
     let body = if rest_ctors.is_empty() {
