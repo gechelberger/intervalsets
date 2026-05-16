@@ -155,3 +155,14 @@ fn hint_accepts_generic_type() {
     let x = interval!("[Saturating(0_i32), Saturating(10_i32)]", Saturating<i32>);
     assert_eq!(x, Interval::closed(Saturating(0_i32), Saturating(10)));
 }
+
+// --- `From`-conversion via the type hint ---
+
+#[test]
+fn hint_widens_via_from_impl() {
+    // `From<i32> for f64` exists; the macro wraps each bound in
+    // `<f64 as From<_>>::from(...)`. Without the hint-driven coercion
+    // this would be a type error.
+    let x = interval!("[0_i32, 10_i32]", f64);
+    assert_eq!(x, Interval::closed(0.0_f64, 10.0));
+}

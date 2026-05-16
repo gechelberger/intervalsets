@@ -117,3 +117,23 @@ fn float_hint_pins_width() {
     let f = Interval::<f32>::closed(0.0, 5.0).union(Interval::<f32>::closed(10.0, 15.0));
     assert_eq!(m, f);
 }
+
+// --- `From`-conversion via the type hint ---
+
+#[test]
+fn hint_coerces_bounds_in_every_piece() {
+    // Every piece's bounds — not just the first — are coerced via
+    // `<f64 as From<_>>::from(...)`. Verifies the hint propagates
+    // through `set!`'s multi-piece expansion.
+    let m = set!("{[0_i32, 5_i32] U [10_i32, 15_i32]}", f64);
+    let f = Interval::<f64>::closed(0.0, 5.0).union(Interval::<f64>::closed(10.0, 15.0));
+    assert_eq!(m, f);
+}
+
+#[test]
+fn hint_coerces_single_piece_via_from() {
+    // Single-piece path also gets the wrap.
+    let m = set!("{[0_i32, 10_i32]}", f64);
+    let f = IntervalSet::from(Interval::<f64>::closed(0.0, 10.0));
+    assert_eq!(m, f);
+}

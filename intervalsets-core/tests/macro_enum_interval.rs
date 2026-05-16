@@ -155,3 +155,27 @@ fn hint_accepts_generic_type() {
     let x = enum_interval!("[Saturating(0_i32), Saturating(10_i32)]", Saturating<i32>);
     assert_eq!(x, EnumInterval::closed(Saturating(0_i32), Saturating(10)));
 }
+
+// --- `From`-conversion via the type hint ---
+
+#[test]
+fn hint_widens_via_from_impl() {
+    // `From<i32> for f64` exists; the macro wraps each bound in
+    // `<f64 as From<_>>::from(...)`. Without the hint-driven coercion
+    // this would be a type error.
+    let x = enum_interval!("[0_i32, 10_i32]", f64);
+    assert_eq!(x, EnumInterval::closed(0.0_f64, 10.0));
+}
+
+#[test]
+fn hint_widens_half_unbounded_via_from_impl() {
+    let x = enum_interval!("(.., 10_i32]", f64);
+    assert_eq!(x, EnumInterval::unbound_closed(10.0_f64));
+}
+
+#[test]
+fn hint_widens_open_via_from_impl() {
+    // Confirms all bound-carrying forms get the wrap, not just `closed`.
+    let x = enum_interval!("(0_i32, 10_i32)", f64);
+    assert_eq!(x, EnumInterval::open(0.0_f64, 10.0));
+}
