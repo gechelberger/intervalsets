@@ -174,19 +174,23 @@ alias t := test
 test-doc:
     cargo +{{ RV }} test --all-features --doc
 
-# run the trybuild UI tests for compile-error paths in intervalsets-macros.
 # Pinned to RV so rustc-diagnostic drift doesn't churn stderr snapshots.
 # Snapshots are gated behind INTERVALSETS_UI_TESTS; the default `just test`
 # leaves the env var unset so this only runs when explicitly requested.
 #
 # Regenerate snapshots after intentional message changes:
-#   `just test-ui-overwrite`
+# `just test-ui-overwrite`
+#
+# run the trybuild UI tests for compile-error paths in intervalsets-macros.
+[env("INTERVALSETS_UI_TESTS", "1")]
 test-ui:
-    INTERVALSETS_UI_TESTS=1 cargo +{{ RV }} test -p intervalsets-macros --test ui
+    cargo +{{ RV }} test -p intervalsets-macros --test ui
 
 # regenerate trybuild UI snapshots (review the diff before committing)
+[env("INTERVALSETS_UI_TESTS", "1")]
+[env("TRYBUILD", "overwrite")]
 test-ui-overwrite:
-    INTERVALSETS_UI_TESTS=1 TRYBUILD=overwrite cargo +{{ RV }} test -p intervalsets-macros --test ui
+    cargo +{{ RV }} test -p intervalsets-macros --test ui
 
 # run unit tests and doctests
 test-all: test test-doc
