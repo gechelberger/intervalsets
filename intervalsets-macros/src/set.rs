@@ -1,11 +1,12 @@
 //! Splitting + pre-validation for the `set!` macro.
 //!
-//! `set!`'s input is the runtime `Display` form for `IntervalSet`:
+//! `set!`'s input mirrors `IntervalSet`'s runtime `FromStr` grammar
+//! (see `docs/specs/string_repr.md`):
 //!
-//! - `{}` — empty set.
-//! - `{piece}` — single-piece set.
-//! - `{piece U piece U ...}` — multi-piece, ASCII `U` separator with
-//!   whitespace on both sides.
+//! - Any bare §2 interval form (`{}`, `[0, 10]`, `(.., 5]`, `(.., ..)`,
+//!   …) — treated as a zero- or one-piece set.
+//! - `{piece U piece U ...}` — brace-wrapped multi-piece form, ASCII
+//!   `U` separator with whitespace on both sides.
 //!
 //! Each piece is a valid interval per the existing
 //! [`shape::parse_shape`](crate::shape::parse_shape) grammar; pre-parsing
@@ -27,8 +28,6 @@ pub(crate) struct SetParts {
 }
 
 pub(crate) enum SetError {
-    /// Input was not wrapped in `{...}`.
-    MissingBraces,
     /// A `U` separator had no segment on one side.
     EmptySegment,
     /// A piece was not a valid interval literal.
@@ -38,10 +37,6 @@ pub(crate) enum SetError {
 impl SetError {
     pub(crate) fn message(&self) -> String {
         match self {
-            Self::MissingBraces => {
-                "expected a brace-wrapped set literal: `{}`, `{piece}`, or `{piece U piece U ...}`"
-                    .to_string()
-            }
             Self::EmptySegment => {
                 "empty segment between `U` separators; check for leading, trailing, or doubled `U`"
                     .to_string()
@@ -53,21 +48,24 @@ impl SetError {
 
 pub(crate) fn parse_set(s: &str) -> Result<SetParts, SetError> {
     let s = s.trim();
-    if !s.starts_with('{') || !s.ends_with('}') {
-        return Err(SetError::MissingBraces);
+    // Brace-wrapped set form: matched outer `{` and `}`.
+    if s.starts_with('{') && s.ends_with('}') {
+        // Strip exactly one byte on each side (ASCII `{` and `}`).
+        let body = s[1..s.len() - 1].trim();
+        if body.is_empty() {
+            return Ok(SetParts { pieces: Vec::new() });
+        }
+        let segments = split_on_top_level_u(body)?;
+        let mut pieces = Vec::with_capacity(segments.len());
+        for seg in segments {
+            let form = parse_shape(seg.trim()).map_err(SetError::Shape)?;
+            pieces.push(form);
+        }
+        return Ok(SetParts { pieces });
     }
-    // Strip exactly one byte on each side (ASCII `{` and `}`).
-    let body = s[1..s.len() - 1].trim();
-    if body.is_empty() {
-        return Ok(SetParts { pieces: Vec::new() });
-    }
-    let segments = split_on_top_level_u(body)?;
-    let mut pieces = Vec::with_capacity(segments.len());
-    for seg in segments {
-        let form = parse_shape(seg.trim()).map_err(SetError::Shape)?;
-        pieces.push(form);
-    }
-    Ok(SetParts { pieces })
+    // Bare §2 interval form: treat as a single-piece set.
+    let form = parse_shape(s).map_err(SetError::Shape)?;
+    Ok(SetParts { pieces: vec![form] })
 }
 
 /// Walk `body` byte by byte, tracking `[](){}` depth. At depth 0,
@@ -121,7 +119,6 @@ mod tests {
     fn ok_count(s: &str) -> Result<usize, &'static str> {
         match parse_set(s) {
             Ok(p) => Ok(p.pieces.len()),
-            Err(SetError::MissingBraces) => Err("missing_braces"),
             Err(SetError::EmptySegment) => Err("empty_segment"),
             Err(SetError::Shape(_)) => Err("shape"),
         }
@@ -162,11 +159,22 @@ mod tests {
     }
 
     #[test]
-    fn rejects_missing_braces() {
-        assert_eq!(ok_count("[0, 10]"), Err("missing_braces"));
-        assert_eq!(ok_count("{[0, 10]"), Err("missing_braces"));
-        assert_eq!(ok_count("[0, 10]}"), Err("missing_braces"));
-        assert_eq!(ok_count(""), Err("missing_braces"));
+    fn accepts_bare_interval_form() {
+        // Spec §3.1: bare §2 forms are accepted as one-piece sets.
+        assert_eq!(ok_count("[0, 10]"), Ok(1));
+        assert_eq!(ok_count("(.., 5]"), Ok(1));
+        assert_eq!(ok_count("(.., ..)"), Ok(1));
+        // Empty (§2.4) form — produces zero pieces.
+        assert_eq!(ok_count("{}"), Ok(0));
+    }
+
+    #[test]
+    fn rejects_mismatched_braces() {
+        // No longer "missing braces" — the bare-form fallback runs
+        // and parse_shape rejects with its own error.
+        assert_eq!(ok_count("{[0, 10]"), Err("shape"));
+        assert_eq!(ok_count("[0, 10]}"), Err("shape"));
+        assert_eq!(ok_count(""), Err("shape"));
     }
 
     #[test]

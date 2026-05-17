@@ -105,6 +105,20 @@ fn overlapping_input_is_merged() {
 }
 
 #[test]
+fn bare_interval_form_makes_single_piece_set() {
+    // Spec §3.1: bare §2 forms parse as zero- or one-piece sets.
+    let m: IntervalSet<i32> = set!("[0, 10]");
+    let f = IntervalSet::from(Interval::closed(0, 10));
+    assert_eq!(m, f);
+
+    let m = set!("(.., 5]", i32);
+    assert_eq!(m, IntervalSet::from(Interval::unbound_closed(5)));
+
+    let m = set!("(.., ..)", i32);
+    assert_eq!(m, IntervalSet::from(Interval::unbounded()));
+}
+
+#[test]
 fn empty_piece_is_dropped() {
     let mixed = set!("{[0, 5] U {} U [10, 15]}", i32);
     let expected = Interval::closed(0, 5).union(Interval::closed(10, 15));

@@ -2,10 +2,13 @@
 //!
 //! [`Interval::from_str`](Interval) delegates to the inner
 //! [`EnumInterval`] parser. [`IntervalSet::from_str`](IntervalSet)
-//! accepts the `Display` form: `{}` for empty, `{piece}` for a single
-//! interval, `{piece U piece U ...}` for multi-piece. Each piece is a
-//! valid interval per the [`EnumInterval`] grammar; `IntervalSet::new`
-//! handles sorting, merging, and dropping empty pieces.
+//! accepts both the bare §2 interval form (single-piece set) and the
+//! brace-wrapped §3.1 set form (any piece count). See
+//! `docs/specs/string_repr.md` for the full grammar; canonical
+//! emission drops outer braces for piece counts ≤ 1, but the parser
+//! also accepts brace-wrapped inputs at those counts as non-canonical
+//! shapes. `IntervalSet::new` handles sorting, merging, and dropping
+//! empty pieces.
 
 use core::str::FromStr;
 
@@ -51,19 +54,25 @@ where
     }
 }
 
-/// Parses an [`IntervalSet`] from its `Display` form. The grammar:
+/// Parses an [`IntervalSet`] from its `Display` form. The grammar
+/// accepts two shapes:
 ///
-/// | Form | Example |
-/// |------|---------|
-/// | empty | `{}` |
-/// | single | `{[0, 10]}` |
-/// | multi | `{[0, 5] U [10, 15] U [20, 30]}` |
+/// | Form                      | Example                            |
+/// |---------------------------|------------------------------------|
+/// | bare §2 interval form     | `{}`, `[0, 10]`, `(.., 5]`, `(.., ..)` |
+/// | brace-wrapped set form    | `{[0, 5] U [10, 15] U [20, 30]}`   |
 ///
-/// Each piece is a valid [`EnumInterval`] (see its `FromStr` impl for
-/// the per-piece grammar). Pieces don't need to be sorted, normalized,
-/// or non-overlapping at the input level — [`IntervalSet::new`] sorts,
-/// merges connected pieces, and drops empties to satisfy the
-/// `IntervalSet` invariants.
+/// A bare interval is treated as a zero- or one-piece set; the
+/// brace-wrapped form carries any piece count. Each piece is a valid
+/// [`EnumInterval`] (see its `FromStr` impl). Pieces don't need to be
+/// sorted, normalized, or non-overlapping at the input level —
+/// [`IntervalSet::new`] sorts, merges connected pieces, and drops
+/// empties to satisfy the `IntervalSet` invariants.
+///
+/// Canonical emission (per `docs/specs/string_repr.md` §3.1) uses the
+/// bare form for piece counts ≤ 1 and the brace-wrapped form for
+/// counts ≥ 2; brace-wrapped inputs at counts ≤ 1 (e.g. `{[0, 10]}`)
+/// are accepted but non-canonical, and re-emission normalizes them.
 ///
 /// # Examples
 ///
@@ -73,6 +82,11 @@ where
 /// let empty: IntervalSet<i32> = "{}".parse().unwrap();
 /// assert_eq!(empty, IntervalSet::empty());
 ///
+/// // Single-piece sets parse from the bare interval form (canonical) ...
+/// let single: IntervalSet<i32> = "[0, 10]".parse().unwrap();
+/// assert_eq!(single, IntervalSet::from(Interval::closed(0, 10)));
+///
+/// // ... or from the brace-wrapped form (non-canonical input, accepted).
 /// let single: IntervalSet<i32> = "{[0, 10]}".parse().unwrap();
 /// assert_eq!(single, IntervalSet::from(Interval::closed(0, 10)));
 ///
@@ -97,20 +111,22 @@ where
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let s = s.trim();
-        if !s.starts_with('{') || !s.ends_with('}') {
-            return Err(ParseIntervalError::Syntax);
+        // Brace-wrapped set form: matched outer `{` and `}`.
+        if s.starts_with('{') && s.ends_with('}') {
+            // Strip exactly one byte on each side (ASCII `{` and `}`).
+            let body = s[1..s.len() - 1].trim();
+            if body.is_empty() {
+                return Ok(IntervalSet::empty());
+            }
+            let segments = split_on_top_level_u(body)?;
+            let mut pieces = Vec::with_capacity(segments.len());
+            for seg in segments {
+                pieces.push(seg.trim().parse::<Interval<T>>()?);
+            }
+            return Ok(IntervalSet::new(pieces));
         }
-        // Strip exactly one byte on each side (ASCII `{` and `}`).
-        let body = s[1..s.len() - 1].trim();
-        if body.is_empty() {
-            return Ok(IntervalSet::empty());
-        }
-        let segments = split_on_top_level_u(body)?;
-        let mut pieces = Vec::with_capacity(segments.len());
-        for seg in segments {
-            pieces.push(seg.trim().parse::<Interval<T>>()?);
-        }
-        Ok(IntervalSet::new(pieces))
+        // Bare §2 interval form: treat as a single-piece set.
+        Interval::<T>::from_str(s).map(Self::from)
     }
 }
 
@@ -264,15 +280,35 @@ mod tests {
     }
 
     #[test]
-    fn set_rejects_missing_braces() {
-        let r: Result<IntervalSet<i32>, _> = "[0, 10]".parse();
-        assert!(matches!(r, Err(ParseIntervalError::Syntax)));
+    fn set_accepts_bare_interval_form() {
+        // Spec §3.1: bare §2 forms parse as zero- or one-piece sets.
+        let s: IntervalSet<i32> = "[0, 10]".parse().unwrap();
+        assert_eq!(s, IntervalSet::from(Interval::closed(0, 10)));
 
+        let s: IntervalSet<f64> = "(.., 5.0]".parse().unwrap();
+        assert_eq!(s, IntervalSet::from(Interval::unbound_closed(5.0)));
+
+        let s: IntervalSet<i32> = "(.., ..)".parse().unwrap();
+        assert_eq!(s, IntervalSet::from(Interval::unbounded()));
+    }
+
+    #[test]
+    fn set_rejects_mismatched_braces() {
         let r: Result<IntervalSet<i32>, _> = "{[0, 10]".parse();
         assert!(matches!(r, Err(ParseIntervalError::Syntax)));
 
         let r: Result<IntervalSet<i32>, _> = "[0, 10]}".parse();
         assert!(matches!(r, Err(ParseIntervalError::Syntax)));
+    }
+
+    #[test]
+    fn set_rejects_unbraced_multi_piece() {
+        // Without outer braces, ` U ` is not a top-level separator —
+        // the bare-interval path tries to parse it as a single piece
+        // and rejects (either Syntax or Element, depending on which
+        // sub-rule fires first).
+        let r: Result<IntervalSet<i32>, _> = "[0, 5] U [10, 15]".parse();
+        assert!(r.is_err());
     }
 
     #[test]

@@ -176,6 +176,50 @@ impl<T: Element> MaybeDisjoint<T> {
     pub(crate) fn satisfies_invariants(left: &EnumInterval<T>, right: &EnumInterval<T>) -> bool {
         !left.is_empty() && !right.is_empty() && left < right && !left.connects(right)
     }
+
+    /// Absorb `piece` into `self`, merging with existing pieces where
+    /// connectivity permits. Returns `Err(self)` (unchanged) when
+    /// `piece` is disjoint from both existing pieces of a two-piece
+    /// `Disjoint` value — at that point the union would require three
+    /// disjoint pieces, exceeding `MaybeDisjoint`'s capacity. Empty
+    /// `piece` is a no-op.
+    pub(crate) fn try_absorb_piece(self, piece: EnumInterval<T>) -> Result<Self, Self> {
+        if piece.is_empty() {
+            return Ok(self);
+        }
+        match self {
+            Self::Connected(iv) if iv.is_empty() => Ok(Self::from_interval(piece)),
+            Self::Connected(iv) => Ok(Self::from_pair(iv, piece)),
+            Self::Disjoint(a, b) => {
+                let a_connects = a.connects(&piece);
+                let b_connects = b.connects(&piece);
+                match (a_connects, b_connects) {
+                    (false, false) => Err(Self::Disjoint(a, b)),
+                    (true, false) => {
+                        let ap = a
+                            .merge_connected(piece)
+                            .expect("a.connects(&piece) implies merge_connected is Some");
+                        Ok(Self::from_pair(ap, b))
+                    }
+                    (false, true) => {
+                        let bp = b
+                            .merge_connected(piece)
+                            .expect("b.connects(&piece) implies merge_connected is Some");
+                        Ok(Self::from_pair(a, bp))
+                    }
+                    (true, true) => {
+                        let ap = a
+                            .merge_connected(piece)
+                            .expect("a.connects(&piece) implies merge_connected is Some");
+                        let apb = ap
+                            .merge_connected(b)
+                            .expect("piece connecting to both a and b makes a∪piece adjacent to b");
+                        Ok(Self::from_interval(apb))
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<T> MaybeDisjoint<T> {
