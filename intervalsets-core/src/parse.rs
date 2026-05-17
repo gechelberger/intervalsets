@@ -201,8 +201,8 @@ where
             fold_top_level_u_segments(body, |seg| {
                 let piece = EnumInterval::<T>::from_str(seg)?;
                 acc = core::mem::take(&mut acc)
-                    .try_absorb_piece(piece)
-                    .map_err(|_| ParseIntervalError::Syntax)?;
+                    .try_merge_interval(piece)
+                    .ok_or(ParseIntervalError::Syntax)?;
                 Ok(())
             })?;
             return Ok(acc);
