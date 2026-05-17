@@ -57,6 +57,7 @@ version and are released together via `cargo-release`. See the repo
 
 ### Fixed
 
+- `Decimal` bound limits are now normalized at construction, so intervals built from value-equal but scale-distinct inputs (e.g. `Decimal::new(10, 0)` vs `Decimal::new(100, 1)`) share one canonical bit pattern.
 - `IntervalSet::try_measure` no longer panics in debug / wraps in release on integer intervals; the per-step `Sub` overflow on full-range integer intervals is gone (stepwise widening to the next unsigned bit-class), and the summation step uses `TryAdd` so a sum that exceeds `T::Measure` surfaces as `Err(MathError::Range)`.
 
 ### Security
