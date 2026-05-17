@@ -105,6 +105,16 @@ fn overlapping_input_is_merged() {
 }
 
 #[test]
+fn empty_piece_is_dropped() {
+    let mixed = set!("{[0, 5] U {} U [10, 15]}", i32);
+    let expected = Interval::closed(0, 5).union(Interval::closed(10, 15));
+    assert_eq!(mixed, expected);
+
+    let all_empty = set!("{{} U {}}", i32);
+    assert_eq!(all_empty, IntervalSet::<i32>::empty());
+}
+
+#[test]
 fn whitespace_lenience() {
     let m = set!("  {  [0, 5]   U   [10, 15]  }  ", i32);
     let f = Interval::closed(0, 5).union(Interval::closed(10, 15));

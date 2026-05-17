@@ -254,6 +254,16 @@ mod tests {
     }
 
     #[test]
+    fn set_accepts_empty_piece() {
+        let mixed: IntervalSet<i32> = "{[0, 5] U {} U [10, 15]}".parse().unwrap();
+        let expected = Interval::closed(0, 5).union(Interval::closed(10, 15));
+        assert_eq!(mixed, expected);
+
+        let all_empty: IntervalSet<i32> = "{{} U {}}".parse().unwrap();
+        assert_eq!(all_empty, IntervalSet::empty());
+    }
+
+    #[test]
     fn set_rejects_missing_braces() {
         let r: Result<IntervalSet<i32>, _> = "[0, 10]".parse();
         assert!(matches!(r, Err(ParseIntervalError::Syntax)));

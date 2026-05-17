@@ -1,0 +1,318 @@
+# String Representation of Intervals and Interval Sets
+
+This document specifies the canonical grammar for the textual representation
+of intervals and interval sets. The grammar is shared by [`Display`], 
+[`FromStr`], and constructor proc-macros. 
+
+For custom serialization / deserialization targets there are optional feature
+gates such as [`serde`].
+
+The grammar describes abstract mathematical objects — intervals over a
+totally-ordered element domain `T`, and finite unions of such intervals.
+It says nothing about how those objects are represented in memory.
+
+## Design principles
+
+1. **One canonical form per value.** Each abstract value has exactly one
+   textual representation that emission produces. Multiple input forms
+   (e.g. unsorted or overlapping pieces in a set, or equivalent empty
+   spellings) parse to the same value and collapse to that canonical form
+   on emission.
+
+2. **Round-trip on values, not text.** Emit-then-parse is the identity on
+   values; parse-then-emit is not the identity on text, because parsing
+   normalizes the non-canonical inputs admitted under #1.
+
+3. **Bracket semantics follow set notation.** Square brackets denote
+   inclusion of an endpoint; parentheses denote exclusion. Unbounded sides
+   are conceptually never "included," so they may only appear adjacent to a
+   parenthesis.
+
+4. **Elements are opaque.** This grammar specifies only the structure
+   *around* the bounds — brackets, braces, separators. The textual form
+   of each bound is whatever the element domain `T` defines; parsing
+   hands those substrings to `T`'s parser unchanged.
+
+---
+
+## 1. Lexical conventions
+
+### 1.1 Tokens
+
+| Token        | Meaning                                              |
+|--------------|------------------------------------------------------|
+| `[`          | Left-closed bracket (endpoint included)              |
+| `]`          | Right-closed bracket (endpoint included)             |
+| `(`          | Left-open bracket (endpoint excluded)                |
+| `)`          | Right-open bracket (endpoint excluded)               |
+| `{`          | Set open                                             |
+| `}`          | Set close                                            |
+| `,`          | Bound separator within an interval                   |
+| `U`          | Set-union separator between pieces (ASCII capital U) |
+| `..`         | Unbounded-side marker (two ASCII dots)               |
+| _element_    | A maximal substring delimited by the tokens above    |
+
+### 1.2 Whitespace
+
+Whitespace surrounding any structural token (brackets, braces, commas, the
+union separator, and the unbounded marker) is permitted and ignored.
+Whitespace within an element lexeme is preserved and passed to the element
+parser unchanged.
+
+The union separator `U` MUST be flanked by at least one whitespace character
+on each side. Without this rule, an element-domain parser that accepts an
+unadorned `U` inside its own lexemes (e.g. a unit-suffixed numeric type)
+could not be syntactically distinguished from the set separator.
+
+### 1.3 Reserved characters
+
+`[`, `]`, `(`, `)`, `{`, `}`, and `,` are reserved structural tokens at the
+top level. They may appear nested inside an element lexeme provided the
+nesting is balanced (so that the comma that separates the two bounds of an
+interval is unambiguous). Element parsers that need to embed top-level
+reserved characters must arrange to balance them.
+
+The marker `..` is reserved on either side of the comma within an interval
+form. An element lexeme MUST NOT consist solely of `..`.
+
+### 1.4 Unicode
+
+The grammar is defined entirely in ASCII. No alternative spellings of the
+union separator or the unbounded marker are accepted (in particular, the
+Unicode characters `∞`, `∪`, and `…` are not part of this grammar).
+
+---
+
+## 2. The interval forms
+
+An interval is one of the following ten forms. Let `a` and `b` denote
+element lexemes; `a` is interpreted as the left (lower) bound and `b` as
+the right (upper) bound.
+
+### 2.1 Bounded forms (both endpoints finite)
+
+| Form        | Meaning                                  |
+|-------------|------------------------------------------|
+| `[a, b]`    | Closed-closed: `{ x ∈ T : a ≤ x ≤ b }`   |
+| `[a, b)`    | Closed-open:   `{ x ∈ T : a ≤ x < b }`   |
+| `(a, b]`    | Open-closed:   `{ x ∈ T : a < x ≤ b }`   |
+| `(a, b)`    | Open-open:     `{ x ∈ T : a < x < b }`   |
+
+A bounded form is *empty* iff its abstract value is the empty set under
+the rules of the element domain. Empty bounded forms are not emitted in
+this shape; see §2.4.
+
+A singleton (a one-element interval) has no special syntax: it is
+represented as `[a, a]`. The forms `[a, a)`, `(a, a]`, and `(a, a)` all
+represent the empty set and round-trip through emission to the canonical
+empty form.
+
+### 2.2 Half-bounded forms (one endpoint at infinity)
+
+| Form        | Meaning                                  |
+|-------------|------------------------------------------|
+| `[a, ..)`   | Left-closed, unbounded above: `{ x : a ≤ x }` |
+| `(a, ..)`   | Left-open, unbounded above:   `{ x : a < x }` |
+| `(.., b]`   | Right-closed, unbounded below:`{ x : x ≤ b }` |
+| `(.., b)`   | Right-open, unbounded below:  `{ x : x < b }` |
+
+The unbounded side MUST be adjacent to a parenthesis. The forms `[.., b]`,
+`[.., b)`, `[a, ..]`, and `(a, ..]` are syntax errors. This is a hard
+constraint of the grammar, not a normalization rule: infinity is not an
+element of `T`, so the closed-on-infinity spellings have no meaning.
+
+### 2.3 Unbounded form
+
+| Form        | Meaning                                  |
+|-------------|------------------------------------------|
+| `(.., ..)`  | The entire element domain `T`            |
+
+By the same rule as §2.2, both sides MUST be parentheses.
+
+### 2.4 Empty form
+
+| Form        | Meaning                                  |
+|-------------|------------------------------------------|
+| `{}`        | The empty set                            |
+
+The empty form is the canonical emission for *any* abstract empty interval,
+regardless of which bounded shape gave rise to it. The bounded forms
+`[a, a)`, `(a, a]`, `(a, a)`, and any `[a, b]`-shaped expression whose
+element-domain interpretation is empty (e.g. an integer interval whose
+bounds bracket no integers) parse successfully and yield the empty value;
+on round-trip they emit as `{}`.
+
+---
+
+## 3. The interval-set forms
+
+An interval set is a finite, possibly empty union of pairwise-disjoint,
+disconnected, non-empty intervals over `T`.
+
+### 3.1 Set form
+
+```
+{ piece_1  U  piece_2  U  …  U  piece_n }
+```
+
+- Outer braces `{` and `}` are mandatory.
+- Each `piece_i` is any interval form from §2.
+- The union separator ` U ` MUST be flanked by whitespace (§1.2).
+- The empty set is written `{}` — identical to the empty interval form.
+- A single-piece set is written `{ piece }` with the braces retained; the
+  piece is NOT unwrapped on emission.
+
+### 3.2 Normalization
+
+Input is accepted in any piece order, with overlapping or adjacent pieces,
+and with embedded empty regions. Parsing always yields the abstract union;
+emission always uses the canonical form, defined as:
+
+1. **Drop empties.** Pieces whose interpretation is the empty set are
+   removed.
+2. **Merge.** Overlapping or adjacent pieces are coalesced into a single
+   piece. (Adjacency is defined by the element domain: two integer
+   intervals are adjacent iff one ends at `k` and the next begins at
+   `k + 1`; two continuous intervals are adjacent iff one's upper bound
+   equals the other's lower bound and at least one of those bounds is
+   closed.)
+3. **Order.** The remaining pieces are emitted in ascending order of their
+   left bounds; pieces sharing a left-bound value are ordered by left-bound
+   openness (closed before open) and then by their right bound.
+
+After normalization, a set of one piece is indistinguishable from that
+piece (except for the outer braces); a set of zero pieces is the empty
+set.
+
+### 3.3 Two-piece intermediate form
+
+Some implementations distinguish a two-piece value (the result of an
+operation that can produce at most two disjoint pieces) from a fully
+general set. The textual grammar does not distinguish them:
+
+- A two-piece value with both pieces non-empty and disjoint emits as a
+  two-piece set form: `{ piece_1 U piece_2 }`.
+- A two-piece value that has collapsed to a single piece emits as that
+  piece's interval form *without* outer braces.
+
+On parsing, the two-piece form accepts the single-piece interval form
+directly (no braces) in addition to the brace-wrapped form, and accepts
+any two-piece set as long as it normalizes to at most two disjoint pieces.
+
+---
+
+## 4. Element lexemes
+
+The grammar treats element lexemes as opaque. An element lexeme is the
+maximal substring between the surrounding structural tokens, with leading
+and trailing whitespace stripped. The element domain `T` is responsible
+for interpreting the resulting string and reporting failures.
+
+### 4.1 Comma disambiguation
+
+An interval form contains exactly one comma that separates the two bound
+lexemes. When an element lexeme itself contains commas, those commas MUST
+be enclosed in balanced nesting (parentheses, brackets, or braces) so that
+the separator comma can be located as the first comma at the top level of
+the interval form.
+
+### 4.2 Unbounded-marker disambiguation
+
+An element lexeme MUST NOT be exactly `..`. The `..` token is reserved on
+either side of the comma to denote an unbounded endpoint, and the
+grammar's distinction between bounded and half-bounded forms depends on
+this reservation.
+
+### 4.3 Independence from element type
+
+A textual form is well-formed at the grammar level iff its structural
+tokens are well-formed per §2 and §3. Whether the parsed value is
+*meaningful* for a given `T` (whether the element lexemes parse, whether
+the resulting interval is non-degenerate, whether the pieces of a set are
+disjoint after element-domain interpretation) is delegated to the
+element-domain rules.
+
+---
+
+## 5. Variants
+
+The following variants of the grammar are accepted by sub-types whose
+abstract domain is a strict subset of the general interval space. Each
+sub-type accepts only the forms relevant to its domain; emission uses the
+canonical form for whatever abstract value is held.
+
+| Sub-type             | Accepted forms                                |
+|----------------------|-----------------------------------------------|
+| Bounded interval     | §2.1 and §2.4                                 |
+| Half-bounded interval| §2.2 only                                     |
+| General interval     | §2.1, §2.2, §2.3, §2.4                        |
+| Two-piece value      | §2 (all) and §3.1 restricted to ≤ 2 pieces    |
+| Interval set         | §2.4 and §3.1                                 |
+
+A form that lies outside a sub-type's accepted set is a parse error, not a
+silent coercion.
+
+---
+
+## 6. Examples
+
+```
+[0, 10]                              bounded, closed-closed
+(0, 10)                              bounded, open-open
+[0, 10)                              bounded, closed-open
+(0, 10]                              bounded, open-closed
+[5, 5]                               singleton
+{}                                   empty
+
+[0, ..)                              half-bounded above (left-closed)
+(0, ..)                              half-bounded above (left-open)
+(.., 10]                             half-bounded below (right-closed)
+(.., 10)                             half-bounded below (right-open)
+(.., ..)                             unbounded
+
+{[0, 5]}                             one-piece set
+{[0, 5] U [10, 15]}                  two-piece set
+{(.., -1) U [0, 5] U (10, ..)}       three-piece set, mixed bounds
+{}                                   empty set (same form as empty interval)
+```
+
+### 6.1 Round-trip examples
+
+Inputs that normalize on emission:
+
+```
+{[10, 15] U [0, 5]}        emits {[0, 5] U [10, 15]}        (reordering)
+{[0, 10] U [5, 15]}        emits {[0, 15]}                  (overlap merge)
+{[0, 5] U [5, 10]}         emits {[0, 10]}                  (adjacency merge, continuous T)
+{[0, 5] U {} U [10, 15]}   emits {[0, 5] U [10, 15]}        (empty piece dropped)
+[3, 3)                     emits {}                          (empty by element domain)
+```
+
+---
+
+## 7. Grammar (formal)
+
+```ebnf
+interval       ::= empty | bounded | half_below | half_above | unbounded
+empty          ::= "{" "}"
+bounded        ::= left_bracket  element  ","  element  right_bracket
+half_below     ::= "("           ".."     ","  element  right_bracket
+half_above     ::= left_bracket  element  ","  ".."     ")"
+unbounded      ::= "(" ".." "," ".." ")"
+
+left_bracket   ::= "[" | "("
+right_bracket  ::= "]" | ")"
+
+set            ::= "{" "}"
+                 | "{" piece ( ws "U" ws piece )* "}"
+piece          ::= interval
+
+ws             ::= one or more ASCII whitespace characters
+element        ::= an opaque lexeme passed to the element domain;
+                   structurally balanced under (), [], {};
+                   not equal to "..";
+                   may contain commas only inside balanced nesting
+```
+
+Whitespace surrounding any structural token is implicitly allowed in
+addition to the explicit `ws` around the union separator.
