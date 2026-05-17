@@ -149,18 +149,40 @@ on round-trip they emit as `{}`.
 An interval set is a finite, possibly empty union of pairwise-disjoint,
 disconnected, non-empty intervals over `T`.
 
-### 3.1 Set form
+### 3.1 Set forms
 
-```
-{ piece_1  U  piece_2  U  …  U  piece_n }
-```
+After normalization (§3.2), an interval set holds zero, one, or many
+disjoint, non-empty pieces. Each piece count has its own canonical
+emission:
+
+| Piece count | Canonical form                                       | Section |
+|-------------|------------------------------------------------------|---------|
+| 0           | `{}` (the empty form)                                | §2.4    |
+| 1           | the piece's interval form (no outer braces)          | §2      |
+| n ≥ 2       | `{ piece_1 U piece_2 U … U piece_n }` (brace-wrapped) | here    |
+
+For piece counts ≤ 1, the set's textual form is *identical* to that of
+the single value it holds: `Interval::empty()` and the empty
+interval-set value share the form `{}`; a single-piece set holding
+`[0, 5]` shares the form `[0, 5]`. Braces in canonical emission carry
+the meaning "this value has two or more disjoint pieces" — they
+indicate value structure, not container type. Callers that need to
+distinguish container type at the textual level reach for `Debug`,
+not `Display`.
+
+The multi-piece form has these rules:
 
 - Outer braces `{` and `}` are mandatory.
-- Each `piece_i` is any interval form from §2.
+- Each `piece_i` is any interval form from §2, including `{}` as a
+  no-op input piece (dropped during normalization).
 - The union separator ` U ` MUST be flanked by whitespace (§1.2).
-- The empty set is written `{}` — identical to the empty interval form.
-- A single-piece set is written `{ piece }` with the braces retained; the
-  piece is NOT unwrapped on emission.
+
+The brace-wrapped form is also accepted on input for zero or one
+piece — `{[0, 5]}` parses as the single-piece set `[0, 5]`, and
+`{{} U {}}` parses as the empty set — but it is not the canonical
+emission for those piece counts. (See principle #2: emit-then-parse
+round-trips on values, but multiple input shapes can collapse to one
+canonical emission.)
 
 ### 3.2 Normalization
 
@@ -180,24 +202,9 @@ emission always uses the canonical form, defined as:
    left bounds; pieces sharing a left-bound value are ordered by left-bound
    openness (closed before open) and then by their right bound.
 
-After normalization, a set of one piece is indistinguishable from that
-piece (except for the outer braces); a set of zero pieces is the empty
-set.
-
-### 3.3 Two-piece intermediate form
-
-Some implementations distinguish a two-piece value (the result of an
-operation that can produce at most two disjoint pieces) from a fully
-general set. The textual grammar does not distinguish them:
-
-- A two-piece value with both pieces non-empty and disjoint emits as a
-  two-piece set form: `{ piece_1 U piece_2 }`.
-- A two-piece value that has collapsed to a single piece emits as that
-  piece's interval form *without* outer braces.
-
-On parsing, the two-piece form accepts the single-piece interval form
-directly (no braces) in addition to the brace-wrapped form, and accepts
-any two-piece set as long as it normalizes to at most two disjoint pieces.
+After normalization, a set of one piece emits identically to that
+piece (no outer braces); a set of zero pieces is the empty set, which
+emits identically to the empty interval form `{}`.
 
 ---
 
@@ -246,11 +253,16 @@ canonical form for whatever abstract value is held.
 | Bounded interval     | §2.1 and §2.4                                 |
 | Half-bounded interval| §2.2 only                                     |
 | General interval     | §2.1, §2.2, §2.3, §2.4                        |
-| Two-piece value      | §2 (all) and §3.1 restricted to ≤ 2 pieces    |
-| Interval set         | §2.4 and §3.1                                 |
+| Interval set         | §2 (all) and §3.1                             |
 
 A form that lies outside a sub-type's accepted set is a parse error, not a
-silent coercion.
+silent coercion. All set-shaped sub-types — regardless of any per-type
+capacity limit on how many disjoint pieces a value may hold — share the
+"interval set" row: they accept any §2 form (treated as a zero- or
+one-piece set) and the §3.1 multi-piece form, and they emit per the
+§3.1 piece-count table. A capacity limit is an implementation concern,
+surfaced as a runtime parse failure on inputs that normalize past the
+limit; it is not part of the grammar.
 
 ---
 
@@ -270,7 +282,7 @@ silent coercion.
 (.., 10)                             half-bounded below (right-open)
 (.., ..)                             unbounded
 
-{[0, 5]}                             one-piece set
+[0, 5]                               one-piece set (no outer braces)
 {[0, 5] U [10, 15]}                  two-piece set
 {(.., -1) U [0, 5] U (10, ..)}       three-piece set, mixed bounds
 {}                                   empty set (same form as empty interval)
@@ -282,9 +294,11 @@ Inputs that normalize on emission:
 
 ```
 {[10, 15] U [0, 5]}        emits {[0, 5] U [10, 15]}        (reordering)
-{[0, 10] U [5, 15]}        emits {[0, 15]}                  (overlap merge)
-{[0, 5] U [5, 10]}         emits {[0, 10]}                  (adjacency merge, continuous T)
+{[0, 10] U [5, 15]}        emits [0, 15]                    (overlap merge → single piece, braces dropped)
+{[0, 5] U [5, 10]}         emits [0, 10]                    (adjacency merge → single piece, braces dropped)
+{[0, 5]}                   emits [0, 5]                     (single-piece input → braces dropped)
 {[0, 5] U {} U [10, 15]}   emits {[0, 5] U [10, 15]}        (empty piece dropped)
+{{} U {}}                  emits {}                         (all pieces empty → empty set)
 [3, 3)                     emits {}                          (empty by element domain)
 ```
 
@@ -303,9 +317,16 @@ unbounded      ::= "(" ".." "," ".." ")"
 left_bracket   ::= "[" | "("
 right_bracket  ::= "]" | ")"
 
-set            ::= "{" "}"
+set            ::= interval
                  | "{" piece ( ws "U" ws piece )* "}"
 piece          ::= interval
+
+(* Emission picks one canonical shape per piece count:                      *)
+(*   0 pieces → the `interval` alternative, specifically `{}` (§2.4)        *)
+(*   1 piece  → the `interval` alternative (bare, no outer braces)          *)
+(*   n ≥ 2    → the brace-wrapped alternative                               *)
+(* Parsing accepts both alternatives at any piece count; the brace-wrapped  *)
+(* form with 0 or 1 pieces is a valid non-canonical input.                  *)
 
 ws             ::= one or more ASCII whitespace characters
 element        ::= an opaque lexeme passed to the element domain;
