@@ -157,7 +157,10 @@ mod tests {
             let ob = y.ord_bound_pair();
             assert_eq!(
                 ob,
-                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
+                OrdBoundPair::new(
+                    OrdBound::closed_assume_valid(&0),
+                    OrdBound::closed_assume_valid(&10),
+                )
             );
         }
 
@@ -165,7 +168,10 @@ mod tests {
             let ob = y.ord_bound_pair();
             assert_eq!(
                 ob,
-                OrdBoundPair::new(OrdBound::closed(&0), OrdBound::closed(&10))
+                OrdBoundPair::new(
+                    OrdBound::closed_assume_valid(&0),
+                    OrdBound::closed_assume_valid(&10),
+                )
             );
         }
 

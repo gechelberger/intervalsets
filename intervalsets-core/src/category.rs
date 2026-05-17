@@ -64,7 +64,7 @@ impl<T: Zero + PartialOrd> FiniteInterval<T> {
         };
 
         let t_zero = T::zero();
-        let zero = FiniteOrdBound::closed(&t_zero);
+        let zero = FiniteOrdBound::closed_assume_valid(&t_zero);
         let lhs_ord = lhs
             .finite_ord(Left)
             .partial_cmp(&zero)
@@ -118,7 +118,7 @@ impl<T: Zero + PartialOrd> HalfInterval<T> {
     /// zero (e.g. a NaN float bound).
     pub fn try_category(&self) -> Result<ECat, Error> {
         let t_zero = T::zero();
-        let zero = FiniteOrdBound::closed(&t_zero);
+        let zero = FiniteOrdBound::closed_assume_valid(&t_zero);
         let ord = self
             .finite_ord_bound()
             .partial_cmp(&zero)

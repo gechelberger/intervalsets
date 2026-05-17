@@ -185,7 +185,7 @@ mod impls {
         let (akind, aval) = a.into_raw();
         let (bkind, bval) = b.into_raw();
         let val = aval.try_mul(bval).map_err(Into::into)?;
-        FiniteBound::try_new(akind.combine(bkind), val)
+        FiniteBound::try_new(akind.meet(bkind), val)
     }
 
     pub(super) fn finite_x_finite_by_cat<T>(

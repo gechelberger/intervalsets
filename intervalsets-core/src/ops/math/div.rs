@@ -219,7 +219,7 @@ mod impls {
         let (nkind, nval) = numer.into_raw();
         let (dkind, dval) = denom.into_raw();
         let val = nval.try_div(dval).map_err(Into::into)?;
-        FB::try_new(nkind.combine(dkind), val)
+        FB::try_new(nkind.meet(dkind), val)
     }
 
     /// anything divided by the zero singleton set.

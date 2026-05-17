@@ -107,7 +107,7 @@ impl<T: PartialOrd> Contains<FiniteOrdBound<&T>> for EnumInterval<T> {
 impl<T: PartialOrd> Contains<&T> for OrdBoundPair<&T> {
     #[inline(always)]
     fn contains(&self, rhs: &T) -> bool {
-        let rhs = OrdBound::closed(rhs);
+        let rhs = OrdBound::closed_assume_valid(rhs);
         let (lhs_min, lhs_max) = self.into_raw();
         lhs_min <= rhs && rhs <= lhs_max && lhs_max != OrdBound::LeftUnbounded
     }
@@ -286,7 +286,7 @@ mod tests {
 
     #[test]
     fn test_contains_nan() {
-        let closed_ord_nan = crate::bound::ord::FiniteOrdBound::closed(&f64::NAN);
+        let closed_ord_nan = crate::bound::ord::FiniteOrdBound::closed_assume_valid(&f64::NAN);
 
         let f = FiniteInterval::open(0.0, 10.0);
         assert!(!f.contains(&f64::NAN));
