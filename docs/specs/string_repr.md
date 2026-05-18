@@ -8,7 +8,7 @@ For custom serialization / deserialization targets there are optional feature
 gates such as [`serde`].
 
 The grammar describes abstract mathematical objects — intervals over a
-totally-ordered element domain `T`, and finite unions of such intervals.
+totally-ordered element domain `T`, and unions of such intervals.
 It says nothing about how those objects are represented in memory.
 
 ## Design principles
@@ -60,9 +60,8 @@ Whitespace within an element lexeme is preserved and passed to the element
 parser unchanged.
 
 The union separator `U` MUST be flanked by at least one whitespace character
-on each side. Without this rule, an element-domain parser that accepts an
-unadorned `U` inside its own lexemes (e.g. a unit-suffixed numeric type)
-could not be syntactically distinguished from the set separator.
+on each side, so that element lexemes containing a bare `U` (e.g. a Unicode
+codepoint written `U+0041`) are not tokenized at the `U`.
 
 ### 1.3 Reserved characters
 
@@ -98,14 +97,19 @@ the right (upper) bound.
 | `(a, b]`    | Open-closed:   `{ x ∈ T : a < x ≤ b }`   |
 | `(a, b)`    | Open-open:     `{ x ∈ T : a < x < b }`   |
 
-A bounded form is *empty* iff its abstract value is the empty set under
-the rules of the element domain. Empty bounded forms are not emitted in
-this shape; see §2.4.
+A bounded form MUST denote a non-empty abstract value under the rules of
+the element domain. A bounded form whose interpretation would be empty is
+a parse error, not a coercion to the empty form. The empty set has a
+dedicated spelling (§2.4) and is not reached by collapsing a degenerate
+bounded form.
 
 A singleton (a one-element interval) has no special syntax: it is
-represented as `[a, a]`. The forms `[a, a)`, `(a, a]`, and `(a, a)` all
-represent the empty set and round-trip through emission to the canonical
-empty form.
+represented as `[a, a]`. The forms `[a, a)`, `(a, a]`, and `(a, a)` are
+parse errors: when the two bounds are equal, the only well-formed
+spelling is the closed-closed singleton. Likewise, a bounded form whose
+endpoints are crossed (`a > b`), or whose element-domain interpretation
+contains no elements (e.g. the integer interval `(0, 1)`, whose bounds
+bracket no integers), is a parse error.
 
 ### 2.2 Half-bounded forms (one endpoint at infinity)
 
@@ -135,12 +139,15 @@ By the same rule as §2.2, both sides MUST be parentheses.
 |-------------|------------------------------------------|
 | `{}`        | The empty set                            |
 
-The empty form is the canonical emission for *any* abstract empty interval,
-regardless of which bounded shape gave rise to it. The bounded forms
-`[a, a)`, `(a, a]`, `(a, a)`, and any `[a, b]`-shaped expression whose
-element-domain interpretation is empty (e.g. an integer interval whose
-bounds bracket no integers) parse successfully and yield the empty value;
-on round-trip they emit as `{}`.
+The empty form is the canonical emission for the empty set, and is also
+the only spelling of the empty set that parses as a bare interval. The
+degenerate bounded forms (`(a, a)`, `[a, a)`, `(a, a]`), crossed bounded
+forms (`a > b`), and bounded forms whose element-domain interpretation is
+empty (e.g. an integer interval whose bounds bracket no integers) are
+parse errors per §2.1, not coercions to `{}`. In a set form (§3.1), a
+literal `{}` piece is accepted as a no-op and dropped during
+normalization; that is the only path by which a sub-expression can
+contribute "empty" to a parsed value.
 
 ---
 
@@ -299,41 +306,49 @@ Inputs that normalize on emission:
 {[0, 5]}                   emits [0, 5]                     (single-piece input → braces dropped)
 {[0, 5] U {} U [10, 15]}   emits {[0, 5] U [10, 15]}        (empty piece dropped)
 {{} U {}}                  emits {}                         (all pieces empty → empty set)
-[3, 3)                     emits {}                          (empty by element domain)
 ```
+
+Forms that the spec does **not** normalize to `{}` — these are parse errors,
+not empty values — include `(a, a)`, `[a, a)`, `(a, a]`, `[3, 3)`, the
+integer interval `(0, 1)` (no integers in range), and any crossed form
+like `[5, 3]`. See §2.1.
 
 ---
 
 ## 7. Grammar (formal)
 
 ```ebnf
-interval       ::= empty | bounded | half_below | half_above | unbounded
-empty          ::= "{" "}"
-bounded        ::= left_bracket  element  ","  element  right_bracket
-half_below     ::= "("           ".."     ","  element  right_bracket
-half_above     ::= left_bracket  element  ","  ".."     ")"
-unbounded      ::= "(" ".." "," ".." ")"
+interval        ::= empty | bounded | unbounded_below | unbounded_above | unbounded
+empty           ::= "{" "}"
+bounded         ::= left_bound    element  ","  element  right_bound
+unbounded_below ::= "("           ".."     ","  element  right_bound
+unbounded_above ::= left_bound    element  ","  ".."     ")"
+unbounded       ::= "(" ".." "," ".." ")"
 
-left_bracket   ::= "[" | "("
-right_bracket  ::= "]" | ")"
+left_bound      ::= left_open | left_closed
+right_bound     ::= right_open | right_closed
+left_open       ::= "("
+left_closed     ::= "["
+right_open      ::= ")"
+right_closed    ::= "]"
 
-set            ::= interval
-                 | "{" piece ( ws "U" ws piece )* "}"
-piece          ::= interval
+set             ::= interval
+                  | "{" interval ( union interval )* "}"
+union           ::= ws "U" ws
 
-(* Emission picks one canonical shape per piece count:                      *)
-(*   0 pieces → the `interval` alternative, specifically `{}` (§2.4)        *)
-(*   1 piece  → the `interval` alternative (bare, no outer braces)          *)
-(*   n ≥ 2    → the brace-wrapped alternative                               *)
-(* Parsing accepts both alternatives at any piece count; the brace-wrapped  *)
-(* form with 0 or 1 pieces is a valid non-canonical input.                  *)
-
-ws             ::= one or more ASCII whitespace characters
-element        ::= an opaque lexeme passed to the element domain;
-                   structurally balanced under (), [], {};
-                   not equal to "..";
-                   may contain commas only inside balanced nesting
+ws              ::= one or more ASCII whitespace characters
+element         ::= an opaque lexeme passed to the element domain;
+                    structurally balanced under (), [], {};
+                    not equal to "..";
+                    may contain commas only inside balanced nesting
 ```
+
+Emission picks one canonical shape per piece count: 0 pieces emit as the
+`interval` alternative, specifically `{}` (§2.4); 1 piece emits as the
+`interval` alternative (bare, no outer braces); n ≥ 2 pieces emit as the
+brace-wrapped alternative. Parsing accepts both alternatives at any piece
+count; the brace-wrapped form with 0 or 1 pieces is a valid non-canonical
+input.
 
 Whitespace surrounding any structural token is implicitly allowed in
 addition to the explicit `ws` around the union separator.
