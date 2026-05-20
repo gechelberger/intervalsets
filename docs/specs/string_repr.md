@@ -317,38 +317,17 @@ like `[5, 3]`. See §2.1.
 
 ## 7. Grammar (formal)
 
-```ebnf
-interval        ::= empty | bounded | unbounded_below | unbounded_above | unbounded
-empty           ::= "{" "}"
-bounded         ::= left_bound    element  ","  element  right_bound
-unbounded_below ::= "("           ".."     ","  element  right_bound
-unbounded_above ::= left_bound    element  ","  ".."     ")"
-unbounded       ::= "(" ".." "," ".." ")"
+The formal EBNF grammar lives in
+[`docs/snippets/text-repr-grammar.md`](../snippets/text-repr-grammar.md)
+so it can be `include_str!`-included from rustdoc in both
+`intervalsets-core` and `intervalsets` without duplication. That file is
+the single source of truth for the grammar's structural shape; this
+document is the single source of truth for its semantics. Keep them in
+sync when changing either.
 
-left_bound      ::= left_open | left_closed
-right_bound     ::= right_open | right_closed
-left_open       ::= "("
-left_closed     ::= "["
-right_open      ::= ")"
-right_closed    ::= "]"
-
-set             ::= interval
-                  | "{" interval ( union interval )* "}"
-union           ::= ws "U" ws
-
-ws              ::= one or more ASCII whitespace characters
-element         ::= an opaque lexeme passed to the element domain;
-                    structurally balanced under (), [], {};
-                    not equal to "..";
-                    may contain commas only inside balanced nesting
-```
-
-Emission picks one canonical shape per piece count: 0 pieces emit as the
-`interval` alternative, specifically `{}` (§2.4); 1 piece emits as the
-`interval` alternative (bare, no outer braces); n ≥ 2 pieces emit as the
-brace-wrapped alternative. Parsing accepts both alternatives at any piece
-count; the brace-wrapped form with 0 or 1 pieces is a valid non-canonical
-input.
-
-Whitespace surrounding any structural token is implicitly allowed in
-addition to the explicit `ws` around the union separator.
+The snippet anchors §§2–3 of this document: the production names map
+directly to the §2 interval forms (`bounded` → §2.1, `unbounded_below` /
+`unbounded_above` → §2.2, `unbounded` → §2.3, `empty` → §2.4) and the §3
+set forms (the bare and brace-wrapped alternatives of `set`). The
+canonical-emission rule per piece count is restated at the foot of the
+snippet and matches the §3.1 piece-count table.
