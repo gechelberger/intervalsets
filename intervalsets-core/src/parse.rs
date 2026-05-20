@@ -202,7 +202,7 @@ where
                 let piece = EnumInterval::<T>::from_str(seg)?;
                 acc = core::mem::take(&mut acc)
                     .try_merge_interval(piece)
-                    .ok_or(ParseIntervalError::Syntax)?;
+                    .map_err(|_| ParseIntervalError::Syntax)?;
                 Ok(())
             })?;
             return Ok(acc);
