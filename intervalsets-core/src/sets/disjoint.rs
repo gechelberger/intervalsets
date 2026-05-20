@@ -176,6 +176,66 @@ impl<T: Element> MaybeDisjoint<T> {
     pub(crate) fn satisfies_invariants(left: &EnumInterval<T>, right: &EnumInterval<T>) -> bool {
         !left.is_empty() && !right.is_empty() && left < right && !left.connects(right)
     }
+
+    /// Set-theoretic union of `self` with a single `piece`, restricted
+    /// to `MaybeDisjoint`'s two-piece capacity.
+    ///
+    /// Pieces are merged where connectivity permits:
+    /// - Empty `piece` is a no-op.
+    /// - If `piece` connects to one or both stored pieces, the merged
+    ///   result is returned (`Connected` if everything collapses to a
+    ///   single interval, otherwise `Disjoint`).
+    /// - If `piece` is disjoint from both stored pieces of a two-piece
+    ///   `Disjoint` value, the union would require three disjoint
+    ///   pieces — returns `Err((self, piece))` so the caller can
+    ///   recover the original inputs and route through `IntervalSet`
+    ///   (or take some other path) without a defensive clone.
+    ///
+    /// This generalizes [`MergeConnected`](crate::ops::MergeConnected)
+    /// for `MaybeDisjoint`: where `MergeConnected` returns the merged
+    /// single piece only when *everything* collapses (all-or-nothing),
+    /// `try_merge_interval` also handles partial overlap by extending
+    /// the connected stored piece while preserving the disjoint one.
+    pub fn try_merge_interval(
+        self,
+        piece: EnumInterval<T>,
+    ) -> Result<Self, (Self, EnumInterval<T>)> {
+        if piece.is_empty() {
+            return Ok(self);
+        }
+        match self {
+            Self::Connected(iv) if iv.is_empty() => Ok(Self::from_interval(piece)),
+            Self::Connected(iv) => Ok(Self::from_pair(iv, piece)),
+            Self::Disjoint(a, b) => {
+                let a_connects = a.connects(&piece);
+                let b_connects = b.connects(&piece);
+                match (a_connects, b_connects) {
+                    (false, false) => Err((Self::Disjoint(a, b), piece)),
+                    (true, false) => {
+                        let ap = a
+                            .merge_connected(piece)
+                            .expect("a.connects(&piece) implies merge_connected is Some");
+                        Ok(Self::from_pair(ap, b))
+                    }
+                    (false, true) => {
+                        let bp = b
+                            .merge_connected(piece)
+                            .expect("b.connects(&piece) implies merge_connected is Some");
+                        Ok(Self::from_pair(a, bp))
+                    }
+                    (true, true) => {
+                        let ap = a
+                            .merge_connected(piece)
+                            .expect("a.connects(&piece) implies merge_connected is Some");
+                        let apb = ap
+                            .merge_connected(b)
+                            .expect("piece connecting to both a and b makes a∪piece adjacent to b");
+                        Ok(Self::from_interval(apb))
+                    }
+                }
+            }
+        }
+    }
 }
 
 impl<T> MaybeDisjoint<T> {
@@ -561,5 +621,67 @@ mod tests {
     fn default_is_empty() {
         let md: MaybeDisjoint<i32> = Default::default();
         assert_eq!(md, MaybeDisjoint::empty());
+    }
+
+    // ---- try_merge_interval ----
+
+    #[test]
+    fn try_merge_interval_empty_piece_is_noop() {
+        let md = connected(0_i32, 5);
+        assert_eq!(md.clone().try_merge_interval(EnumInterval::empty()), Ok(md));
+    }
+
+    #[test]
+    fn try_merge_interval_into_empty_md() {
+        let md = empty::<i32>();
+        let piece = EnumInterval::closed(0, 5);
+        assert_eq!(
+            md.try_merge_interval(piece),
+            Ok(MaybeDisjoint::from_interval(piece))
+        );
+    }
+
+    #[test]
+    fn try_merge_interval_connected_disjoint_promotes_to_two_piece() {
+        let md = connected(0_i32, 5);
+        let piece = EnumInterval::closed(10, 15);
+        assert_eq!(md.try_merge_interval(piece), Ok(two(0, 5, 10, 15)));
+    }
+
+    #[test]
+    fn try_merge_interval_connected_overlapping_stays_one_piece() {
+        let md = connected(0_i32, 10);
+        let piece = EnumInterval::closed(5, 15);
+        assert_eq!(
+            md.try_merge_interval(piece),
+            Ok(MaybeDisjoint::from_interval(EnumInterval::closed(0, 15)))
+        );
+    }
+
+    #[test]
+    fn try_merge_interval_disjoint_piece_extends_one_side() {
+        let md = two(0_i32, 5, 20, 30);
+        let piece = EnumInterval::closed(3, 8);
+        // piece overlaps a but not b → Disjoint([0,8], [20,30]).
+        assert_eq!(md.try_merge_interval(piece), Ok(two(0, 8, 20, 30)));
+    }
+
+    #[test]
+    fn try_merge_interval_disjoint_piece_bridges_gap() {
+        let md = two(0_i32, 5, 20, 30);
+        let piece = EnumInterval::closed(3, 25);
+        // piece overlaps both → Connected([0,30]).
+        assert_eq!(
+            md.try_merge_interval(piece),
+            Ok(MaybeDisjoint::from_interval(EnumInterval::closed(0, 30)))
+        );
+    }
+
+    #[test]
+    fn try_merge_interval_capacity_exceeded_returns_original_inputs() {
+        let md = two(0_i32, 5, 20, 30);
+        // piece is disjoint from both stored pieces → would need 3 pieces.
+        let piece = EnumInterval::closed(10, 15);
+        assert_eq!(md.clone().try_merge_interval(piece), Err((md, piece)));
     }
 }

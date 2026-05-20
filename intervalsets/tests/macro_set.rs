@@ -105,6 +105,41 @@ fn overlapping_input_is_merged() {
 }
 
 #[test]
+fn bare_and_brace_wrapped_single_piece_display_identically() {
+    // Both shapes parse to the same value, and a single-piece set
+    // emits as the bare interval form per spec §3.1.
+    let bare: IntervalSet<i32> = set!("[1, 10]");
+    let braced: IntervalSet<i32> = set!("{[1, 10]}");
+    assert_eq!(bare, braced);
+    assert_eq!(format!("{bare}"), "[1, 10]");
+    assert_eq!(format!("{braced}"), "[1, 10]");
+}
+
+#[test]
+fn bare_interval_form_makes_single_piece_set() {
+    // Spec §3.1: bare §2 forms parse as zero- or one-piece sets.
+    let m: IntervalSet<i32> = set!("[0, 10]");
+    let f = IntervalSet::from(Interval::closed(0, 10));
+    assert_eq!(m, f);
+
+    let m = set!("(.., 5]", i32);
+    assert_eq!(m, IntervalSet::from(Interval::unbound_closed(5)));
+
+    let m = set!("(.., ..)", i32);
+    assert_eq!(m, IntervalSet::from(Interval::unbounded()));
+}
+
+#[test]
+fn empty_piece_is_dropped() {
+    let mixed = set!("{[0, 5] U {} U [10, 15]}", i32);
+    let expected = Interval::closed(0, 5).union(Interval::closed(10, 15));
+    assert_eq!(mixed, expected);
+
+    let all_empty = set!("{{} U {}}", i32);
+    assert_eq!(all_empty, IntervalSet::<i32>::empty());
+}
+
+#[test]
 fn whitespace_lenience() {
     let m = set!("  {  [0, 5]   U   [10, 15]  }  ", i32);
     let f = Interval::closed(0, 5).union(Interval::closed(10, 15));

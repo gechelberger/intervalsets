@@ -2,7 +2,7 @@ use core::fmt;
 
 use itertools::Itertools;
 
-use crate::{Interval, IntervalSet, MaybeEmpty};
+use crate::{Interval, IntervalSet};
 
 impl<T: fmt::Display> fmt::Display for Interval<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -11,11 +11,17 @@ impl<T: fmt::Display> fmt::Display for Interval<T> {
 }
 
 impl<T: fmt::Display> fmt::Display for IntervalSet<T> {
+    /// Canonical emission per `docs/specs/string_repr.md` §3.1:
+    /// `{}` for the empty set, the bare interval form for a single
+    /// piece, and brace-wrapped `{piece U piece U ...}` for two or
+    /// more disjoint pieces. Braces indicate "2+ disjoint pieces,"
+    /// not container type.
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.is_empty() {
-            write!(f, "{{}}")
-        } else {
-            write!(f, "{{{}}}", self.iter().join(" U "))
+        let pieces = self.slice();
+        match pieces.len() {
+            0 => write!(f, "{{}}"),
+            1 => pieces[0].fmt(f),
+            _ => write!(f, "{{{}}}", pieces.iter().join(" U ")),
         }
     }
 }
@@ -78,9 +84,10 @@ mod tests {
 
     #[test]
     fn test_display_set_single_piece() {
+        // Spec §3.1: a single-piece set emits without outer braces.
         assert_eq!(
             format!("{}", IntervalSet::from(Interval::closed(0, 10))),
-            "{[0, 10]}"
+            "[0, 10]"
         );
     }
 }

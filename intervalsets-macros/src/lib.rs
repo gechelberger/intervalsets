@@ -174,13 +174,13 @@ pub fn enum_interval(input: TokenStream) -> TokenStream {
 
 /// Compile-time-checked literal for [`intervalsets::IntervalSet<T>`](https://docs.rs/intervalsets/latest/intervalsets/struct.IntervalSet.html).
 ///
-/// Accepts a string literal in the multi-piece set grammar, matching
-/// the runtime `Display` form for `IntervalSet`:
+/// Accepts a string literal mirroring `IntervalSet`'s runtime `FromStr`
+/// grammar (see `docs/specs/string_repr.md`):
 ///
-/// - `{}` — empty set.
-/// - `{[0, 10]}` — single-piece set.
-/// - `{[0, 5] U [10, 15] U [20, 30]}` — multi-piece, ASCII `U`
-///   separator with whitespace on both sides.
+/// - Any bare §2 interval form — `{}`, `[0, 10]`, `(.., 5]`,
+///   `(.., ..)`, … — treated as a zero- or one-piece set.
+/// - `{piece U piece U ...}` — brace-wrapped multi-piece form, ASCII
+///   `U` separator with whitespace on both sides.
 ///
 /// Each piece is a valid interval per the [`interval!`] grammar. The
 /// macro emits a chain of `Interval::ctor(...).union(...)` calls — the
@@ -196,7 +196,8 @@ pub fn enum_interval(input: TokenStream) -> TokenStream {
 /// use intervalsets::prelude::*;
 ///
 /// let a: IntervalSet<i32> = set!("{}");
-/// let b: IntervalSet<i32> = set!("{[0, 10]}");
+/// let b: IntervalSet<i32> = set!("[0, 10]");                  // bare form
+/// let b2: IntervalSet<i32> = set!("{[0, 10]}");               // non-canonical but accepted
 /// let c = set!("{[0, 1] U (10, 24) U [20, 35)}", i32);
 /// ```
 #[proc_macro]
