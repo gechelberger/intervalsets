@@ -23,7 +23,7 @@ jobs:
         run: |
           set -euo pipefail
           changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
-          if echo "$changed" | grep -qE '^(intervalsets|intervalsets-core)/CHANGELOG\.md$'; then
+          if echo "$changed" | grep -qE '^(intervalsets|intervalsets-core|intervalsets-macros)/CHANGELOG\.md$'; then
             echo "OK: changelog entry detected."
             exit 0
           fi
@@ -33,6 +33,7 @@ jobs:
           This PR must update at least one of:
             - intervalsets/CHANGELOG.md
             - intervalsets-core/CHANGELOG.md
+            - intervalsets-macros/CHANGELOG.md
 
           If this PR genuinely doesn't warrant a changelog entry (e.g. CI/tooling-only),
           apply the 'skip-changelog' label to bypass this check.

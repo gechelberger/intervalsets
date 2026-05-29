@@ -110,15 +110,18 @@ fall behind on dependencies that are now in range.
 
 ## Versioning between crates
 
-`intervalsets` and `intervalsets-core` ship in **lockstep** — both crates
-share the workspace version (`Cargo.toml` workspace.package.version), bump
-together on every release, and their inter-crate dependency is pinned to
-the workspace version. This is enforced by `release.toml`'s `shared-version = true`.
+`intervalsets`, `intervalsets-core`, and `intervalsets-macros` ship in
+**lockstep** — all three crates share the workspace version
+(`Cargo.toml` workspace.package.version), bump together on every release, and
+their inter-crate dependencies are pinned to the workspace version. This is
+enforced by `release.toml`'s `shared-version = true`.
 
-Rationale: `intervalsets` re-exports types from `intervalsets-core`, so any
-breaking change in core is necessarily a breaking change in the main crate.
-Independent versioning would create the illusion of compatibility where
-none exists.
+Rationale: `intervalsets` re-exports types from `intervalsets-core` and macros
+from `intervalsets-macros`; the macros emit constructor calls that resolve
+against the parent crates' APIs at expansion sites. Any breaking change in
+core (or any macro-grammar change) is necessarily a breaking change in the
+main crate. Independent versioning would create the illusion of compatibility
+where none exists.
 
 ## Pull requests
 
@@ -168,10 +171,11 @@ Each published crate has its own changelog:
 
 - [`intervalsets/CHANGELOG.md`](intervalsets/CHANGELOG.md)
 - [`intervalsets-core/CHANGELOG.md`](intervalsets-core/CHANGELOG.md)
+- [`intervalsets-macros/CHANGELOG.md`](intervalsets-macros/CHANGELOG.md)
 
 Every PR adds an entry under `## [Unreleased]` in **at least one** of these
-files (whichever crate the change affects). PRs touching both crates' public
-behavior should add entries to both. CI enforces this — see
+files (whichever crate the change affects). PRs touching multiple crates'
+public behavior should add entries to each affected crate. CI enforces this — see
 `.github/workflows/changelog.yml`.
 
 If the change genuinely doesn't warrant a changelog entry (CI/tooling-only,
