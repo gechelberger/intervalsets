@@ -10,7 +10,7 @@ use core::str::FromStr;
 use crate::error::ParseIntervalError;
 use crate::factory::{TryFiniteFactory, TryHalfBoundedFactory, UnboundedFactory};
 use crate::numeric::Element;
-use crate::sets::{EnumInterval, FiniteInterval, HalfInterval};
+use crate::sets::{EnumInterval, FiniteInterval, HalfInterval, MaybeDisjoint};
 
 /// Parses an [`EnumInterval`] from its `Display` form.
 ///
@@ -164,6 +164,92 @@ where
         let inner = EnumInterval::<T>::from_str(s)?;
         HalfInterval::try_from(inner).map_err(|_| ParseIntervalError::Syntax)
     }
+}
+
+/// Parses a [`MaybeDisjoint`] from its `Display` form.
+///
+/// `MaybeDisjoint` shares `IntervalSet`'s grammar (see
+/// `docs/specs/string_repr.md`) but is capped at two disjoint pieces.
+/// Input is one of:
+///
+/// - A bare §2 interval form (`[0, 5]`, `(.., ..)`, `{}`, etc.) —
+///   produces a [`Connected`](MaybeDisjoint::Connected) (or empty)
+///   value.
+/// - A brace-wrapped set form `{piece U piece U ...}` with any number
+///   of pieces; pieces are absorbed left-to-right with normalization
+///   (empties dropped, overlaps and adjacencies merged).
+///
+/// Parsing fails with [`ParseIntervalError::Syntax`] when the running
+/// fold would exceed two disjoint pieces — e.g. three pairwise
+/// non-connecting pieces. Inputs whose 3+ pieces collapse to ≤2 under
+/// merging are accepted.
+impl<T> FromStr for MaybeDisjoint<T>
+where
+    T: Element + FromStr,
+{
+    type Err = ParseIntervalError<<T as FromStr>::Err>;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.trim();
+        // Brace-wrapped set form: matched outer `{` and `}`.
+        if s.starts_with('{') && s.ends_with('}') {
+            let body = s[1..s.len() - 1].trim();
+            if body.is_empty() {
+                return Ok(Self::empty());
+            }
+            let mut acc = Self::empty();
+            fold_top_level_u_segments(body, |seg| {
+                let piece = EnumInterval::<T>::from_str(seg)?;
+                acc = core::mem::take(&mut acc)
+                    .try_merge_interval(piece)
+                    .map_err(|_| ParseIntervalError::Syntax)?;
+                Ok(())
+            })?;
+            return Ok(acc);
+        }
+        // Bare §2 interval form: treat as a single-piece value.
+        EnumInterval::<T>::from_str(s).map(Self::from)
+    }
+}
+
+/// Walk `body` byte-by-byte, tracking `[](){}` depth. At depth 0,
+/// split on a `U` flanked by ASCII whitespace on both sides. Invokes
+/// `f` on each trimmed segment (empty segments — leading, trailing,
+/// or doubled `U` — yield [`ParseIntervalError::Syntax`]).
+fn fold_top_level_u_segments<E, F>(body: &str, mut f: F) -> Result<(), ParseIntervalError<E>>
+where
+    F: FnMut(&str) -> Result<(), ParseIntervalError<E>>,
+{
+    let bytes = body.as_bytes();
+    let mut depth: i32 = 0;
+    let mut seg_start: usize = 0;
+    let mut i: usize = 0;
+    while i < bytes.len() {
+        let b = bytes[i];
+        match b {
+            b'[' | b'(' | b'{' => depth += 1,
+            b']' | b')' | b'}' => depth -= 1,
+            b'U' if depth == 0 => {
+                let prev_ws = i > 0 && bytes[i - 1].is_ascii_whitespace();
+                let next_ws = i + 1 < bytes.len() && bytes[i + 1].is_ascii_whitespace();
+                if prev_ws && next_ws {
+                    let seg = body[seg_start..i].trim();
+                    if seg.is_empty() {
+                        return Err(ParseIntervalError::Syntax);
+                    }
+                    f(seg)?;
+                    seg_start = i + 1;
+                }
+            }
+            _ => {}
+        }
+        i += 1;
+    }
+    let tail = body[seg_start..].trim();
+    if tail.is_empty() {
+        return Err(ParseIntervalError::Syntax);
+    }
+    f(tail)
 }
 
 fn peel(s: &str) -> Option<(char, &str, char)> {
@@ -368,5 +454,121 @@ mod tests {
     fn rejects_nan_element() {
         let r: Result<EnumInterval<f64>, _> = "[NaN, 0]".parse();
         assert!(matches!(r, Err(ParseIntervalError::InvalidElement)));
+    }
+
+    // ---- MaybeDisjoint FromStr ----
+
+    #[test]
+    fn md_parses_empty() {
+        let m: MaybeDisjoint<i32> = "{}".parse().unwrap();
+        assert_eq!(m, MaybeDisjoint::empty());
+    }
+
+    #[test]
+    fn md_parses_bare_interval() {
+        // Spec §3.1: bare §2 forms parse as zero- or one-piece sets.
+        let m: MaybeDisjoint<i32> = "[0, 5]".parse().unwrap();
+        assert_eq!(m, MaybeDisjoint::from_interval(EnumInterval::closed(0, 5)));
+
+        let m: MaybeDisjoint<f64> = "(.., 5.0)".parse().unwrap();
+        assert_eq!(
+            m,
+            MaybeDisjoint::from_interval(EnumInterval::unbound_open(5.0))
+        );
+
+        let m: MaybeDisjoint<i32> = "(.., ..)".parse().unwrap();
+        assert_eq!(m, MaybeDisjoint::from_interval(EnumInterval::unbounded()));
+    }
+
+    #[test]
+    fn md_parses_brace_wrapped_single_piece() {
+        // Non-canonical input — a single piece wrapped in braces.
+        let m: MaybeDisjoint<i32> = "{[0, 5]}".parse().unwrap();
+        assert_eq!(m, MaybeDisjoint::from_interval(EnumInterval::closed(0, 5)));
+    }
+
+    #[test]
+    fn md_parses_two_disjoint() {
+        let m: MaybeDisjoint<i32> = "{[0, 5] U [10, 15]}".parse().unwrap();
+        assert_eq!(
+            m,
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15))
+        );
+    }
+
+    #[test]
+    fn md_merges_overlapping_pieces() {
+        let m: MaybeDisjoint<i32> = "{[0, 10] U [5, 15]}".parse().unwrap();
+        assert_eq!(m, MaybeDisjoint::from_interval(EnumInterval::closed(0, 15)));
+    }
+
+    #[test]
+    fn md_accepts_three_input_pieces_that_merge_to_two() {
+        // Three input pieces, but the middle one bridges nothing —
+        // result is two disjoint pieces. Accepted.
+        let m: MaybeDisjoint<i32> = "{[0, 5] U [3, 8] U [20, 30]}".parse().unwrap();
+        assert_eq!(
+            m,
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 8), EnumInterval::closed(20, 30))
+        );
+    }
+
+    #[test]
+    fn md_accepts_three_input_pieces_that_merge_to_one() {
+        // Three input pieces where one bridges the gap — result is one piece.
+        let m: MaybeDisjoint<i32> = "{[0, 5] U [20, 30] U [3, 25]}".parse().unwrap();
+        assert_eq!(m, MaybeDisjoint::from_interval(EnumInterval::closed(0, 30)));
+    }
+
+    #[test]
+    fn md_drops_empty_pieces() {
+        let m: MaybeDisjoint<i32> = "{[0, 5] U {} U [10, 15]}".parse().unwrap();
+        assert_eq!(
+            m,
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15))
+        );
+
+        let m: MaybeDisjoint<i32> = "{{} U {}}".parse().unwrap();
+        assert_eq!(m, MaybeDisjoint::empty());
+    }
+
+    #[test]
+    fn md_rejects_three_disjoint_pieces() {
+        // Three pairwise non-connecting pieces exceed MaybeDisjoint's capacity.
+        let r: Result<MaybeDisjoint<i32>, _> = "{[0, 5] U [10, 15] U [20, 25]}".parse();
+        assert!(matches!(r, Err(ParseIntervalError::Syntax)));
+    }
+
+    #[test]
+    fn md_accepts_unsorted_input() {
+        let m: MaybeDisjoint<i32> = "{[10, 15] U [0, 5]}".parse().unwrap();
+        assert_eq!(
+            m,
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15))
+        );
+    }
+
+    #[test]
+    fn md_round_trip() {
+        let cases = [
+            MaybeDisjoint::<i32>::empty(),
+            MaybeDisjoint::from_interval(EnumInterval::closed(0, 10)),
+            MaybeDisjoint::from_pair(EnumInterval::closed(0, 5), EnumInterval::closed(10, 15)),
+            MaybeDisjoint::from_interval(EnumInterval::unbounded()),
+        ];
+        for x in cases {
+            let printed = std::format!("{x}");
+            let parsed: MaybeDisjoint<i32> = printed.parse().unwrap();
+            assert_eq!(parsed, x, "round-trip failed for {printed}");
+        }
+    }
+
+    #[test]
+    fn md_rejects_mismatched_braces() {
+        let r: Result<MaybeDisjoint<i32>, _> = "{[0, 5]".parse();
+        assert!(matches!(r, Err(ParseIntervalError::Syntax)));
+
+        let r: Result<MaybeDisjoint<i32>, _> = "[0, 5]}".parse();
+        assert!(matches!(r, Err(ParseIntervalError::Syntax)));
     }
 }
