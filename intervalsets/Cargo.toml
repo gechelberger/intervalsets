@@ -46,7 +46,7 @@ fixed = "1.28.0"
 # `Arbitrary` impls (which live under `cfg(any(feature = "quickcheck", test))`)
 # are available without needing `--features quickcheck`.
 intervalsets-core = { workspace = true, features = ["quickcheck"] }
-num-bigint = "0.4.6"
+num-bigint = "0.5.1"
 ordered-float = "5.3.0"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
