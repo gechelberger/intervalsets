@@ -34,7 +34,7 @@ proc-macro = true
 [dependencies]
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "2", default-features = false, features = ["proc-macro", "parsing", "full", "printing"] }
+syn = { version = "3", default-features = false, features = ["proc-macro", "parsing", "full", "printing"] }
 proc-macro-crate = "3"
 
 [dev-dependencies]
